@@ -189,12 +189,22 @@ export default function DashboardPage() {
                 Welkom, {user?.username} ({user?.role})
               </p>
             </div>
-            <button
-              onClick={handleLogout}
-              className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-            >
-              Uitloggen
-            </button>
+            <div className="flex gap-2">
+              {user?.role === 'admin' && (
+                <button
+                  onClick={() => router.push('/dashboard/admin')}
+                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                >
+                  ⚙️ Beheer
+                </button>
+              )}
+              <button
+                onClick={handleLogout}
+                className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+              >
+                Uitloggen
+              </button>
+            </div>
           </div>
         </div>
       </div>
