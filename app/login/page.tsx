@@ -89,12 +89,6 @@ export default function LoginPage() {
             {loading ? 'Inloggen...' : 'Inloggen'}
           </button>
         </form>
-
-        <div className="mt-6 text-sm text-gray-600 text-center">
-          <p>Demo accounts:</p>
-          <p className="mt-1">Admin: admin / admin123</p>
-          <p>Gebruiker: gebruiker / user123</p>
-        </div>
       </div>
     </div>
   );
