@@ -183,7 +183,7 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Oliemonster Analyse
+                Oliemonsters 2025 in opdracht van Mourik Infra
               </h1>
               <p className="text-sm text-gray-600 mt-1">
                 Welkom, {user?.username} ({user?.role})
