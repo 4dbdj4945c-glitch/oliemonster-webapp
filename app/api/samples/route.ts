@@ -23,18 +23,18 @@ export async function GET(request: NextRequest) {
     let samples;
 
     if (search) {
-      // Zoek in o-nummer, locatie, of omschrijving
+      // Zoek in o-nummer, locatie, of omschrijving (case-insensitive)
       samples = await prisma.oilSample.findMany({
         where: {
           OR: [
-            { oNumber: { contains: search } },
-            { location: { contains: search } },
-            { description: { contains: search } },
+            { oNumber: { contains: search, mode: 'insensitive' } },
+            { location: { contains: search, mode: 'insensitive' } },
+            { description: { contains: search, mode: 'insensitive' } },
           ],
         },
         orderBy: { sampleDate: 'desc' },
       });
-    } else {
+    }
       samples = await prisma.oilSample.findMany({
         orderBy: { sampleDate: 'desc' },
       });
