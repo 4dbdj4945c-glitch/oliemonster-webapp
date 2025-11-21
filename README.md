@@ -1,36 +1,207 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Oliemonster Analyse Webapp
 
-## Getting Started
+Een webapp voor het bijhouden en inzichtelijk maken van oliemonsteranalyses.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+✅ **Authenticatie**
+- Beveiligde login met gebruikersnaam en wachtwoord
+- Rolgebaseerde toegang (Admin / Gebruiker)
+- Sessie management
+
+✅ **Oliemonsters Beheer**
+- Toevoegen, bewerken en verwijderen van monsters (alleen admin)
+- Inzien van alle monsters (alle gebruikers)
+- Visuele status indicatie (groen = genomen, rood = niet genomen)
+
+✅ **Zoekfunctionaliteit**
+- Realtime zoeken op o-nummer, locatie en omschrijving
+
+✅ **Gegevens per Monster**
+- O-nummer
+- Datum afname
+- Locatie
+- Omschrijving
+- Status (genomen/niet genomen)
+
+## Technologie Stack
+
+- **Frontend**: Next.js 16, React 19, TypeScript, TailwindCSS
+- **Backend**: Next.js API Routes
+- **Database**: SQLite + Prisma ORM
+- **Authenticatie**: iron-session + bcryptjs
+
+## Installatie
+
+### Vereisten
+- Node.js 18+ en npm
+
+### Setup
+
+1. **Dependencies installeren**
+   ```bash
+   npm install
+   ```
+
+2. **Database migratie uitvoeren**
+   ```bash
+   npx prisma migrate dev
+   ```
+
+3. **Database seeden met demo data**
+   ```bash
+   npm run seed
+   ```
+
+4. **Development server starten**
+   ```bash
+   npm run dev
+   ```
+
+5. **Open je browser**
+   Navigeer naar [http://localhost:3000](http://localhost:3000)
+
+## Inloggegevens
+
+Na het seeden van de database zijn de volgende accounts beschikbaar:
+
+### Admin Account
+- **Gebruikersnaam**: `admin`
+- **Wachtwoord**: `admin123`
+- **Rechten**: Volledige toegang - kan monsters toevoegen, bewerken en verwijderen
+
+### Gebruiker Account
+- **Gebruikersnaam**: `gebruiker`
+- **Wachtwoord**: `user123`
+- **Rechten**: Alleen-lezen toegang - kan monsters alleen inzien
+
+## Gebruikshandleiding
+
+### Voor Beheerders (Admin)
+
+1. **Inloggen** met admin account
+2. **Monsters toevoegen**: Klik op "Nieuw Monster" knop
+3. **Monsters bewerken**: Klik op "Bewerken" naast een monster
+4. **Monsters verwijderen**: Klik op "Verwijderen" naast een monster
+5. **Zoeken**: Typ in het zoekveld om te filteren
+
+### Voor Gebruikers
+
+1. **Inloggen** met gebruiker account
+2. **Monsters bekijken**: Zie de lijst met alle monsters
+3. **Zoeken**: Gebruik de zoekbalk om monsters te vinden
+4. **Status controleren**: 
+   - 🟢 Groene badge = Monster is genomen
+   - 🔴 Rode badge = Monster nog niet genomen
+
+## Project Structuur
+
+```
+oliemonster-webapp/
+├── app/
+│   ├── api/
+│   │   ├── auth/          # Authenticatie endpoints
+│   │   └── samples/       # Oliemonster CRUD endpoints
+│   ├── dashboard/         # Hoofdpagina (beveiligd)
+│   ├── login/             # Login pagina
+│   └── page.tsx           # Root redirect
+├── lib/
+│   ├── prisma.ts          # Prisma client configuratie
+│   └── session.ts         # Sessie configuratie
+├── prisma/
+│   ├── schema.prisma      # Database schema
+│   ├── seed.ts            # Seed script
+│   └── migrations/        # Database migraties
+└── package.json
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Database Schema
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### User
+- id (Int)
+- username (String, unique)
+- password (String, hashed)
+- role (String: "admin" of "user")
+- createdAt (DateTime)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### OilSample
+- id (Int)
+- oNumber (String, unique)
+- sampleDate (DateTime)
+- location (String)
+- description (String)
+- isTaken (Boolean)
+- createdAt (DateTime)
+- updatedAt (DateTime)
 
-## Learn More
+## API Endpoints
 
-To learn more about Next.js, take a look at the following resources:
+### Authenticatie
+- `POST /api/auth/login` - Inloggen
+- `POST /api/auth/logout` - Uitloggen
+- `GET /api/auth/session` - Sessie info ophalen
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Oliemonsters
+- `GET /api/samples?search={query}` - Alle monsters ophalen (met optionele zoekfilter)
+- `POST /api/samples` - Nieuw monster toevoegen (admin only)
+- `PUT /api/samples/[id]` - Monster bijwerken (admin only)
+- `DELETE /api/samples/[id]` - Monster verwijderen (admin only)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Productie Deployment
 
-## Deploy on Vercel
+Voor productie deployment:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Omgevingsvariabelen instellen**
+   Maak een `.env.production` bestand aan:
+   ```env
+   DATABASE_URL="file:./production.db"
+   SESSION_SECRET="je_zeer_veilige_random_string_van_minimaal_32_karakters"
+   NODE_ENV="production"
+   ```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+2. **Build maken**
+   ```bash
+   npm run build
+   ```
+
+3. **Productie server starten**
+   ```bash
+   npm start
+   ```
+
+## Beveiliging
+
+- ✅ Wachtwoorden worden gehashed met bcryptjs
+- ✅ Sessies zijn beveiligd met iron-session
+- ✅ API routes hebben authenticatie checks
+- ✅ Rolgebaseerde autorisatie voor admin functies
+- ⚠️ **BELANGRIJK**: Wijzig de `SESSION_SECRET` in productie!
+
+## Ontwikkeling
+
+### Nieuwe gebruiker toevoegen
+
+Run Prisma Studio om handmatig gebruikers toe te voegen:
+```bash
+npx prisma studio
+```
+
+### Database resetten
+```bash
+rm prisma/dev.db
+npx prisma migrate dev
+npm run seed
+```
+
+### Type generation
+```bash
+npx prisma generate
+```
+
+## Support
+
+Voor vragen of problemen, neem contact op met de ontwikkelaar.
+
+## Licentie
+
+Proprietary - Alleen voor gebruik door geautoriseerde klanten.
