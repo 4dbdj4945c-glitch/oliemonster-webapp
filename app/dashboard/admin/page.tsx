@@ -17,13 +17,39 @@ interface SessionUser {
   isLoggedIn: boolean;
 }
 
+type TabType = 'users' | 'theme' | 'columns';
+
+const THEMES = [
+  { id: 'blue', name: 'Blauw (Standaard)', primary: 'blue', secondary: 'gray' },
+  { id: 'green', name: 'Groen', primary: 'green', secondary: 'teal' },
+  { id: 'purple', name: 'Paars', primary: 'purple', secondary: 'pink' },
+  { id: 'red', name: 'Rood', primary: 'red', secondary: 'orange' },
+  { id: 'dark', name: 'Donker', primary: 'gray', secondary: 'slate' },
+];
+
+const AVAILABLE_COLUMNS = [
+  { id: 'status', name: 'Status', required: true },
+  { id: 'oNumber', name: 'O-nummer', required: true },
+  { id: 'sampleDate', name: 'Datum', required: false },
+  { id: 'location', name: 'Locatie', required: false },
+  { id: 'description', name: 'Omschrijving', required: false },
+];
+
 export default function AdminPage() {
+  const [activeTab, setActiveTab] = useState<TabType>('users');
   const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [saveMessage, setSaveMessage] = useState('');
   const router = useRouter();
+
+  // Settings state
+  const [selectedTheme, setSelectedTheme] = useState('blue');
+  const [selectedColumns, setSelectedColumns] = useState<string[]>([
+    'status', 'oNumber', 'sampleDate', 'location', 'description'
+  ]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -40,6 +66,7 @@ export default function AdminPage() {
   useEffect(() => {
     if (sessionUser?.role === 'admin') {
       loadUsers();
+      loadSettings();
     }
   }, [sessionUser]);
 
@@ -74,6 +101,54 @@ export default function AdminPage() {
     }
   };
 
+  const loadSettings = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.theme) setSelectedTheme(data.theme);
+        if (data.columns) setSelectedColumns(data.columns);
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  };
+
+  const saveSettings = async (key: string, value: any) => {
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value }),
+      });
+
+      if (response.ok) {
+        setSaveMessage('Instellingen opgeslagen!');
+        setTimeout(() => setSaveMessage(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+    }
+  };
+
+  const handleThemeChange = async (themeId: string) => {
+    setSelectedTheme(themeId);
+    await saveSettings('theme', themeId);
+  };
+
+  const toggleColumn = async (columnId: string) => {
+    const column = AVAILABLE_COLUMNS.find(c => c.id === columnId);
+    if (column?.required) return;
+
+    const newColumns = selectedColumns.includes(columnId)
+      ? selectedColumns.filter(id => id !== columnId)
+      : [...selectedColumns, columnId];
+    
+    setSelectedColumns(newColumns);
+    await saveSettings('columns', newColumns);
+  };
+
   const resetForm = () => {
     setFormData({
       username: '',
@@ -103,7 +178,6 @@ export default function AdminPage() {
     e.preventDefault();
     setFormError('');
 
-    // Validatie: als nieuwe gebruiker, wachtwoord verplicht
     if (!editingUser && !formData.password) {
       setFormError('Wachtwoord is verplicht voor nieuwe gebruikers');
       return;
@@ -203,90 +277,228 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Gebruikersbeheer Section */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Gebruikersbeheer</h2>
-            <button
-              onClick={openAddModal}
-              className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-            >
-              + Nieuwe Gebruiker
-            </button>
+      {/* Tabs */}
+      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div className="bg-white rounded-lg shadow">
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px">
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`px-6 py-3 text-sm font-medium ${
+                  activeTab === 'users'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                👥 Gebruikers
+              </button>
+              <button
+                onClick={() => setActiveTab('theme')}
+                className={`px-6 py-3 text-sm font-medium ${
+                  activeTab === 'theme'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                🎨 Thema
+              </button>
+              <button
+                onClick={() => setActiveTab('columns')}
+                className={`px-6 py-3 text-sm font-medium ${
+                  activeTab === 'columns'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                📊 Kolommen
+              </button>
+            </nav>
           </div>
 
-          {/* Users Table */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Gebruikersnaam
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Rol
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Aangemaakt
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Acties
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {users.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
-                      Geen gebruikers gevonden
-                    </td>
-                  </tr>
-                ) : (
-                  users.map((user) => (
-                    <tr key={user.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {user.username}
-                        {user.id === sessionUser?.userId && (
-                          <span className="ml-2 text-xs text-gray-500">(jij)</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span
-                          className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            user.role === 'admin'
-                              ? 'bg-purple-100 text-purple-800'
-                              : 'bg-blue-100 text-blue-800'
+          {/* Tab Content */}
+          <div className="p-6">
+            {saveMessage && (
+              <div className="mb-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
+                {saveMessage}
+              </div>
+            )}
+
+            {/* Users Tab */}
+            {activeTab === 'users' && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-bold text-gray-900">Gebruikersbeheer</h2>
+                  <button
+                    onClick={openAddModal}
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                  >
+                    + Nieuwe Gebruiker
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Gebruikersnaam
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Rol
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Aangemaakt
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Acties
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {users.map((user) => (
+                        <tr key={user.id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {user.username}
+                            {user.id === sessionUser?.userId && (
+                              <span className="ml-2 text-xs text-gray-500">(jij)</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span
+                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                user.role === 'admin'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : 'bg-blue-100 text-blue-800'
+                              }`}
+                            >
+                              {user.role === 'admin' ? 'Admin' : 'Gebruiker'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {new Date(user.createdAt).toLocaleDateString('nl-NL')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => openEditModal(user)}
+                              className="text-blue-600 hover:text-blue-900 mr-4"
+                            >
+                              Bewerken
+                            </button>
+                            {user.id !== sessionUser?.userId && (
+                              <button
+                                onClick={() => handleDelete(user.id)}
+                                className="text-red-600 hover:text-red-900"
+                              >
+                                Verwijderen
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Theme Tab */}
+            {activeTab === 'theme' && (
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Kleurthema</h2>
+                <p className="text-gray-600 mb-6">
+                  Selecteer een kleurthema voor de applicatie
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {THEMES.map((theme) => (
+                    <div
+                      key={theme.id}
+                      onClick={() => handleThemeChange(theme.id)}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition ${
+                        selectedTheme === theme.id
+                          ? 'border-blue-500 bg-blue-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center mb-3">
+                        <div
+                          className={`w-8 h-8 rounded-full bg-${theme.primary}-500 mr-2`}
+                        ></div>
+                        <div
+                          className={`w-8 h-8 rounded-full bg-${theme.secondary}-500`}
+                        ></div>
+                      </div>
+                      <h3 className="font-semibold text-gray-900">{theme.name}</h3>
+                      {selectedTheme === theme.id && (
+                        <p className="text-sm text-blue-600 mt-2">✓ Actief</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
+                  <p className="text-sm text-yellow-800">
+                    💡 Tip: Thema wijzigingen worden direct toegepast na het selecteren.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Columns Tab */}
+            {activeTab === 'columns' && (
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Kolom Configuratie</h2>
+                <p className="text-gray-600 mb-6">
+                  Selecteer welke kolommen zichtbaar zijn in het overzicht
+                </p>
+
+                <div className="space-y-3">
+                  {AVAILABLE_COLUMNS.map((column) => (
+                    <div
+                      key={column.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id={column.id}
+                          checked={selectedColumns.includes(column.id)}
+                          onChange={() => toggleColumn(column.id)}
+                          disabled={column.required}
+                          className="h-5 w-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 disabled:opacity-50"
+                        />
+                        <label
+                          htmlFor={column.id}
+                          className={`ml-3 text-sm font-medium ${
+                            column.required ? 'text-gray-500' : 'text-gray-900'
                           }`}
                         >
-                          {user.role === 'admin' ? 'Admin' : 'Gebruiker'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(user.createdAt).toLocaleDateString('nl-NL')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => openEditModal(user)}
-                          className="text-blue-600 hover:text-blue-900 mr-4"
-                        >
-                          Bewerken
-                        </button>
-                        {user.id !== sessionUser?.userId && (
-                          <button
-                            onClick={() => handleDelete(user.id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Verwijderen
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                          {column.name}
+                          {column.required && (
+                            <span className="ml-2 text-xs text-gray-500">(verplicht)</span>
+                          )}
+                        </label>
+                      </div>
+                      <span
+                        className={`text-sm ${
+                          selectedColumns.includes(column.id)
+                            ? 'text-green-600'
+                            : 'text-gray-400'
+                        }`}
+                      >
+                        {selectedColumns.includes(column.id) ? '✓ Zichtbaar' : 'Verborgen'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded">
+                  <p className="text-sm text-blue-800">
+                    ℹ️ Sommige kolommen zijn verplicht en kunnen niet worden uitgeschakeld.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

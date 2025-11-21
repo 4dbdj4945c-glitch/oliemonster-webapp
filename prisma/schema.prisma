@@ -28,3 +28,11 @@ model OilSample {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+model Settings {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique  // Settings key (bijv. "theme", "columns")
+  value     String              // JSON string met de settings waarde
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
