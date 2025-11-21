@@ -261,10 +261,10 @@ export default function AdminPage() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Beheer Paneel
+                It's Done Services - Beheer
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                Instellingen en gebruikersbeheer
+                Oliemonster Analyse - Instellingen
               </p>
             </div>
             <button

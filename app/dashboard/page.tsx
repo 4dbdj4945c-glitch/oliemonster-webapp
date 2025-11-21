@@ -202,8 +202,11 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                Oliemonsters 2025 in opdracht van Mourik Infra
+                It's Done Services - Oliemonster Analyse
               </h1>
+              <p className="text-xs text-gray-500 mt-1">
+                In opdracht van Mourik Infra
+              </p>
               <p className="text-sm text-gray-600 mt-1">
                 Welkom, {user?.username} ({user?.role})
               </p>
