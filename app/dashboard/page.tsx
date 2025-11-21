@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getTheme } from '@/lib/theme';
 
 interface User {
   userId: number;
@@ -26,7 +27,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingSample, setEditingSample] = useState<OilSample | null>(null);
+  const [theme, setTheme] = useState('blue');
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(['status', 'oNumber', 'sampleDate', 'location', 'description']);
   const router = useRouter();
+  const themeColors = getTheme(theme);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -40,6 +44,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     checkAuth();
+    loadSettings();
   }, []);
 
   useEffect(() => {
@@ -47,6 +52,20 @@ export default function DashboardPage() {
       loadSamples();
     }
   }, [user, search]);
+
+  const loadSettings = async () => {
+    try {
+      const response = await fetch('/api/settings');
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.theme) setTheme(data.theme);
+        if (data.columns) setVisibleColumns(data.columns);
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  };
 
   const checkAuth = async () => {
     try {
@@ -193,14 +212,14 @@ export default function DashboardPage() {
               {user?.role === 'admin' && (
                 <button
                   onClick={() => router.push('/dashboard/admin')}
-                  className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                  className={`${themeColors.primary.bg} ${themeColors.primary.bgHover} text-white px-4 py-2 rounded`}
                 >
                   ⚙️ Beheer
                 </button>
               )}
               <button
                 onClick={handleLogout}
-                className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+                className={`${themeColors.secondary.bg} ${themeColors.secondary.bgHover} text-white px-4 py-2 rounded`}
               >
                 Uitloggen
               </button>
@@ -219,12 +238,12 @@ export default function DashboardPage() {
               placeholder="Zoek op o-nummer, locatie of omschrijving..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className={`flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
             />
             {user?.role === 'admin' && (
               <button
                 onClick={openAddModal}
-                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 whitespace-nowrap"
+                className={`${themeColors.accent.bg} ${themeColors.accent.bgHover} text-white px-6 py-2 rounded whitespace-nowrap`}
               >
                 + Nieuw Monster
               </button>
@@ -238,21 +257,31 @@ export default function DashboardPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    O-nummer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Datum
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Locatie
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Omschrijving
-                  </th>
+                  {visibleColumns.includes('status') && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                  )}
+                  {visibleColumns.includes('oNumber') && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      O-nummer
+                    </th>
+                  )}
+                  {visibleColumns.includes('sampleDate') && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Datum
+                    </th>
+                  )}
+                  {visibleColumns.includes('location') && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Locatie
+                    </th>
+                  )}
+                  {visibleColumns.includes('description') && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Omschrijving
+                    </th>
+                  )}
                   {user?.role === 'admin' && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Acties
@@ -270,34 +299,44 @@ export default function DashboardPage() {
                 ) : (
                   samples.map((sample) => (
                     <tr key={sample.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                            sample.isTaken
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          {sample.isTaken ? 'Genomen' : 'Niet genomen'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {sample.oNumber}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(sample.sampleDate).toLocaleDateString('nl-NL')}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-900">
-                        {sample.location}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">
-                        {sample.description}
-                      </td>
+                      {visibleColumns.includes('status') && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                              sample.isTaken
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {sample.isTaken ? 'Genomen' : 'Niet genomen'}
+                          </span>
+                        </td>
+                      )}
+                      {visibleColumns.includes('oNumber') && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {sample.oNumber}
+                        </td>
+                      )}
+                      {visibleColumns.includes('sampleDate') && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(sample.sampleDate).toLocaleDateString('nl-NL')}
+                        </td>
+                      )}
+                      {visibleColumns.includes('location') && (
+                        <td className="px-6 py-4 text-sm text-gray-900">
+                          {sample.location}
+                        </td>
+                      )}
+                      {visibleColumns.includes('description') && (
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {sample.description}
+                        </td>
+                      )}
                       {user?.role === 'admin' && (
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <button
                             onClick={() => openEditModal(sample)}
-                            className="text-blue-600 hover:text-blue-900 mr-4"
+                            className={`${themeColors.primary.text} ${themeColors.primary.textHover} mr-4`}
                           >
                             Bewerken
                           </button>
@@ -335,7 +374,7 @@ export default function DashboardPage() {
                   type="text"
                   value={formData.oNumber}
                   onChange={(e) => setFormData({ ...formData, oNumber: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
                   required
                 />
               </div>
@@ -348,7 +387,7 @@ export default function DashboardPage() {
                   type="date"
                   value={formData.sampleDate}
                   onChange={(e) => setFormData({ ...formData, sampleDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
                   required
                 />
               </div>
@@ -361,7 +400,7 @@ export default function DashboardPage() {
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
                   required
                 />
               </div>
@@ -373,7 +412,7 @@ export default function DashboardPage() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
                   rows={3}
                   required
                 />
@@ -385,7 +424,7 @@ export default function DashboardPage() {
                   id="isTaken"
                   checked={formData.isTaken}
                   onChange={(e) => setFormData({ ...formData, isTaken: e.target.checked })}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  className={`h-4 w-4 ${themeColors.primary.text} ${themeColors.primary.focus} border-gray-300 rounded`}
                 />
                 <label htmlFor="isTaken" className="ml-2 block text-sm text-gray-900">
                   Monster is genomen
@@ -401,7 +440,7 @@ export default function DashboardPage() {
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700"
+                  className={`flex-1 ${themeColors.primary.bg} ${themeColors.primary.bgHover} text-white py-2 px-4 rounded`}
                 >
                   {editingSample ? 'Bijwerken' : 'Toevoegen'}
                 </button>
