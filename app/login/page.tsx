@@ -42,7 +42,9 @@ export default function LoginPage() {
 
   return (
     <>
-      <ThemeToggle />
+      <div className="fixed top-8 right-8 z-50">
+        <ThemeToggle />
+      </div>
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
         <div className="p-8 border rounded w-full max-w-md" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
         <div className="flex flex-col items-center mb-6">
