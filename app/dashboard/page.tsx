@@ -204,11 +204,9 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold" style={{ color: 'var(--foreground)', letterSpacing: '-0.02em' }}>
-                It's Done Services - Oliemonster Analyse
-              </h1>
+              <img src="/header_logo.png" alt="It's Done Services" className="h-12 mb-2 object-contain" />
               <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                In opdracht van Mourik Infra
+                Overzicht afname oliemonsters i.o.v. Mourik Infra B.V.
               </p>
               <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                 Welkom, {user?.username} ({user?.role})
