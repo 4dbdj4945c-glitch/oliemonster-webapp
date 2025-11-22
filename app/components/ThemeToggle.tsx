@@ -24,7 +24,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="fixed top-8 right-8 w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 z-50 hover:scale-105 active:scale-95"
+      className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
       style={{
         backgroundColor: 'var(--accent)',
         border: '1px solid var(--accent)',

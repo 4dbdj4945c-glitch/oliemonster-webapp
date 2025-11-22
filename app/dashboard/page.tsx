@@ -197,37 +197,46 @@ export default function DashboardPage() {
 
   return (
     <>
-      <ThemeToggle />
+      {/* Top-right controls */}
+      <div className="fixed top-8 right-8 flex gap-3 z-50">
+        {user?.role === 'admin' && (
+          <button
+            onClick={() => router.push('/dashboard/admin')}
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
+            style={{
+              backgroundColor: 'var(--accent)',
+              border: '1px solid var(--accent)',
+            }}
+            aria-label="Beheer"
+          >
+            <span className="text-xl" style={{ color: 'var(--background)', lineHeight: 1 }}>⚙</span>
+          </button>
+        )}
+        <button
+          onClick={handleLogout}
+          className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
+          style={{
+            backgroundColor: 'var(--accent)',
+            border: '1px solid var(--accent)',
+          }}
+          aria-label="Uitloggen"
+        >
+          <span className="text-xl" style={{ color: 'var(--background)', lineHeight: 1 }}>→</span>
+        </button>
+        <ThemeToggle />
+      </div>
       <div className="min-h-screen" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
         {/* Header */}
         <div style={{ backgroundColor: 'var(--background)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <img src="/header_logo.png" alt="It's Done Services" className="h-12 mb-2 object-contain" />
-              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                Overzicht afname oliemonsters i.o.v. Mourik Infra B.V.
-              </p>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                Welkom, {user?.username} ({user?.role})
-              </p>
-            </div>
-            <div className="flex gap-2">
-              {user?.role === 'admin' && (
-                <button
-                  onClick={() => router.push('/dashboard/admin')}
-                  className={`${themeColors.primary.bg} ${themeColors.primary.bgHover} text-white px-4 py-2 rounded`}
-                >
-                  ⚙️ Beheer
-                </button>
-              )}
-              <button
-                onClick={handleLogout}
-                className={`${themeColors.secondary.bg} ${themeColors.secondary.bgHover} text-white px-4 py-2 rounded`}
-              >
-                Uitloggen
-              </button>
-            </div>
+          <div>
+            <img src="/header_logo.png" alt="It's Done Services" className="h-12 mb-2 object-contain" />
+            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+              Overzicht afname oliemonsters i.o.v. Mourik Infra B.V.
+            </p>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+              Welkom, {user?.username} ({user?.role})
+            </p>
           </div>
         </div>
       </div>
