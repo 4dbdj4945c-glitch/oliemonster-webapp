@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         },
         orderBy: { sampleDate: 'desc' },
       });
-    }
+    } else {
       samples = await prisma.oilSample.findMany({
         orderBy: { sampleDate: 'desc' },
       });

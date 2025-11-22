@@ -462,10 +462,10 @@ export default function DashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
         </div>
-      </div>
+      )}
       </div>
     </>
   );
-}
 }
