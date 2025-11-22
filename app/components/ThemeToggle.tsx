@@ -24,20 +24,21 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="fixed top-6 right-6 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 z-50"
+      className="fixed top-8 right-8 w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 z-50 hover:scale-105 active:scale-95"
       style={{
-        backgroundColor: theme === 'dark' ? '#ffffff' : '#0a0a0a',
-        border: `1px solid ${theme === 'dark' ? '#ffffff' : '#0a0a0a'}`,
+        backgroundColor: 'var(--accent)',
+        border: '1px solid var(--accent)',
       }}
       aria-label="Toggle theme"
     >
       <span
-        className="text-lg"
+        className="text-xl"
         style={{
-          color: theme === 'dark' ? '#0a0a0a' : '#ffffff',
+          color: 'var(--background)',
+          lineHeight: 1,
         }}
       >
-        {theme === 'dark' ? '☀️' : '🌙'}
+        {theme === 'dark' ? '◐' : '◑'}
       </span>
     </button>
   );

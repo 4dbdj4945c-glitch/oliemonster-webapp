@@ -6,6 +6,8 @@
   --text-secondary: #a0a0a0;
   --border: #2a2a2a;
   --accent: #ffffff;
+  /* alias for compatibility with main website CSS naming */
+  --bg-color: var(--background);
 }
 
 [data-theme="light"] {
@@ -14,6 +16,7 @@
   --text-secondary: #666666;
   --border: #e0e0e0;
   --accent: #0a0a0a;
+  --bg-color: var(--background);
 }
 
 @theme inline {
