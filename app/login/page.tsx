@@ -45,12 +45,12 @@ export default function LoginPage() {
       <ThemeToggle />
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
         <div className="p-8 border rounded w-full max-w-md" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
-          <h1 className="text-3xl font-bold text-center mb-6" style={{ color: 'var(--foreground)', letterSpacing: '-0.02em' }}>
-          It's Done Services
-        </h1>
-          <p className="text-center text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
-          Oliemonster Analyse Portal
-        </p>
+        <div className="flex flex-col items-center mb-6">
+          <img src="/header_logo.png" alt="It's Done Services" className="h-16 mb-4" />
+          <p className="text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+            Oliemonster Analyse Portal
+          </p>
+        </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
