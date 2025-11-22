@@ -5,9 +5,10 @@ import { prisma } from '@/lib/prisma';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const formData = await request.formData();
     const file = formData.get('photo') as File;
 
@@ -20,7 +21,7 @@ export async function POST(
 
     // Check if sample exists
     const sample = await prisma.oilSample.findUnique({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
     });
 
     if (!sample) {
@@ -41,7 +42,7 @@ export async function POST(
     // Generate unique filename
     const timestamp = Date.now();
     const extension = file.name.split('.').pop();
-    const filename = `sample-${params.id}-${timestamp}.${extension}`;
+    const filename = `sample-${id}-${timestamp}.${extension}`;
     const filepath = join(uploadDir, filename);
 
     // Convert file to buffer and write to disk
@@ -52,7 +53,7 @@ export async function POST(
     // Update database with photo URL
     const photoUrl = `/uploads/${filename}`;
     await prisma.oilSample.update({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
       data: { photoUrl },
     });
 
@@ -68,11 +69,12 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const sample = await prisma.oilSample.findUnique({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
     });
 
     if (!sample) {
@@ -84,7 +86,7 @@ export async function DELETE(
 
     // Remove photo URL from database
     await prisma.oilSample.update({
-      where: { id: parseInt(params.id) },
+      where: { id: parseInt(id) },
       data: { photoUrl: null },
     });
 
