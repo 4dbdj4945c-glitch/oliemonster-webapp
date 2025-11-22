@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { put } from '@vercel/blob';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(
@@ -31,27 +30,17 @@ export async function POST(
       );
     }
 
-    // Create uploads directory if it doesn't exist
-    const uploadDir = join(process.cwd(), 'public', 'uploads');
-    try {
-      await mkdir(uploadDir, { recursive: true });
-    } catch (error) {
-      // Directory might already exist
-    }
-
-    // Generate unique filename
+    // Upload to Vercel Blob storage
     const timestamp = Date.now();
     const extension = file.name.split('.').pop();
     const filename = `sample-${id}-${timestamp}.${extension}`;
-    const filepath = join(uploadDir, filename);
 
-    // Convert file to buffer and write to disk
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    await writeFile(filepath, buffer);
+    const blob = await put(filename, file, {
+      access: 'public',
+    });
 
     // Update database with photo URL
-    const photoUrl = `/uploads/${filename}`;
+    const photoUrl = blob.url;
     await prisma.oilSample.update({
       where: { id: parseInt(id) },
       data: { photoUrl },
