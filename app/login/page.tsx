@@ -46,7 +46,7 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
         <div className="p-8 border rounded w-full max-w-md" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
         <div className="flex flex-col items-center mb-6">
-          <img src="/header_logo.png" alt="It's Done Services" className="h-16 mb-4" />
+          <img src="/header_logo.png" alt="It's Done Services" className="h-16 mb-4 object-contain" />
           <p className="text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
             Oliemonster Analyse Portal
           </p>
