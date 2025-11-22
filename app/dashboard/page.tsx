@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getTheme } from '@/lib/theme';
 import ThemeToggle from '@/app/components/ThemeToggle';
+import PhotoModal from '@/app/components/PhotoModal';
 
 interface User {
   userId: number;
@@ -19,6 +20,7 @@ interface OilSample {
   location: string;
   description: string;
   isTaken: boolean;
+  photoUrl?: string;
 }
 
 export default function DashboardPage() {
@@ -30,6 +32,8 @@ export default function DashboardPage() {
   const [editingSample, setEditingSample] = useState<OilSample | null>(null);
   const [theme, setTheme] = useState('blue');
   const [visibleColumns, setVisibleColumns] = useState<string[]>(['status', 'oNumber', 'sampleDate', 'location', 'description']);
+  const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; oNumber: string } | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null);
   const router = useRouter();
   const themeColors = getTheme(theme);
 
@@ -187,6 +191,30 @@ export default function DashboardPage() {
     }
   };
 
+  const handlePhotoUpload = async (sampleId: number, file: File) => {
+    setUploadingPhoto(sampleId);
+    try {
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      const response = await fetch(`/api/samples/${sampleId}/photo`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        loadSamples();
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Fout bij uploaden van foto');
+      }
+    } catch (error) {
+      alert('Fout bij uploaden van foto');
+    } finally {
+      setUploadingPhoto(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
@@ -295,6 +323,9 @@ export default function DashboardPage() {
                       Omschrijving
                     </th>
                   )}
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Foto
+                  </th>
                   {user?.role === 'admin' && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Acties
@@ -305,7 +336,7 @@ export default function DashboardPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {samples.length === 0 ? (
                   <tr>
-                    <td colSpan={user?.role === 'admin' ? 6 : 5} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={user?.role === 'admin' ? 7 : 6} className="px-6 py-4 text-center text-gray-500">
                       Geen monsters gevonden
                     </td>
                   </tr>
@@ -345,6 +376,32 @@ export default function DashboardPage() {
                           {sample.description}
                         </td>
                       )}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {sample.photoUrl ? (
+                          <button
+                            onClick={() => setSelectedPhoto({ url: sample.photoUrl!, oNumber: sample.oNumber })}
+                            className="text-blue-600 hover:text-blue-900 underline"
+                          >
+                            📷 Bekijk foto
+                          </button>
+                        ) : user?.role === 'admin' ? (
+                          <label className="cursor-pointer text-gray-500 hover:text-gray-700">
+                            {uploadingPhoto === sample.id ? '↻ Uploaden...' : '+ Upload foto'}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={uploadingPhoto === sample.id}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handlePhotoUpload(sample.id, file);
+                              }}
+                            />
+                          </label>
+                        ) : (
+                          <span className="text-gray-400">Geen foto</span>
+                        )}
+                      </td>
                       {user?.role === 'admin' && (
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <button
@@ -471,6 +528,15 @@ export default function DashboardPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Photo Modal */}
+      {selectedPhoto && (
+        <PhotoModal
+          photoUrl={selectedPhoto.url}
+          onClose={() => setSelectedPhoto(null)}
+          sampleNumber={selectedPhoto.oNumber}
+        />
       )}
       </div>
     </>

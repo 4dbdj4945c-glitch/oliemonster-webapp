@@ -25,6 +25,7 @@ model OilSample {
   location    String            // locatie
   description String            // omschrijving
   isTaken     Boolean           // of monster genomen is (true = groen, false = rood)
+  photoUrl    String?           // optionele foto URL als bewijsvoering
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
