@@ -49,8 +49,9 @@ export async function POST(
     return NextResponse.json({ photoUrl });
   } catch (error) {
     console.error('Error uploading photo:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Fout bij uploaden van foto';
     return NextResponse.json(
-      { error: 'Fout bij uploaden van foto' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
