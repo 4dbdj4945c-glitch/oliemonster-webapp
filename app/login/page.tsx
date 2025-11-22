@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ThemeToggle from '@/app/components/ThemeToggle';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -40,18 +41,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="bg-white p-8 border border-gray-200 rounded w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">
+    <>
+      <ThemeToggle />
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
+        <div className="p-8 border rounded w-full max-w-md" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
+          <h1 className="text-3xl font-bold text-center mb-6" style={{ color: 'var(--foreground)', letterSpacing: '-0.02em' }}>
           It's Done Services
         </h1>
-        <p className="text-center text-sm text-gray-600 mb-6">
+          <p className="text-center text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>
           Oliemonster Analyse Portal
         </p>
         
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="username" className="block text-sm font-medium mb-1" style={{ color: 'var(--foreground)' }}>
               Gebruikersnaam
             </label>
             <input
@@ -59,13 +62,14 @@ export default function LoginPage() {
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-gray-900 text-gray-900 transition-all"
+              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-1 transition-all"
+              style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)', borderColor: 'var(--border)' }}
               required
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium mb-1" style={{ color: 'var(--foreground)' }}>
               Wachtwoord
             </label>
             <input
@@ -73,7 +77,8 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-gray-900 text-gray-900 transition-all"
+              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-1 transition-all"
+              style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)', borderColor: 'var(--border)' }}
               required
             />
           </div>
@@ -87,12 +92,14 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gray-900 text-white py-2 px-4 rounded hover:bg-gray-800 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2 px-4 rounded focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ backgroundColor: 'var(--accent)', color: 'var(--background)' }}
           >
             {loading ? 'Inloggen...' : 'Inloggen'}
           </button>
-        </form>
+          </form>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

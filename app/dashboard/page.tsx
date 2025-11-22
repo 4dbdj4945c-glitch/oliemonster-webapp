@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getTheme } from '@/lib/theme';
+import ThemeToggle from '@/app/components/ThemeToggle';
 
 interface User {
   userId: number;
@@ -188,26 +189,28 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <p className="text-gray-600">Laden...</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
+        <p style={{ color: 'var(--text-secondary)' }}>Laden...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+    <>
+      <ThemeToggle />
+      <div className="min-h-screen" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
+        {/* Header */}
+        <div style={{ backgroundColor: 'var(--background)', borderBottom: '1px solid var(--border)' }}>
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-3xl font-bold" style={{ color: 'var(--foreground)', letterSpacing: '-0.02em' }}>
                 It's Done Services - Oliemonster Analyse
               </h1>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                 In opdracht van Mourik Infra
               </p>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                 Welkom, {user?.username} ({user?.role})
               </p>
             </div>
@@ -459,9 +462,10 @@ export default function DashboardPage() {
                 </button>
               </div>
             </form>
-          </div>
         </div>
-      )}
-    </div>
+      </div>
+      </div>
+    </>
   );
+}
 }
