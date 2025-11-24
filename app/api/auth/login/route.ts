@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
+import { checkRateLimit, resetRateLimit } from '@/lib/rateLimit';
+import { createAuditLog, AuditActions } from '@/lib/auditLog';
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,12 +19,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Rate limiting check
+    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const rateLimitResult = checkRateLimit(ipAddress);
+    
+    if (!rateLimitResult.allowed) {
+      await createAuditLog({
+        username,
+        action: AuditActions.LOGIN_FAILED,
+        details: { reason: 'Rate limit exceeded', ip: ipAddress },
+        request,
+        success: false,
+      });
+      
+      return NextResponse.json(
+        { 
+          error: `Te veel inlogpogingen. Probeer het opnieuw na ${rateLimitResult.resetTime?.toLocaleTimeString('nl-NL')}`,
+          resetTime: rateLimitResult.resetTime 
+        },
+        { status: 429 }
+      );
+    }
+
     // Zoek gebruiker
     const user = await prisma.user.findUnique({
       where: { username },
     });
 
     if (!user) {
+      await createAuditLog({
+        username,
+        action: AuditActions.LOGIN_FAILED,
+        details: { reason: 'User not found' },
+        request,
+        success: false,
+      });
+      
       return NextResponse.json(
         { error: 'Ongeldige inloggegevens' },
         { status: 401 }
@@ -33,6 +65,15 @@ export async function POST(request: NextRequest) {
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
+      await createAuditLog({
+        userId: user.id,
+        username,
+        action: AuditActions.LOGIN_FAILED,
+        details: { reason: 'Invalid password' },
+        request,
+        success: false,
+      });
+      
       return NextResponse.json(
         { error: 'Ongeldige inloggegevens' },
         { status: 401 }
@@ -49,6 +90,18 @@ export async function POST(request: NextRequest) {
     session.isLoggedIn = true;
     
     await session.save();
+
+    // Reset rate limit bij succesvolle login
+    resetRateLimit(ipAddress);
+
+    // Log succesvolle login
+    await createAuditLog({
+      userId: user.id,
+      username: user.username,
+      action: AuditActions.LOGIN,
+      details: { role: user.role },
+      request,
+    });
 
     return NextResponse.json({
       success: true,

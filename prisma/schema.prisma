@@ -37,3 +37,19 @@ model Settings {
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 }
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int?                // Optioneel - bij login failures is er geen userId
+  username   String              // Gebruikersnaam voor makkelijk filteren
+  action     String              // Bijv. "LOGIN", "CREATE_SAMPLE", "DELETE_USER"
+  details    String?             // JSON string met extra details
+  ipAddress  String?             // IP adres van de request
+  userAgent  String?             // Browser/device info
+  success    Boolean  @default(true)  // Of de actie geslaagd is
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
