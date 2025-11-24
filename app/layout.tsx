@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "It's Done Services - Overzicht afname oliemonsters 2025 i.o.v. Mourik Infra B.V.",
+  title: "It's Done Services",
   description: "Oliemonster analyse portal voor It's Done Services in opdracht van Mourik Infra B.V.",
 };
 
