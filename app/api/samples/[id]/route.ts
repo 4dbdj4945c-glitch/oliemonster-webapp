@@ -3,6 +3,7 @@ import { getIronSession } from 'iron-session';
 import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
+import { createAuditLog, AuditActions } from '@/lib/auditLog';
 
 // PUT - Update sample (alleen admin)
 export async function PUT(
@@ -64,6 +65,14 @@ export async function PUT(
       },
     });
 
+    await createAuditLog({
+      userId: session.userId,
+      username: session.username || 'unknown',
+      action: AuditActions.UPDATE_SAMPLE,
+      details: { id: parseInt(id), oNumber, location, isTaken },
+      request,
+    });
+
     return NextResponse.json(sample);
   } catch (error) {
     console.error('Error updating sample:', error);
@@ -99,8 +108,21 @@ export async function DELETE(
 
     const { id } = await params;
 
+    // Haal sample op voor logging
+    const sample = await prisma.oilSample.findUnique({
+      where: { id: parseInt(id) },
+    });
+
     await prisma.oilSample.delete({
       where: { id: parseInt(id) },
+    });
+
+    await createAuditLog({
+      userId: session.userId,
+      username: session.username || 'unknown',
+      action: AuditActions.DELETE_SAMPLE,
+      details: { id: parseInt(id), oNumber: sample?.oNumber, location: sample?.location },
+      request,
     });
 
     return NextResponse.json({ success: true });

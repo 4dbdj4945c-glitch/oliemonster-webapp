@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import { prisma } from '@/lib/prisma';
+import { getIronSession } from 'iron-session';
+import { sessionOptions, SessionData } from '@/lib/session';
+import { cookies } from 'next/headers';
+import { createAuditLog, AuditActions } from '@/lib/auditLog';
 
 export async function POST(
   request: NextRequest,
@@ -55,6 +59,18 @@ export async function POST(
       data: { photoUrl },
     });
 
+    // Log foto upload
+    const cookieStore = await cookies();
+    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+    
+    await createAuditLog({
+      userId: session.userId,
+      username: session.username || 'unknown',
+      action: AuditActions.UPLOAD_PHOTO,
+      details: { sampleId: parseInt(id), oNumber: sample.oNumber, filename },
+      request,
+    });
+
     return NextResponse.json({ photoUrl });
   } catch (error) {
     console.error('Error uploading photo:', error);
@@ -87,6 +103,18 @@ export async function DELETE(
     await prisma.oilSample.update({
       where: { id: parseInt(id) },
       data: { photoUrl: null },
+    });
+
+    // Log foto verwijdering
+    const cookieStore = await cookies();
+    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+    
+    await createAuditLog({
+      userId: session.userId,
+      username: session.username || 'unknown',
+      action: AuditActions.DELETE_PHOTO,
+      details: { sampleId: parseInt(id), oNumber: sample.oNumber },
+      request,
     });
 
     return NextResponse.json({ success: true });

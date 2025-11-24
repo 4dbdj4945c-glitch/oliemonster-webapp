@@ -3,6 +3,7 @@ import { getIronSession } from 'iron-session';
 import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
+import { createAuditLog, AuditActions } from '@/lib/auditLog';
 
 // GET - Lijst van alle samples (met optionele zoekfunctie)
 export async function GET(request: NextRequest) {
@@ -100,6 +101,14 @@ export async function POST(request: NextRequest) {
         description,
         isTaken,
       },
+    });
+
+    await createAuditLog({
+      userId: session.userId,
+      username: session.username || 'unknown',
+      action: AuditActions.CREATE_SAMPLE,
+      details: { oNumber, location, isTaken },
+      request,
     });
 
     return NextResponse.json(sample, { status: 201 });

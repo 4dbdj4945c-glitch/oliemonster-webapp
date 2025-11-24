@@ -270,12 +270,20 @@ export default function AdminPage() {
                 Oliemonster Analyse - Instellingen
               </p>
             </div>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-            >
-              Terug naar Dashboard
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => router.push('/dashboard/audit-logs')}
+                className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+              >
+                📋 Audit Logs
+              </button>
+              <button
+                onClick={() => router.push('/dashboard')}
+                className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+              >
+                Terug naar Dashboard
+              </button>
+            </div>
           </div>
         </div>
       </div>
