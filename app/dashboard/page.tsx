@@ -34,6 +34,8 @@ export default function DashboardPage() {
   const [visibleColumns, setVisibleColumns] = useState<string[]>(['status', 'oNumber', 'sampleDate', 'location', 'description']);
   const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; oNumber: string } | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null);
+  const [sortBy, setSortBy] = useState<'oNumber' | 'sampleDate' | 'location' | 'newest'>('newest');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const router = useRouter();
   const themeColors = getTheme(theme);
 
@@ -106,6 +108,41 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getSortedSamples = () => {
+    const sorted = [...samples];
+
+    if (sortBy === 'newest') {
+      // Sorteer op ID (laatst toegevoegd)
+      return sorted.sort((a, b) => b.id - a.id);
+    }
+
+    sorted.sort((a, b) => {
+      let compareA: string | number;
+      let compareB: string | number;
+
+      if (sortBy === 'sampleDate') {
+        compareA = new Date(a.sampleDate).getTime();
+        compareB = new Date(b.sampleDate).getTime();
+      } else if (sortBy === 'oNumber') {
+        compareA = a.oNumber.toLowerCase();
+        compareB = b.oNumber.toLowerCase();
+      } else if (sortBy === 'location') {
+        compareA = a.location.toLowerCase();
+        compareB = b.location.toLowerCase();
+      } else {
+        return 0;
+      }
+
+      if (sortOrder === 'asc') {
+        return compareA < compareB ? -1 : compareA > compareB ? 1 : 0;
+      } else {
+        return compareA > compareB ? -1 : compareA < compareB ? 1 : 0;
+      }
+    });
+
+    return sorted;
   };
 
   const handleLogout = async () => {
@@ -319,6 +356,34 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Sort Controls */}
+        <div className="bg-white p-4 rounded-lg shadow mb-6">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <label className="text-sm font-medium text-gray-700">Sorteren op:</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            >
+              <option value="newest">Laatst toegevoegd</option>
+              <option value="oNumber">O-nummer</option>
+              <option value="sampleDate">Datum</option>
+              <option value="location">Locatie</option>
+            </select>
+            
+            {sortBy !== 'newest' && (
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              >
+                <option value="asc">Oplopend</option>
+                <option value="desc">Aflopend</option>
+              </select>
+            )}
+          </div>
+        </div>
+
         {/* Statistics */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <div className="bg-white p-4 rounded-lg shadow" style={{ borderLeft: '4px solid #3b82f6' }}>
@@ -388,7 +453,7 @@ export default function DashboardPage() {
                     </td>
                   </tr>
                 ) : (
-                  samples.map((sample) => (
+                  getSortedSamples().map((sample) => (
                     <tr key={sample.id}>
                       {visibleColumns.includes('status') && (
                         <td className="px-6 py-4 whitespace-nowrap">
