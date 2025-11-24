@@ -319,6 +319,26 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Statistics */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-lg shadow" style={{ borderLeft: '4px solid #3b82f6' }}>
+            <p className="text-sm text-gray-600 mb-1">Totaal monsters</p>
+            <p className="text-3xl font-bold text-gray-900">{samples.length}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow" style={{ borderLeft: '4px solid #10b981' }}>
+            <p className="text-sm text-gray-600 mb-1">Genomen</p>
+            <p className="text-3xl font-bold text-green-600">
+              {samples.filter(s => s.isTaken).length}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow" style={{ borderLeft: '4px solid #ef4444' }}>
+            <p className="text-sm text-gray-600 mb-1">Niet genomen</p>
+            <p className="text-3xl font-bold text-red-600">
+              {samples.filter(s => !s.isTaken).length}
+            </p>
+          </div>
+        </div>
+
         {/* Samples Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
