@@ -46,6 +46,7 @@ export default function DashboardPage() {
     isTaken: false,
   });
   const [formError, setFormError] = useState('');
+  const [oNumberWarning, setONumberWarning] = useState('');
 
   useEffect(() => {
     checkAuth();
@@ -121,7 +122,33 @@ export default function DashboardPage() {
       isTaken: false,
     });
     setFormError('');
+    setONumberWarning('');
     setEditingSample(null);
+  };
+
+  const checkONumberExists = async (oNumber: string) => {
+    if (!oNumber || oNumber.trim() === '') {
+      setONumberWarning('');
+      return;
+    }
+
+    // Don't check if we're editing and the o-number hasn't changed
+    if (editingSample && editingSample.oNumber === oNumber) {
+      setONumberWarning('');
+      return;
+    }
+
+    // Check if o-number exists in current samples list
+    const exists = samples.some(sample => 
+      sample.oNumber.toLowerCase() === oNumber.toLowerCase() && 
+      (!editingSample || sample.id !== editingSample.id)
+    );
+
+    if (exists) {
+      setONumberWarning('⚠️ Dit o-nummer bestaat al!');
+    } else {
+      setONumberWarning('');
+    }
   };
 
   const openAddModal = () => {
@@ -443,10 +470,22 @@ export default function DashboardPage() {
                 <input
                   type="text"
                   value={formData.oNumber}
-                  onChange={(e) => setFormData({ ...formData, oNumber: e.target.value })}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ ...formData, oNumber: value });
+                    checkONumberExists(value);
+                  }}
+                  onBlur={(e) => checkONumberExists(e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900 ${
+                    oNumberWarning ? 'border-red-500' : 'border-gray-300'
+                  }`}
                   required
                 />
+                {oNumberWarning && (
+                  <p className="text-red-600 text-sm mt-1 font-semibold">
+                    {oNumberWarning}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -510,7 +549,8 @@ export default function DashboardPage() {
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  className={`flex-1 ${themeColors.primary.bg} ${themeColors.primary.bgHover} text-white py-2 px-4 rounded`}
+                  disabled={!!oNumberWarning}
+                  className={`flex-1 ${themeColors.primary.bg} ${themeColors.primary.bgHover} text-white py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   {editingSample ? 'Bijwerken' : 'Toevoegen'}
                 </button>
