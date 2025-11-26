@@ -30,7 +30,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { oNumber, sampleDate, location, description, isTaken } = body;
+    const { oNumber, sampleDate, location, description, remarks, isTaken } = body;
 
     if (!oNumber || !sampleDate || !location || !description || isTaken === undefined) {
       return NextResponse.json(
@@ -61,6 +61,7 @@ export async function PUT(
         sampleDate: new Date(sampleDate),
         location,
         description,
+        remarks: remarks || null,
         isTaken,
       },
     });

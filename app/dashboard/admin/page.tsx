@@ -34,6 +34,7 @@ const AVAILABLE_COLUMNS = [
   { id: 'sampleDate', name: 'Datum', required: false },
   { id: 'location', name: 'Locatie', required: false },
   { id: 'description', name: 'Omschrijving', required: false },
+  { id: 'remarks', name: 'Opmerkingen', required: false },
 ];
 
 export default function AdminPage() {

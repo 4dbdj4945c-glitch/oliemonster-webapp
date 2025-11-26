@@ -19,6 +19,7 @@ interface OilSample {
   sampleDate: string;
   location: string;
   description: string;
+  remarks?: string;
   isTaken: boolean;
   photoUrl?: string;
 }
@@ -45,6 +46,7 @@ export default function DashboardPage() {
     sampleDate: '',
     location: '',
     description: '',
+    remarks: '',
     isTaken: false,
   });
   const [formError, setFormError] = useState('');
@@ -156,6 +158,7 @@ export default function DashboardPage() {
       sampleDate: '',
       location: '',
       description: '',
+      remarks: '',
       isTaken: false,
     });
     setFormError('');
@@ -199,6 +202,7 @@ export default function DashboardPage() {
       sampleDate: sample.sampleDate.split('T')[0],
       location: sample.location,
       description: sample.description,
+      remarks: sample.remarks || '',
       isTaken: sample.isTaken,
     });
     setEditingSample(sample);
@@ -435,6 +439,11 @@ export default function DashboardPage() {
                       Omschrijving
                     </th>
                   )}
+                  {visibleColumns.includes('remarks') && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Opmerkingen
+                    </th>
+                  )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Foto
                   </th>
@@ -486,6 +495,11 @@ export default function DashboardPage() {
                       {visibleColumns.includes('description') && (
                         <td className="px-6 py-4 text-sm text-gray-500">
                           {sample.description}
+                        </td>
+                      )}
+                      {visibleColumns.includes('remarks') && (
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {sample.remarks || '-'}
                         </td>
                       )}
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
@@ -609,6 +623,18 @@ export default function DashboardPage() {
                   className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
                   rows={3}
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Opmerkingen (optioneel)
+                </label>
+                <textarea
+                  value={formData.remarks}
+                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
+                  rows={2}
                 />
               </div>
 
