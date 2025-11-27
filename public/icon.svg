@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Background circle -->
+  <circle cx="32" cy="32" r="32" fill="#1a1a1a"/>
+  
+  <!-- Stylized "D" shape resembling the DONE logo -->
+  <path d="M18 20 L28 20 C35 20 40 25 40 32 C40 39 35 44 28 44 L18 44 Z M22 24 L22 40 L28 40 C32 40 36 36 36 32 C36 28 32 24 28 24 Z" fill="#ffffff"/>
+  
+  <!-- Accent line (representing the distinctive line in DONE logo) -->
+  <rect x="16" y="18" width="32" height="3" fill="#ffffff" rx="1.5"/>
+</svg>
