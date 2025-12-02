@@ -21,7 +21,7 @@ model User {
 model OilSample {
   id          Int      @id @default(autoincrement())
   oNumber     String   @unique  // o-nummer
-  sampleDate  DateTime          // datum afname monsters
+  sampleDate  DateTime?         // datum afname monsters (optioneel - alleen voor genomen monsters)
   location    String            // locatie
   description String            // omschrijving
   remarks     String?           // opmerkingen (optioneel)

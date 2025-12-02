@@ -74,9 +74,17 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { oNumber, sampleDate, location, description, remarks, isTaken } = body;
 
-    if (!oNumber || !sampleDate || !location || !description || isTaken === undefined) {
+    // Datum is alleen verplicht als monster genomen is
+    if (!oNumber || !location || !description || isTaken === undefined) {
       return NextResponse.json(
-        { error: 'Alle velden zijn verplicht' },
+        { error: 'O-nummer, locatie en omschrijving zijn verplicht' },
+        { status: 400 }
+      );
+    }
+
+    if (isTaken && !sampleDate) {
+      return NextResponse.json(
+        { error: 'Datum is verplicht voor genomen monsters' },
         { status: 400 }
       );
     }
@@ -96,7 +104,7 @@ export async function POST(request: NextRequest) {
     const sample = await prisma.oilSample.create({
       data: {
         oNumber,
-        sampleDate: new Date(sampleDate),
+        sampleDate: sampleDate ? new Date(sampleDate) : null,
         location,
         description,
         remarks: remarks || null,

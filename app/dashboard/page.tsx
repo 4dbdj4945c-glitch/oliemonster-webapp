@@ -488,7 +488,7 @@ export default function DashboardPage() {
                       )}
                       {visibleColumns.includes('sampleDate') && (
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(sample.sampleDate).toLocaleDateString('nl-NL')}
+                          {sample.isTaken && sample.sampleDate ? new Date(sample.sampleDate).toLocaleDateString('nl-NL') : '-'}
                         </td>
                       )}
                       {visibleColumns.includes('location') && (
@@ -593,14 +593,15 @@ export default function DashboardPage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Datum afname
+                  Datum afname {!formData.isTaken && '(optioneel - alleen voor genomen monsters)'}
                 </label>
                 <input
                   type="date"
                   value={formData.sampleDate}
                   onChange={(e) => setFormData({ ...formData, sampleDate: e.target.value })}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
-                  required
+                  disabled={!formData.isTaken}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed`}
+                  required={formData.isTaken}
                 />
               </div>
 
@@ -647,7 +648,15 @@ export default function DashboardPage() {
                   type="checkbox"
                   id="isTaken"
                   checked={formData.isTaken}
-                  onChange={(e) => setFormData({ ...formData, isTaken: e.target.checked })}
+                  onChange={(e) => {
+                    const isChecked = e.target.checked;
+                    setFormData({ 
+                      ...formData, 
+                      isTaken: isChecked,
+                      // Clear date if unchecking
+                      sampleDate: isChecked ? formData.sampleDate : ''
+                    });
+                  }}
                   className={`h-4 w-4 ${themeColors.primary.text} ${themeColors.primary.focus} border-gray-300 rounded`}
                 />
                 <label htmlFor="isTaken" className="ml-2 block text-sm text-gray-900">
