@@ -16,7 +16,7 @@ interface User {
 interface OilSample {
   id: number;
   oNumber: string;
-  sampleDate: string;
+  sampleDate: string | null;
   location: string;
   description: string;
   remarks?: string;
@@ -125,6 +125,10 @@ export default function DashboardPage() {
       let compareB: string | number;
 
       if (sortBy === 'sampleDate') {
+        // Handle null dates - put them at the end
+        if (!a.sampleDate && !b.sampleDate) return 0;
+        if (!a.sampleDate) return 1;
+        if (!b.sampleDate) return -1;
         compareA = new Date(a.sampleDate).getTime();
         compareB = new Date(b.sampleDate).getTime();
       } else if (sortBy === 'oNumber') {
@@ -199,7 +203,7 @@ export default function DashboardPage() {
   const openEditModal = (sample: OilSample) => {
     setFormData({
       oNumber: sample.oNumber,
-      sampleDate: sample.sampleDate.split('T')[0],
+      sampleDate: sample.sampleDate ? sample.sampleDate.split('T')[0] : '',
       location: sample.location,
       description: sample.description,
       remarks: sample.remarks || '',
