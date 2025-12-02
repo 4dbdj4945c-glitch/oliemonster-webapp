@@ -86,7 +86,6 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-1 transition-all"
               style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)', borderColor: 'var(--border)' }}
-              placeholder="Laat leeg voor nieuwe gebruikers"
             />
           </div>
 
