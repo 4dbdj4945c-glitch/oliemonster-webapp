@@ -19,5 +19,9 @@ export const sessionOptions: SessionOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     maxAge: 60 * 60 * 24 * 7, // 1 week
+    // SameSite instelling voor iframe support
+    // 'none' is nodig voor cross-origin iframes (moet gebruikt worden met secure: true)
+    // In development (localhost) gebruikt het 'lax' omdat 'none' secure vereist
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   },
 };

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oliemonster Webapp - Iframe Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .info {
+      background-color: #e3f2fd;
+      border-left: 4px solid #2196F3;
+      padding: 15px;
+      margin-bottom: 20px;
+      border-radius: 4px;
+    }
+    .iframe-wrapper {
+      width: 100%;
+      height: 90vh;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .controls {
+      margin-bottom: 15px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background-color: #1976D2;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Oliemonster Webapp - Iframe Test</h1>
+    
+    <div class="info">
+      <strong>ℹ️ Test Instructies:</strong>
+      <ul style="margin: 10px 0; padding-left: 20px;">
+        <li>Start de webapp met <code>npm run dev</code> in de terminal</li>
+        <li>Open dit bestand in je browser</li>
+        <li>Test de login functionaliteit in de iframe hieronder</li>
+        <li>Controleer of alle functies werken (dashboard, foto upload, etc.)</li>
+      </ul>
+    </div>
+
+    <div class="controls">
+      <strong>🎮 Controls:</strong>
+      <button onclick="document.getElementById('webapp-frame').src = document.getElementById('webapp-frame').src">
+        🔄 Herlaad Iframe
+      </button>
+      <button onclick="toggleFullscreen()">
+        📺 Volledig Scherm
+      </button>
+      <button onclick="document.getElementById('webapp-frame').src = 'http://localhost:3000'">
+        🏠 Terug naar Home
+      </button>
+    </div>
+
+    <div class="iframe-wrapper" id="iframe-container">
+      <iframe 
+        id="webapp-frame"
+        src="http://localhost:3000"
+        allow="clipboard-write; clipboard-read"
+        title="Oliemonster Webapp"
+      ></iframe>
+    </div>
+  </div>
+
+  <script>
+    function toggleFullscreen() {
+      const container = document.getElementById('iframe-container');
+      if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(err => {
+          alert(`Error bij volledig scherm: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    // Log iframe events voor debugging
+    window.addEventListener('message', function(event) {
+      // Alleen lokale origins accepteren
+      if (event.origin === 'http://localhost:3000') {
+        console.log('Bericht ontvangen van iframe:', event.data);
+      }
+    });
+
+    console.log('✅ Iframe test pagina geladen');
+    console.log('📍 Iframe bron: http://localhost:3000');
+  </script>
+</body>
+</html>
