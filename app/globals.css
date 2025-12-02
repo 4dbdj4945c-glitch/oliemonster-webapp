@@ -32,3 +32,14 @@ body {
   font-size: 16px;
   line-height: 1.6;
 }
+
+/* Inverteer logo in light mode (wit logo wordt zwart) */
+[data-theme="light"] img[src="/header_logo.png"] {
+  filter: invert(1);
+  transition: filter 0.3s ease;
+}
+
+/* Houd logo wit in dark mode */
+img[src="/header_logo.png"] {
+  transition: filter 0.3s ease;
+}
