@@ -180,10 +180,7 @@ export default function AdminPage() {
     e.preventDefault();
     setFormError('');
 
-    if (!editingUser && !formData.password) {
-      setFormError('Wachtwoord is verplicht voor nieuwe gebruikers');
-      return;
-    }
+    // Wachtwoord is niet meer verplicht - gebruiker stelt het zelf in bij eerste login
 
     try {
       const url = editingUser 
@@ -197,10 +194,9 @@ export default function AdminPage() {
         role: formData.role,
       };
 
+      // Voor bewerken: optioneel nieuw wachtwoord via edit endpoint
       if (editingUser && formData.password) {
         body.newPassword = formData.password;
-      } else if (!editingUser) {
-        body.password = formData.password;
       }
 
       const response = await fetch(url, {
@@ -244,6 +240,30 @@ export default function AdminPage() {
       loadUsers();
     } catch (error) {
       alert('Fout bij verwijderen van gebruiker');
+    }
+  };
+
+  const handleResetPassword = async (id: number, username: string) => {
+    if (!confirm(`Weet je zeker dat je het wachtwoord van ${username} wilt resetten? De gebruiker moet bij volgende login een nieuw wachtwoord instellen.`)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/users/${id}/reset-password`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || 'Fout bij resetten wachtwoord');
+        return;
+      }
+
+      alert(`Wachtwoord van ${username} is gereset. Bij volgende login moet een nieuw wachtwoord worden ingesteld.`);
+      loadUsers();
+    } catch (error) {
+      alert('Fout bij resetten wachtwoord');
     }
   };
 
@@ -397,12 +417,20 @@ export default function AdminPage() {
                               Bewerken
                             </button>
                             {user.id !== sessionUser?.userId && (
-                              <button
-                                onClick={() => handleDelete(user.id)}
-                                className="text-red-600 hover:text-red-900"
-                              >
-                                Verwijderen
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => handleResetPassword(user.id, user.username)}
+                                  className="text-orange-600 hover:text-orange-900 mr-4"
+                                >
+                                  Reset Wachtwoord
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(user.id)}
+                                  className="text-red-600 hover:text-red-900"
+                                >
+                                  Verwijderen
+                                </button>
+                              </>
                             )}
                           </td>
                         </tr>
@@ -537,19 +565,17 @@ export default function AdminPage() {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Wachtwoord {editingUser && '(laat leeg om niet te wijzigen)'}
-                </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-                  required={!editingUser}
-                  placeholder={editingUser ? 'Optioneel' : ''}
-                />
-              </div>
+              {editingUser && (
+                <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded mb-4">
+                  💡 Gebruik de "Reset Wachtwoord" knop in het overzicht om het wachtwoord te resetten.
+                </div>
+              )}
+
+              {!editingUser && (
+                <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
+                  ℹ️ Geen wachtwoord nodig - de gebruiker stelt zelf een wachtwoord in bij eerste login.
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

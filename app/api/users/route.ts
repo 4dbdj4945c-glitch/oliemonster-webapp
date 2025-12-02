@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         id: true,
         username: true,
         role: true,
+        requiresPasswordChange: true,
         createdAt: true,
       },
       orderBy: {
@@ -54,11 +55,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { username, password, role } = body;
+    const { username, role } = body;
 
-    if (!username || !password || !role) {
+    if (!username || !role) {
       return NextResponse.json(
-        { error: 'Gebruikersnaam, wachtwoord en rol zijn verplicht' },
+        { error: 'Gebruikersnaam en rol zijn verplicht' },
         { status: 400 }
       );
     }
@@ -82,15 +83,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Hash wachtwoord
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Maak gebruiker aan
+    // Maak gebruiker aan zonder wachtwoord
+    // Gebruiker moet bij eerste login zelf wachtwoord instellen
     const newUser = await prisma.user.create({
       data: {
         username,
-        password: hashedPassword,
+        password: null,  // Geen wachtwoord - moet worden ingesteld bij eerste login
         role,
+        requiresPasswordChange: true,
       },
       select: {
         id: true,
