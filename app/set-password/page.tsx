@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import ThemeToggle from '@/app/components/ThemeToggle';
 
 export default function SetPasswordPage() {
   const [username, setUsername] = useState('');
@@ -70,72 +71,80 @@ export default function SetPasswordPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <p className="text-gray-600">Laden...</p>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
+        <p style={{ color: 'var(--text-secondary)' }}>Laden...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <div className="mb-6 text-center">
-          <img src="/header_logo.png" alt="It's Done Services" className="h-16 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900">Stel je wachtwoord in</h1>
-          <p className="text-sm text-gray-600 mt-2">
-            Welkom, <strong>{username}</strong>! Dit is je eerste login. Kies een veilig wachtwoord om door te gaan.
+    <>
+      <div className="fixed top-8 right-8 z-50">
+        <ThemeToggle />
+      </div>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
+        <div className="p-8 border rounded w-full max-w-md" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
+          <div className="flex flex-col items-center mb-6">
+            <img src="/header_logo.png" alt="It's Done Services" className="h-16 mb-4 object-contain" />
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>Stel je wachtwoord in</h1>
+            <p className="text-sm text-center mt-2" style={{ color: 'var(--text-secondary)' }}>
+              Welkom, <strong style={{ color: 'var(--foreground)' }}>{username}</strong>! Dit is je eerste login. Kies een veilig wachtwoord om door te gaan.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--foreground)' }}>
+                Nieuw wachtwoord
+              </label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-1 transition-all"
+                style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)', borderColor: 'var(--border)' }}
+                placeholder="Minimaal 6 karakters"
+                required
+                minLength={6}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1" style={{ color: 'var(--foreground)' }}>
+                Bevestig wachtwoord
+              </label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-1 transition-all"
+                style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)', borderColor: 'var(--border)' }}
+                placeholder="Herhaal je wachtwoord"
+                required
+                minLength={6}
+              />
+            </div>
+
+            {error && (
+              <div className="text-red-600 text-sm bg-red-50 p-3 rounded">
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full py-2 px-4 rounded focus:outline-none transition-all"
+              style={{ backgroundColor: 'var(--accent)', color: 'var(--background)' }}
+            >
+              Wachtwoord instellen
+            </button>
+          </form>
+
+          <p className="text-xs mt-4 text-center" style={{ color: 'var(--text-secondary)' }}>
+            💡 Tip: Kies een wachtwoord dat je niet elders gebruikt en bewaar het op een veilige plek.
           </p>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nieuw wachtwoord
-            </label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              placeholder="Minimaal 6 karakters"
-              required
-              minLength={6}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Bevestig wachtwoord
-            </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
-              placeholder="Herhaal je wachtwoord"
-              required
-              minLength={6}
-            />
-          </div>
-
-          {error && (
-            <div className="text-red-600 text-sm bg-red-50 p-3 rounded">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
-          >
-            Wachtwoord instellen
-          </button>
-        </form>
-
-        <p className="text-xs text-gray-500 mt-4 text-center">
-          💡 Tip: Kies een wachtwoord dat je niet elders gebruikt en bewaar het op een veilige plek.
-        </p>
       </div>
-    </div>
+    </>
   );
 }
