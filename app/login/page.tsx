@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ThemeToggle from '@/app/components/ThemeToggle';
+import StorageAccessHandler from '@/app/components/StorageAccessHandler';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -22,6 +23,7 @@ export default function LoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Belangrijk voor cookies in iframes
         body: JSON.stringify({ username, password }),
       });
 
@@ -47,6 +49,7 @@ export default function LoginPage() {
 
   return (
     <>
+      <StorageAccessHandler />
       <div className="fixed top-8 right-8 z-50">
         <ThemeToggle />
       </div>

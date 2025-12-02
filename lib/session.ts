@@ -17,11 +17,12 @@ export const sessionOptions: SessionOptions = {
   cookieName: 'oliemonster_session',
   cookieOptions: {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    // Secure moet altijd true zijn voor SameSite=None
+    secure: true,
     maxAge: 60 * 60 * 24 * 7, // 1 week
-    // SameSite instelling voor iframe support
-    // 'none' is nodig voor cross-origin iframes (moet gebruikt worden met secure: true)
-    // In development (localhost) gebruikt het 'lax' omdat 'none' secure vereist
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    // SameSite=None is verplicht voor cross-origin iframes
+    sameSite: 'none',
+    // Path moet expliciet worden ingesteld
+    path: '/',
   },
 };

@@ -14,11 +14,12 @@ export function middleware(request: NextRequest) {
     'http://localhost:3000', // Voor lokale ontwikkeling
   ];
 
-  // Voor development: sta alle origins toe
-  // Voor production: gebruik de allowedOrigins lijst hierboven
-  if (origin) {
+  // CORS headers instellen voor toegestane origins
+  if (origin && allowedOrigins.includes(origin)) {
     response.headers.set('Access-Control-Allow-Origin', origin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
   }
 
   // Verwijder X-Frame-Options om iframe embedding toe te staan
