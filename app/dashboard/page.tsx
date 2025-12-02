@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { getTheme } from '@/lib/theme';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import PhotoModal from '@/app/components/PhotoModal';
+import HelpModal from '@/app/components/HelpModal';
 
 interface User {
   userId: number;
@@ -37,6 +38,7 @@ export default function DashboardPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'oNumber' | 'sampleDate' | 'location' | 'newest'>('newest');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const router = useRouter();
   const themeColors = getTheme(theme);
 
@@ -328,6 +330,17 @@ export default function DashboardPage() {
                   </svg>
                 </button>
               )}
+              <button
+                onClick={() => setShowHelpModal(true)}
+                className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
+                style={{
+                  backgroundColor: 'var(--accent)',
+                  border: '1px solid var(--accent)',
+                }}
+                aria-label="Help"
+              >
+                <span className="text-xl font-bold" style={{ color: 'var(--background)', lineHeight: 1 }}>?</span>
+              </button>
               <button
                 onClick={handleLogout}
                 className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
@@ -706,6 +719,13 @@ export default function DashboardPage() {
           sampleNumber={selectedPhoto.oNumber}
         />
       )}
+
+      {/* Help Modal */}
+      <HelpModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
+        userRole={user?.role || 'user'}
+      />
       </div>
     </>
   );
