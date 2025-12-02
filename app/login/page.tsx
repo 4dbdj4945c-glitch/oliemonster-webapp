@@ -77,7 +77,7 @@ export default function LoginPage() {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium mb-1" style={{ color: 'var(--foreground)' }}>
-              Wachtwoord
+              Wachtwoord <span className="text-xs text-gray-500">(laat leeg bij eerste login)</span>
             </label>
             <input
               id="password"
@@ -86,7 +86,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-1 transition-all"
               style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)', borderColor: 'var(--border)' }}
-              required
+              placeholder="Laat leeg voor nieuwe gebruikers"
             />
           </div>
 

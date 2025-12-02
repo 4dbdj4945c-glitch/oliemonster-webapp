@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { username, password } = body;
 
-    if (!username || !password) {
+    if (!username) {
       return NextResponse.json(
-        { error: 'Gebruikersnaam en wachtwoord zijn verplicht' },
+        { error: 'Gebruikersnaam is verplicht' },
         { status: 400 }
       );
     }
