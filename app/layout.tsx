@@ -29,7 +29,7 @@ export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
-}>) {
+}>){
   return (
     <html lang="en">
       <body
@@ -40,15 +40,3 @@ export default function RootLayout({
     </html>
   );
 }
-import { IframeStorageAccess } from './components/iframe-storage-access'
-   
-   export default function RootLayout({ children }) {
-     return (
-       <html>
-         <body>
-           <IframeStorageAccess />
-           {children}
-         </body>
-       </html>
-     )
-   }
