@@ -11,11 +11,12 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  username  String   @unique
-  password  String
-  role      String   // "admin" of "user"
-  createdAt DateTime @default(now())
+  id                     Int      @id @default(autoincrement())
+  username               String   @unique
+  password               String?  // Optioneel - null als wachtwoord nog niet gezet is
+  role                   String   // "admin" of "user"
+  requiresPasswordChange Boolean  @default(true)  // Moet gebruiker wachtwoord instellen?
+  createdAt              DateTime @default(now())
 }
 
 model OilSample {

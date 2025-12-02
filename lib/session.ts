@@ -5,6 +5,7 @@ export interface SessionData {
   username?: string;
   role?: string;
   isLoggedIn: boolean;
+  requiresPasswordChange?: boolean;
 }
 
 export const defaultSession: SessionData = {

@@ -33,7 +33,12 @@ export default function LoginPage() {
         return;
       }
 
-      router.push('/dashboard');
+      // Redirect naar set-password als gebruiker wachtwoord moet instellen
+      if (data.requiresPasswordChange) {
+        router.push('/set-password');
+      } else {
+        router.push('/dashboard');
+      }
     } catch (err) {
       setError('Er is een fout opgetreden');
       setLoading(false);

@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
       username: session.username,
       role: session.role,
       isLoggedIn: session.isLoggedIn,
+      requiresPasswordChange: session.requiresPasswordChange || false,
     });
   } catch (error) {
     console.error('Session error:', error);

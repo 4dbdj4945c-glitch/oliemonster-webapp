@@ -89,6 +89,12 @@ export default function DashboardPage() {
         return;
       }
 
+      // Redirect naar set-password als wachtwoord moet worden ingesteld
+      if (data.requiresPasswordChange) {
+        router.push('/set-password');
+        return;
+      }
+
       setUser(data);
     } catch (error) {
       router.push('/login');

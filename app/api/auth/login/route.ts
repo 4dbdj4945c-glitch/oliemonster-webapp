@@ -61,7 +61,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Controleer wachtwoord
+    // Controleer of gebruiker een wachtwoord moet instellen
+    if (!user.password || user.requiresPasswordChange) {
+      // Gebruiker heeft nog geen wachtwoord - check of username correct is
+      // Voor eerste login zonder wachtwoord
+      const cookieStore = await cookies();
+      const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+      
+      session.userId = user.id;
+      session.username = user.username;
+      session.role = user.role;
+      session.isLoggedIn = true;
+      session.requiresPasswordChange = true;
+      
+      await session.save();
+
+      await createAuditLog({
+        userId: user.id,
+        username: user.username,
+        action: AuditActions.LOGIN,
+        details: { role: user.role, requiresPasswordChange: true },
+        request,
+      });
+
+      return NextResponse.json({
+        success: true,
+        requiresPasswordChange: true,
+        user: {
+          id: user.id,
+          username: user.username,
+          role: user.role,
+        },
+      });
+    }
+
+    // Controleer wachtwoord voor bestaande gebruikers
     const isValidPassword = await bcrypt.compare(password, user.password);
 
     if (!isValidPassword) {
@@ -88,6 +122,7 @@ export async function POST(request: NextRequest) {
     session.username = user.username;
     session.role = user.role;
     session.isLoggedIn = true;
+    session.requiresPasswordChange = false;
     
     await session.save();
 
