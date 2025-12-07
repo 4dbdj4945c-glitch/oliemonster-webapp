@@ -118,9 +118,16 @@ export default function DashboardSettingsModal({
             </p>
           </div>
 
-          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-md border border-blue-200 dark:border-blue-800">
-            <p className="text-sm" style={{ color: 'var(--foreground)' }}>
-              <strong>Preview:</strong>
+          <div 
+            className="p-4 rounded-md border"
+            style={{
+              backgroundColor: 'var(--background)',
+              borderColor: 'var(--border)',
+              opacity: 0.7
+            }}
+          >
+            <p className="text-sm font-semibold mb-2" style={{ color: 'var(--foreground)' }}>
+              Preview:
             </p>
             <div className="mt-2 space-y-1">
               <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
@@ -158,8 +165,11 @@ export default function DashboardSettingsModal({
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2 rounded-md text-white transition-colors disabled:opacity-50"
-              style={{ backgroundColor: 'var(--accent)' }}
+              className="px-6 py-2 rounded-md transition-colors disabled:opacity-50"
+              style={{ 
+                backgroundColor: 'var(--accent)', 
+                color: 'var(--background)'
+              }}
             >
               {saving ? 'Opslaan...' : 'Opslaan'}
             </button>
