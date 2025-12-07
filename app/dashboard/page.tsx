@@ -6,6 +6,7 @@ import { getTheme } from '@/lib/theme';
 import ThemeToggle from '@/app/components/ThemeToggle';
 import PhotoModal from '@/app/components/PhotoModal';
 import HelpModal from '@/app/components/HelpModal';
+import DashboardSettingsModal, { DashboardSettings } from '@/app/components/DashboardSettingsModal';
 
 interface User {
   userId: number;
@@ -39,6 +40,11 @@ export default function DashboardPage() {
   const [sortBy, setSortBy] = useState<'oNumber' | 'sampleDate' | 'location' | 'newest'>('newest');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({
+    title: 'Overzicht afname oliemonsters i.o.v. Mourik Infra B.V.',
+    subtitle: 'Welkom, {username} ({role})'
+  });
   const router = useRouter();
   const themeColors = getTheme(theme);
 
@@ -73,9 +79,34 @@ export default function DashboardPage() {
       if (response.ok) {
         if (data.theme) setTheme(data.theme);
         if (data.columns) setVisibleColumns(data.columns);
+        if (data.dashboardTexts) {
+          setDashboardSettings(data.dashboardTexts);
+        }
       }
     } catch (error) {
       console.error('Error loading settings:', error);
+    }
+  };
+
+  const saveDashboardSettings = async (settings: DashboardSettings) => {
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          key: 'dashboardTexts',
+          value: settings
+        })
+      });
+
+      if (response.ok) {
+        setDashboardSettings(settings);
+      } else {
+        throw new Error('Failed to save settings');
+      }
+    } catch (error) {
+      console.error('Error saving dashboard settings:', error);
+      throw error;
     }
   };
 
@@ -311,12 +342,30 @@ export default function DashboardPage() {
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-start gap-4">
             <div className="flex-1">
-              <img src="/header_logo.png" alt="It's Done Services" className="h-12 mb-2 object-contain" />
+              <div className="flex items-center gap-2">
+                <img src="/header_logo.png" alt="It's Done Services" className="h-12 mb-2 object-contain" />
+                {user?.role === 'admin' && (
+                  <button
+                    onClick={() => setShowSettingsModal(true)}
+                    className="mb-2 p-1.5 rounded transition-colors"
+                    style={{ color: 'var(--text-secondary)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+                    title="Teksten bewerken"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                      <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
               <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                Overzicht afname oliemonsters i.o.v. Mourik Infra B.V.
+                {dashboardSettings.title}
               </p>
               <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                Welkom, {user?.username} ({user?.role})
+                {dashboardSettings.subtitle
+                  .replace('{username}', user?.username || '')
+                  .replace('{role}', user?.role || '')}
               </p>
             </div>
             {/* Menu controls */}
@@ -732,6 +781,16 @@ export default function DashboardPage() {
         onClose={() => setShowHelpModal(false)}
         userRole={user?.role || 'user'}
       />
+
+      {/* Dashboard Settings Modal (alleen voor admins) */}
+      {user?.role === 'admin' && (
+        <DashboardSettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
+          onSave={saveDashboardSettings}
+          currentSettings={dashboardSettings}
+        />
+      )}
       </div>
     </>
   );
