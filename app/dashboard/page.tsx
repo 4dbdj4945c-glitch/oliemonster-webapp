@@ -23,6 +23,7 @@ interface OilSample {
   description: string;
   remarks?: string;
   isTaken: boolean;
+  isDisabled?: boolean;
   photoUrl?: string;
 }
 
@@ -465,7 +466,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Statistics */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-white p-4 rounded-lg shadow" style={{ borderLeft: '4px solid #3b82f6' }}>
             <p className="text-sm text-gray-600 mb-1">Totaal monsters</p>
             <p className="text-3xl font-bold text-gray-900">{samples.length}</p>
@@ -473,13 +474,19 @@ export default function DashboardPage() {
           <div className="bg-white p-4 rounded-lg shadow" style={{ borderLeft: '4px solid #10b981' }}>
             <p className="text-sm text-gray-600 mb-1">Genomen</p>
             <p className="text-3xl font-bold text-green-600">
-              {samples.filter(s => s.isTaken).length}
+              {samples.filter(s => s.isTaken && !s.isDisabled).length}
             </p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow" style={{ borderLeft: '4px solid #ef4444' }}>
             <p className="text-sm text-gray-600 mb-1">Niet genomen</p>
             <p className="text-3xl font-bold text-red-600">
-              {samples.filter(s => !s.isTaken).length}
+              {samples.filter(s => !s.isTaken && !s.isDisabled).length}
+            </p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow" style={{ borderLeft: '4px solid #6b7280' }}>
+            <p className="text-sm text-gray-600 mb-1">Geannuleerd</p>
+            <p className="text-3xl font-bold text-gray-600">
+              {samples.filter(s => s.isDisabled).length}
             </p>
           </div>
         </div>
@@ -539,22 +546,27 @@ export default function DashboardPage() {
                   </tr>
                 ) : (
                   getSortedSamples().map((sample) => (
-                    <tr key={sample.id}>
+                    <tr key={sample.id} className={sample.isDisabled ? 'opacity-60' : ''}>
                       {visibleColumns.includes('status') && (
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
-                              sample.isTaken
+                              sample.isDisabled
+                                ? 'bg-gray-200 text-gray-700'
+                                : sample.isTaken
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-red-100 text-red-800'
                             }`}
+                            title={sample.isDisabled ? sample.remarks || 'Monster geannuleerd' : ''}
                           >
-                            {sample.isTaken ? 'Genomen' : 'Niet genomen'}
+                            {sample.isDisabled ? '⊘ Geannuleerd' : sample.isTaken ? 'Genomen' : 'Niet genomen'}
                           </span>
                         </td>
                       )}
                       {visibleColumns.includes('oNumber') && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
+                          sample.isDisabled ? 'text-gray-500 line-through' : 'text-gray-900'
+                        }`}>
                           {sample.oNumber}
                         </td>
                       )}
@@ -564,7 +576,9 @@ export default function DashboardPage() {
                         </td>
                       )}
                       {visibleColumns.includes('location') && (
-                        <td className="px-6 py-4 text-sm text-gray-900">
+                        <td className={`px-6 py-4 text-sm ${
+                          sample.isDisabled ? 'text-gray-500' : 'text-gray-900'
+                        }`}>
                           {sample.location}
                         </td>
                       )}
