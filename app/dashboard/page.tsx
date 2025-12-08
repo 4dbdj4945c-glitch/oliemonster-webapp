@@ -339,7 +339,7 @@ export default function DashboardPage() {
     <>
       <div className="min-h-screen" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
         {/* Header */}
-        <div style={{ backgroundColor: 'var(--background)', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ backgroundColor: 'var(--background)', borderBottom: '1px solid var(--border)', paddingTop: '1.5rem' }}>
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-start gap-4">
             <div className="flex-1">
