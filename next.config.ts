@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://www.itsdoneservices.nl https://itsdoneservices.nl",
+            value: "frame-ancestors 'self' https://www.itsdoneservices.nl https://itsdoneservices.nl https://mourik.itsdoneservices.nl",
           },
         ],
       },

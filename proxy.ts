@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const response = NextResponse.next();
 
   // Haal het origin op van het verzoek
@@ -11,6 +11,7 @@ export function middleware(request: NextRequest) {
   const allowedOrigins = [
     'https://www.itsdoneservices.nl',
     'https://itsdoneservices.nl', // Zonder www
+    'https://mourik.itsdoneservices.nl', // Custom subdomain
     'http://localhost:3000', // Voor lokale ontwikkeling
   ];
 
@@ -29,7 +30,7 @@ export function middleware(request: NextRequest) {
   // frame-ancestors bepaalt waar de webapp in een iframe mag worden geladen
   response.headers.set(
     'Content-Security-Policy',
-    "frame-ancestors 'self' https://www.itsdoneservices.nl https://itsdoneservices.nl http://localhost:3000"
+    "frame-ancestors 'self' https://www.itsdoneservices.nl https://itsdoneservices.nl https://mourik.itsdoneservices.nl http://localhost:3000"
   );
 
   // CORS headers voor API requests
