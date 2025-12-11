@@ -59,7 +59,7 @@ export default function LoginPage() {
           <img src="/header_logo.png" alt="It's Done Services" className="h-16 mb-4 object-contain" />
           <div className="flex items-center justify-center gap-3">
             <p className="text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Oliemonster Analyse Portal
+              Inloggen Oliemonsters Portal
             </p>
             <img src="/oliemonster.png" alt="Oliemonster" className="h-60 object-contain" />
           </div>
