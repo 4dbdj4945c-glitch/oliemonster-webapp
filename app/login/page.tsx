@@ -57,9 +57,12 @@ export default function LoginPage() {
         <div className="p-8 border rounded w-full max-w-md" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)' }}>
         <div className="flex flex-col items-center mb-6">
           <img src="/header_logo.png" alt="It's Done Services" className="h-16 mb-4 object-contain" />
-          <p className="text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Oliemonster Analyse Portal
-          </p>
+          <div className="flex items-center justify-center gap-3">
+            <p className="text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
+              Oliemonster Analyse Portal
+            </p>
+            <img src="/oliemonster.png" alt="Oliemonster" className="h-12 object-contain" />
+          </div>
         </div>
         
         <form onSubmit={handleSubmit} className="space-y-4">
