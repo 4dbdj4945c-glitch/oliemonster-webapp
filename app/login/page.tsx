@@ -61,7 +61,7 @@ export default function LoginPage() {
             <p className="text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
               Oliemonster Analyse Portal
             </p>
-            <img src="/oliemonster.png" alt="Oliemonster" className="h-12 object-contain" />
+            <img src="/oliemonster.png" alt="Oliemonster" className="h-60 object-contain" />
           </div>
         </div>
         
