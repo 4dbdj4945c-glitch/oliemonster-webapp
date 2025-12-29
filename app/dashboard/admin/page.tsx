@@ -34,6 +34,7 @@ const AVAILABLE_COLUMNS = [
   { id: 'sampleDate', name: 'Datum', required: false },
   { id: 'location', name: 'Locatie', required: false },
   { id: 'description', name: 'Omschrijving', required: false },
+  { id: 'oilType', name: 'Type olie', required: false },
   { id: 'remarks', name: 'Opmerkingen', required: false },
 ];
 
@@ -50,7 +51,7 @@ export default function AdminPage() {
   // Settings state
   const [selectedTheme, setSelectedTheme] = useState('blue');
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
-    'status', 'oNumber', 'sampleDate', 'location', 'description'
+    'status', 'oNumber', 'sampleDate', 'location', 'description', 'oilType'
   ]);
 
   // Form state
