@@ -30,7 +30,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { oNumber, sampleDate, location, description, remarks, isTaken } = body;
+    const { oNumber, sampleDate, location, description, oilType, remarks, isTaken } = body;
 
     // Datum is alleen verplicht als monster genomen is
     if (!oNumber || !location || !description || isTaken === undefined) {
@@ -69,6 +69,7 @@ export async function PUT(
         sampleDate: sampleDate ? new Date(sampleDate) : null,
         location,
         description,
+        oilType: oilType || null,
         remarks: remarks || null,
         isTaken,
       },

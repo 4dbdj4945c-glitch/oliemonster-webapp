@@ -25,6 +25,7 @@ model OilSample {
   sampleDate  DateTime?         // datum afname monsters (optioneel - alleen voor genomen monsters)
   location    String            // locatie
   description String            // omschrijving
+  oilType     String?           // type olie (optioneel)
   remarks     String?           // opmerkingen (optioneel)
   isTaken     Boolean           // of monster genomen is (true = groen, false = rood)
   isDisabled  Boolean  @default(false)  // monster is geannuleerd/niet nodig (grijze status)

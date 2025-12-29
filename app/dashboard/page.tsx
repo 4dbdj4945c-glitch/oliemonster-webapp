@@ -21,6 +21,7 @@ interface OilSample {
   sampleDate: string | null;
   location: string;
   description: string;
+  oilType?: string;
   remarks?: string;
   isTaken: boolean;
   isDisabled?: boolean;
@@ -55,6 +56,7 @@ export default function DashboardPage() {
     sampleDate: '',
     location: '',
     description: '',
+    oilType: '',
     remarks: '',
     isTaken: false,
   });
@@ -202,6 +204,7 @@ export default function DashboardPage() {
       sampleDate: '',
       location: '',
       description: '',
+      oilType: '',
       remarks: '',
       isTaken: false,
     });
@@ -246,6 +249,7 @@ export default function DashboardPage() {
       sampleDate: sample.sampleDate ? sample.sampleDate.split('T')[0] : '',
       location: sample.location,
       description: sample.description,
+      oilType: sample.oilType || '',
       remarks: sample.remarks || '',
       isTaken: sample.isTaken,
     });
@@ -522,6 +526,11 @@ export default function DashboardPage() {
                       Omschrijving
                     </th>
                   )}
+                  {visibleColumns.includes('oilType') && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Type olie
+                    </th>
+                  )}
                   {visibleColumns.includes('remarks') && (
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Opmerkingen
@@ -585,6 +594,11 @@ export default function DashboardPage() {
                       {visibleColumns.includes('description') && (
                         <td className="px-6 py-4 text-sm text-gray-500">
                           {sample.description}
+                        </td>
+                      )}
+                      {visibleColumns.includes('oilType') && (
+                        <td className="px-6 py-4 text-sm text-gray-500">
+                          {sample.oilType || '-'}
                         </td>
                       )}
                       {visibleColumns.includes('remarks') && (
@@ -714,6 +728,19 @@ export default function DashboardPage() {
                   className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
                   rows={3}
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Type olie (optioneel)
+                </label>
+                <input
+                  type="text"
+                  value={formData.oilType}
+                  onChange={(e) => setFormData({ ...formData, oilType: e.target.value })}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
+                  placeholder="Bijv. motorolie, hydraulische olie, etc."
                 />
               </div>
 
