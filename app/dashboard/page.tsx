@@ -36,7 +36,7 @@ export default function DashboardPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingSample, setEditingSample] = useState<OilSample | null>(null);
   const [theme, setTheme] = useState('blue');
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(['status', 'oNumber', 'sampleDate', 'location', 'description']);
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(['status', 'oNumber', 'sampleDate', 'location', 'description', 'oilType']);
   const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; oNumber: string } | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'oNumber' | 'sampleDate' | 'location' | 'newest'>('newest');
