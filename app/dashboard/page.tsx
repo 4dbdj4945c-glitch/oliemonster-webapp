@@ -47,6 +47,7 @@ export default function DashboardPage() {
     title: 'Overzicht afname oliemonsters i.o.v. Mourik Infra B.V.',
     subtitle: 'Welkom, {username} ({role})'
   });
+  const [isDarkTheme, setIsDarkTheme] = useState(false);
   const router = useRouter();
   const themeColors = getTheme(theme);
 
@@ -66,6 +67,22 @@ export default function DashboardPage() {
   useEffect(() => {
     checkAuth();
     loadSettings();
+    // Check initial theme
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    setIsDarkTheme(currentTheme === 'dark');
+    
+    // Listen for theme changes
+    const observer = new MutationObserver(() => {
+      const theme = document.documentElement.getAttribute('data-theme');
+      setIsDarkTheme(theme === 'dark');
+    });
+    
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
+    
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -389,7 +406,11 @@ export default function DashboardPage() {
                     src="/icon_settings.png" 
                     alt="Instellingen" 
                     className="w-5 h-5" 
-                    style={{ filter: 'brightness(0) invert(1)' }}
+                    style={{ 
+                      filter: isDarkTheme 
+                        ? 'brightness(0) saturate(100%) invert(0%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(100%) contrast(100%)'
+                        : 'brightness(0) invert(1)'
+                    }}
                   />
                 </button>
               )}
