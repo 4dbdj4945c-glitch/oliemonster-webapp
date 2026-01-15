@@ -385,7 +385,12 @@ export default function DashboardPage() {
                   }}
                   aria-label="Beheer"
                 >
-                  <img src="/icon_settings.png" alt="Instellingen" className="w-5 h-5" />
+                  <img 
+                    src="/icon_settings.png" 
+                    alt="Instellingen" 
+                    className="w-5 h-5" 
+                    style={{ filter: 'brightness(0) invert(1)' }}
+                  />
                 </button>
               )}
               <button
