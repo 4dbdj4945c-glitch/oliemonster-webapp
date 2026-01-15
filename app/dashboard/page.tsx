@@ -407,9 +407,7 @@ export default function DashboardPage() {
                     alt="Instellingen" 
                     className="w-5 h-5" 
                     style={{ 
-                      filter: isDarkTheme 
-                        ? 'brightness(0) saturate(100%) invert(0%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(100%) contrast(100%)'
-                        : 'brightness(0) invert(1)'
+                      filter: 'brightness(0) invert(1)'
                     }}
                   />
                 </button>
