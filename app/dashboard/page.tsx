@@ -67,14 +67,21 @@ export default function DashboardPage() {
   useEffect(() => {
     checkAuth();
     loadSettings();
-    // Check initial theme
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    setIsDarkTheme(currentTheme === 'dark');
+    
+    // Check initial theme - ook via localStorage
+    const checkTheme = () => {
+      const savedTheme = localStorage.getItem('theme');
+      const htmlTheme = document.documentElement.getAttribute('data-theme');
+      const isDark = savedTheme === 'dark' || htmlTheme === 'dark';
+      console.log('Theme check:', { savedTheme, htmlTheme, isDark });
+      setIsDarkTheme(isDark);
+    };
+    
+    checkTheme();
     
     // Listen for theme changes
     const observer = new MutationObserver(() => {
-      const theme = document.documentElement.getAttribute('data-theme');
-      setIsDarkTheme(theme === 'dark');
+      checkTheme();
     });
     
     observer.observe(document.documentElement, {
@@ -82,7 +89,13 @@ export default function DashboardPage() {
       attributeFilter: ['data-theme']
     });
     
-    return () => observer.disconnect();
+    // Ook luisteren naar localStorage changes
+    window.addEventListener('storage', checkTheme);
+    
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('storage', checkTheme);
+    };
   }, []);
 
   useEffect(() => {
