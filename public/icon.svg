@@ -1,10 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Background circle -->
-  <circle cx="32" cy="32" r="32" fill="#1a1a1a"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 350">
+  <defs>
+    <style>
+      .oil-drop { fill: #000000; }
+    </style>
+  </defs>
   
-  <!-- Stylized "D" shape resembling the DONE logo -->
-  <path d="M18 20 L28 20 C35 20 40 25 40 32 C40 39 35 44 28 44 L18 44 Z M22 24 L22 40 L28 40 C32 40 36 36 36 32 C36 28 32 24 28 24 Z" fill="#ffffff"/>
+  <!-- Kleine druppel rechtsboven -->
+  <path class="oil-drop" d="M225,10 L245,50 C245,50 260,75 250,95 C240,115 220,125 200,120 C180,115 170,95 175,75 C180,55 205,10 225,10 Z"/>
   
-  <!-- Accent line (representing the distinctive line in DONE logo) -->
-  <rect x="16" y="18" width="32" height="3" fill="#ffffff" rx="1.5"/>
+  <!-- Grote druppel -->
+  <path class="oil-drop" d="M75,20 L150,160 C150,160 190,200 190,250 C190,300 155,340 100,340 C45,340 10,300 10,250 C10,200 50,160 50,160 L75,20 Z"/>
+  
+  <!-- Glans grote druppel -->
+  <path d="M30,240 C30,240 35,280 60,300" fill="none" stroke="white" stroke-width="12" stroke-linecap="round" opacity="0.5"/>
+  
+  <!-- Kleine glans -->
+  <circle cx="140" cy="335" r="5" fill="white" opacity="0.7"/>
 </svg>
