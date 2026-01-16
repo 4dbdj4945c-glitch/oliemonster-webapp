@@ -413,7 +413,8 @@ export default function DashboardPage() {
                     backgroundColor: 'var(--accent)',
                     border: '1px solid var(--accent)',
                   }}
-                  aria-label="Beheer"
+                  aria-label="Instellingen"
+                  title="Instellingen"
                 >
                   <img 
                     src="/icon_settings.png" 
@@ -433,6 +434,7 @@ export default function DashboardPage() {
                   border: '1px solid var(--accent)',
                 }}
                 aria-label="Help"
+                title="Help"
               >
                 <span className="text-xl font-bold" style={{ color: 'var(--background)', lineHeight: 1 }}>?</span>
               </button>
@@ -444,6 +446,7 @@ export default function DashboardPage() {
                   border: '1px solid var(--accent)',
                 }}
                 aria-label="Uitloggen"
+                title="Log uit"
               >
                 <span className="text-xl" style={{ color: 'var(--background)', lineHeight: 1 }}>→</span>
               </button>

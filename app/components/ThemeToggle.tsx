@@ -29,7 +29,8 @@ export default function ThemeToggle() {
         backgroundColor: 'var(--accent)',
         border: '1px solid var(--accent)',
       }}
-      aria-label="Toggle theme"
+      aria-label="Wisselen van thema"
+      title={theme === 'dark' ? 'Wissel naar licht thema' : 'Wissel naar donker thema'}
     >
       <span
         className="text-xl"
