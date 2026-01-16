@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Tooltip from './Tooltip';
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
@@ -22,25 +23,26 @@ export default function ThemeToggle() {
   };
 
   return (
-    <button
-      onClick={toggleTheme}
-      className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
-      style={{
-        backgroundColor: 'var(--accent)',
-        border: '1px solid var(--accent)',
-      }}
-      aria-label="Wisselen van thema"
-      title={theme === 'dark' ? 'Wissel naar licht thema' : 'Wissel naar donker thema'}
-    >
-      <span
-        className="text-xl"
+    <Tooltip text={theme === 'dark' ? 'Wissel naar licht thema' : 'Wissel naar donker thema'}>
+      <button
+        onClick={toggleTheme}
+        className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
         style={{
-          color: 'var(--background)',
-          lineHeight: 1,
+          backgroundColor: 'var(--accent)',
+          border: '1px solid var(--accent)',
         }}
+        aria-label="Wisselen van thema"
       >
-        {theme === 'dark' ? '◐' : '◑'}
-      </span>
-    </button>
+        <span
+          className="text-xl"
+          style={{
+            color: 'var(--background)',
+            lineHeight: 1,
+          }}
+        >
+          {theme === 'dark' ? '◐' : '◑'}
+        </span>
+      </button>
+    </Tooltip>
   );
 }

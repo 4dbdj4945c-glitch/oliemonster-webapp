@@ -7,6 +7,7 @@ import ThemeToggle from '@/app/components/ThemeToggle';
 import PhotoModal from '@/app/components/PhotoModal';
 import HelpModal from '@/app/components/HelpModal';
 import DashboardSettingsModal, { DashboardSettings } from '@/app/components/DashboardSettingsModal';
+import Tooltip from '@/app/components/Tooltip';
 
 interface User {
   userId: number;
@@ -406,50 +407,53 @@ export default function DashboardPage() {
             {/* Menu controls */}
             <div className="flex gap-3 flex-shrink-0">
               {user?.role === 'admin' && (
+                <Tooltip text="Instellingen">
+                  <button
+                    onClick={() => router.push('/dashboard/admin')}
+                    className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
+                    style={{
+                      backgroundColor: 'var(--accent)',
+                      border: '1px solid var(--accent)',
+                    }}
+                    aria-label="Instellingen"
+                  >
+                    <img 
+                      src="/icon_settings.png" 
+                      alt="Instellingen" 
+                      className="w-5 h-5" 
+                      style={{ 
+                        filter: isDarkTheme ? 'none' : 'brightness(0) invert(1)'
+                      }}
+                    />
+                  </button>
+                </Tooltip>
+              )}
+              <Tooltip text="Help">
                 <button
-                  onClick={() => router.push('/dashboard/admin')}
+                  onClick={() => setShowHelpModal(true)}
                   className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
                   style={{
                     backgroundColor: 'var(--accent)',
                     border: '1px solid var(--accent)',
                   }}
-                  aria-label="Instellingen"
-                  title="Instellingen"
+                  aria-label="Help"
                 >
-                  <img 
-                    src="/icon_settings.png" 
-                    alt="Instellingen" 
-                    className="w-5 h-5" 
-                    style={{ 
-                      filter: isDarkTheme ? 'none' : 'brightness(0) invert(1)'
-                    }}
-                  />
+                  <span className="text-xl font-bold" style={{ color: 'var(--background)', lineHeight: 1 }}>?</span>
                 </button>
-              )}
-              <button
-                onClick={() => setShowHelpModal(true)}
-                className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
-                style={{
-                  backgroundColor: 'var(--accent)',
-                  border: '1px solid var(--accent)',
-                }}
-                aria-label="Help"
-                title="Help"
-              >
-                <span className="text-xl font-bold" style={{ color: 'var(--background)', lineHeight: 1 }}>?</span>
-              </button>
-              <button
-                onClick={handleLogout}
-                className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
-                style={{
-                  backgroundColor: 'var(--accent)',
-                  border: '1px solid var(--accent)',
-                }}
-                aria-label="Uitloggen"
-                title="Log uit"
-              >
-                <span className="text-xl" style={{ color: 'var(--background)', lineHeight: 1 }}>→</span>
-              </button>
+              </Tooltip>
+              <Tooltip text="Log uit">
+                <button
+                  onClick={handleLogout}
+                  className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
+                  style={{
+                    backgroundColor: 'var(--accent)',
+                    border: '1px solid var(--accent)',
+                  }}
+                  aria-label="Uitloggen"
+                >
+                  <span className="text-xl" style={{ color: 'var(--background)', lineHeight: 1 }}>→</span>
+                </button>
+              </Tooltip>
               <ThemeToggle />
             </div>
           </div>
