@@ -407,7 +407,7 @@ export default function DashboardPage() {
                     alt="Instellingen" 
                     className="w-5 h-5" 
                     style={{ 
-                      filter: 'brightness(0) invert(1)'
+                      filter: isDarkTheme ? 'none' : 'brightness(0) invert(1)'
                     }}
                   />
                 </button>
