@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import ThemeToggle from '@/app/components/ThemeToggle';
 import StorageAccessHandler from '@/app/components/StorageAccessHandler';
 
 export default function LoginPage() {
@@ -76,63 +75,6 @@ export default function LoginPage() {
           background: linear-gradient(135deg, #2d1b4e 0%, #4a1942 50%, #1e3a8a 100%);
           position: relative;
           overflow: hidden;
-        }
-
-        .bokeh-bg {
-          position: absolute;
-          width: 100%;
-          height: 100%;
-          overflow: hidden;
-        }
-
-        .bokeh-circle {
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(80px);
-          opacity: 0.4;
-          animation: float 20s infinite ease-in-out;
-        }
-
-        .bokeh-1 {
-          width: 400px;
-          height: 400px;
-          background: rgba(139, 92, 246, 0.3);
-          top: -100px;
-          left: -100px;
-          animation-delay: 0s;
-        }
-
-        .bokeh-2 {
-          width: 300px;
-          height: 300px;
-          background: rgba(236, 72, 153, 0.3);
-          top: 50%;
-          right: -50px;
-          animation-delay: 5s;
-        }
-
-        .bokeh-3 {
-          width: 350px;
-          height: 350px;
-          background: rgba(59, 130, 246, 0.3);
-          bottom: -100px;
-          left: 50%;
-          animation-delay: 10s;
-        }
-
-        @keyframes float {
-          0%, 100% {
-            transform: translate(0, 0) scale(1);
-          }
-          25% {
-            transform: translate(30px, -30px) scale(1.1);
-          }
-          50% {
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-          75% {
-            transform: translate(20px, 30px) scale(1.05);
-          }
         }
 
         .login-card {
@@ -257,25 +199,9 @@ export default function LoginPage() {
           font-size: 14px;
           text-align: center;
         }
-
-        .theme-toggle-wrapper {
-          position: fixed;
-          top: 24px;
-          right: 24px;
-          z-index: 50;
-        }
       `}</style>
 
-      <div className="theme-toggle-wrapper">
-        <ThemeToggle />
-      </div>
-
       <div className="login-container">
-        <div className="bokeh-bg">
-          <div className="bokeh-circle bokeh-1"></div>
-          <div className="bokeh-circle bokeh-2"></div>
-          <div className="bokeh-circle bokeh-3"></div>
-        </div>
 
         <div className="login-card">
           <div className="logo-container">
@@ -286,8 +212,8 @@ export default function LoginPage() {
             <div className="input-group">
               <div className="input-wrapper">
                 <svg className="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
                 </svg>
                 <input
                   type="text"
