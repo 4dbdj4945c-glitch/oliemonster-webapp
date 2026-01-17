@@ -14,8 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "It's Done Services",
+  title: "It's Done Services - Oliemonster Portal",
   description: "Oliemonster analyse portal voor It's Done Services in opdracht van Mourik Infra B.V.",
+  applicationName: "Oliemonster Portal",
+  authors: [{ name: "It's Done Services" }],
+  keywords: ['oliemonster', 'analyse', 'mourik', 'its done services'],
   manifest: '/manifest.json',
   icons: {
     icon: [

@@ -2,10 +2,14 @@
   "name": "It's Done Services - Oliemonster Portal",
   "short_name": "Oliemonster",
   "description": "Oliemonster analyse portal voor It's Done Services in opdracht van Mourik Infra B.V.",
+  "version": "1.0.0",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "background_color": "#2d1b4e",
+  "theme_color": "#2d1b4e",
+  "orientation": "any",
+  "scope": "/",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "/favicon-16x16.png",
