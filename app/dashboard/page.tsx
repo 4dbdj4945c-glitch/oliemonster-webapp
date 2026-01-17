@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getTheme } from '@/lib/theme';
-import ThemeToggle from '@/app/components/ThemeToggle';
 import PhotoModal from '@/app/components/PhotoModal';
 import HelpModal from '@/app/components/HelpModal';
 import DashboardSettingsModal, { DashboardSettings } from '@/app/components/DashboardSettingsModal';
@@ -48,7 +47,6 @@ export default function DashboardPage() {
     title: 'Overzicht afname oliemonsters i.o.v. Mourik Infra B.V.',
     subtitle: 'Welkom, {username} ({role})'
   });
-  const [isDarkTheme, setIsDarkTheme] = useState(false);
   const router = useRouter();
   const themeColors = getTheme(theme);
 
@@ -68,35 +66,6 @@ export default function DashboardPage() {
   useEffect(() => {
     checkAuth();
     loadSettings();
-    
-    // Check initial theme - ook via localStorage
-    const checkTheme = () => {
-      const savedTheme = localStorage.getItem('theme');
-      const htmlTheme = document.documentElement.getAttribute('data-theme');
-      const isDark = savedTheme === 'dark' || htmlTheme === 'dark';
-      console.log('Theme check:', { savedTheme, htmlTheme, isDark });
-      setIsDarkTheme(isDark);
-    };
-    
-    checkTheme();
-    
-    // Listen for theme changes
-    const observer = new MutationObserver(() => {
-      checkTheme();
-    });
-    
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme']
-    });
-    
-    // Ook luisteren naar localStorage changes
-    window.addEventListener('storage', checkTheme);
-    
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('storage', checkTheme);
-    };
   }, []);
 
   useEffect(() => {
@@ -422,7 +391,7 @@ export default function DashboardPage() {
                       alt="Instellingen" 
                       className="w-5 h-5" 
                       style={{ 
-                        filter: isDarkTheme ? 'none' : 'brightness(0) invert(1)'
+                        filter: 'brightness(0) invert(1)'
                       }}
                     />
                   </button>
@@ -454,7 +423,6 @@ export default function DashboardPage() {
                   <span className="text-xl" style={{ color: 'var(--background)', lineHeight: 1 }}>→</span>
                 </button>
               </Tooltip>
-              <ThemeToggle />
             </div>
           </div>
         </div>
