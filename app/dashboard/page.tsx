@@ -333,17 +333,186 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
-        <p style={{ color: 'var(--text-secondary)' }}>Laden...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <p style={{ color: 'var(--foreground)' }}>Laden...</p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
+      <style jsx>{`
+        .dashboard-container {
+          min-height: 100vh;
+          color: var(--foreground);
+        }
+
+        .dashboard-header {
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          padding-top: 1.5rem;
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(10px);
+        }
+
+        .glass-card {
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 16px;
+          padding: 1rem;
+          margin-bottom: 1.5rem;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-input {
+          width: 100%;
+          padding: 12px 16px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 12px;
+          color: white;
+          font-size: 14px;
+          transition: all 0.3s ease;
+          outline: none;
+        }
+
+        .glass-input::placeholder {
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .glass-input:focus {
+          background: rgba(255, 255, 255, 0.15);
+          border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .glass-select {
+          padding: 12px 16px;
+          background: rgba(255, 255, 255, 0.1);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 12px;
+          color: white;
+          font-size: 14px;
+          transition: all 0.3s ease;
+          outline: none;
+          cursor: pointer;
+        }
+
+        .glass-select option {
+          background: #2d1b4e;
+          color: white;
+        }
+
+        .glass-button {
+          background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+          color: white;
+          border: none;
+          border-radius: 12px;
+          padding: 12px 24px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          white-space: nowrap;
+        }
+
+        .glass-button:hover:not(:disabled) {
+          background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        }
+
+        .glass-button:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+
+        .stat-card {
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 16px;
+          padding: 1.5rem;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .stat-value {
+          font-size: 2rem;
+          font-weight: bold;
+          color: white;
+        }
+
+        .stat-label {
+          font-size: 0.875rem;
+          color: rgba(255, 255, 255, 0.7);
+          margin-bottom: 0.5rem;
+        }
+
+        .table-container {
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .table {
+          width: 100%;
+          border-collapse: separate;
+          border-spacing: 0;
+        }
+
+        .table thead {
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .table th {
+          padding: 1rem 1.5rem;
+          text-align: left;
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: rgba(255, 255, 255, 0.9);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .table td {
+          padding: 1rem 1.5rem;
+          font-size: 0.875rem;
+          color: white;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .table tbody tr:hover {
+          background: rgba(255, 255, 255, 0.05);
+        }
+
+        .badge {
+          display: inline-flex;
+          padding: 0.5rem 1rem;
+          font-size: 0.75rem;
+          font-weight: 600;
+          border-radius: 9999px;
+        }
+
+        .badge-success {
+          background: rgba(16, 185, 129, 0.2);
+          color: #6ee7b7;
+        }
+
+        .badge-danger {
+          background: rgba(239, 68, 68, 0.2);
+          color: #fca5a5;
+        }
+
+        .badge-gray {
+          background: rgba(107, 114, 128, 0.2);
+          color: #d1d5db;
+        }
+      `}</style>
+
+      <div className="dashboard-container">
         {/* Header */}
-        <div style={{ backgroundColor: 'var(--background)', borderBottom: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+        <div className="dashboard-header">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-start gap-4">
             <div className="flex-1">
@@ -431,19 +600,19 @@ export default function DashboardPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
         {/* Search & Add */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
+        <div className="glass-card">
           <div className="flex flex-col sm:flex-row gap-4">
             <input
               type="text"
               placeholder="Zoek op o-nummer, locatie of omschrijving..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className={`flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
+              className="glass-input flex-1"
             />
             {user?.role === 'admin' && (
               <button
                 onClick={openAddModal}
-                className={`${themeColors.accent.bg} ${themeColors.accent.bgHover} text-white px-6 py-2 rounded whitespace-nowrap`}
+                className="glass-button"
               >
                 + Nieuw Monster
               </button>
@@ -452,13 +621,13 @@ export default function DashboardPage() {
         </div>
 
         {/* Sort Controls */}
-        <div className="bg-white p-4 rounded-lg shadow mb-6">
+        <div className="glass-card">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-            <label className="text-sm font-medium text-gray-700">Sorteren op:</label>
+            <label className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Sorteren op:</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="glass-select"
             >
               <option value="newest">Laatst toegevoegd</option>
               <option value="oNumber">O-nummer</option>
@@ -470,7 +639,7 @@ export default function DashboardPage() {
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="glass-select"
               >
                 <option value="asc">Oplopend</option>
                 <option value="desc">Aflopend</option>
@@ -481,100 +650,66 @@ export default function DashboardPage() {
 
         {/* Statistics */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white p-4 rounded-lg shadow" style={{ borderLeft: '4px solid #3b82f6' }}>
-            <p className="text-sm text-gray-600 mb-1">Totaal monsters</p>
-            <p className="text-3xl font-bold text-gray-900">{samples.length}</p>
+          <div className="stat-card">
+            <p className="stat-label">Totaal monsters</p>
+            <p className="stat-value">{samples.length}</p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow" style={{ borderLeft: '4px solid #10b981' }}>
-            <p className="text-sm text-gray-600 mb-1">Genomen</p>
-            <p className="text-3xl font-bold text-green-600">
+          <div className="stat-card" style={{ borderLeft: '4px solid #10b981' }}>
+            <p className="stat-label">Genomen</p>
+            <p className="stat-value" style={{ color: '#6ee7b7' }}>
               {samples.filter(s => s.isTaken && !s.isDisabled).length}
             </p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow" style={{ borderLeft: '4px solid #ef4444' }}>
-            <p className="text-sm text-gray-600 mb-1">Niet genomen</p>
-            <p className="text-3xl font-bold text-red-600">
+          <div className="stat-card" style={{ borderLeft: '4px solid #ef4444' }}>
+            <p className="stat-label">Niet genomen</p>
+            <p className="stat-value" style={{ color: '#fca5a5' }}>
               {samples.filter(s => !s.isTaken && !s.isDisabled).length}
             </p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow" style={{ borderLeft: '4px solid #6b7280' }}>
-            <p className="text-sm text-gray-600 mb-1">Geannuleerd</p>
-            <p className="text-3xl font-bold text-gray-600">
+          <div className="stat-card" style={{ borderLeft: '4px solid #6b7280' }}>
+            <p className="stat-label">Geannuleerd</p>
+            <p className="stat-value" style={{ color: '#d1d5db' }}>
               {samples.filter(s => s.isDisabled).length}
             </p>
           </div>
         </div>
 
         {/* Samples Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="table-container">
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="table">
+              <thead>
                 <tr>
-                  {visibleColumns.includes('status') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                  )}
-                  {visibleColumns.includes('oNumber') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      O-nummer
-                    </th>
-                  )}
-                  {visibleColumns.includes('sampleDate') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Datum
-                    </th>
-                  )}
-                  {visibleColumns.includes('location') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Locatie
-                    </th>
-                  )}
-                  {visibleColumns.includes('description') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Omschrijving
-                    </th>
-                  )}
-                  {visibleColumns.includes('oilType') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Type olie
-                    </th>
-                  )}
-                  {visibleColumns.includes('remarks') && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Opmerkingen
-                    </th>
-                  )}
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Foto
-                  </th>
-                  {user?.role === 'admin' && (
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acties
-                    </th>
-                  )}
+                  {visibleColumns.includes('status') && (<th>Status</th>)}
+                  {visibleColumns.includes('oNumber') && (<th>O-nummer</th>)}
+                  {visibleColumns.includes('sampleDate') && (<th>Datum</th>)}
+                  {visibleColumns.includes('location') && (<th>Locatie</th>)}
+                  {visibleColumns.includes('description') && (<th>Omschrijving</th>)}
+                  {visibleColumns.includes('oilType') && (<th>Type olie</th>)}
+                  {visibleColumns.includes('remarks') && (<th>Opmerkingen</th>)}
+                  <th>Foto</th>
+                  {user?.role === 'admin' && (<th>Acties</th>)}
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody>
                 {samples.length === 0 ? (
                   <tr>
-                    <td colSpan={user?.role === 'admin' ? 7 : 6} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={user?.role === 'admin' ? 7 : 6} style={{ textAlign: 'center', padding: '2rem', color: 'rgba(255, 255, 255, 0.6)' }}>
                       Geen monsters gevonden
                     </td>
                   </tr>
                 ) : (
                   getSortedSamples().map((sample) => (
-                    <tr key={sample.id} className={sample.isDisabled ? 'opacity-60' : ''}>
+                    <tr key={sample.id} style={{ opacity: sample.isDisabled ? 0.6 : 1 }}>
                       {visibleColumns.includes('status') && (
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td style={{ whiteSpace: 'nowrap' }}>
                           <span
-                            className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full ${
+                            className={`badge ${
                               sample.isDisabled
-                                ? 'bg-gray-200 text-gray-700'
+                                ? 'badge-gray'
                                 : sample.isTaken
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
+                                ? 'badge-success'
+                                : 'badge-danger'
                             }`}
                             title={sample.isDisabled ? sample.remarks || 'Monster geannuleerd' : ''}
                           >
@@ -583,54 +718,70 @@ export default function DashboardPage() {
                         </td>
                       )}
                       {visibleColumns.includes('oNumber') && (
-                        <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${
-                          sample.isDisabled ? 'text-gray-500 line-through' : 'text-gray-900'
-                        }`}>
+                        <td style={{ 
+                          whiteSpace: 'nowrap', 
+                          fontWeight: 500,
+                          textDecoration: sample.isDisabled ? 'line-through' : 'none',
+                          opacity: sample.isDisabled ? 0.7 : 1 
+                        }}>
                           {sample.oNumber}
                         </td>
                       )}
                       {visibleColumns.includes('sampleDate') && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td style={{ whiteSpace: 'nowrap' }}>
                           {sample.isTaken && sample.sampleDate ? new Date(sample.sampleDate).toLocaleDateString('nl-NL') : '-'}
                         </td>
                       )}
                       {visibleColumns.includes('location') && (
-                        <td className={`px-6 py-4 text-sm ${
-                          sample.isDisabled ? 'text-gray-500' : 'text-gray-900'
-                        }`}>
+                        <td style={{ opacity: sample.isDisabled ? 0.7 : 1 }}>
                           {sample.location}
                         </td>
                       )}
                       {visibleColumns.includes('description') && (
-                        <td className="px-6 py-4 text-sm text-gray-500">
+                        <td>
                           {sample.description}
                         </td>
                       )}
                       {visibleColumns.includes('oilType') && (
-                        <td className="px-6 py-4 text-sm text-gray-500">
+                        <td>
                           {sample.oilType || '-'}
                         </td>
                       )}
                       {visibleColumns.includes('remarks') && (
-                        <td className="px-6 py-4 text-sm text-gray-500">
+                        <td>
                           {sample.remarks || '-'}
                         </td>
                       )}
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <td style={{ whiteSpace: 'nowrap' }}>
                         {sample.photoUrl ? (
                           <button
                             onClick={() => setSelectedPhoto({ url: sample.photoUrl!, oNumber: sample.oNumber })}
-                            className="text-blue-600 hover:text-blue-900 underline"
+                            style={{ 
+                              color: '#8b5cf6',
+                              textDecoration: 'underline',
+                              cursor: 'pointer',
+                              background: 'none',
+                              border: 'none',
+                              transition: 'color 0.3s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#a78bfa'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#8b5cf6'}
                           >
                             📷 Bekijk foto
                           </button>
                         ) : user?.role === 'admin' ? (
-                          <label className="cursor-pointer text-gray-500 hover:text-gray-700">
+                          <label style={{ 
+                            cursor: 'pointer',
+                            color: 'rgba(255, 255, 255, 0.6)',
+                            transition: 'color 0.3s ease'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.9)'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)'}>
                             {uploadingPhoto === sample.id ? '↻ Uploaden...' : '+ Upload foto'}
                             <input
                               type="file"
                               accept="image/*"
-                              className="hidden"
+                              style={{ display: 'none' }}
                               disabled={uploadingPhoto === sample.id}
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
@@ -639,20 +790,37 @@ export default function DashboardPage() {
                             />
                           </label>
                         ) : (
-                          <span className="text-gray-400">Geen foto</span>
+                          <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Geen foto</span>
                         )}
                       </td>
                       {user?.role === 'admin' && (
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <td style={{ whiteSpace: 'nowrap' }}>
                           <button
                             onClick={() => openEditModal(sample)}
-                            className={`${themeColors.primary.text} ${themeColors.primary.textHover} mr-4`}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#8b5cf6',
+                              cursor: 'pointer',
+                              marginRight: '1rem',
+                              transition: 'color 0.3s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#a78bfa'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#8b5cf6'}
                           >
                             Bewerken
                           </button>
                           <button
                             onClick={() => handleDelete(sample.id)}
-                            className="text-red-600 hover:text-red-900"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#fca5a5',
+                              cursor: 'pointer',
+                              transition: 'color 0.3s ease'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#fca5a5'}
                           >
                             Verwijderen
                           </button>
