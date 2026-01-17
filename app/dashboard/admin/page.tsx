@@ -269,41 +269,81 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
-        <p style={{ color: 'var(--text-secondary)' }}>Laden...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <p style={{ color: 'var(--foreground)' }}>Laden...</p>
       </div>
     );
   }
 
   return (
     <>
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
+      <style jsx>{`
+        .glass-card {
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          border-radius: 16px;
+          padding: 1.5rem;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+        .glass-button {
+          background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+          color: white;
+          border: none;
+          border-radius: 12px;
+          padding: 12px 24px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .glass-button:hover {
+          background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+        }
+        .tab-button {
+          padding: 0.75rem 1.5rem;
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: rgba(255, 255, 255, 0.6);
+          border-bottom: 2px solid transparent;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .tab-button:hover {
+          color: rgba(255, 255, 255, 0.9);
+        }
+        .tab-button-active {
+          color: #8b5cf6;
+          border-bottom-color: #8b5cf6;
+        }
+      `}</style>
+      <div className="min-h-screen" style={{ color: 'var(--foreground)' }}>
         {/* Header */}
-        <div style={{ backgroundColor: 'var(--background)', borderBottom: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+        <div style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(10px)', paddingTop: '1.5rem' }}>
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold" style={{ color: 'var(--foreground)', letterSpacing: '-0.02em' }}>
+              <h1 style={{ fontSize: '1.875rem', fontWeight: 700, color: 'white', letterSpacing: '-0.02em' }}>
                 It's Done Services - Beheer
               </h1>
-              <p className="text-sm text-gray-600 mt-1">
+              <p style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.7)', marginTop: '0.25rem' }}>
                 Oliemonster Analyse - Instellingen
               </p>
             </div>
-            <div className="flex gap-2 items-center">
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <button
                 onClick={() => router.push('/dashboard/audit-logs')}
-                className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                className="glass-button"
               >
                 📋 Audit Logs
               </button>
               <button
                 onClick={() => router.push('/dashboard')}
-                className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+                className="glass-button"
               >
                 Terug naar Dashboard
               </button>
-              <ThemeToggle />
             </div>
           </div>
         </div>
@@ -311,36 +351,24 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
+        <div className="glass-card">
+          <div style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <nav style={{ display: 'flex', marginBottom: '-2px' }}>
               <button
                 onClick={() => setActiveTab('users')}
-                className={`px-6 py-3 text-sm font-medium ${
-                  activeTab === 'users'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`tab-button ${activeTab === 'users' ? 'tab-button-active' : ''}`}
               >
                 👥 Gebruikers
               </button>
               <button
                 onClick={() => setActiveTab('theme')}
-                className={`px-6 py-3 text-sm font-medium ${
-                  activeTab === 'theme'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`tab-button ${activeTab === 'theme' ? 'tab-button-active' : ''}`}
               >
                 🎨 Thema
               </button>
               <button
                 onClick={() => setActiveTab('columns')}
-                className={`px-6 py-3 text-sm font-medium ${
-                  activeTab === 'columns'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
+                className={`tab-button ${activeTab === 'columns' ? 'tab-button-active' : ''}`}
               >
                 📊 Kolommen
               </button>
@@ -348,7 +376,7 @@ export default function AdminPage() {
           </div>
 
           {/* Tab Content */}
-          <div className="p-6">
+          <div style={{ padding: '1.5rem' }}>
             {saveMessage && (
               <div className="mb-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded">
                 {saveMessage}
