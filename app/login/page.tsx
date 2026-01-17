@@ -75,6 +75,7 @@ export default function LoginPage() {
           background: linear-gradient(135deg, #2d1b4e 0%, #4a1942 50%, #1e3a8a 100%);
           position: relative;
           overflow: hidden;
+          padding: 0 20px;
         }
 
         .login-card {
@@ -88,6 +89,12 @@ export default function LoginPage() {
           box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
           position: relative;
           z-index: 10;
+        }
+
+        @media (max-width: 640px) {
+          .login-card {
+            padding: 32px 24px;
+          }
         }
 
         .logo-container {
