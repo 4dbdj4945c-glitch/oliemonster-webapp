@@ -837,15 +837,24 @@ export default function DashboardPage() {
 
       {/* Add/Edit Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4 text-gray-900">
+        <div className="fixed inset-0 flex items-center justify-center p-4 z-50" style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)' }}>
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '24px',
+            padding: '2rem',
+            maxWidth: '480px',
+            width: '100%',
+            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+          }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: 'white' }}>
               {editingSample ? 'Monster bewerken' : 'Nieuw monster toevoegen'}
             </h2>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
                   O-nummer
                 </label>
                 <input
@@ -857,20 +866,21 @@ export default function DashboardPage() {
                     checkONumberExists(value);
                   }}
                   onBlur={(e) => checkONumberExists(e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900 ${
-                    oNumberWarning ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className="glass-input"
+                  style={{
+                    borderColor: oNumberWarning ? '#fca5a5' : 'rgba(255, 255, 255, 0.2)'
+                  }}
                   required
                 />
                 {oNumberWarning && (
-                  <p className="text-red-600 text-sm mt-1 font-semibold">
+                  <p style={{ color: '#fca5a5', fontSize: '0.875rem', marginTop: '0.25rem', fontWeight: 600 }}>
                     {oNumberWarning}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
                   Datum afname {!formData.isTaken && '(optioneel - alleen voor genomen monsters)'}
                 </label>
                 <input
@@ -878,63 +888,64 @@ export default function DashboardPage() {
                   value={formData.sampleDate}
                   onChange={(e) => setFormData({ ...formData, sampleDate: e.target.value })}
                   disabled={!formData.isTaken}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed`}
+                  className="glass-input"
+                  style={{ opacity: !formData.isTaken ? 0.5 : 1, cursor: !formData.isTaken ? 'not-allowed' : 'text' }}
                   required={formData.isTaken}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
                   Locatie
                 </label>
                 <input
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
+                  className="glass-input"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
                   Omschrijving
                 </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
+                  className="glass-input"
                   rows={3}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
                   Type olie (optioneel)
                 </label>
                 <input
                   type="text"
                   value={formData.oilType}
                   onChange={(e) => setFormData({ ...formData, oilType: e.target.value })}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
+                  className="glass-input"
                   placeholder="Bijv. motorolie, hydraulische olie, etc."
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
                   Opmerkingen (optioneel)
                 </label>
                 <textarea
                   value={formData.remarks}
                   onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 ${themeColors.primary.focus} text-gray-900`}
+                  className="glass-input"
                   rows={2}
                 />
               </div>
 
-              <div className="flex items-center">
+              <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input
                   type="checkbox"
                   id="isTaken"
@@ -944,28 +955,28 @@ export default function DashboardPage() {
                     setFormData({ 
                       ...formData, 
                       isTaken: isChecked,
-                      // Clear date if unchecking
                       sampleDate: isChecked ? formData.sampleDate : ''
                     });
                   }}
-                  className={`h-4 w-4 ${themeColors.primary.text} ${themeColors.primary.focus} border-gray-300 rounded`}
+                  style={{ width: '18px', height: '18px', marginRight: '0.5rem', cursor: 'pointer', accentColor: '#8b5cf6' }}
                 />
-                <label htmlFor="isTaken" className="ml-2 block text-sm text-gray-900">
+                <label htmlFor="isTaken" style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.9)', cursor: 'pointer' }}>
                   Monster is genomen
                 </label>
               </div>
 
               {formError && (
-                <div className="text-red-600 text-sm bg-red-50 p-3 rounded">
+                <div style={{ color: '#fca5a5', fontSize: '0.875rem', background: 'rgba(239, 68, 68, 0.2)', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
                   {formError}
                 </div>
               )}
 
-              <div className="flex gap-2">
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button
                   type="submit"
                   disabled={!!oNumberWarning}
-                  className={`flex-1 ${themeColors.primary.bg} ${themeColors.primary.bgHover} text-white py-2 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed`}
+                  className="glass-button"
+                  style={{ flex: 1 }}
                 >
                   {editingSample ? 'Bijwerken' : 'Toevoegen'}
                 </button>
@@ -975,7 +986,19 @@ export default function DashboardPage() {
                     setShowAddModal(false);
                     resetForm();
                   }}
-                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded hover:bg-gray-400"
+                  style={{
+                    flex: 1,
+                    padding: '0.75rem 1.5rem',
+                    background: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    borderRadius: '12px',
+                    color: 'white',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
                 >
                   Annuleren
                 </button>
