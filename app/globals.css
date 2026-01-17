@@ -1,45 +1,72 @@
 @import "tailwindcss";
 
 :root {
-  --background: #0a0a0a;
+  --background: linear-gradient(135deg, #2d1b4e 0%, #4a1942 50%, #1e3a8a 100%);
   --foreground: #ffffff;
-  --text-secondary: #a0a0a0;
-  --border: #2a2a2a;
-  --accent: #ffffff;
-  /* alias for compatibility with main website CSS naming */
-  --bg-color: var(--background);
-}
-
-[data-theme="light"] {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  --text-secondary: #666666;
-  --border: #e0e0e0;
-  --accent: #0a0a0a;
-  --bg-color: var(--background);
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --border: rgba(255, 255, 255, 0.2);
+  --accent: #8b5cf6;
+  --card-bg: rgba(255, 255, 255, 0.1);
+  --card-border: rgba(255, 255, 255, 0.2);
 }
 
 @theme inline {
-  --color-background: var(--background);
+  --color-background: #2d1b4e;
   --color-foreground: var(--foreground);
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
 body {
-  background: var(--background);
+  background: linear-gradient(135deg, #2d1b4e 0%, #4a1942 50%, #1e3a8a 100%);
+  background-attachment: fixed;
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  transition: background-color 0.3s ease, color 0.3s ease;
   font-size: 16px;
   line-height: 1.6;
 }
 
-/* Inverteer logo in light mode (wit logo wordt zwart) */
-[data-theme="light"] img[src="/header_logo.png"] {
-  filter: invert(1);
-  transition: filter 0.3s ease;
+/* Logo altijd wit */
+img[src="/header_logo.png"] {
+  filter: brightness(0) invert(1);
 }
 
-/* Houd logo wit in dark mode */
-img[src="/header_logo.png"] {
-  transition: filter 0.3s ease;
+/* Glasmorphism card stijl */
+.glass-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Button stijl */
+.glass-button {
+  background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.glass-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+}
+
+.glass-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
