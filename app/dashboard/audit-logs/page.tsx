@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import ThemeToggle from '@/app/components/ThemeToggle';
 
 interface User {
   userId: number;
@@ -93,8 +92,8 @@ export default function AuditLogsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
-        <p style={{ color: 'var(--text-secondary)' }}>Laden...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <p style={{ color: 'var(--foreground)' }}>Laden...</p>
       </div>
     );
   }
@@ -136,12 +135,11 @@ export default function AuditLogsPage() {
         >
           <span className="text-xl" style={{ color: 'var(--background)', lineHeight: 1 }}>→</span>
         </button>
-        <ThemeToggle />
       </div>
 
-      <div className="min-h-screen" style={{ backgroundColor: 'var(--background)', color: 'var(--foreground)' }}>
+      <div className="min-h-screen" style={{ color: 'var(--foreground)' }}>
         {/* Header */}
-        <div style={{ backgroundColor: 'var(--background)', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', background: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(10px)', paddingTop: '1.5rem' }}>
           <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
             <div>
               <img src="/header_logo.png" alt="It's Done Services" className="h-12 mb-2 object-contain" />
@@ -158,14 +156,14 @@ export default function AuditLogsPage() {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
           {/* Filters */}
-          <div className="bg-white p-4 rounded-lg shadow mb-6">
+          <div className="glass-card">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Filter op actie</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Filter op actie</label>
                 <select
                   value={actionFilter}
                   onChange={(e) => setActionFilter(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  className="glass-select w-full"
                 >
                   <option value="">Alle acties</option>
                   <option value="LOGIN">Login</option>
@@ -179,75 +177,165 @@ export default function AuditLogsPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Filter op gebruiker</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Filter op gebruiker</label>
                 <input
                   type="text"
                   placeholder="Zoek op gebruikersnaam..."
                   value={usernameFilter}
                   onChange={(e) => setUsernameFilter(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                  className="glass-input w-full"
                 />
               </div>
             </div>
           </div>
 
+          <style jsx>{`
+            .glass-card {
+              background: rgba(255, 255, 255, 0.1);
+              backdrop-filter: blur(20px);
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              border-radius: 16px;
+              padding: 1rem;
+              margin-bottom: 1.5rem;
+              box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            }
+            .glass-input {
+              padding: 12px 16px;
+              background: rgba(255, 255, 255, 0.1);
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              border-radius: 12px;
+              color: white;
+              font-size: 14px;
+              transition: all 0.3s ease;
+              outline: none;
+            }
+            .glass-input::placeholder {
+              color: rgba(255, 255, 255, 0.5);
+            }
+            .glass-input:focus {
+              background: rgba(255, 255, 255, 0.15);
+              border-color: rgba(255, 255, 255, 0.4);
+            }
+            .glass-select {
+              padding: 12px 16px;
+              background: rgba(255, 255, 255, 0.1);
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              border-radius: 12px;
+              color: white;
+              font-size: 14px;
+              transition: all 0.3s ease;
+              outline: none;
+              cursor: pointer;
+            }
+            .glass-select option {
+              background: #2d1b4e;
+              color: white;
+            }
+            .table-container {
+              background: rgba(255, 255, 255, 0.1);
+              backdrop-filter: blur(20px);
+              border: 1px solid rgba(255, 255, 255, 0.2);
+              border-radius: 16px;
+              overflow: hidden;
+              box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            }
+            .table {
+              width: 100%;
+              border-collapse: separate;
+              border-spacing: 0;
+            }
+            .table thead {
+              background: rgba(255, 255, 255, 0.05);
+            }
+            .table th {
+              padding: 1rem 1.5rem;
+              text-align: left;
+              font-size: 0.75rem;
+              font-weight: 600;
+              color: rgba(255, 255, 255, 0.9);
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
+            }
+            .table td {
+              padding: 1rem 1.5rem;
+              font-size: 0.875rem;
+              color: white;
+              border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            .table tbody tr:hover {
+              background: rgba(255, 255, 255, 0.05);
+            }
+          `}</style>
+
           {/* Logs Table */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="table-container">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="table">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tijdstip
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Gebruiker
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actie
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Details
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      IP Adres
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
+                    <th>Tijdstip</th>
+                    <th>Gebruiker</th>
+                    <th>Actie</th>
+                    <th>Details</th>
+                    <th>IP Adres</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody>
                   {logs.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                      <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'rgba(255, 255, 255, 0.6)' }}>
                         Geen logs gevonden
                       </td>
                     </tr>
                   ) : (
                     logs.map((log) => (
                       <tr key={log.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td style={{ whiteSpace: 'nowrap' }}>
                           {new Date(log.createdAt).toLocaleString('nl-NL')}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        <td style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>
                           {log.username}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${getActionColor(log.action)}`}>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            borderRadius: '0.375rem',
+                            background: log.action.includes('FAILED') ? 'rgba(239, 68, 68, 0.2)' :
+                                       log.action.includes('DELETE') ? 'rgba(249, 115, 22, 0.2)' :
+                                       log.action.includes('CREATE') ? 'rgba(16, 185, 129, 0.2)' :
+                                       log.action.includes('UPDATE') ? 'rgba(59, 130, 246, 0.2)' :
+                                       log.action.includes('LOGIN') ? 'rgba(168, 85, 247, 0.2)' :
+                                       'rgba(107, 114, 128, 0.2)',
+                            color: log.action.includes('FAILED') ? '#fca5a5' :
+                                  log.action.includes('DELETE') ? '#fdba74' :
+                                  log.action.includes('CREATE') ? '#6ee7b7' :
+                                  log.action.includes('UPDATE') ? '#93c5fd' :
+                                  log.action.includes('LOGIN') ? '#c4b5fd' :
+                                  '#d1d5db'
+                          }}>
                             {log.action}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                        <td style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {log.details || '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td style={{ whiteSpace: 'nowrap' }}>
                           {log.ipAddress || '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded ${
-                            log.success ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            borderRadius: '0.375rem',
+                            background: log.success ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                            color: log.success ? '#6ee7b7' : '#fca5a5'
+                          }}>
                             {log.success ? '✓ Success' : '✗ Failed'}
                           </span>
                         </td>
@@ -259,7 +347,7 @@ export default function AuditLogsPage() {
             </div>
           </div>
 
-          <div className="mt-4 text-sm text-gray-500">
+          <div className="mt-4 text-sm" style={{ color: 'rgba(255, 255, 255, 0.6)' }}>
             Toon de laatste {logs.length} logs
           </div>
         </div>
