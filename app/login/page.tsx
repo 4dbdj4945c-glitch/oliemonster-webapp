@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import StorageAccessHandler from '@/app/components/StorageAccessHandler';
+import InstallButton from '@/app/components/InstallButton';
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -275,6 +276,8 @@ export default function LoginPage() {
             >
               {loading ? 'Inloggen...' : 'Login'}
             </button>
+
+            <InstallButton />
           </form>
         </div>
       </div>
