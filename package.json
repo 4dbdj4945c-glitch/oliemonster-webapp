@@ -19,7 +19,7 @@
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.3",
     "iron-session": "^8.0.4",
-    "next": "^16.0.7",
+    "next": "16.0.10",
     "prisma": "^5.22.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"
