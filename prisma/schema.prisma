@@ -57,3 +57,93 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
 }
+
+// ============================================
+// VOORRAADBEHEER
+// ============================================
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String              // Productnaam (bijv. "Oliefilter 10W40")
+  category    String              // Categorie (bijv. "Filters", "Olie", "Vetten")
+  unit        String   @default("stuks")  // Eenheid (stuks, liters, kg)
+  minStock    Int      @default(0)        // Minimale voorraad voor waarschuwing
+  description String?             // Optionele omschrijving
+  isActive    Boolean  @default(true)     // Of product actief is
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stockItems     StockItem[]
+  stockMovements StockMovement[]
+
+  @@index([category])
+  @@index([name])
+}
+
+model StockItem {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  quantity  Int      @default(0)   // Huidige voorraad
+  location  String   @default("Hoofdmagazijn")  // Locatie van voorraad
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, location])  // Één stock item per product per locatie
+  @@index([productId])
+  @@index([location])
+}
+
+model StockMovement {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  type      String              // "IN" of "OUT"
+  quantity  Int                 // Aantal (altijd positief)
+  location  String   @default("Hoofdmagazijn")
+  reason    String?             // Reden/opmerking
+  userId    Int?                // Wie heeft de mutatie gedaan
+  username  String?             // Gebruikersnaam voor referentie
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ============================================
+// CONTACTEN
+// ============================================
+
+model Contact {
+  id        Int      @id @default(autoincrement())
+  company   String              // Bedrijfsnaam
+  name      String?             // Contactpersoon (optioneel)
+  email     String?             // E-mailadres
+  phone     String?             // Telefoonnummer
+  address   String?             // Adres
+  notes     String?             // Algemene notities
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contactNotes ContactNote[]
+
+  @@index([company])
+  @@index([name])
+}
+
+model ContactNote {
+  id        Int      @id @default(autoincrement())
+  contactId Int
+  content   String              // Inhoud van de notitie
+  userId    Int?                // Wie heeft de notitie gemaakt
+  username  String?             // Gebruikersnaam voor referentie
+  createdAt DateTime @default(now())
+
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([createdAt])
+}

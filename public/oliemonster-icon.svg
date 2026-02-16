@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 350">
+  <defs>
+    <style>
+      .oil-drop { fill: #000000; }
+    </style>
+  </defs>
+  
+  <!-- Kleine druppel rechtsboven -->
+  <path class="oil-drop" d="M225,10 L245,50 C245,50 260,75 250,95 C240,115 220,125 200,120 C180,115 170,95 175,75 C180,55 205,10 225,10 Z"/>
+  
+  <!-- Grote druppel -->
+  <path class="oil-drop" d="M75,20 L150,160 C150,160 190,200 190,250 C190,300 155,340 100,340 C45,340 10,300 10,250 C10,200 50,160 50,160 L75,20 Z"/>
+  
+  <!-- Glans grote druppel -->
+  <path d="M30,240 C30,240 35,280 60,300" fill="none" stroke="white" stroke-width="12" stroke-linecap="round" opacity="0.5"/>
+  
+  <!-- Kleine glans -->
+  <circle cx="140" cy="335" r="5" fill="white" opacity="0.7"/>
+</svg>

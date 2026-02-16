@@ -2,10 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getTheme } from '@/lib/theme';
-import PhotoModal from '@/app/components/PhotoModal';
-import HelpModal from '@/app/components/HelpModal';
-import DashboardSettingsModal, { DashboardSettings } from '@/app/components/DashboardSettingsModal';
 import Tooltip from '@/app/components/Tooltip';
 
 interface User {
@@ -15,103 +11,37 @@ interface User {
   isLoggedIn: boolean;
 }
 
-interface OilSample {
-  id: number;
-  oNumber: string;
-  sampleDate: string | null;
-  location: string;
+interface ModuleCard {
+  id: string;
+  title: string;
   description: string;
-  oilType?: string;
-  remarks?: string;
-  isTaken: boolean;
-  isDisabled?: boolean;
-  photoUrl?: string;
+  icon: string;
+  href: string;
+  color: string;
+  stats?: { label: string; value: number }[];
 }
 
 export default function DashboardPage() {
   const [user, setUser] = useState<User | null>(null);
-  const [samples, setSamples] = useState<OilSample[]>([]);
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingSample, setEditingSample] = useState<OilSample | null>(null);
-  const [theme, setTheme] = useState('blue');
-  const [visibleColumns, setVisibleColumns] = useState<string[]>(['status', 'oNumber', 'sampleDate', 'location', 'description', 'oilType']);
-  const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; oNumber: string } | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null);
-  const [sortBy, setSortBy] = useState<'oNumber' | 'sampleDate' | 'location' | 'newest'>('newest');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [showHelpModal, setShowHelpModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({
-    title: 'Overzicht afname oliemonsters i.o.v. Mourik Infra B.V.',
-    subtitle: 'Welkom, {username} ({role})'
+  const [stats, setStats] = useState({
+    oilSamples: 0,
+    oilSamplesTaken: 0,
+    products: 0,
+    lowStock: 0,
+    contacts: 0,
   });
   const router = useRouter();
-  const themeColors = getTheme(theme);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    oNumber: '',
-    sampleDate: '',
-    location: '',
-    description: '',
-    oilType: '',
-    remarks: '',
-    isTaken: false,
-  });
-  const [formError, setFormError] = useState('');
-  const [oNumberWarning, setONumberWarning] = useState('');
 
   useEffect(() => {
     checkAuth();
-    loadSettings();
   }, []);
 
   useEffect(() => {
     if (user) {
-      loadSamples();
+      loadStats();
     }
-  }, [user, search]);
-
-  const loadSettings = async () => {
-    try {
-      const response = await fetch('/api/settings');
-      const data = await response.json();
-
-      if (response.ok) {
-        if (data.theme) setTheme(data.theme);
-        if (data.columns) setVisibleColumns(data.columns);
-        if (data.dashboardTexts) {
-          setDashboardSettings(data.dashboardTexts);
-        }
-      }
-    } catch (error) {
-      console.error('Error loading settings:', error);
-    }
-  };
-
-  const saveDashboardSettings = async (settings: DashboardSettings) => {
-    try {
-      const response = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key: 'dashboardTexts',
-          value: settings
-        })
-      });
-
-      if (response.ok) {
-        setDashboardSettings(settings);
-      } else {
-        throw new Error('Failed to save settings');
-      }
-    } catch (error) {
-      console.error('Error saving dashboard settings:', error);
-      throw error;
-    }
-  };
+  }, [user]);
 
   const checkAuth = async () => {
     try {
@@ -123,7 +53,6 @@ export default function DashboardPage() {
         return;
       }
 
-      // Redirect naar set-password als wachtwoord moet worden ingesteld
       if (data.requiresPasswordChange) {
         router.push('/set-password');
         return;
@@ -132,65 +61,51 @@ export default function DashboardPage() {
       setUser(data);
     } catch (error) {
       router.push('/login');
-    }
-  };
-
-  const loadSamples = async () => {
-    try {
-      const url = search 
-        ? `/api/samples?search=${encodeURIComponent(search)}`
-        : '/api/samples';
-      
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (response.ok) {
-        setSamples(data);
-      }
-    } catch (error) {
-      console.error('Error loading samples:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const getSortedSamples = () => {
-    const sorted = [...samples];
+  const loadStats = async () => {
+    try {
+      // Laad oliemonster stats
+      const samplesRes = await fetch('/api/samples');
+      if (samplesRes.ok) {
+        const samples = await samplesRes.json();
+        setStats(prev => ({
+          ...prev,
+          oilSamples: samples.length,
+          oilSamplesTaken: samples.filter((s: any) => s.isTaken && !s.isDisabled).length,
+        }));
+      }
 
-    if (sortBy === 'newest') {
-      // Sorteer op ID (laatst toegevoegd)
-      return sorted.sort((a, b) => b.id - a.id);
+      // Laad product stats (silently fail als API nog niet bestaat)
+      try {
+        const productsRes = await fetch('/api/products');
+        if (productsRes.ok) {
+          const products = await productsRes.json();
+          setStats(prev => ({
+            ...prev,
+            products: products.length,
+            lowStock: products.filter((p: any) => p.currentStock <= p.minStock).length,
+          }));
+        }
+      } catch {}
+
+      // Laad contact stats (silently fail als API nog niet bestaat)
+      try {
+        const contactsRes = await fetch('/api/contacts');
+        if (contactsRes.ok) {
+          const contacts = await contactsRes.json();
+          setStats(prev => ({
+            ...prev,
+            contacts: contacts.length,
+          }));
+        }
+      } catch {}
+    } catch (error) {
+      console.error('Error loading stats:', error);
     }
-
-    sorted.sort((a, b) => {
-      let compareA: string | number;
-      let compareB: string | number;
-
-      if (sortBy === 'sampleDate') {
-        // Handle null dates - put them at the end
-        if (!a.sampleDate && !b.sampleDate) return 0;
-        if (!a.sampleDate) return 1;
-        if (!b.sampleDate) return -1;
-        compareA = new Date(a.sampleDate).getTime();
-        compareB = new Date(b.sampleDate).getTime();
-      } else if (sortBy === 'oNumber') {
-        compareA = a.oNumber.toLowerCase();
-        compareB = b.oNumber.toLowerCase();
-      } else if (sortBy === 'location') {
-        compareA = a.location.toLowerCase();
-        compareB = b.location.toLowerCase();
-      } else {
-        return 0;
-      }
-
-      if (sortOrder === 'asc') {
-        return compareA < compareB ? -1 : compareA > compareB ? 1 : 0;
-      } else {
-        return compareA > compareB ? -1 : compareA < compareB ? 1 : 0;
-      }
-    });
-
-    return sorted;
   };
 
   const handleLogout = async () => {
@@ -198,138 +113,43 @@ export default function DashboardPage() {
     router.push('/login');
   };
 
-  const resetForm = () => {
-    setFormData({
-      oNumber: '',
-      sampleDate: '',
-      location: '',
-      description: '',
-      oilType: '',
-      remarks: '',
-      isTaken: false,
-    });
-    setFormError('');
-    setONumberWarning('');
-    setEditingSample(null);
-  };
-
-  const checkONumberExists = async (oNumber: string) => {
-    if (!oNumber || oNumber.trim() === '') {
-      setONumberWarning('');
-      return;
-    }
-
-    // Don't check if we're editing and the o-number hasn't changed
-    if (editingSample && editingSample.oNumber === oNumber) {
-      setONumberWarning('');
-      return;
-    }
-
-    // Check if o-number exists in current samples list
-    const exists = samples.some(sample => 
-      sample.oNumber.toLowerCase() === oNumber.toLowerCase() && 
-      (!editingSample || sample.id !== editingSample.id)
-    );
-
-    if (exists) {
-      setONumberWarning('⚠️ Dit o-nummer bestaat al!');
-    } else {
-      setONumberWarning('');
-    }
-  };
-
-  const openAddModal = () => {
-    resetForm();
-    setShowAddModal(true);
-  };
-
-  const openEditModal = (sample: OilSample) => {
-    setFormData({
-      oNumber: sample.oNumber,
-      sampleDate: sample.sampleDate ? sample.sampleDate.split('T')[0] : '',
-      location: sample.location,
-      description: sample.description,
-      oilType: sample.oilType || '',
-      remarks: sample.remarks || '',
-      isTaken: sample.isTaken,
-    });
-    setEditingSample(sample);
-    setShowAddModal(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-
-    try {
-      const url = editingSample 
-        ? `/api/samples/${editingSample.id}`
-        : '/api/samples';
-      
-      const method = editingSample ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setFormError(data.error || 'Er is een fout opgetreden');
-        return;
-      }
-
-      setShowAddModal(false);
-      resetForm();
-      loadSamples();
-    } catch (error) {
-      setFormError('Er is een fout opgetreden');
-    }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('Weet je zeker dat je dit monster wilt verwijderen?')) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/samples/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        loadSamples();
-      }
-    } catch (error) {
-      alert('Fout bij verwijderen van monster');
-    }
-  };
-
-  const handlePhotoUpload = async (sampleId: number, file: File) => {
-    setUploadingPhoto(sampleId);
-    try {
-      const formData = new FormData();
-      formData.append('photo', file);
-
-      const response = await fetch(`/api/samples/${sampleId}/photo`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (response.ok) {
-        loadSamples();
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Fout bij uploaden van foto');
-      }
-    } catch (error) {
-      alert('Fout bij uploaden van foto');
-    } finally {
-      setUploadingPhoto(null);
-    }
-  };
+  const modules: ModuleCard[] = [
+    {
+      id: 'oliemonsters',
+      title: 'Oliemonsters',
+      description: 'Beheer oliemonster analyses en registraties',
+      icon: '🛢️',
+      href: '/dashboard/oliemonsters',
+      color: '#8b5cf6',
+      stats: [
+        { label: 'Totaal', value: stats.oilSamples },
+        { label: 'Genomen', value: stats.oilSamplesTaken },
+      ],
+    },
+    {
+      id: 'voorraad',
+      title: 'Voorraadbeheer',
+      description: 'Beheer voorraad van filters, olie en andere producten',
+      icon: '📦',
+      href: '/dashboard/voorraad',
+      color: '#10b981',
+      stats: [
+        { label: 'Producten', value: stats.products },
+        { label: 'Lage voorraad', value: stats.lowStock },
+      ],
+    },
+    {
+      id: 'contacten',
+      title: 'Contacten',
+      description: 'Klantgegevens en aantekeningen beheren',
+      icon: '👥',
+      href: '/dashboard/contacten',
+      color: '#3b82f6',
+      stats: [
+        { label: 'Contacten', value: stats.contacts },
+      ],
+    },
+  ];
 
   if (loading) {
     return (
@@ -354,685 +174,168 @@ export default function DashboardPage() {
           backdrop-filter: blur(10px);
         }
 
-        .glass-card {
+        .module-card {
           background: rgba(255, 255, 255, 0.1);
           backdrop-filter: blur(20px);
           border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 16px;
-          padding: 1rem;
-          margin-bottom: 1.5rem;
-          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-
-        .glass-input {
-          width: 100%;
-          padding: 12px 16px;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 12px;
-          color: white;
-          font-size: 14px;
-          transition: all 0.3s ease;
-          outline: none;
-        }
-
-        .glass-input::placeholder {
-          color: rgba(255, 255, 255, 0.5);
-        }
-
-        .glass-input:focus {
-          background: rgba(255, 255, 255, 0.15);
-          border-color: rgba(255, 255, 255, 0.4);
-        }
-
-        .glass-select {
-          padding: 12px 16px;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 12px;
-          color: white;
-          font-size: 14px;
-          transition: all 0.3s ease;
-          outline: none;
-          cursor: pointer;
-        }
-
-        .glass-select option {
-          background: #2d1b4e;
-          color: white;
-        }
-
-        .glass-button {
-          background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
-          color: white;
-          border: none;
-          border-radius: 12px;
-          padding: 12px 24px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          white-space: nowrap;
-        }
-
-        .glass-button:hover:not(:disabled) {
-          background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%);
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-        }
-
-        .glass-button:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-        }
-
-        .stat-card {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 16px;
+          border-radius: 20px;
           padding: 1.5rem;
-          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+          cursor: pointer;
+          transition: all 0.3s ease;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .module-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+          border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .module-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: var(--card-accent);
+        }
+
+        .module-icon {
+          font-size: 3rem;
+          margin-bottom: 1rem;
+        }
+
+        .module-title {
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin-bottom: 0.5rem;
+          color: white;
+        }
+
+        .module-description {
+          font-size: 0.9rem;
+          color: rgba(255, 255, 255, 0.7);
+          margin-bottom: 1.5rem;
+        }
+
+        .module-stats {
+          display: flex;
+          gap: 1.5rem;
+          padding-top: 1rem;
+          border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-item {
+          text-align: center;
         }
 
         .stat-value {
-          font-size: 2rem;
-          font-weight: bold;
+          font-size: 1.5rem;
+          font-weight: 700;
           color: white;
         }
 
         .stat-label {
-          font-size: 0.875rem;
-          color: rgba(255, 255, 255, 0.7);
-          margin-bottom: 0.5rem;
-        }
-
-        .table-container {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 16px;
-          overflow: hidden;
-          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-
-        .table {
-          width: 100%;
-          border-collapse: separate;
-          border-spacing: 0;
-        }
-
-        .table thead {
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        .table th {
-          padding: 1rem 1.5rem;
-          text-align: left;
           font-size: 0.75rem;
-          font-weight: 600;
-          color: rgba(255, 255, 255, 0.9);
+          color: rgba(255, 255, 255, 0.6);
           text-transform: uppercase;
           letter-spacing: 0.05em;
-        }
-
-        .table td {
-          padding: 1rem 1.5rem;
-          font-size: 0.875rem;
-          color: white;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .table tbody tr:hover {
-          background: rgba(255, 255, 255, 0.05);
-        }
-
-        .badge {
-          display: inline-flex;
-          padding: 0.5rem 1rem;
-          font-size: 0.75rem;
-          font-weight: 600;
-          border-radius: 9999px;
-        }
-
-        .badge-success {
-          background: rgba(16, 185, 129, 0.2);
-          color: #6ee7b7;
-        }
-
-        .badge-danger {
-          background: rgba(239, 68, 68, 0.2);
-          color: #fca5a5;
-        }
-
-        .badge-gray {
-          background: rgba(107, 114, 128, 0.2);
-          color: #d1d5db;
         }
       `}</style>
 
       <div className="dashboard-container">
         {/* Header */}
         <div className="dashboard-header">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-start gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
+          <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-start gap-4">
+              <div className="flex-1">
                 <img src="/header_logo.png" alt="It's Done Services" className="h-12 mb-2 object-contain" />
-                {user?.role === 'admin' && (
-                  <button
-                    onClick={() => setShowSettingsModal(true)}
-                    className="mb-2 p-1.5 rounded transition-colors"
-                    style={{ color: 'var(--text-secondary)' }}
-                    onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent)'}
-                    onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-                    title="Teksten bewerken"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                      <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
-                    </svg>
-                  </button>
-                )}
+                <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                  Registratie & Beheer Portal
+                </p>
+                <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
+                  Welkom, {user?.username} ({user?.role})
+                </p>
               </div>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                {dashboardSettings.title}
-              </p>
-              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                {dashboardSettings.subtitle
-                  .replace('{username}', user?.username || '')
-                  .replace('{role}', user?.role || '')}
-              </p>
-            </div>
-            {/* Menu controls */}
-            <div className="flex gap-3 flex-shrink-0">
-              {user?.role === 'admin' && (
-                <Tooltip text="Instellingen">
+              {/* Menu controls */}
+              <div className="flex gap-3 flex-shrink-0">
+                {user?.role === 'admin' && (
+                  <Tooltip text="Instellingen">
+                    <button
+                      onClick={() => router.push('/dashboard/admin')}
+                      className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
+                      style={{
+                        backgroundColor: 'var(--accent)',
+                        border: '1px solid var(--accent)',
+                      }}
+                      aria-label="Instellingen"
+                    >
+                      <img 
+                        src="/icon_settings.png" 
+                        alt="Instellingen" 
+                        className="w-5 h-5" 
+                        style={{ 
+                          filter: 'brightness(0) invert(1)'
+                        }}
+                      />
+                    </button>
+                  </Tooltip>
+                )}
+                <Tooltip text="Log uit">
                   <button
-                    onClick={() => router.push('/dashboard/admin')}
+                    onClick={handleLogout}
                     className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
                     style={{
                       backgroundColor: 'var(--accent)',
                       border: '1px solid var(--accent)',
                     }}
-                    aria-label="Instellingen"
+                    aria-label="Uitloggen"
                   >
-                    <img 
-                      src="/icon_settings.png" 
-                      alt="Instellingen" 
-                      className="w-5 h-5" 
-                      style={{ 
-                        filter: 'brightness(0) invert(1)'
-                      }}
-                    />
+                    <span className="text-xl" style={{ color: 'var(--background)', lineHeight: 1 }}>→</span>
                   </button>
                 </Tooltip>
-              )}
-              <Tooltip text="Help">
-                <button
-                  onClick={() => setShowHelpModal(true)}
-                  className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
-                  style={{
-                    backgroundColor: 'var(--accent)',
-                    border: '1px solid var(--accent)',
-                  }}
-                  aria-label="Help"
-                >
-                  <span className="text-xl font-bold" style={{ color: 'var(--background)', lineHeight: 1 }}>?</span>
-                </button>
-              </Tooltip>
-              <Tooltip text="Log uit">
-                <button
-                  onClick={handleLogout}
-                  className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
-                  style={{
-                    backgroundColor: 'var(--accent)',
-                    border: '1px solid var(--accent)',
-                  }}
-                  aria-label="Uitloggen"
-                >
-                  <span className="text-xl" style={{ color: 'var(--background)', lineHeight: 1 }}>→</span>
-                </button>
-              </Tooltip>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        {/* Search & Add */}
-        <div className="glass-card">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <input
-              type="text"
-              placeholder="Zoek op o-nummer, locatie of omschrijving..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="glass-input flex-1"
-            />
-            {user?.role === 'admin' && (
-              <button
-                onClick={openAddModal}
-                className="glass-button"
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          <h1 className="text-2xl font-bold mb-6" style={{ color: 'white' }}>
+            Kies een module
+          </h1>
+
+          {/* Module Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {modules.map((module) => (
+              <div
+                key={module.id}
+                className="module-card"
+                style={{ '--card-accent': module.color } as React.CSSProperties}
+                onClick={() => router.push(module.href)}
               >
-                + Nieuw Monster
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Sort Controls */}
-        <div className="glass-card">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-            <label className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Sorteren op:</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
-              className="glass-select"
-            >
-              <option value="newest">Laatst toegevoegd</option>
-              <option value="oNumber">O-nummer</option>
-              <option value="sampleDate">Datum</option>
-              <option value="location">Locatie</option>
-            </select>
-            
-            {sortBy !== 'newest' && (
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-                className="glass-select"
-              >
-                <option value="asc">Oplopend</option>
-                <option value="desc">Aflopend</option>
-              </select>
-            )}
-          </div>
-        </div>
-
-        {/* Statistics */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-          <div className="stat-card">
-            <p className="stat-label">Totaal monsters</p>
-            <p className="stat-value">{samples.length}</p>
-          </div>
-          <div className="stat-card" style={{ borderLeft: '4px solid #10b981' }}>
-            <p className="stat-label">Genomen</p>
-            <p className="stat-value" style={{ color: '#6ee7b7' }}>
-              {samples.filter(s => s.isTaken && !s.isDisabled).length}
-            </p>
-          </div>
-          <div className="stat-card" style={{ borderLeft: '4px solid #ef4444' }}>
-            <p className="stat-label">Niet genomen</p>
-            <p className="stat-value" style={{ color: '#fca5a5' }}>
-              {samples.filter(s => !s.isTaken && !s.isDisabled).length}
-            </p>
-          </div>
-          <div className="stat-card" style={{ borderLeft: '4px solid #6b7280' }}>
-            <p className="stat-label">Geannuleerd</p>
-            <p className="stat-value" style={{ color: '#d1d5db' }}>
-              {samples.filter(s => s.isDisabled).length}
-            </p>
-          </div>
-        </div>
-
-        {/* Samples Table */}
-        <div className="table-container">
-          <div className="overflow-x-auto">
-            <table className="table">
-              <thead>
-                <tr>
-                  {visibleColumns.includes('status') && (<th>Status</th>)}
-                  {visibleColumns.includes('oNumber') && (<th>O-nummer</th>)}
-                  {visibleColumns.includes('sampleDate') && (<th>Datum</th>)}
-                  {visibleColumns.includes('location') && (<th>Locatie</th>)}
-                  {visibleColumns.includes('description') && (<th>Omschrijving</th>)}
-                  {visibleColumns.includes('oilType') && (<th>Type olie</th>)}
-                  {visibleColumns.includes('remarks') && (<th>Opmerkingen</th>)}
-                  <th>Foto</th>
-                  {user?.role === 'admin' && (<th>Acties</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {samples.length === 0 ? (
-                  <tr>
-                    <td colSpan={user?.role === 'admin' ? 7 : 6} style={{ textAlign: 'center', padding: '2rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-                      Geen monsters gevonden
-                    </td>
-                  </tr>
-                ) : (
-                  getSortedSamples().map((sample) => (
-                    <tr key={sample.id} style={{ opacity: sample.isDisabled ? 0.6 : 1 }}>
-                      {visibleColumns.includes('status') && (
-                        <td style={{ whiteSpace: 'nowrap' }}>
-                          <span
-                            className={`badge ${
-                              sample.isDisabled
-                                ? 'badge-gray'
-                                : sample.isTaken
-                                ? 'badge-success'
-                                : 'badge-danger'
-                            }`}
-                            title={sample.isDisabled ? sample.remarks || 'Monster geannuleerd' : ''}
-                          >
-                            {sample.isDisabled ? '⊘ Geannuleerd' : sample.isTaken ? 'Genomen' : 'Niet genomen'}
-                          </span>
-                        </td>
-                      )}
-                      {visibleColumns.includes('oNumber') && (
-                        <td style={{ 
-                          whiteSpace: 'nowrap', 
-                          fontWeight: 500,
-                          textDecoration: sample.isDisabled ? 'line-through' : 'none',
-                          opacity: sample.isDisabled ? 0.7 : 1 
-                        }}>
-                          {sample.oNumber}
-                        </td>
-                      )}
-                      {visibleColumns.includes('sampleDate') && (
-                        <td style={{ whiteSpace: 'nowrap' }}>
-                          {sample.isTaken && sample.sampleDate ? new Date(sample.sampleDate).toLocaleDateString('nl-NL') : '-'}
-                        </td>
-                      )}
-                      {visibleColumns.includes('location') && (
-                        <td style={{ opacity: sample.isDisabled ? 0.7 : 1 }}>
-                          {sample.location}
-                        </td>
-                      )}
-                      {visibleColumns.includes('description') && (
-                        <td>
-                          {sample.description}
-                        </td>
-                      )}
-                      {visibleColumns.includes('oilType') && (
-                        <td>
-                          {sample.oilType || '-'}
-                        </td>
-                      )}
-                      {visibleColumns.includes('remarks') && (
-                        <td>
-                          {sample.remarks || '-'}
-                        </td>
-                      )}
-                      <td style={{ whiteSpace: 'nowrap' }}>
-                        {sample.photoUrl ? (
-                          <button
-                            onClick={() => setSelectedPhoto({ url: sample.photoUrl!, oNumber: sample.oNumber })}
-                            style={{ 
-                              color: '#8b5cf6',
-                              textDecoration: 'underline',
-                              cursor: 'pointer',
-                              background: 'none',
-                              border: 'none',
-                              transition: 'color 0.3s ease'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#a78bfa'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#8b5cf6'}
-                          >
-                            📷 Bekijk foto
-                          </button>
-                        ) : user?.role === 'admin' ? (
-                          <label style={{ 
-                            cursor: 'pointer',
-                            color: 'rgba(255, 255, 255, 0.6)',
-                            transition: 'color 0.3s ease'
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.9)'}
-                          onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)'}>
-                            {uploadingPhoto === sample.id ? '↻ Uploaden...' : '+ Upload foto'}
-                            <input
-                              type="file"
-                              accept="image/*"
-                              style={{ display: 'none' }}
-                              disabled={uploadingPhoto === sample.id}
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handlePhotoUpload(sample.id, file);
-                              }}
-                            />
-                          </label>
-                        ) : (
-                          <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>Geen foto</span>
-                        )}
-                      </td>
-                      {user?.role === 'admin' && (
-                        <td style={{ whiteSpace: 'nowrap' }}>
-                          <button
-                            onClick={() => openEditModal(sample)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#8b5cf6',
-                              cursor: 'pointer',
-                              marginRight: '1rem',
-                              transition: 'color 0.3s ease'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#a78bfa'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#8b5cf6'}
-                          >
-                            Bewerken
-                          </button>
-                          <button
-                            onClick={() => handleDelete(sample.id)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#fca5a5',
-                              cursor: 'pointer',
-                              transition: 'color 0.3s ease'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#f87171'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#fca5a5'}
-                          >
-                            Verwijderen
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Add/Edit Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 z-50" style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)' }}>
-          <div style={{
-            background: 'rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            borderRadius: '24px',
-            padding: '2rem',
-            maxWidth: '480px',
-            width: '100%',
-            boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
-          }}>
-            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: 'white' }}>
-              {editingSample ? 'Monster bewerken' : 'Nieuw monster toevoegen'}
-            </h2>
-            
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
-                  O-nummer
-                </label>
-                <input
-                  type="text"
-                  value={formData.oNumber}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setFormData({ ...formData, oNumber: value });
-                    checkONumberExists(value);
-                  }}
-                  onBlur={(e) => checkONumberExists(e.target.value)}
-                  className="glass-input"
-                  style={{
-                    borderColor: oNumberWarning ? '#fca5a5' : 'rgba(255, 255, 255, 0.2)'
-                  }}
-                  required
-                />
-                {oNumberWarning && (
-                  <p style={{ color: '#fca5a5', fontSize: '0.875rem', marginTop: '0.25rem', fontWeight: 600 }}>
-                    {oNumberWarning}
-                  </p>
+                <div className="module-icon">{module.icon}</div>
+                <h2 className="module-title">{module.title}</h2>
+                <p className="module-description">{module.description}</p>
+                
+                {module.stats && module.stats.length > 0 && (
+                  <div className="module-stats">
+                    {module.stats.map((stat, index) => (
+                      <div key={index} className="stat-item">
+                        <div className="stat-value" style={{ color: module.color }}>
+                          {stat.value}
+                        </div>
+                        <div className="stat-label">{stat.label}</div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
-                  Datum afname {!formData.isTaken && '(optioneel - alleen voor genomen monsters)'}
-                </label>
-                <input
-                  type="date"
-                  value={formData.sampleDate}
-                  onChange={(e) => setFormData({ ...formData, sampleDate: e.target.value })}
-                  disabled={!formData.isTaken}
-                  className="glass-input"
-                  style={{ opacity: !formData.isTaken ? 0.5 : 1, cursor: !formData.isTaken ? 'not-allowed' : 'text' }}
-                  required={formData.isTaken}
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
-                  Locatie
-                </label>
-                <input
-                  type="text"
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                  className="glass-input"
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
-                  Omschrijving
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="glass-input"
-                  rows={3}
-                  required
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
-                  Type olie (optioneel)
-                </label>
-                <input
-                  type="text"
-                  value={formData.oilType}
-                  onChange={(e) => setFormData({ ...formData, oilType: e.target.value })}
-                  className="glass-input"
-                  placeholder="Bijv. motorolie, hydraulische olie, etc."
-                />
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
-                  Opmerkingen (optioneel)
-                </label>
-                <textarea
-                  value={formData.remarks}
-                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                  className="glass-input"
-                  rows={2}
-                />
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <input
-                  type="checkbox"
-                  id="isTaken"
-                  checked={formData.isTaken}
-                  onChange={(e) => {
-                    const isChecked = e.target.checked;
-                    setFormData({ 
-                      ...formData, 
-                      isTaken: isChecked,
-                      sampleDate: isChecked ? formData.sampleDate : ''
-                    });
-                  }}
-                  style={{ width: '18px', height: '18px', marginRight: '0.5rem', cursor: 'pointer', accentColor: '#8b5cf6' }}
-                />
-                <label htmlFor="isTaken" style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.9)', cursor: 'pointer' }}>
-                  Monster is genomen
-                </label>
-              </div>
-
-              {formError && (
-                <div style={{ color: '#fca5a5', fontSize: '0.875rem', background: 'rgba(239, 68, 68, 0.2)', padding: '0.75rem', borderRadius: '0.5rem', border: '1px solid rgba(239, 68, 68, 0.4)' }}>
-                  {formError}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button
-                  type="submit"
-                  disabled={!!oNumberWarning}
-                  className="glass-button"
-                  style={{ flex: 1 }}
-                >
-                  {editingSample ? 'Bijwerken' : 'Toevoegen'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    resetForm();
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: '0.75rem 1.5rem',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    borderRadius: '12px',
-                    color: 'white',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
-                >
-                  Annuleren
-                </button>
-              </div>
-            </form>
+            ))}
           </div>
         </div>
-      )}
-
-      {/* Photo Modal */}
-      {selectedPhoto && (
-        <PhotoModal
-          photoUrl={selectedPhoto.url}
-          onClose={() => setSelectedPhoto(null)}
-          sampleNumber={selectedPhoto.oNumber}
-        />
-      )}
-
-      {/* Help Modal */}
-      <HelpModal
-        isOpen={showHelpModal}
-        onClose={() => setShowHelpModal(false)}
-        userRole={user?.role || 'user'}
-      />
-
-      {/* Dashboard Settings Modal (alleen voor admins) */}
-      {user?.role === 'admin' && (
-        <DashboardSettingsModal
-          isOpen={showSettingsModal}
-          onClose={() => setShowSettingsModal(false)}
-          onSave={saveDashboardSettings}
-          currentSettings={dashboardSettings}
-        />
-      )}
       </div>
     </>
   );
