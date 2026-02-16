@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { brand, type, articleNumber, category, location, unit, minStock, description } = body;
+    const { brand, type, articleNumber, category, location, unit, minStock, description, initialStock } = body;
 
     if (!brand || !type || !category) {
       return NextResponse.json(
@@ -108,14 +108,32 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Maak automatisch een stock item aan voor het hoofdmagazijn
+    const stockLocation = location || 'Hoofdmagazijn';
+    const stockQuantity = initialStock || 0;
+
+    // Maak automatisch een stock item aan met de beginvoorraad
     await prisma.stockItem.create({
       data: {
         productId: product.id,
-        quantity: 0,
-        location: 'Hoofdmagazijn',
+        quantity: stockQuantity,
+        location: stockLocation,
       },
     });
+
+    // Als er een beginvoorraad is, maak ook een mutatie aan
+    if (stockQuantity > 0) {
+      await prisma.stockMovement.create({
+        data: {
+          productId: product.id,
+          type: 'IN',
+          quantity: stockQuantity,
+          location: stockLocation,
+          reason: 'Beginvoorraad',
+          userId: session.userId,
+          username: session.username,
+        },
+      });
+    }
 
     await createAuditLog({
       userId: session.userId,

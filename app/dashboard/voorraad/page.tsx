@@ -62,6 +62,7 @@ export default function VoorraadPage() {
     location: 'Hoofdmagazijn',
     unit: 'stuks',
     minStock: 0,
+    initialStock: 0,
     description: '',
   });
 
@@ -153,6 +154,7 @@ export default function VoorraadPage() {
       location: 'Hoofdmagazijn',
       unit: 'stuks',
       minStock: 0,
+      initialStock: 0,
       description: '',
     });
     setEditingProduct(null);
@@ -168,6 +170,7 @@ export default function VoorraadPage() {
       location: product.location,
       unit: product.unit,
       minStock: product.minStock,
+      initialStock: product.currentStock,
       description: product.description || '',
     });
     setEditingProduct(product);
@@ -835,6 +838,22 @@ export default function VoorraadPage() {
                     />
                   </div>
                 </div>
+
+                {!editingProduct && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                      Beginvoorraad
+                    </label>
+                    <input
+                      type="number"
+                      value={productForm.initialStock}
+                      onChange={(e) => setProductForm({ ...productForm, initialStock: parseInt(e.target.value) || 0 })}
+                      className="glass-input"
+                      min="0"
+                      placeholder="Huidige voorraad bij aanmaken"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
