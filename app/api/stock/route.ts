@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
       include: {
         product: {
           select: {
-            name: true,
+            brand: true,
+            type: true,
             unit: true,
           },
         },
@@ -137,7 +138,7 @@ export async function POST(request: NextRequest) {
       },
       include: {
         product: {
-          select: { name: true },
+          select: { brand: true, type: true },
         },
       },
     });
@@ -148,7 +149,7 @@ export async function POST(request: NextRequest) {
       action: type === 'IN' ? AuditActions.STOCK_IN : AuditActions.STOCK_OUT,
       details: { 
         productId, 
-        productName: movement.product.name,
+        productName: `${movement.product.brand} ${movement.product.type}`,
         quantity, 
         location, 
         reason,

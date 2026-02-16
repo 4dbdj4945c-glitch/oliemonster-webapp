@@ -84,13 +84,16 @@ export async function PUT(
     const { id } = await params;
     const productId = parseInt(id);
     const body = await request.json();
-    const { name, category, unit, minStock, description, isActive } = body;
+    const { brand, type, articleNumber, category, location, unit, minStock, description, isActive } = body;
 
     const product = await prisma.product.update({
       where: { id: productId },
       data: {
-        name,
+        brand,
+        type,
+        articleNumber,
         category,
+        location,
         unit,
         minStock,
         description,
@@ -102,7 +105,7 @@ export async function PUT(
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.UPDATE_PRODUCT,
-      details: { productId, name },
+      details: { productId, brand, type },
       request,
     });
 

@@ -63,21 +63,25 @@ model AuditLog {
 // ============================================
 
 model Product {
-  id          Int      @id @default(autoincrement())
-  name        String              // Productnaam (bijv. "Oliefilter 10W40")
-  category    String              // Categorie (bijv. "Filters", "Olie", "Vetten")
-  unit        String   @default("stuks")  // Eenheid (stuks, liters, kg)
-  minStock    Int      @default(0)        // Minimale voorraad voor waarschuwing
-  description String?             // Optionele omschrijving
-  isActive    Boolean  @default(true)     // Of product actief is
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            Int      @id @default(autoincrement())
+  brand         String              // Merk (bijv. "Shell", "Mann Filter")
+  type          String              // Type (bijv. "Helix Ultra", "HU 716/2 x")
+  articleNumber String?             // Artikelnummer (optioneel)
+  category      String              // Categorie (bijv. "Filters", "Olie", "Vetten")
+  location      String   @default("Hoofdmagazijn")  // Locatie waar product ligt
+  unit          String   @default("stuks")  // Eenheid (stuks, liters, kg)
+  minStock      Int      @default(0)        // Minimale voorraad voor waarschuwing
+  description   String?             // Optionele omschrijving
+  isActive      Boolean  @default(true)     // Of product actief is
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   stockItems     StockItem[]
   stockMovements StockMovement[]
 
   @@index([category])
-  @@index([name])
+  @@index([brand])
+  @@index([articleNumber])
 }
 
 model StockItem {

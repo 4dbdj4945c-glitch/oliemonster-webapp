@@ -13,8 +13,11 @@ interface User {
 
 interface Product {
   id: number;
-  name: string;
+  brand: string;
+  type: string;
+  articleNumber: string | null;
   category: string;
+  location: string;
   unit: string;
   minStock: number;
   description: string | null;
@@ -31,7 +34,7 @@ interface StockMovement {
   reason: string | null;
   username: string | null;
   createdAt: string;
-  product: { name: string; unit: string };
+  product: { brand: string; type: string; unit: string };
 }
 
 const CATEGORIES = ['Filters', 'Olie', 'Vetten', 'Overig'];
@@ -52,8 +55,11 @@ export default function VoorraadPage() {
 
   // Product form state
   const [productForm, setProductForm] = useState({
-    name: '',
+    brand: '',
+    type: '',
+    articleNumber: '',
     category: 'Filters',
+    location: 'Hoofdmagazijn',
     unit: 'stuks',
     minStock: 0,
     description: '',
@@ -140,8 +146,11 @@ export default function VoorraadPage() {
 
   const resetProductForm = () => {
     setProductForm({
-      name: '',
+      brand: '',
+      type: '',
+      articleNumber: '',
       category: 'Filters',
+      location: 'Hoofdmagazijn',
       unit: 'stuks',
       minStock: 0,
       description: '',
@@ -152,8 +161,11 @@ export default function VoorraadPage() {
 
   const openEditProductModal = (product: Product) => {
     setProductForm({
-      name: product.name,
+      brand: product.brand,
+      type: product.type,
+      articleNumber: product.articleNumber || '',
       category: product.category,
+      location: product.location,
       unit: product.unit,
       minStock: product.minStock,
       description: product.description || '',
@@ -516,7 +528,7 @@ export default function VoorraadPage() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <input
                     type="text"
-                    placeholder="Zoek op productnaam..."
+                    placeholder="Zoek op merk, type of artikelnummer..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="glass-input flex-1"
@@ -548,10 +560,12 @@ export default function VoorraadPage() {
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>Product</th>
+                        <th>Merk</th>
+                        <th>Type</th>
+                        <th>Art.nr</th>
                         <th>Categorie</th>
+                        <th>Locatie</th>
                         <th>Voorraad</th>
-                        <th>Min. voorraad</th>
                         <th>Status</th>
                         <th>Acties</th>
                       </tr>
@@ -559,16 +573,17 @@ export default function VoorraadPage() {
                     <tbody>
                       {products.length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'rgba(255, 255, 255, 0.6)' }}>
                             Geen producten gevonden
                           </td>
                         </tr>
                       ) : (
                         products.map((product) => (
                           <tr key={product.id}>
+                            <td style={{ fontWeight: 500 }}>{product.brand}</td>
                             <td>
                               <div>
-                                <div style={{ fontWeight: 500 }}>{product.name}</div>
+                                <div>{product.type}</div>
                                 {product.description && (
                                   <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)' }}>
                                     {product.description}
@@ -576,7 +591,9 @@ export default function VoorraadPage() {
                                 )}
                               </div>
                             </td>
+                            <td style={{ color: 'rgba(255, 255, 255, 0.7)' }}>{product.articleNumber || '-'}</td>
                             <td>{product.category}</td>
+                            <td style={{ color: 'rgba(255, 255, 255, 0.7)' }}>{product.location}</td>
                             <td>
                               <span style={{ fontWeight: 600, color: product.isLowStock ? '#fcd34d' : '#6ee7b7' }}>
                                 {product.currentStock}
@@ -585,7 +602,6 @@ export default function VoorraadPage() {
                                 {product.unit}
                               </span>
                             </td>
-                            <td>{product.minStock} {product.unit}</td>
                             <td>
                               <span className={`badge ${product.isLowStock ? 'badge-warning' : 'badge-success'}`}>
                                 {product.isLowStock ? '⚠️ Laag' : '✓ OK'}
@@ -675,7 +691,7 @@ export default function VoorraadPage() {
                               minute: '2-digit',
                             })}
                           </td>
-                          <td>{movement.product.name}</td>
+                          <td>{movement.product.brand} {movement.product.type}</td>
                           <td>
                             <span className={`badge ${movement.type === 'IN' ? 'badge-in' : 'badge-out'}`}>
                               {movement.type === 'IN' ? '↓ Inkomend' : '↑ Uitgaand'}
@@ -718,23 +734,52 @@ export default function VoorraadPage() {
               </h2>
               
               <form onSubmit={handleProductSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                      Merk *
+                    </label>
+                    <input
+                      type="text"
+                      value={productForm.brand}
+                      onChange={(e) => setProductForm({ ...productForm, brand: e.target.value })}
+                      className="glass-input"
+                      placeholder="Bijv. Shell, Mann Filter"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                      Type *
+                    </label>
+                    <input
+                      type="text"
+                      value={productForm.type}
+                      onChange={(e) => setProductForm({ ...productForm, type: e.target.value })}
+                      className="glass-input"
+                      placeholder="Bijv. Helix Ultra 5W-40"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
-                    Productnaam
+                    Artikelnummer
                   </label>
                   <input
                     type="text"
-                    value={productForm.name}
-                    onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                    value={productForm.articleNumber}
+                    onChange={(e) => setProductForm({ ...productForm, articleNumber: e.target.value })}
                     className="glass-input"
-                    required
+                    placeholder="Optioneel"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
-                      Categorie
+                      Categorie *
                     </label>
                     <select
                       value={productForm.category}
@@ -747,6 +792,21 @@ export default function VoorraadPage() {
                       ))}
                     </select>
                   </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                      Locatie
+                    </label>
+                    <input
+                      type="text"
+                      value={productForm.location}
+                      onChange={(e) => setProductForm({ ...productForm, location: e.target.value })}
+                      className="glass-input"
+                      placeholder="Bijv. Schap A1, Magazijn"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
                       Eenheid
@@ -762,19 +822,18 @@ export default function VoorraadPage() {
                       <option value="dozen">Dozen</option>
                     </select>
                   </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
-                    Minimale voorraad (voor waarschuwing)
-                  </label>
-                  <input
-                    type="number"
-                    value={productForm.minStock}
-                    onChange={(e) => setProductForm({ ...productForm, minStock: parseInt(e.target.value) || 0 })}
-                    className="glass-input"
-                    min="0"
-                  />
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                      Min. voorraad
+                    </label>
+                    <input
+                      type="number"
+                      value={productForm.minStock}
+                      onChange={(e) => setProductForm({ ...productForm, minStock: parseInt(e.target.value) || 0 })}
+                      className="glass-input"
+                      min="0"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -837,7 +896,7 @@ export default function VoorraadPage() {
                 Voorraadmutatie
               </h2>
               <p style={{ color: 'rgba(255, 255, 255, 0.7)', marginBottom: '1.5rem' }}>
-                {selectedProduct.name} (huidige voorraad: {selectedProduct.currentStock} {selectedProduct.unit})
+                {selectedProduct.brand} {selectedProduct.type} (huidige voorraad: {selectedProduct.currentStock} {selectedProduct.unit})
               </p>
               
               <form onSubmit={handleStockSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>

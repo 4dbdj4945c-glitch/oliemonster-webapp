@@ -26,7 +26,9 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
+        { brand: { contains: search, mode: 'insensitive' } },
+        { type: { contains: search, mode: 'insensitive' } },
+        { articleNumber: { contains: search, mode: 'insensitive' } },
         { description: { contains: search, mode: 'insensitive' } },
       ];
     }
@@ -84,19 +86,22 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, category, unit, minStock, description } = body;
+    const { brand, type, articleNumber, category, location, unit, minStock, description } = body;
 
-    if (!name || !category) {
+    if (!brand || !type || !category) {
       return NextResponse.json(
-        { error: 'Naam en categorie zijn verplicht' },
+        { error: 'Merk, type en categorie zijn verplicht' },
         { status: 400 }
       );
     }
 
     const product = await prisma.product.create({
       data: {
-        name,
+        brand,
+        type,
+        articleNumber: articleNumber || null,
         category,
+        location: location || 'Hoofdmagazijn',
         unit: unit || 'stuks',
         minStock: minStock || 0,
         description: description || null,
@@ -116,7 +121,7 @@ export async function POST(request: NextRequest) {
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.CREATE_PRODUCT || 'CREATE_PRODUCT',
-      details: { name, category },
+      details: { brand, type, articleNumber, category },
       request,
     });
 
