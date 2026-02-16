@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       include: {
         stockItems: true,
       },
-      orderBy: { name: 'asc' },
+      orderBy: { brand: 'asc' },
     });
 
     // Bereken totale voorraad per product

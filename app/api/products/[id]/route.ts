@@ -155,7 +155,7 @@ export async function DELETE(
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.DELETE_PRODUCT,
-      details: { productId, name: product.name },
+      details: { productId, product: `${product.brand} ${product.type}` },
       request,
     });
 
