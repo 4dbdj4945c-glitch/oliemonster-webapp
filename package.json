@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx prisma/seed.ts",
+    "migrate-attempts": "tsx prisma/migrate-to-attempts.ts",
     "postinstall": "prisma generate"
   },
   "prisma": {

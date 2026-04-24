@@ -139,7 +139,7 @@ export default function DashboardPage() {
 
   const loadSamples = async () => {
     try {
-      const params = new URLSearchParams({ year: '2025' });
+      const params = new URLSearchParams({ year: '2026' });
       if (search) params.set('search', search);
       const response = await fetch(`/api/samples?${params.toString()}`);
       const data = await response.json();
@@ -271,7 +271,7 @@ export default function DashboardPage() {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, analysisYear: 2025 }),
+        body: JSON.stringify({ ...formData, analysisYear: 2026 }),
       });
 
       const data = await response.json();

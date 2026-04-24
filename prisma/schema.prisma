@@ -20,18 +20,43 @@ model User {
 }
 
 model OilSample {
-  id          Int      @id @default(autoincrement())
-  oNumber     String   @unique  // o-nummer
-  sampleDate  DateTime?         // datum afname monsters (optioneel - alleen voor genomen monsters)
-  location    String            // locatie
-  description String            // omschrijving
-  oilType     String?           // type olie (optioneel)
-  remarks     String?           // opmerkingen (optioneel)
-  isTaken     Boolean           // of monster genomen is (true = groen, false = rood)
-  isDisabled  Boolean  @default(false)  // monster is geannuleerd/niet nodig (grijze status)
-  photoUrl    String?           // optionele foto URL als bewijsvoering
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           Int      @id @default(autoincrement())
+  oNumber      String   @unique  // o-nummer
+  analysisYear Int      @default(2025)  // analyse-jaar (2025, 2026, ...)
+  sampleDate   DateTime?         // cache: datum van de meest recente poging (SampleAttempt)
+  location     String            // locatie
+  description  String            // omschrijving
+  oilType      String?           // type olie (optioneel)
+  remarks      String?           // cache: opmerking van de meest recente poging
+  isTaken      Boolean           // of er een geldig genomen monster is (true = groen, false = rood)
+  isDisabled   Boolean  @default(false)  // monster is geannuleerd/niet nodig (grijze status)
+  photoUrl     String?           // cache: foto van de meest recente poging
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  attempts     SampleAttempt[]
+
+  @@index([analysisYear])
+}
+
+// Per OilSample kunnen er meerdere monsternames (pogingen) zijn.
+// Elke poging heeft eigen datum, foto en opmerking.
+// De "meest recente" poging wordt als cache gespiegeld naar OilSample
+// zodat bestaande lees-code gewoon blijft werken.
+model SampleAttempt {
+  id           Int       @id @default(autoincrement())
+  oilSampleId  Int
+  sampleDate   DateTime?            // datum afname; null = gepland maar nog niet genomen
+  photoUrl     String?              // foto bewijsvoering voor deze poging
+  remarks      String?              // opmerkingen specifiek voor deze poging
+  isTaken      Boolean   @default(false)  // of deze poging daadwerkelijk is afgenomen
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  oilSample    OilSample @relation(fields: [oilSampleId], references: [id], onDelete: Cascade)
+
+  @@index([oilSampleId])
+  @@index([sampleDate])
 }
 
 model Settings {
