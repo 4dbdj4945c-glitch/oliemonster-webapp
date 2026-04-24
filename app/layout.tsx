@@ -15,10 +15,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "It's Done Services - Registratie & Beheer Portal",
-  description: "Registratie & beheer portal voor It's Done Services - Oliemonsters, Voorraadbeheer, Contacten",
+  description: "Registratie & beheer portal voor It's Done Services - Oliemonsters, Voorraadbeheer",
   applicationName: "IDS Portal",
   authors: [{ name: "It's Done Services" }],
-  keywords: ['registratie', 'beheer', 'voorraadbeheer', 'oliemonster', 'contacten', 'its done services'],
+  keywords: ['registratie', 'beheer', 'voorraadbeheer', 'oliemonster', 'its done services'],
   manifest: '/manifest.json',
   icons: {
     icon: [

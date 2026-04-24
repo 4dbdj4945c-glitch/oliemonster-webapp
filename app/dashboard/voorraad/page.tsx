@@ -279,93 +279,125 @@ export default function VoorraadPage() {
         .dashboard-container {
           min-height: 100vh;
           color: var(--foreground);
+          background: #f5f5f7;
         }
 
         .dashboard-header {
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-          padding-top: 1.5rem;
-          background: rgba(255, 255, 255, 0.05);
-          backdrop-filter: blur(10px);
+          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+          background: rgba(255, 255, 255, 0.85);
+          backdrop-filter: blur(12px);
+          position: sticky;
+          top: 0;
+          z-index: 40;
+        }
+        .nav-btn {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 10px;
+          background: rgba(0, 0, 0, 0.05);
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          border-radius: 6px;
+          color: #1d1d1f;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .nav-btn:hover {
+          background: rgba(0, 0, 0, 0.09);
+        }
+        .nav-btn-danger {
+          background: rgba(255, 59, 48, 0.08);
+          border-color: rgba(255, 59, 48, 0.2);
+          color: #d93025;
+        }
+        .nav-btn-danger:hover {
+          background: rgba(255, 59, 48, 0.14);
         }
 
         .glass-card {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 16px;
+          background: #ffffff;
+          border: 1px solid rgba(0, 0, 0, 0.08);
+          border-radius: 12px;
           padding: 1rem;
           margin-bottom: 1.5rem;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         }
 
         .glass-input {
           width: 100%;
-          padding: 12px 16px;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 12px;
-          color: white;
+          padding: 10px 14px;
+          background: #f5f5f7;
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          border-radius: 8px;
+          color: #1d1d1f;
           font-size: 14px;
           outline: none;
         }
 
         .glass-input:focus {
-          border-color: rgba(255, 255, 255, 0.4);
+          border-color: #007AFF;
+          background: #ffffff;
+          box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
         }
 
         .glass-select {
-          padding: 12px 16px;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 12px;
-          color: white;
+          padding: 10px 14px;
+          background: #f5f5f7;
+          border: 1px solid rgba(0, 0, 0, 0.12);
+          border-radius: 8px;
+          color: #1d1d1f;
           font-size: 14px;
           outline: none;
           cursor: pointer;
         }
 
         .glass-select option {
-          background: #2d1b4e;
-          color: white;
+          background: #ffffff;
+          color: #1d1d1f;
         }
 
         .glass-button {
-          background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+          background: #007AFF;
           color: white;
           border: none;
-          border-radius: 12px;
-          padding: 12px 24px;
+          border-radius: 8px;
+          padding: 10px 20px;
           font-weight: 600;
+          font-size: 14px;
           cursor: pointer;
-          transition: all 0.3s ease;
+          transition: all 0.15s ease;
         }
 
         .glass-button:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+          background: #0071E3;
+          box-shadow: 0 2px 12px rgba(0, 122, 255, 0.3);
         }
 
         .tab-button {
-          padding: 12px 24px;
+          padding: 10px 20px;
           background: transparent;
           border: none;
-          color: rgba(255, 255, 255, 0.6);
+          color: #6e6e73;
           font-weight: 600;
+          font-size: 14px;
           cursor: pointer;
           border-bottom: 2px solid transparent;
-          transition: all 0.3s ease;
+          transition: all 0.2s ease;
         }
 
         .tab-button.active {
-          color: white;
-          border-bottom-color: #10b981;
+          color: #007AFF;
+          border-bottom-color: #007AFF;
         }
 
         .table-container {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 16px;
+          background: #ffffff;
+          border: 1px solid rgba(0, 0, 0, 0.08);
+          border-radius: 12px;
           overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         }
 
         .table {
@@ -374,114 +406,94 @@ export default function VoorraadPage() {
         }
 
         .table th {
-          padding: 1rem;
+          padding: 12px 16px;
           text-align: left;
           font-size: 0.75rem;
           font-weight: 600;
-          color: rgba(255, 255, 255, 0.9);
+          color: #6e6e73;
           text-transform: uppercase;
-          background: rgba(255, 255, 255, 0.05);
+          letter-spacing: 0.04em;
+          background: #f5f5f7;
+          border-bottom: 1px solid rgba(0, 0, 0, 0.08);
         }
 
         .table td {
-          padding: 1rem;
+          padding: 12px 16px;
           font-size: 0.875rem;
-          color: white;
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
+          color: #1d1d1f;
+          border-top: 1px solid rgba(0, 0, 0, 0.06);
         }
 
         .table tbody tr:hover {
-          background: rgba(255, 255, 255, 0.05);
+          background: #f5f5f7;
         }
 
         .badge {
           display: inline-flex;
-          padding: 0.25rem 0.75rem;
+          padding: 0.2rem 0.65rem;
           font-size: 0.75rem;
           font-weight: 600;
           border-radius: 9999px;
         }
 
         .badge-warning {
-          background: rgba(245, 158, 11, 0.2);
-          color: #fcd34d;
+          background: rgba(245, 158, 11, 0.15);
+          color: #b45309;
         }
 
         .badge-success {
-          background: rgba(16, 185, 129, 0.2);
-          color: #6ee7b7;
+          background: rgba(16, 185, 129, 0.12);
+          color: #047857;
         }
 
         .badge-in {
-          background: rgba(16, 185, 129, 0.2);
-          color: #6ee7b7;
+          background: rgba(16, 185, 129, 0.12);
+          color: #047857;
         }
 
         .badge-out {
-          background: rgba(239, 68, 68, 0.2);
-          color: #fca5a5;
+          background: rgba(239, 68, 68, 0.12);
+          color: #b91c1c;
         }
 
         .stat-card {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 16px;
-          padding: 1.5rem;
+          background: #ffffff;
+          border: 1px solid rgba(0, 0, 0, 0.08);
+          border-radius: 12px;
+          padding: 1.25rem 1.5rem;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         }
 
         .stat-value {
           font-size: 2rem;
           font-weight: bold;
-          color: white;
+          color: #1d1d1f;
         }
 
         .stat-label {
           font-size: 0.875rem;
-          color: rgba(255, 255, 255, 0.7);
+          color: #6e6e73;
         }
       `}</style>
 
       <div className="dashboard-container">
         {/* Header */}
         <div className="dashboard-header">
-          <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-start gap-4">
-              <div className="flex-1">
-                <img src="/header_logo.png" alt="It's Done Services" className="h-12 mb-2 object-contain" />
-                <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                  📦 Voorraadbeheer
-                </p>
-                <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-                  Welkom, {user?.username} ({user?.role})
-                </p>
-              </div>
-              <div className="flex gap-3 flex-shrink-0">
-                <Tooltip text="Terug naar overzicht">
-                  <button
-                    onClick={() => router.push('/dashboard')}
-                    className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
-                    style={{
-                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                    }}
-                  >
-                    <span className="text-xl" style={{ color: 'var(--foreground)', lineHeight: 1 }}>←</span>
-                  </button>
-                </Tooltip>
-                <Tooltip text="Log uit">
-                  <button
-                    onClick={handleLogout}
-                    className="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95"
-                    style={{
-                      backgroundColor: '#10b981',
-                      border: '1px solid #10b981',
-                    }}
-                  >
-                    <span className="text-xl" style={{ color: 'white', lineHeight: 1 }}>→</span>
-                  </button>
-                </Tooltip>
-              </div>
+          <div className="max-w-7xl mx-auto px-6" style={{ height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <img src="/header_logo.png" alt="It's Done Services" style={{ height: '22px', objectFit: 'contain' }} />
+              <span style={{ width: '1px', height: '16px', background: 'rgba(0,0,0,0.12)', display: 'inline-block' }} />
+              <span style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 500 }}>Voorraadbeheer</span>
+            </div>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <button onClick={() => router.push('/dashboard')} className="nav-btn" aria-label="Terug">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+                Terug
+              </button>
+              <button onClick={handleLogout} className="nav-btn nav-btn-danger" aria-label="Uitloggen">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                Uitloggen
+              </button>
             </div>
           </div>
         </div>
@@ -496,20 +508,20 @@ export default function VoorraadPage() {
             </div>
             <div className="stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
               <p className="stat-label">Lage voorraad</p>
-              <p className="stat-value" style={{ color: '#fcd34d' }}>
+              <p className="stat-value" style={{ color: '#d97706' }}>
                 {products.filter(p => p.isLowStock).length}
               </p>
             </div>
             <div className="stat-card" style={{ borderLeft: '4px solid #10b981' }}>
               <p className="stat-label">Recente mutaties</p>
-              <p className="stat-value" style={{ color: '#6ee7b7' }}>
+              <p className="stat-value" style={{ color: '#047857' }}>
                 {movements.length}
               </p>
             </div>
           </div>
 
           {/* Tabs */}
-          <div className="mb-6" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+          <div className="mb-6" style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
             <button
               className={`tab-button ${activeTab === 'products' ? 'active' : ''}`}
               onClick={() => setActiveTab('products')}
@@ -576,7 +588,7 @@ export default function VoorraadPage() {
                     <tbody>
                       {products.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#6e6e73' }}>
                             Geen producten gevonden
                           </td>
                         </tr>
@@ -588,20 +600,20 @@ export default function VoorraadPage() {
                               <div>
                                 <div>{product.type}</div>
                                 {product.description && (
-                                  <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                                  <div style={{ fontSize: '0.75rem', color: '#6e6e73' }}>
                                     {product.description}
                                   </div>
                                 )}
                               </div>
                             </td>
-                            <td style={{ color: 'rgba(255, 255, 255, 0.7)' }}>{product.articleNumber || '-'}</td>
+                            <td style={{ color: '#6e6e73' }}>{product.articleNumber || '-'}</td>
                             <td>{product.category}</td>
-                            <td style={{ color: 'rgba(255, 255, 255, 0.7)' }}>{product.location}</td>
+                            <td style={{ color: '#6e6e73' }}>{product.location}</td>
                             <td>
-                              <span style={{ fontWeight: 600, color: product.isLowStock ? '#fcd34d' : '#6ee7b7' }}>
+                              <span style={{ fontWeight: 600, color: product.isLowStock ? '#d97706' : '#047857' }}>
                                 {product.currentStock}
                               </span>
-                              <span style={{ color: 'rgba(255, 255, 255, 0.6)', marginLeft: '4px' }}>
+                              <span style={{ color: '#6e6e73', marginLeft: '4px' }}>
                                 {product.unit}
                               </span>
                             </td>
@@ -616,7 +628,7 @@ export default function VoorraadPage() {
                                 style={{
                                   background: 'none',
                                   border: 'none',
-                                  color: '#10b981',
+                                  color: '#007AFF',
                                   cursor: 'pointer',
                                   marginRight: '1rem',
                                 }}
@@ -630,7 +642,7 @@ export default function VoorraadPage() {
                                     style={{
                                       background: 'none',
                                       border: 'none',
-                                      color: '#8b5cf6',
+                                      color: '#1d1d1f',
                                       cursor: 'pointer',
                                       marginRight: '1rem',
                                     }}
@@ -642,7 +654,7 @@ export default function VoorraadPage() {
                                     style={{
                                       background: 'none',
                                       border: 'none',
-                                      color: '#fca5a5',
+                                      color: '#b91c1c',
                                       cursor: 'pointer',
                                     }}
                                   >
@@ -678,7 +690,7 @@ export default function VoorraadPage() {
                   <tbody>
                     {movements.length === 0 ? (
                       <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: '#6e6e73' }}>
                           Geen mutaties gevonden
                         </td>
                       </tr>
@@ -704,7 +716,7 @@ export default function VoorraadPage() {
                             <span style={{ fontWeight: 600 }}>
                               {movement.type === 'IN' ? '+' : '-'}{movement.quantity}
                             </span>
-                            <span style={{ color: 'rgba(255, 255, 255, 0.6)', marginLeft: '4px' }}>
+                            <span style={{ color: '#6e6e73', marginLeft: '4px' }}>
                               {movement.product.unit}
                             </span>
                           </td>
@@ -724,22 +736,22 @@ export default function VoorraadPage() {
         {showProductModal && (
           <div className="fixed inset-0 flex items-center justify-center p-4 z-50" style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)' }}>
             <div style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '24px',
+              background: '#ffffff',
+              border: '1px solid rgba(0, 0, 0, 0.1)',
+              borderRadius: '16px',
               padding: '2rem',
               maxWidth: '480px',
               width: '100%',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
             }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: 'white' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1d1d1f' }}>
                 {editingProduct ? 'Product bewerken' : 'Nieuw product'}
               </h2>
               
               <form onSubmit={handleProductSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
                       Merk *
                     </label>
                     <input
@@ -752,7 +764,7 @@ export default function VoorraadPage() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
                       Type *
                     </label>
                     <input
@@ -767,7 +779,7 @@ export default function VoorraadPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
                     Artikelnummer
                   </label>
                   <input
@@ -781,7 +793,7 @@ export default function VoorraadPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
                       Categorie *
                     </label>
                     <select
@@ -796,7 +808,7 @@ export default function VoorraadPage() {
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
                       Locatie
                     </label>
                     <input
@@ -811,7 +823,7 @@ export default function VoorraadPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
                       Eenheid
                     </label>
                     <select
@@ -826,7 +838,7 @@ export default function VoorraadPage() {
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
                       Min. voorraad
                     </label>
                     <input
@@ -841,7 +853,7 @@ export default function VoorraadPage() {
 
                 {!editingProduct && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
                       Beginvoorraad
                     </label>
                     <input
@@ -856,7 +868,7 @@ export default function VoorraadPage() {
                 )}
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
                     Omschrijving (optioneel)
                   </label>
                   <textarea
@@ -868,7 +880,7 @@ export default function VoorraadPage() {
                 </div>
 
                 {formError && (
-                  <div style={{ color: '#fca5a5', fontSize: '0.875rem', background: 'rgba(239, 68, 68, 0.2)', padding: '0.75rem', borderRadius: '0.5rem' }}>
+                  <div style={{ color: '#b91c1c', fontSize: '0.875rem', background: 'rgba(239, 68, 68, 0.08)', padding: '0.75rem', borderRadius: '0.5rem' }}>
                     {formError}
                   </div>
                 )}
@@ -883,10 +895,10 @@ export default function VoorraadPage() {
                     style={{
                       flex: 1,
                       padding: '0.75rem 1.5rem',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                      borderRadius: '12px',
-                      color: 'white',
+                      background: '#f5f5f7',
+                      border: '1px solid rgba(0,0,0,0.1)',
+                      borderRadius: '8px',
+                      color: '#1d1d1f',
                       fontWeight: 600,
                       cursor: 'pointer',
                     }}
@@ -903,24 +915,24 @@ export default function VoorraadPage() {
         {showStockModal && selectedProduct && (
           <div className="fixed inset-0 flex items-center justify-center p-4 z-50" style={{ background: 'rgba(0, 0, 0, 0.7)', backdropFilter: 'blur(4px)' }}>
             <div style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              backdropFilter: 'blur(20px)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '24px',
+              background: '#ffffff',
+              border: '1px solid rgba(0,0,0,0.1)',
+              borderRadius: '16px',
               padding: '2rem',
               maxWidth: '400px',
               width: '100%',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
             }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem', color: 'white' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', color: '#1d1d1f' }}>
                 Voorraadmutatie
               </h2>
-              <p style={{ color: 'rgba(255, 255, 255, 0.7)', marginBottom: '1.5rem' }}>
+              <p style={{ color: '#6e6e73', marginBottom: '1.5rem' }}>
                 {selectedProduct.brand} {selectedProduct.type} (huidige voorraad: {selectedProduct.currentStock} {selectedProduct.unit})
               </p>
               
               <form onSubmit={handleStockSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
                     Type mutatie
                   </label>
                   <div style={{ display: 'flex', gap: '1rem' }}>
@@ -932,7 +944,7 @@ export default function VoorraadPage() {
                         onChange={() => setStockForm({ ...stockForm, type: 'IN' })}
                         style={{ accentColor: '#10b981' }}
                       />
-                      <span style={{ color: '#6ee7b7' }}>↓ Inkomend</span>
+                      <span style={{ color: '#047857' }}>↓ Inkomend</span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                       <input
@@ -942,13 +954,13 @@ export default function VoorraadPage() {
                         onChange={() => setStockForm({ ...stockForm, type: 'OUT' })}
                         style={{ accentColor: '#ef4444' }}
                       />
-                      <span style={{ color: '#fca5a5' }}>↑ Uitgaand</span>
+                      <span style={{ color: '#b91c1c' }}>↑ Uitgaand</span>
                     </label>
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
                     Aantal ({selectedProduct.unit})
                   </label>
                   <input
@@ -962,7 +974,7 @@ export default function VoorraadPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: 'rgba(255, 255, 255, 0.9)', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
                     Reden/opmerking (optioneel)
                   </label>
                   <input
@@ -975,7 +987,7 @@ export default function VoorraadPage() {
                 </div>
 
                 {formError && (
-                  <div style={{ color: '#fca5a5', fontSize: '0.875rem', background: 'rgba(239, 68, 68, 0.2)', padding: '0.75rem', borderRadius: '0.5rem' }}>
+                  <div style={{ color: '#b91c1c', fontSize: '0.875rem', background: 'rgba(239, 68, 68, 0.08)', padding: '0.75rem', borderRadius: '0.5rem' }}>
                     {formError}
                   </div>
                 )}
@@ -990,10 +1002,10 @@ export default function VoorraadPage() {
                     style={{
                       flex: 1,
                       padding: '0.75rem 1.5rem',
-                      background: 'rgba(255, 255, 255, 0.1)',
-                      border: '1px solid rgba(255, 255, 255, 0.2)',
-                      borderRadius: '12px',
-                      color: 'white',
+                      background: '#f5f5f7',
+                      border: '1px solid rgba(0,0,0,0.1)',
+                      borderRadius: '8px',
+                      color: '#1d1d1f',
                       fontWeight: 600,
                       cursor: 'pointer',
                     }}

@@ -169,7 +169,7 @@ export default function InstallButton() {
           width: 100%;
           margin-top: 1.5rem;
           padding: 12px 24px;
-          background: linear-gradient(135deg, #5b21b6 0%, #7c3aed 100%);
+          background: linear-gradient(135deg, #c2410c 0%, #f97316 100%);
           border: none;
           border-radius: 12px;
           color: white;
@@ -179,9 +179,9 @@ export default function InstallButton() {
         }
 
         .close-button:hover {
-          background: linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%);
+          background: linear-gradient(135deg, #f97316 0%, #fbbf24 100%);
           transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
+          box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
         }
       `}</style>
 

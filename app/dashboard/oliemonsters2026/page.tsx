@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getTheme } from '@/lib/theme';
 import PhotoModal from '@/app/components/PhotoModal';
 import HelpModal from '@/app/components/HelpModal';
-import DashboardSettingsModal, { DashboardSettings } from '@/app/components/DashboardSettingsModal';
 import Tooltip from '@/app/components/Tooltip';
 import SampleAttemptsPanel from '@/app/components/SampleAttemptsPanel';
 
@@ -37,20 +35,13 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingSample, setEditingSample] = useState<OilSample | null>(null);
-  const [theme, setTheme] = useState('blue');
   const [visibleColumns, setVisibleColumns] = useState<string[]>(['status', 'oNumber', 'sampleDate', 'location', 'description', 'oilType']);
   const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; oNumber: string } | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'oNumber' | 'sampleDate' | 'location' | 'newest'>('newest');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [dashboardSettings, setDashboardSettings] = useState<DashboardSettings>({
-    title: 'Overzicht afname oliemonsters i.o.v. Mourik Infra B.V.',
-    subtitle: 'Welkom, {username} ({role})'
-  });
   const router = useRouter();
-  const themeColors = getTheme(theme);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -82,36 +73,10 @@ export default function DashboardPage() {
       const data = await response.json();
 
       if (response.ok) {
-        if (data.theme) setTheme(data.theme);
         if (data.columns) setVisibleColumns(data.columns);
-        if (data.dashboardTexts) {
-          setDashboardSettings(data.dashboardTexts);
-        }
       }
     } catch (error) {
       console.error('Error loading settings:', error);
-    }
-  };
-
-  const saveDashboardSettings = async (settings: DashboardSettings) => {
-    try {
-      const response = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          key: 'dashboardTexts',
-          value: settings
-        })
-      });
-
-      if (response.ok) {
-        setDashboardSettings(settings);
-      } else {
-        throw new Error('Failed to save settings');
-      }
-    } catch (error) {
-      console.error('Error saving dashboard settings:', error);
-      throw error;
     }
   };
 
@@ -573,21 +538,15 @@ export default function DashboardPage() {
         <div className="dashboard-header">
           <div className="max-w-7xl mx-auto px-6" style={{ height: '52px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <img src="/header_logo.png" alt="It's Done Services" style={{ height: '22px', objectFit: 'contain' }} />
+              <img src="/header_logo.png" alt="It's Done Services" style={{ height: '22px', objectFit: 'contain', filter: 'invert(1)' }} />
               <span style={{ width: '1px', height: '16px', background: 'rgba(0,0,0,0.12)', display: 'inline-block' }} />
-              <span style={{ color: '#6e6e73', fontSize: '13px', fontWeight: 500 }}>{dashboardSettings.title}</span>
+              <span style={{ color: '#6e6e73', fontSize: '13px', fontWeight: 500 }}>Oliemonsters 2026</span>
             </div>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
               <button onClick={() => router.push('/dashboard')} className="nav-btn" aria-label="Terug">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
                 Terug
               </button>
-              {user?.role === 'admin' && (
-                <button onClick={() => setShowSettingsModal(true)} className="nav-btn" aria-label="Tekst bewerken">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  Tekst
-                </button>
-              )}
               {user?.role === 'admin' && (
                 <button onClick={() => router.push('/dashboard/admin')} className="nav-btn" aria-label="Instellingen">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -1094,15 +1053,6 @@ export default function DashboardPage() {
         userRole={user?.role || 'user'}
       />
 
-      {/* Dashboard Settings Modal (alleen voor admins) */}
-      {user?.role === 'admin' && (
-        <DashboardSettingsModal
-          isOpen={showSettingsModal}
-          onClose={() => setShowSettingsModal(false)}
-          onSave={saveDashboardSettings}
-          currentSettings={dashboardSettings}
-        />
-      )}
       </div>
     </>
   );
