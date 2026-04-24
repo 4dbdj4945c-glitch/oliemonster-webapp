@@ -279,33 +279,38 @@ export default function VoorraadPage() {
         .dashboard-container {
           min-height: 100vh;
           color: var(--foreground);
-          background: #f5f5f7;
         }
 
         .dashboard-header {
-          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-          background: rgba(255, 255, 255, 0.85);
-          backdrop-filter: blur(12px);
+          background: rgba(255, 255, 255, 0.72);
+          backdrop-filter: saturate(180%) blur(28px);
+          -webkit-backdrop-filter: saturate(180%) blur(28px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+          box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
           position: sticky;
           top: 0;
           z-index: 40;
         }
+
         .nav-btn {
-          display: flex;
+          display: inline-flex;
           align-items: center;
           gap: 5px;
-          padding: 5px 10px;
-          background: rgba(0, 0, 0, 0.05);
-          border: 1px solid rgba(0, 0, 0, 0.1);
-          border-radius: 6px;
+          padding: 5px 11px;
+          background: rgba(255, 255, 255, 0.5);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.6);
+          border-radius: 7px;
           color: #1d1d1f;
           font-size: 13px;
           font-weight: 500;
           cursor: pointer;
           transition: background 0.15s;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
         }
         .nav-btn:hover {
-          background: rgba(0, 0, 0, 0.09);
+          background: rgba(255, 255, 255, 0.8);
         }
         .nav-btn-danger {
           background: rgba(255, 59, 48, 0.08);
@@ -317,35 +322,45 @@ export default function VoorraadPage() {
         }
 
         .glass-card {
-          background: #ffffff;
-          border: 1px solid rgba(0, 0, 0, 0.08);
-          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.65);
+          backdrop-filter: saturate(180%) blur(24px);
+          -webkit-backdrop-filter: saturate(180%) blur(24px);
+          border: 1px solid rgba(255, 255, 255, 0.55);
+          border-radius: 16px;
           padding: 1rem;
           margin-bottom: 1.5rem;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          box-shadow:
+            0 10px 30px rgba(15, 23, 42, 0.08),
+            0 2px 6px rgba(15, 23, 42, 0.04),
+            inset 0 1px 0 rgba(255, 255, 255, 0.7);
         }
 
         .glass-input {
           width: 100%;
           padding: 10px 14px;
-          background: #f5f5f7;
-          border: 1px solid rgba(0, 0, 0, 0.12);
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(0, 0, 0, 0.08);
           border-radius: 8px;
           color: #1d1d1f;
           font-size: 14px;
           outline: none;
+          transition: border-color 0.15s, background 0.15s;
         }
 
         .glass-input:focus {
           border-color: #007AFF;
-          background: #ffffff;
+          background: rgba(255, 255, 255, 0.95);
           box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
         }
 
         .glass-select {
           padding: 10px 14px;
-          background: #f5f5f7;
-          border: 1px solid rgba(0, 0, 0, 0.12);
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(0, 0, 0, 0.08);
           border-radius: 8px;
           color: #1d1d1f;
           font-size: 14px;
@@ -372,7 +387,7 @@ export default function VoorraadPage() {
 
         .glass-button:hover:not(:disabled) {
           background: #0071E3;
-          box-shadow: 0 2px 12px rgba(0, 122, 255, 0.3);
+          box-shadow: 0 4px 16px rgba(0, 122, 255, 0.35);
         }
 
         .tab-button {
@@ -393,11 +408,16 @@ export default function VoorraadPage() {
         }
 
         .table-container {
-          background: #ffffff;
-          border: 1px solid rgba(0, 0, 0, 0.08);
-          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.65);
+          backdrop-filter: saturate(180%) blur(24px);
+          -webkit-backdrop-filter: saturate(180%) blur(24px);
+          border: 1px solid rgba(255, 255, 255, 0.55);
+          border-radius: 16px;
           overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          box-shadow:
+            0 10px 30px rgba(15, 23, 42, 0.08),
+            0 2px 6px rgba(15, 23, 42, 0.04),
+            inset 0 1px 0 rgba(255, 255, 255, 0.7);
         }
 
         .table {
@@ -413,7 +433,7 @@ export default function VoorraadPage() {
           color: #6e6e73;
           text-transform: uppercase;
           letter-spacing: 0.04em;
-          background: #f5f5f7;
+          background: rgba(255, 255, 255, 0.5);
           border-bottom: 1px solid rgba(0, 0, 0, 0.08);
         }
 
@@ -425,7 +445,7 @@ export default function VoorraadPage() {
         }
 
         .table tbody tr:hover {
-          background: #f5f5f7;
+          background: rgba(255, 255, 255, 0.4);
         }
 
         .badge {
@@ -457,11 +477,16 @@ export default function VoorraadPage() {
         }
 
         .stat-card {
-          background: #ffffff;
-          border: 1px solid rgba(0, 0, 0, 0.08);
-          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.65);
+          backdrop-filter: saturate(180%) blur(24px);
+          -webkit-backdrop-filter: saturate(180%) blur(24px);
+          border: 1px solid rgba(255, 255, 255, 0.55);
+          border-radius: 16px;
           padding: 1.25rem 1.5rem;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          box-shadow:
+            0 10px 30px rgba(15, 23, 42, 0.08),
+            0 2px 6px rgba(15, 23, 42, 0.04),
+            inset 0 1px 0 rgba(255, 255, 255, 0.7);
         }
 
         .stat-value {

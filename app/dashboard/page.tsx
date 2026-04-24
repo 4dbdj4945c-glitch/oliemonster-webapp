@@ -100,112 +100,14 @@ export default function DashboardPage() {
       <style jsx>{`
         .page {
           min-height: 100vh;
-          background: #f5f5f7;
         }
 
-        /* macOS toolbar */
-        .toolbar {
-          background: rgba(255, 255, 255, 0.85);
-          backdrop-filter: saturate(180%) blur(20px);
-          -webkit-backdrop-filter: saturate(180%) blur(20px);
-          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-          position: sticky;
-          top: 0;
-          z-index: 40;
-        }
-
-        .toolbar-inner {
-          max-width: 1100px;
-          margin: 0 auto;
-          padding: 0 24px;
-          height: 52px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .toolbar-left {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .toolbar-divider {
-          width: 1px;
-          height: 16px;
-          background: rgba(0, 0, 0, 0.12);
-        }
-
-        .toolbar-title {
-          font-size: 13px;
-          font-weight: 500;
-          color: #6e6e73;
-        }
-
-        .toolbar-right {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-
-        .nav-btn {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          padding: 5px 11px;
-          background: rgba(0, 0, 0, 0.05);
-          border: 1px solid rgba(0, 0, 0, 0.1);
-          border-radius: 7px;
-          color: #1d1d1f;
-          font-size: 13px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: background 0.12s;
-        }
-        .nav-btn:hover {
-          background: rgba(0, 0, 0, 0.09);
-        }
-        .nav-btn-danger {
-          color: #FF3B30;
-          background: rgba(255, 59, 48, 0.06);
-          border-color: rgba(255, 59, 48, 0.15);
-        }
-        .nav-btn-danger:hover {
-          background: rgba(255, 59, 48, 0.12);
-        }
-
-        /* Main content */
         .content {
           max-width: 1100px;
           margin: 0 auto;
           padding: 40px 24px;
         }
 
-        .page-title {
-          font-size: 28px;
-          font-weight: 700;
-          color: #1d1d1f;
-          margin: 0 0 8px 0;
-          letter-spacing: -0.3px;
-        }
-
-        .page-subtitle {
-          font-size: 15px;
-          color: #6e6e73;
-          margin: 0 0 32px 0;
-        }
-
-        /* Section header */
-        .section-label {
-          font-size: 12px;
-          font-weight: 600;
-          color: #6e6e73;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          margin-bottom: 12px;
-        }
-
-        /* Module cards */
         .cards-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -214,19 +116,29 @@ export default function DashboardPage() {
         }
 
         .module-card {
-          background: #ffffff;
-          border: 1px solid rgba(0, 0, 0, 0.08);
-          border-radius: 16px;
+          background: rgba(255, 255, 255, 0.65);
+          backdrop-filter: saturate(180%) blur(24px);
+          -webkit-backdrop-filter: saturate(180%) blur(24px);
+          border: 1px solid rgba(255, 255, 255, 0.55);
+          border-radius: 18px;
           padding: 24px;
           cursor: pointer;
-          transition: box-shadow 0.2s, transform 0.2s;
+          transition: box-shadow 0.2s, transform 0.2s, background 0.2s;
           position: relative;
           overflow: hidden;
+          box-shadow:
+            0 10px 30px rgba(15, 23, 42, 0.08),
+            0 2px 6px rgba(15, 23, 42, 0.04),
+            inset 0 1px 0 rgba(255, 255, 255, 0.7);
         }
 
         .module-card:hover {
-          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
-          transform: translateY(-2px);
+          background: rgba(255, 255, 255, 0.8);
+          box-shadow:
+            0 16px 40px rgba(15, 23, 42, 0.12),
+            0 4px 10px rgba(15, 23, 42, 0.06),
+            inset 0 1px 0 rgba(255, 255, 255, 0.8);
+          transform: translateY(-3px);
         }
 
         .card-accent {
@@ -236,7 +148,7 @@ export default function DashboardPage() {
           right: 0;
           height: 3px;
           background: var(--accent-color);
-          border-radius: 16px 16px 0 0;
+          border-radius: 18px 18px 0 0;
         }
 
         .card-icon {
@@ -266,8 +178,6 @@ export default function DashboardPage() {
           border-top: 1px solid rgba(0, 0, 0, 0.06);
         }
 
-        .stat-item {}
-
         .stat-value {
           font-size: 22px;
           font-weight: 700;
@@ -282,15 +192,6 @@ export default function DashboardPage() {
           text-transform: uppercase;
           letter-spacing: 0.04em;
           font-weight: 500;
-        }
-
-        .user-badge {
-          font-size: 13px;
-          color: #6e6e73;
-          padding: 4px 10px;
-          background: rgba(0,0,0,0.04);
-          border-radius: 20px;
-          border: 1px solid rgba(0,0,0,0.08);
         }
       `}</style>
 

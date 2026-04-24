@@ -331,15 +331,15 @@ export default function DashboardPage() {
       <style jsx>{`
         .dashboard-container {
           min-height: 100vh;
-          background: #f5f5f7;
           color: #1d1d1f;
         }
 
         .dashboard-header {
-          background: rgba(255, 255, 255, 0.85);
-          backdrop-filter: saturate(180%) blur(20px);
-          -webkit-backdrop-filter: saturate(180%) blur(20px);
-          border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+          background: rgba(255, 255, 255, 0.72);
+          backdrop-filter: saturate(180%) blur(28px);
+          -webkit-backdrop-filter: saturate(180%) blur(28px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+          box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
           position: sticky;
           top: 0;
           z-index: 40;
@@ -349,47 +349,59 @@ export default function DashboardPage() {
           align-items: center;
           gap: 5px;
           padding: 5px 11px;
-          background: rgba(0, 0, 0, 0.05);
-          border: 1px solid rgba(0, 0, 0, 0.1);
+          background: rgba(255, 255, 255, 0.5);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.6);
           border-radius: 7px;
           color: #1d1d1f;
           font-size: 13px;
           font-weight: 500;
           cursor: pointer;
-          transition: background 0.12s;
+          transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.7);
         }
         .nav-btn:hover {
-          background: rgba(0, 0, 0, 0.09);
+          background: rgba(255, 255, 255, 0.75);
+          box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
         }
         .nav-btn-danger {
           color: #FF3B30;
-          background: rgba(255, 59, 48, 0.06);
-          border-color: rgba(255, 59, 48, 0.15);
+          background: rgba(255, 59, 48, 0.08);
+          border-color: rgba(255, 59, 48, 0.25);
         }
         .nav-btn-danger:hover {
-          background: rgba(255, 59, 48, 0.12);
+          background: rgba(255, 59, 48, 0.16);
         }
 
         .glass-card {
-          background: #ffffff;
-          border: 1px solid rgba(0, 0, 0, 0.08);
-          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.65);
+          backdrop-filter: saturate(180%) blur(24px);
+          -webkit-backdrop-filter: saturate(180%) blur(24px);
+          border: 1px solid rgba(255, 255, 255, 0.55);
+          border-radius: 14px;
           padding: 1rem;
           margin-bottom: 1rem;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          box-shadow:
+            0 10px 30px rgba(15, 23, 42, 0.08),
+            0 2px 6px rgba(15, 23, 42, 0.04),
+            inset 0 1px 0 rgba(255, 255, 255, 0.7);
         }
 
         .glass-input {
           width: 100%;
           padding: 10px 14px;
-          background: #f5f5f7;
-          border: 1px solid rgba(0, 0, 0, 0.15);
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.6);
           border-radius: 8px;
           color: #1d1d1f;
           font-size: 14px;
-          transition: border-color 0.15s, box-shadow 0.15s;
+          transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
           outline: none;
           font-family: inherit;
+          box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
         }
 
         .glass-input::placeholder {
@@ -398,25 +410,28 @@ export default function DashboardPage() {
 
         .glass-input:focus {
           border-color: #007AFF;
-          box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
-          background: #ffffff;
+          box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15), inset 0 1px 2px rgba(15, 23, 42, 0.04);
+          background: rgba(255, 255, 255, 0.95);
         }
 
         .glass-select {
           padding: 10px 14px;
-          background: #f5f5f7;
-          border: 1px solid rgba(0, 0, 0, 0.15);
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(10px);
+          -webkit-backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.6);
           border-radius: 8px;
           color: #1d1d1f;
           font-size: 14px;
           outline: none;
           cursor: pointer;
           font-family: inherit;
+          box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
         }
 
         .glass-select:focus {
           border-color: #007AFF;
-          box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+          box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15), inset 0 1px 2px rgba(15, 23, 42, 0.04);
         }
 
         .glass-select option {
@@ -433,13 +448,15 @@ export default function DashboardPage() {
           font-weight: 600;
           font-size: 14px;
           cursor: pointer;
-          transition: background 0.15s;
+          transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
           white-space: nowrap;
           font-family: inherit;
+          box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
         }
 
         .glass-button:hover:not(:disabled) {
           background: #0071E3;
+          box-shadow: 0 4px 16px rgba(0, 122, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
         .glass-button:disabled {
@@ -448,11 +465,16 @@ export default function DashboardPage() {
         }
 
         .stat-card {
-          background: #ffffff;
-          border: 1px solid rgba(0, 0, 0, 0.08);
-          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.65);
+          backdrop-filter: saturate(180%) blur(24px);
+          -webkit-backdrop-filter: saturate(180%) blur(24px);
+          border: 1px solid rgba(255, 255, 255, 0.55);
+          border-radius: 14px;
           padding: 1.25rem 1.5rem;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          box-shadow:
+            0 10px 30px rgba(15, 23, 42, 0.08),
+            0 2px 6px rgba(15, 23, 42, 0.04),
+            inset 0 1px 0 rgba(255, 255, 255, 0.7);
         }
 
         .stat-value {
@@ -471,11 +493,16 @@ export default function DashboardPage() {
         }
 
         .table-container {
-          background: #ffffff;
-          border: 1px solid rgba(0, 0, 0, 0.08);
-          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.65);
+          backdrop-filter: saturate(180%) blur(24px);
+          -webkit-backdrop-filter: saturate(180%) blur(24px);
+          border: 1px solid rgba(255, 255, 255, 0.55);
+          border-radius: 14px;
           overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+          box-shadow:
+            0 10px 30px rgba(15, 23, 42, 0.08),
+            0 2px 6px rgba(15, 23, 42, 0.04),
+            inset 0 1px 0 rgba(255, 255, 255, 0.7);
         }
 
         .table {
@@ -485,7 +512,9 @@ export default function DashboardPage() {
         }
 
         .table thead {
-          background: #f5f5f7;
+          background: rgba(255, 255, 255, 0.5);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
         }
 
         .table th {
@@ -506,7 +535,7 @@ export default function DashboardPage() {
         }
 
         .table tbody tr:hover {
-          background: #f9f9fb;
+          background: rgba(255, 255, 255, 0.4);
         }
 
         .badge {
