@@ -51,6 +51,8 @@ export default function VoorraadPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [activeTab, setActiveTab] = useState<'products' | 'movements'>('products');
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [newLocationInput, setNewLocationInput] = useState('');
   const router = useRouter();
 
   // Product form state
@@ -84,8 +86,24 @@ export default function VoorraadPage() {
     if (user) {
       loadProducts();
       loadMovements();
+      // Restore previously selected location
+      try {
+        const saved = localStorage.getItem('voorraadLocation');
+        if (saved) setSelectedLocation(saved);
+      } catch {}
     }
-  }, [user, search, categoryFilter]);
+  }, [user]);
+
+  // Persist location selection
+  useEffect(() => {
+    try {
+      if (selectedLocation === null) {
+        localStorage.removeItem('voorraadLocation');
+      } else {
+        localStorage.setItem('voorraadLocation', selectedLocation);
+      }
+    } catch {}
+  }, [selectedLocation]);
 
   const checkAuth = async () => {
     try {
@@ -112,13 +130,8 @@ export default function VoorraadPage() {
 
   const loadProducts = async () => {
     try {
-      let url = '/api/products';
-      const params = new URLSearchParams();
-      if (search) params.append('search', search);
-      if (categoryFilter) params.append('category', categoryFilter);
-      if (params.toString()) url += '?' + params.toString();
-
-      const response = await fetch(url);
+      // Always load full list — search/category/location are filtered client-side
+      const response = await fetch('/api/products');
       if (response.ok) {
         const data = await response.json();
         setProducts(data);
@@ -126,6 +139,39 @@ export default function VoorraadPage() {
     } catch (error) {
       console.error('Error loading products:', error);
     }
+  };
+
+  // Discover unique locations from the loaded products
+  const getLocations = (): string[] => {
+    const set = new Set<string>();
+    products.forEach((p) => set.add(p.location || 'Hoofdmagazijn'));
+    if (set.size === 0) set.add('Hoofdmagazijn');
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'nl'));
+  };
+
+  // Stats per location for the picker view
+  const getLocationStats = (loc: string) => {
+    const inLoc = products.filter((p) => (p.location || 'Hoofdmagazijn') === loc);
+    const lowStock = inLoc.filter((p) => p.isLowStock).length;
+    return { count: inLoc.length, lowStock };
+  };
+
+  // Filter products by selected location + search + category
+  const getVisibleProducts = (): Product[] => {
+    return products.filter((p) => {
+      if (selectedLocation && (p.location || 'Hoofdmagazijn') !== selectedLocation) return false;
+      if (categoryFilter && p.category !== categoryFilter) return false;
+      if (search) {
+        const q = search.toLowerCase();
+        const hit =
+          p.brand.toLowerCase().includes(q) ||
+          p.type.toLowerCase().includes(q) ||
+          (p.articleNumber || '').toLowerCase().includes(q) ||
+          (p.description || '').toLowerCase().includes(q);
+        if (!hit) return false;
+      }
+      return true;
+    });
   };
 
   const loadMovements = async () => {
@@ -151,7 +197,7 @@ export default function VoorraadPage() {
       type: '',
       articleNumber: '',
       category: 'Filters',
-      location: 'Hoofdmagazijn',
+      location: selectedLocation || 'Hoofdmagazijn',
       unit: 'stuks',
       minStock: 0,
       initialStock: 0,
@@ -499,6 +545,77 @@ export default function VoorraadPage() {
           font-size: 0.875rem;
           color: #6e6e73;
         }
+
+        .location-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+          gap: 16px;
+          margin-bottom: 1.5rem;
+        }
+
+        .location-card {
+          appearance: none;
+          background: rgba(255, 255, 255, 0.65);
+          backdrop-filter: saturate(180%) blur(24px);
+          -webkit-backdrop-filter: saturate(180%) blur(24px);
+          border: 1px solid rgba(255, 255, 255, 0.55);
+          border-radius: 16px;
+          padding: 24px 20px;
+          cursor: pointer;
+          text-align: left;
+          color: #1d1d1f;
+          font-family: inherit;
+          transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+          box-shadow:
+            0 10px 30px rgba(15, 23, 42, 0.08),
+            0 2px 6px rgba(15, 23, 42, 0.04),
+            inset 0 1px 0 rgba(255, 255, 255, 0.7);
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .location-card:hover {
+          transform: translateY(-3px);
+          background: rgba(255, 255, 255, 0.8);
+          box-shadow:
+            0 16px 40px rgba(15, 23, 42, 0.12),
+            0 4px 10px rgba(15, 23, 42, 0.06),
+            inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+
+        .location-card-all {
+          background: rgba(0, 122, 255, 0.08);
+          border-color: rgba(0, 122, 255, 0.2);
+        }
+
+        .location-card-all:hover {
+          background: rgba(0, 122, 255, 0.14);
+        }
+
+        .location-icon {
+          font-size: 1.75rem;
+          line-height: 1;
+        }
+
+        .location-name {
+          font-size: 1.05rem;
+          font-weight: 700;
+          color: #1d1d1f;
+        }
+
+        .location-stats {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          font-size: 0.85rem;
+          color: #6e6e73;
+        }
+
+        .location-stats strong {
+          color: #1d1d1f;
+          font-weight: 700;
+        }
       `}</style>
 
       <div className="dashboard-container">
@@ -508,9 +625,22 @@ export default function VoorraadPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <img src="/header_logo.png" alt="It's Done Services" style={{ height: '22px', objectFit: 'contain' }} />
               <span style={{ width: '1px', height: '16px', background: 'rgba(0,0,0,0.12)', display: 'inline-block' }} />
-              <span style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 500 }}>Voorraadbeheer</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '13px', fontWeight: 500 }}>
+                Voorraadbeheer{selectedLocation ? ` · ${selectedLocation}` : ''}
+              </span>
             </div>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              {selectedLocation && (
+                <button
+                  onClick={() => { setSelectedLocation(null); setSearch(''); setCategoryFilter(''); }}
+                  className="nav-btn"
+                  aria-label="Wissel locatie"
+                  title="Kies een andere locatie"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 4 21 12 13 12"/></svg>
+                  Wissel locatie
+                </button>
+              )}
               <button onClick={() => router.push('/dashboard')} className="nav-btn" aria-label="Terug">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
                 Terug
@@ -525,16 +655,105 @@ export default function VoorraadPage() {
 
         {/* Main Content */}
         <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          {!selectedLocation ? (
+            <>
+              {/* Location Picker */}
+              <div className="glass-card" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1d1d1f', margin: '0 0 0.5rem 0' }}>
+                  Kies een locatie
+                </h1>
+                <p style={{ fontSize: '0.95rem', color: '#6e6e73', margin: 0 }}>
+                  Selecteer eerst een locatie om de voorraad voor die locatie te bekijken.
+                </p>
+              </div>
+
+              <div className="location-grid">
+                {getLocations().map((loc) => {
+                  const stats = getLocationStats(loc);
+                  return (
+                    <button
+                      key={loc}
+                      type="button"
+                      onClick={() => setSelectedLocation(loc)}
+                      className="location-card"
+                    >
+                      <div className="location-icon">📍</div>
+                      <div className="location-name">{loc}</div>
+                      <div className="location-stats">
+                        <span><strong>{stats.count}</strong> producten</span>
+                        <span style={{ color: stats.lowStock > 0 ? '#d97706' : '#047857' }}>
+                          {stats.lowStock > 0 ? `⚠️ ${stats.lowStock} laag` : '✓ voorraad OK'}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+
+                {/* Alle locaties */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedLocation('__all__')}
+                  className="location-card location-card-all"
+                >
+                  <div className="location-icon">🗂️</div>
+                  <div className="location-name">Alle locaties</div>
+                  <div className="location-stats">
+                    <span><strong>{products.length}</strong> producten totaal</span>
+                  </div>
+                </button>
+              </div>
+
+              {user?.role === 'admin' && (
+                <div className="glass-card" style={{ marginTop: '1.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1d1d1f' }}>
+                      Nieuwe locatie aanmaken
+                    </label>
+                    <p style={{ fontSize: '0.8rem', color: '#6e6e73', margin: 0 }}>
+                      Een locatie wordt vanzelf zichtbaar zodra het eerste product erop wordt geboekt. Vul hier een naam in om direct te starten met die locatie.
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                      <input
+                        type="text"
+                        value={newLocationInput}
+                        onChange={(e) => setNewLocationInput(e.target.value)}
+                        className="glass-input"
+                        placeholder="Bijv. 'Werkplaats', 'Bus 1', 'Buitenmagazijn'"
+                        style={{ flex: 1 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const name = newLocationInput.trim();
+                          if (!name) return;
+                          setSelectedLocation(name);
+                          setNewLocationInput('');
+                        }}
+                        className="glass-button"
+                        disabled={!newLocationInput.trim()}
+                      >
+                        Start met locatie
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+          <>
           {/* Stats */}
+          {(() => {
+            const visible = getVisibleProducts();
+            return (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="stat-card">
-              <p className="stat-label">Totaal producten</p>
-              <p className="stat-value">{products.length}</p>
+              <p className="stat-label">Producten {selectedLocation !== '__all__' ? `op ${selectedLocation}` : '(alle locaties)'}</p>
+              <p className="stat-value">{visible.length}</p>
             </div>
             <div className="stat-card" style={{ borderLeft: '4px solid #f59e0b' }}>
               <p className="stat-label">Lage voorraad</p>
               <p className="stat-value" style={{ color: '#d97706' }}>
-                {products.filter(p => p.isLowStock).length}
+                {visible.filter(p => p.isLowStock).length}
               </p>
             </div>
             <div className="stat-card" style={{ borderLeft: '4px solid #10b981' }}>
@@ -544,6 +763,8 @@ export default function VoorraadPage() {
               </p>
             </div>
           </div>
+            );
+          })()}
 
           {/* Tabs */}
           <div className="mb-6" style={{ borderBottom: '1px solid rgba(0, 0, 0, 0.08)' }}>
@@ -611,14 +832,14 @@ export default function VoorraadPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {products.length === 0 ? (
+                      {getVisibleProducts().length === 0 ? (
                         <tr>
                           <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#6e6e73' }}>
-                            Geen producten gevonden
+                            Geen producten gevonden{selectedLocation && selectedLocation !== '__all__' ? ` op locatie "${selectedLocation}"` : ''}
                           </td>
                         </tr>
                       ) : (
-                        products.map((product) => (
+                        getVisibleProducts().map((product) => (
                           <tr key={product.id}>
                             <td style={{ fontWeight: 500 }}>{product.brand}</td>
                             <td>
@@ -754,6 +975,8 @@ export default function VoorraadPage() {
                 </table>
               </div>
             </div>
+          )}
+          </>
           )}
         </div>
 

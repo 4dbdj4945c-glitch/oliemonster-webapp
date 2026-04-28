@@ -40,6 +40,7 @@ export default function DashboardPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<'oNumber' | 'sampleDate' | 'location' | 'newest'>('newest');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'taken' | 'notTaken' | 'cancelled'>('all');
   const [showHelpModal, setShowHelpModal] = useState(false);
   const router = useRouter();
 
@@ -119,8 +120,16 @@ export default function DashboardPage() {
     }
   };
 
+  const getFilteredSamples = () => {
+    if (statusFilter === 'all') return samples;
+    if (statusFilter === 'taken') return samples.filter(s => s.isTaken && !s.isDisabled);
+    if (statusFilter === 'notTaken') return samples.filter(s => !s.isTaken && !s.isDisabled);
+    if (statusFilter === 'cancelled') return samples.filter(s => s.isDisabled);
+    return samples;
+  };
+
   const getSortedSamples = () => {
-    const sorted = [...samples];
+    const sorted = [...getFilteredSamples()];
 
     if (sortBy === 'newest') {
       // Sorteer op ID (laatst toegevoegd)
@@ -617,10 +626,22 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Sort Controls */}
+        {/* Sort & Filter Controls */}
         <div className="glass-card">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-            <label className="text-sm font-medium" style={{ color: 'rgba(255, 255, 255, 0.9)' }}>Sorteren op:</label>
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center flex-wrap">
+            <label className="text-sm font-medium" style={{ color: '#1d1d1f' }}>Status:</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="glass-select"
+            >
+              <option value="all">Alle monsters</option>
+              <option value="taken">Genomen</option>
+              <option value="notTaken">Niet genomen</option>
+              <option value="cancelled">Geannuleerd</option>
+            </select>
+
+            <label className="text-sm font-medium" style={{ color: '#1d1d1f', marginLeft: '0.5rem' }}>Sorteren op:</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
@@ -631,7 +652,7 @@ export default function DashboardPage() {
               <option value="sampleDate">Datum</option>
               <option value="location">Locatie</option>
             </select>
-            
+
             {sortBy !== 'newest' && (
               <select
                 value={sortOrder}
@@ -647,23 +668,39 @@ export default function DashboardPage() {
 
         {/* Statistics */}
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-          <div className="stat-card">
+          <div
+            className="stat-card"
+            onClick={() => setStatusFilter('all')}
+            style={{ cursor: 'pointer', outline: statusFilter === 'all' ? '2px solid #007AFF' : 'none' }}
+          >
             <p className="stat-label">Totaal monsters</p>
             <p className="stat-value">{samples.length}</p>
           </div>
-          <div className="stat-card" style={{ borderLeft: '4px solid #34C759' }}>
+          <div
+            className="stat-card"
+            onClick={() => setStatusFilter('taken')}
+            style={{ borderLeft: '4px solid #34C759', cursor: 'pointer', outline: statusFilter === 'taken' ? '2px solid #34C759' : 'none' }}
+          >
             <p className="stat-label">Genomen</p>
             <p className="stat-value" style={{ color: '#1a7f37' }}>
               {samples.filter(s => s.isTaken && !s.isDisabled).length}
             </p>
           </div>
-          <div className="stat-card" style={{ borderLeft: '4px solid #FF3B30' }}>
+          <div
+            className="stat-card"
+            onClick={() => setStatusFilter('notTaken')}
+            style={{ borderLeft: '4px solid #FF3B30', cursor: 'pointer', outline: statusFilter === 'notTaken' ? '2px solid #FF3B30' : 'none' }}
+          >
             <p className="stat-label">Niet genomen</p>
             <p className="stat-value" style={{ color: '#CC2900' }}>
               {samples.filter(s => !s.isTaken && !s.isDisabled).length}
             </p>
           </div>
-          <div className="stat-card" style={{ borderLeft: '4px solid #aeaeb2' }}>
+          <div
+            className="stat-card"
+            onClick={() => setStatusFilter('cancelled')}
+            style={{ borderLeft: '4px solid #aeaeb2', cursor: 'pointer', outline: statusFilter === 'cancelled' ? '2px solid #aeaeb2' : 'none' }}
+          >
             <p className="stat-label">Geannuleerd</p>
             <p className="stat-value" style={{ color: '#6e6e73' }}>
               {samples.filter(s => s.isDisabled).length}
