@@ -198,10 +198,10 @@ export default function SampleAttemptsPanel({
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
         <div>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1d1d1f', margin: 0 }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0C1B33', margin: 0 }}>
             Monsternames (pogingen)
           </h3>
-          <p style={{ fontSize: '0.75rem', color: '#6e6e73', margin: '2px 0 0' }}>
+          <p style={{ fontSize: '0.75rem', color: '#64748B', margin: '2px 0 0' }}>
             {attempts.length === 0
               ? 'Nog geen monsternames vastgelegd.'
               : `${attempts.length} monstername${attempts.length === 1 ? '' : 's'} voor ${oNumber}.`}
@@ -214,7 +214,7 @@ export default function SampleAttemptsPanel({
             disabled={busy}
             style={{
               padding: '6px 12px',
-              background: '#007AFF',
+              background: '#1D4ED8',
               color: 'white',
               border: 'none',
               borderRadius: '7px',
@@ -230,9 +230,9 @@ export default function SampleAttemptsPanel({
       </div>
 
       {loading ? (
-        <p style={{ fontSize: '0.875rem', color: '#6e6e73' }}>Laden...</p>
+        <p style={{ fontSize: '0.875rem', color: '#64748B' }}>Laden...</p>
       ) : attempts.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: '#6e6e73', fontStyle: 'italic' }}>
+        <p style={{ fontSize: '0.875rem', color: '#64748B', fontStyle: 'italic' }}>
           Geen monsternames.
         </p>
       ) : (
@@ -260,7 +260,7 @@ export default function SampleAttemptsPanel({
                         height: '22px',
                         borderRadius: '50%',
                         background: '#e5e5ea',
-                        color: '#1d1d1f',
+                        color: '#0C1B33',
                         fontSize: '12px',
                         fontWeight: 700,
                       }}>
@@ -271,12 +271,12 @@ export default function SampleAttemptsPanel({
                         fontSize: '0.7rem',
                         fontWeight: 600,
                         borderRadius: '9999px',
-                        background: attempt.isTaken ? 'rgba(52,199,89,0.15)' : 'rgba(255,59,48,0.12)',
+                        background: attempt.isTaken ? 'rgba(22, 163, 74,0.15)' : 'rgba(220, 38, 38,0.12)',
                         color: attempt.isTaken ? '#1a7f37' : '#CC2900',
                       }}>
                         {attempt.isTaken ? 'Genomen' : 'Gepland'}
                       </span>
-                      <span style={{ fontSize: '0.875rem', color: '#1d1d1f', fontWeight: 500 }}>
+                      <span style={{ fontSize: '0.875rem', color: '#0C1B33', fontWeight: 500 }}>
                         {formatDate(attempt.sampleDate)}
                       </span>
                     </div>
@@ -295,12 +295,12 @@ export default function SampleAttemptsPanel({
                         type="checkbox"
                         checked={draft.isTaken}
                         onChange={(e) => setDraft({ ...draft, isTaken: e.target.checked })}
-                        style={{ accentColor: '#007AFF' }}
+                        style={{ accentColor: '#1D4ED8' }}
                       />
                       Monster is genomen
                     </label>
                     <div>
-                      <label style={{ fontSize: '0.75rem', color: '#6e6e73', display: 'block', marginBottom: '0.25rem' }}>
+                      <label style={{ fontSize: '0.75rem', color: '#64748B', display: 'block', marginBottom: '0.25rem' }}>
                         Datum afname {!draft.isTaken && '(optioneel)'}
                       </label>
                       <input
@@ -318,7 +318,7 @@ export default function SampleAttemptsPanel({
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.75rem', color: '#6e6e73', display: 'block', marginBottom: '0.25rem' }}>
+                      <label style={{ fontSize: '0.75rem', color: '#64748B', display: 'block', marginBottom: '0.25rem' }}>
                         Opmerking
                       </label>
                       <textarea
@@ -345,7 +345,7 @@ export default function SampleAttemptsPanel({
                         disabled={busy}
                         style={{
                           padding: '6px 12px',
-                          background: '#007AFF',
+                          background: '#1D4ED8',
                           color: 'white',
                           border: 'none',
                           borderRadius: '6px',
@@ -385,7 +385,7 @@ export default function SampleAttemptsPanel({
                             style={{
                               background: 'none',
                               border: 'none',
-                              color: '#007AFF',
+                              color: '#1D4ED8',
                               fontSize: '0.8rem',
                               cursor: 'pointer',
                               padding: 0,
@@ -401,7 +401,7 @@ export default function SampleAttemptsPanel({
                               style={{
                                 background: 'none',
                                 border: 'none',
-                                color: '#FF3B30',
+                                color: '#DC2626',
                                 fontSize: '0.8rem',
                                 cursor: 'pointer',
                                 padding: 0,
@@ -412,7 +412,7 @@ export default function SampleAttemptsPanel({
                           )}
                         </>
                       ) : isAdmin ? (
-                        <label style={{ fontSize: '0.8rem', color: '#6e6e73', cursor: 'pointer' }}>
+                        <label style={{ fontSize: '0.8rem', color: '#64748B', cursor: 'pointer' }}>
                           {uploadingPhotoId === attempt.id ? '↻ Uploaden...' : '+ Foto'}
                           <input
                             type="file"
@@ -427,7 +427,7 @@ export default function SampleAttemptsPanel({
                           />
                         </label>
                       ) : (
-                        <span style={{ fontSize: '0.8rem', color: '#aeaeb2' }}>Geen foto</span>
+                        <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Geen foto</span>
                       )}
                     </div>
                     {isAdmin && (
@@ -438,7 +438,7 @@ export default function SampleAttemptsPanel({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#007AFF',
+                            color: '#1D4ED8',
                             fontSize: '0.8rem',
                             fontWeight: 500,
                             cursor: 'pointer',
@@ -453,7 +453,7 @@ export default function SampleAttemptsPanel({
                           style={{
                             background: 'none',
                             border: 'none',
-                            color: '#FF3B30',
+                            color: '#DC2626',
                             fontSize: '0.8rem',
                             fontWeight: 500,
                             cursor: 'pointer',

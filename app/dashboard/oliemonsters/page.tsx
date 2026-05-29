@@ -340,7 +340,7 @@ export default function DashboardPage() {
       <style jsx>{`
         .dashboard-container {
           min-height: 100vh;
-          color: #1d1d1f;
+          color: #0C1B33;
         }
 
         .dashboard-header {
@@ -363,7 +363,7 @@ export default function DashboardPage() {
           -webkit-backdrop-filter: blur(12px);
           border: 1px solid rgba(255, 255, 255, 0.6);
           border-radius: 7px;
-          color: #1d1d1f;
+          color: #0C1B33;
           font-size: 13px;
           font-weight: 500;
           cursor: pointer;
@@ -375,12 +375,12 @@ export default function DashboardPage() {
           box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
         }
         .nav-btn-danger {
-          color: #FF3B30;
-          background: rgba(255, 59, 48, 0.08);
-          border-color: rgba(255, 59, 48, 0.25);
+          color: #DC2626;
+          background: rgba(220, 38, 38, 0.08);
+          border-color: rgba(220, 38, 38, 0.25);
         }
         .nav-btn-danger:hover {
-          background: rgba(255, 59, 48, 0.16);
+          background: rgba(220, 38, 38, 0.16);
         }
 
         .glass-card {
@@ -405,7 +405,7 @@ export default function DashboardPage() {
           -webkit-backdrop-filter: blur(10px);
           border: 1px solid rgba(255, 255, 255, 0.6);
           border-radius: 8px;
-          color: #1d1d1f;
+          color: #0C1B33;
           font-size: 14px;
           transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
           outline: none;
@@ -414,12 +414,12 @@ export default function DashboardPage() {
         }
 
         .glass-input::placeholder {
-          color: #aeaeb2;
+          color: #94A3B8;
         }
 
         .glass-input:focus {
-          border-color: #007AFF;
-          box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15), inset 0 1px 2px rgba(15, 23, 42, 0.04);
+          border-color: #1D4ED8;
+          box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15), inset 0 1px 2px rgba(15, 23, 42, 0.04);
           background: rgba(255, 255, 255, 0.95);
         }
 
@@ -430,7 +430,7 @@ export default function DashboardPage() {
           -webkit-backdrop-filter: blur(10px);
           border: 1px solid rgba(255, 255, 255, 0.6);
           border-radius: 8px;
-          color: #1d1d1f;
+          color: #0C1B33;
           font-size: 14px;
           outline: none;
           cursor: pointer;
@@ -439,17 +439,17 @@ export default function DashboardPage() {
         }
 
         .glass-select:focus {
-          border-color: #007AFF;
-          box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15), inset 0 1px 2px rgba(15, 23, 42, 0.04);
+          border-color: #1D4ED8;
+          box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15), inset 0 1px 2px rgba(15, 23, 42, 0.04);
         }
 
         .glass-select option {
           background: white;
-          color: #1d1d1f;
+          color: #0C1B33;
         }
 
         .glass-button {
-          background: #007AFF;
+          background: #1D4ED8;
           color: white;
           border: none;
           border-radius: 8px;
@@ -460,12 +460,12 @@ export default function DashboardPage() {
           transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
           white-space: nowrap;
           font-family: inherit;
-          box-shadow: 0 2px 8px rgba(0, 122, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+          box-shadow: 0 2px 8px rgba(29, 78, 216, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.25);
         }
 
         .glass-button:hover:not(:disabled) {
-          background: #0071E3;
-          box-shadow: 0 4px 16px rgba(0, 122, 255, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+          background: #1740B8;
+          box-shadow: 0 4px 16px rgba(29, 78, 216, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
 
         .glass-button:disabled {
@@ -489,12 +489,12 @@ export default function DashboardPage() {
         .stat-value {
           font-size: 2rem;
           font-weight: 700;
-          color: #1d1d1f;
+          color: #0C1B33;
         }
 
         .stat-label {
           font-size: 0.8rem;
-          color: #6e6e73;
+          color: #64748B;
           margin-bottom: 0.25rem;
           font-weight: 500;
           text-transform: uppercase;
@@ -531,7 +531,7 @@ export default function DashboardPage() {
           text-align: left;
           font-size: 0.72rem;
           font-weight: 600;
-          color: #6e6e73;
+          color: #64748B;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
@@ -539,7 +539,7 @@ export default function DashboardPage() {
         .table td {
           padding: 0.875rem 1.25rem;
           font-size: 0.875rem;
-          color: #1d1d1f;
+          color: #0C1B33;
           border-top: 1px solid rgba(0, 0, 0, 0.06);
         }
 
@@ -556,18 +556,18 @@ export default function DashboardPage() {
         }
 
         .badge-success {
-          background: rgba(52, 199, 89, 0.12);
+          background: rgba(22, 163, 74, 0.12);
           color: #1a7f37;
         }
 
         .badge-danger {
-          background: rgba(255, 59, 48, 0.1);
+          background: rgba(220, 38, 38, 0.1);
           color: #CC2900;
         }
 
         .badge-gray {
           background: rgba(0, 0, 0, 0.06);
-          color: #6e6e73;
+          color: #64748B;
         }
       `}</style>
 
@@ -578,7 +578,7 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <img src="/header_logo.png" alt="It's Done Services" style={{ height: '22px', objectFit: 'contain', filter: 'invert(1)' }} />
               <span style={{ width: '1px', height: '16px', background: 'rgba(0,0,0,0.12)', display: 'inline-block' }} />
-              <span style={{ color: '#6e6e73', fontSize: '13px', fontWeight: 500 }}>Oliemonsters 2025</span>
+              <span style={{ color: '#64748B', fontSize: '13px', fontWeight: 500 }}>Oliemonsters 2025</span>
             </div>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
               <button onClick={() => router.push('/dashboard')} className="nav-btn" aria-label="Terug">
@@ -629,7 +629,7 @@ export default function DashboardPage() {
         {/* Sort & Filter Controls */}
         <div className="glass-card">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center flex-wrap">
-            <label className="text-sm font-medium" style={{ color: '#1d1d1f' }}>Status:</label>
+            <label className="text-sm font-medium" style={{ color: '#0C1B33' }}>Status:</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
@@ -641,7 +641,7 @@ export default function DashboardPage() {
               <option value="cancelled">Geannuleerd</option>
             </select>
 
-            <label className="text-sm font-medium" style={{ color: '#1d1d1f', marginLeft: '0.5rem' }}>Sorteren op:</label>
+            <label className="text-sm font-medium" style={{ color: '#0C1B33', marginLeft: '0.5rem' }}>Sorteren op:</label>
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
@@ -671,7 +671,7 @@ export default function DashboardPage() {
           <div
             className="stat-card"
             onClick={() => setStatusFilter('all')}
-            style={{ cursor: 'pointer', outline: statusFilter === 'all' ? '2px solid #007AFF' : 'none' }}
+            style={{ cursor: 'pointer', outline: statusFilter === 'all' ? '2px solid #1D4ED8' : 'none' }}
           >
             <p className="stat-label">Totaal monsters</p>
             <p className="stat-value">{samples.length}</p>
@@ -679,7 +679,7 @@ export default function DashboardPage() {
           <div
             className="stat-card"
             onClick={() => setStatusFilter('taken')}
-            style={{ borderLeft: '4px solid #34C759', cursor: 'pointer', outline: statusFilter === 'taken' ? '2px solid #34C759' : 'none' }}
+            style={{ borderLeft: '4px solid #16A34A', cursor: 'pointer', outline: statusFilter === 'taken' ? '2px solid #16A34A' : 'none' }}
           >
             <p className="stat-label">Genomen</p>
             <p className="stat-value" style={{ color: '#1a7f37' }}>
@@ -689,7 +689,7 @@ export default function DashboardPage() {
           <div
             className="stat-card"
             onClick={() => setStatusFilter('notTaken')}
-            style={{ borderLeft: '4px solid #FF3B30', cursor: 'pointer', outline: statusFilter === 'notTaken' ? '2px solid #FF3B30' : 'none' }}
+            style={{ borderLeft: '4px solid #DC2626', cursor: 'pointer', outline: statusFilter === 'notTaken' ? '2px solid #DC2626' : 'none' }}
           >
             <p className="stat-label">Niet genomen</p>
             <p className="stat-value" style={{ color: '#CC2900' }}>
@@ -699,10 +699,10 @@ export default function DashboardPage() {
           <div
             className="stat-card"
             onClick={() => setStatusFilter('cancelled')}
-            style={{ borderLeft: '4px solid #aeaeb2', cursor: 'pointer', outline: statusFilter === 'cancelled' ? '2px solid #aeaeb2' : 'none' }}
+            style={{ borderLeft: '4px solid #94A3B8', cursor: 'pointer', outline: statusFilter === 'cancelled' ? '2px solid #94A3B8' : 'none' }}
           >
             <p className="stat-label">Geannuleerd</p>
-            <p className="stat-value" style={{ color: '#6e6e73' }}>
+            <p className="stat-value" style={{ color: '#64748B' }}>
               {samples.filter(s => s.isDisabled).length}
             </p>
           </div>
@@ -728,7 +728,7 @@ export default function DashboardPage() {
               <tbody>
                 {samples.length === 0 ? (
                   <tr>
-                    <td colSpan={user?.role === 'admin' ? 7 : 6} style={{ textAlign: 'center', padding: '2rem', color: '#6e6e73' }}>
+                    <td colSpan={user?.role === 'admin' ? 7 : 6} style={{ textAlign: 'center', padding: '2rem', color: '#64748B' }}>
                       Geen monsters gevonden
                     </td>
                   </tr>
@@ -761,7 +761,7 @@ export default function DashboardPage() {
                                   height: '22px',
                                   padding: '0 7px',
                                   borderRadius: '9999px',
-                                  background: '#1d1d1f',
+                                  background: '#0C1B33',
                                   color: '#ffffff',
                                   fontSize: '11px',
                                   fontWeight: 700,
@@ -814,26 +814,26 @@ export default function DashboardPage() {
                           <button
                             onClick={() => setSelectedPhoto({ url: sample.photoUrl!, oNumber: sample.oNumber })}
                             style={{
-                              color: '#007AFF',
+                              color: '#1D4ED8',
                               textDecoration: 'underline',
                               cursor: 'pointer',
                               background: 'none',
                               border: 'none',
                               transition: 'color 0.15s'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#0071E3'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#007AFF'}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#1740B8'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#1D4ED8'}
                           >
                             📷 Bekijk foto
                           </button>
                         ) : user?.role === 'admin' ? (
                           <label style={{
                             cursor: 'pointer',
-                            color: '#6e6e73',
+                            color: '#64748B',
                             transition: 'color 0.15s'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.color = '#007AFF'}
-                          onMouseLeave={(e) => e.currentTarget.style.color = '#6e6e73'}>
+                          onMouseEnter={(e) => e.currentTarget.style.color = '#1D4ED8'}
+                          onMouseLeave={(e) => e.currentTarget.style.color = '#64748B'}>
                             {uploadingPhoto === sample.id ? '↻ Uploaden...' : '+ Upload foto'}
                             <input
                               type="file"
@@ -847,7 +847,7 @@ export default function DashboardPage() {
                             />
                           </label>
                         ) : (
-                          <span style={{ color: '#aeaeb2' }}>Geen foto</span>
+                          <span style={{ color: '#94A3B8' }}>Geen foto</span>
                         )}
                       </td>
                       {user?.role === 'admin' && (
@@ -856,9 +856,9 @@ export default function DashboardPage() {
                             onClick={() => handleAddAttempt(sample)}
                             title="Nieuwe monstername (hermonstering) toevoegen"
                             style={{
-                              background: 'rgba(0, 122, 255, 0.08)',
-                              border: '1px solid rgba(0, 122, 255, 0.2)',
-                              color: '#007AFF',
+                              background: 'rgba(29, 78, 216, 0.08)',
+                              border: '1px solid rgba(29, 78, 216, 0.2)',
+                              color: '#1D4ED8',
                               cursor: 'pointer',
                               marginRight: '0.5rem',
                               fontSize: '13px',
@@ -867,8 +867,8 @@ export default function DashboardPage() {
                               borderRadius: '6px',
                               transition: 'background 0.15s',
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 122, 255, 0.15)'}
-                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0, 122, 255, 0.08)'}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(29, 78, 216, 0.15)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(29, 78, 216, 0.08)'}
                           >
                             + Hermonstering
                           </button>
@@ -877,15 +877,15 @@ export default function DashboardPage() {
                             style={{
                               background: 'none',
                               border: 'none',
-                              color: '#007AFF',
+                              color: '#1D4ED8',
                               cursor: 'pointer',
                               marginRight: '1rem',
                               fontSize: '13px',
                               fontWeight: 500,
                               transition: 'color 0.15s'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#0071E3'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#007AFF'}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#1740B8'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#1D4ED8'}
                           >
                             Bewerken
                           </button>
@@ -894,14 +894,14 @@ export default function DashboardPage() {
                             style={{
                               background: 'none',
                               border: 'none',
-                              color: '#FF3B30',
+                              color: '#DC2626',
                               cursor: 'pointer',
                               fontSize: '13px',
                               fontWeight: 500,
                               transition: 'color 0.15s'
                             }}
                             onMouseEnter={(e) => e.currentTarget.style.color = '#CC2900'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = '#FF3B30'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = '#DC2626'}
                           >
                             Verwijderen
                           </button>
@@ -930,7 +930,7 @@ export default function DashboardPage() {
             overflowY: 'auto',
             boxShadow: '0 20px 60px rgba(0, 0, 0, 0.15)'
           }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1d1d1f' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: '#0C1B33' }}>
               {editingSample ? 'Monster bewerken' : 'Nieuw monster toevoegen'}
             </h2>
             
@@ -1040,7 +1040,7 @@ export default function DashboardPage() {
                       sampleDate: isChecked ? formData.sampleDate : ''
                     });
                   }}
-                  style={{ width: '18px', height: '18px', marginRight: '0.5rem', cursor: 'pointer', accentColor: '#007AFF' }}
+                  style={{ width: '18px', height: '18px', marginRight: '0.5rem', cursor: 'pointer', accentColor: '#1D4ED8' }}
                 />
                 <label htmlFor="isTaken" style={{ fontSize: '0.875rem', color: 'rgba(255, 255, 255, 0.9)', cursor: 'pointer' }}>
                   Monster is genomen
@@ -1048,7 +1048,7 @@ export default function DashboardPage() {
               </div>
 
               {formError && (
-                <div style={{ color: '#CC2900', fontSize: '0.875rem', background: 'rgba(255, 59, 48, 0.08)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255, 59, 48, 0.2)' }}>
+                <div style={{ color: '#CC2900', fontSize: '0.875rem', background: 'rgba(220, 38, 38, 0.08)', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(220, 38, 38, 0.2)' }}>
                   {formError}
                 </div>
               )}
@@ -1074,7 +1074,7 @@ export default function DashboardPage() {
                     background: '#f5f5f7',
                     border: '1px solid rgba(0, 0, 0, 0.1)',
                     borderRadius: '8px',
-                    color: '#1d1d1f',
+                    color: '#0C1B33',
                     fontWeight: 600,
                     cursor: 'pointer',
                     transition: 'background 0.12s',

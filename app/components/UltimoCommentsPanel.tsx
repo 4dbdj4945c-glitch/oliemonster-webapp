@@ -172,8 +172,8 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
     <div style={{ border: '1px solid rgba(0,0,0,0.1)', borderRadius: '10px', padding: '1rem', background: '#fafafc' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '0.5rem' }}>
         <div>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1d1d1f', margin: 0 }}>Opmerkingen-historie</h3>
-          <p style={{ fontSize: '0.75rem', color: '#6e6e73', margin: '2px 0 0' }}>
+          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0C1B33', margin: 0 }}>Opmerkingen-historie</h3>
+          <p style={{ fontSize: '0.75rem', color: '#64748B', margin: '2px 0 0' }}>
             {comments.length === 0
               ? 'Nog geen opmerkingen vastgelegd.'
               : `${comments.length} opmerking${comments.length === 1 ? '' : 'en'} — nieuwste bovenaan.`}
@@ -184,7 +184,7 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
             type="button"
             onClick={() => { setAdding(true); setNewDraft({ ...emptyDraft, date: todayISO() }); }}
             disabled={busy}
-            style={{ padding: '6px 12px', background: '#007AFF', color: 'white', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1, whiteSpace: 'nowrap' }}
+            style={{ padding: '6px 12px', background: '#1D4ED8', color: 'white', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1, whiteSpace: 'nowrap' }}
           >
             + Opmerking
           </button>
@@ -193,32 +193,32 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
 
       {/* Nieuw-opmerking formulier */}
       {isAdmin && adding && (
-        <div style={{ background: '#fff', border: '1px solid rgba(0,122,255,0.3)', borderRadius: '8px', padding: '0.75rem', marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div style={{ background: '#fff', border: '1px solid rgba(29, 78, 216,0.3)', borderRadius: '8px', padding: '0.75rem', marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 140px' }}>
-              <label style={{ fontSize: '0.72rem', color: '#6e6e73', display: 'block', marginBottom: '0.2rem' }}>Datum</label>
+              <label style={{ fontSize: '0.72rem', color: '#64748B', display: 'block', marginBottom: '0.2rem' }}>Datum</label>
               <input type="date" value={newDraft.date} onChange={(e) => setNewDraft({ ...newDraft, date: e.target.value })} style={inputStyle} />
             </div>
             <div style={{ flex: '1 1 140px' }}>
-              <label style={{ fontSize: '0.72rem', color: '#6e6e73', display: 'block', marginBottom: '0.2rem' }}>Jobnummer (optioneel)</label>
+              <label style={{ fontSize: '0.72rem', color: '#64748B', display: 'block', marginBottom: '0.2rem' }}>Jobnummer (optioneel)</label>
               <input type="text" value={newDraft.jobNumber} placeholder="bv. 2026-00831" onChange={(e) => setNewDraft({ ...newDraft, jobNumber: e.target.value })} style={inputStyle} />
             </div>
           </div>
           <div>
-            <label style={{ fontSize: '0.72rem', color: '#6e6e73', display: 'block', marginBottom: '0.2rem' }}>Opmerking</label>
+            <label style={{ fontSize: '0.72rem', color: '#64748B', display: 'block', marginBottom: '0.2rem' }}>Opmerking</label>
             <textarea value={newDraft.text} onChange={(e) => setNewDraft({ ...newDraft, text: e.target.value })} rows={3} placeholder="De opmerking zoals je 'm in Ultimo plaatst…" style={{ ...inputStyle, resize: 'vertical' }} />
           </div>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="button" onClick={handleAdd} disabled={busy} style={{ padding: '6px 14px', background: '#007AFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>Opslaan</button>
+            <button type="button" onClick={handleAdd} disabled={busy} style={{ padding: '6px 14px', background: '#1D4ED8', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>Opslaan</button>
             <button type="button" onClick={() => { setAdding(false); setNewDraft({ ...emptyDraft }); }} style={{ padding: '6px 14px', background: '#f5f5f7', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer' }}>Annuleren</button>
           </div>
         </div>
       )}
 
       {loading ? (
-        <p style={{ fontSize: '0.875rem', color: '#6e6e73' }}>Laden...</p>
+        <p style={{ fontSize: '0.875rem', color: '#64748B' }}>Laden...</p>
       ) : comments.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: '#6e6e73', fontStyle: 'italic' }}>Geen opmerkingen.</p>
+        <p style={{ fontSize: '0.875rem', color: '#64748B', fontStyle: 'italic' }}>Geen opmerkingen.</p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {comments.map((c) => {
@@ -226,9 +226,9 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
             return (
               <li key={c.id} style={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '8px', padding: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.875rem', color: '#1d1d1f', fontWeight: 600 }}>{formatDate(c.date)}</span>
+                  <span style={{ fontSize: '0.875rem', color: '#0C1B33', fontWeight: 600 }}>{formatDate(c.date)}</span>
                   {c.jobNumber && (
-                    <span style={{ padding: '2px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '9999px', background: 'rgba(0,122,255,0.1)', color: '#0040a0' }}>
+                    <span style={{ padding: '2px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '9999px', background: 'rgba(29, 78, 216,0.1)', color: '#0040a0' }}>
                       job {c.jobNumber}
                     </span>
                   )}
@@ -238,17 +238,17 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
                     <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <div style={{ flex: '1 1 140px' }}>
-                        <label style={{ fontSize: '0.72rem', color: '#6e6e73', display: 'block', marginBottom: '0.2rem' }}>Datum</label>
+                        <label style={{ fontSize: '0.72rem', color: '#64748B', display: 'block', marginBottom: '0.2rem' }}>Datum</label>
                         <input type="date" value={editDraft.date} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} style={inputStyle} />
                       </div>
                       <div style={{ flex: '1 1 140px' }}>
-                        <label style={{ fontSize: '0.72rem', color: '#6e6e73', display: 'block', marginBottom: '0.2rem' }}>Jobnummer</label>
+                        <label style={{ fontSize: '0.72rem', color: '#64748B', display: 'block', marginBottom: '0.2rem' }}>Jobnummer</label>
                         <input type="text" value={editDraft.jobNumber} onChange={(e) => setEditDraft({ ...editDraft, jobNumber: e.target.value })} style={inputStyle} />
                       </div>
                     </div>
                     <textarea value={editDraft.text} onChange={(e) => setEditDraft({ ...editDraft, text: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button type="button" onClick={() => saveEdit(c.id)} disabled={busy} style={{ padding: '6px 12px', background: '#007AFF', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>Opslaan</button>
+                      <button type="button" onClick={() => saveEdit(c.id)} disabled={busy} style={{ padding: '6px 12px', background: '#1D4ED8', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>Opslaan</button>
                       <button type="button" onClick={() => setEditingId(null)} style={{ padding: '6px 12px', background: '#f5f5f7', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer' }}>Annuleren</button>
                     </div>
                   </div>
@@ -259,14 +259,14 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
                       <button
                         type="button"
                         onClick={() => copyText(c)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', background: copiedId === c.id ? 'rgba(52,199,89,0.15)' : 'rgba(0,122,255,0.1)', color: copiedId === c.id ? '#1a7f37' : '#0040a0', border: 'none', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', background: copiedId === c.id ? 'rgba(22, 163, 74,0.15)' : 'rgba(29, 78, 216,0.1)', color: copiedId === c.id ? '#1a7f37' : '#0040a0', border: 'none', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
                       >
                         {copiedId === c.id ? '✓ Gekopieerd' : '📋 Kopieer opmerking'}
                       </button>
                       {isAdmin && (
                         <>
-                          <button type="button" onClick={() => startEdit(c)} style={{ background: 'none', border: 'none', color: '#007AFF', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', padding: 0 }}>Bewerken</button>
-                          <button type="button" onClick={() => handleDelete(c.id)} style={{ background: 'none', border: 'none', color: '#FF3B30', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', padding: 0 }}>Verwijderen</button>
+                          <button type="button" onClick={() => startEdit(c)} style={{ background: 'none', border: 'none', color: '#1D4ED8', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', padding: 0 }}>Bewerken</button>
+                          <button type="button" onClick={() => handleDelete(c.id)} style={{ background: 'none', border: 'none', color: '#DC2626', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', padding: 0 }}>Verwijderen</button>
                         </>
                       )}
                     </div>

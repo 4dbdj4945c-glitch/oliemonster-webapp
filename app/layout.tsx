@@ -1,24 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import FetchPatcher from "./components/FetchPatcher";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "It's Done Services - Registratie & Beheer Portal",
-  description: "Registratie & beheer portal voor It's Done Services - Oliemonsters, Voorraadbeheer",
+  title: "IDS Portal — It's Done Services",
+  description: "Werkportaal voor It's Done Services — onderhoud, registratie en beheer.",
   applicationName: "IDS Portal",
   authors: [{ name: "It's Done Services" }],
-  keywords: ['registratie', 'beheer', 'voorraadbeheer', 'oliemonster', 'its done services'],
+  keywords: ['it\'s done services', 'portal', 'onderhoud', 'registratie', 'beheer'],
   manifest: '/manifest.json',
   icons: {
     icon: [
@@ -33,7 +29,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Oliemonster',
+    title: 'IDS Portal',
   },
 };
 
@@ -43,9 +39,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>){
   return (
-    <html lang="en">
+    <html lang="nl">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${inter.variable} antialiased`}
       >
         <FetchPatcher />
         {children}

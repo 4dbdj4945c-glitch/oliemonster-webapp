@@ -348,7 +348,7 @@ export default function VoorraadPage() {
           -webkit-backdrop-filter: blur(12px);
           border: 1px solid rgba(255, 255, 255, 0.6);
           border-radius: 7px;
-          color: #1d1d1f;
+          color: #0C1B33;
           font-size: 13px;
           font-weight: 500;
           cursor: pointer;
@@ -359,12 +359,12 @@ export default function VoorraadPage() {
           background: rgba(255, 255, 255, 0.8);
         }
         .nav-btn-danger {
-          background: rgba(255, 59, 48, 0.08);
-          border-color: rgba(255, 59, 48, 0.2);
+          background: rgba(220, 38, 38, 0.08);
+          border-color: rgba(220, 38, 38, 0.2);
           color: #d93025;
         }
         .nav-btn-danger:hover {
-          background: rgba(255, 59, 48, 0.14);
+          background: rgba(220, 38, 38, 0.14);
         }
 
         .glass-card {
@@ -389,16 +389,16 @@ export default function VoorraadPage() {
           -webkit-backdrop-filter: blur(10px);
           border: 1px solid rgba(0, 0, 0, 0.08);
           border-radius: 8px;
-          color: #1d1d1f;
+          color: #0C1B33;
           font-size: 14px;
           outline: none;
           transition: border-color 0.15s, background 0.15s;
         }
 
         .glass-input:focus {
-          border-color: #007AFF;
+          border-color: #1D4ED8;
           background: rgba(255, 255, 255, 0.95);
-          box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+          box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
         }
 
         .glass-select {
@@ -408,7 +408,7 @@ export default function VoorraadPage() {
           -webkit-backdrop-filter: blur(10px);
           border: 1px solid rgba(0, 0, 0, 0.08);
           border-radius: 8px;
-          color: #1d1d1f;
+          color: #0C1B33;
           font-size: 14px;
           outline: none;
           cursor: pointer;
@@ -416,11 +416,11 @@ export default function VoorraadPage() {
 
         .glass-select option {
           background: #ffffff;
-          color: #1d1d1f;
+          color: #0C1B33;
         }
 
         .glass-button {
-          background: #007AFF;
+          background: #1D4ED8;
           color: white;
           border: none;
           border-radius: 8px;
@@ -432,15 +432,15 @@ export default function VoorraadPage() {
         }
 
         .glass-button:hover:not(:disabled) {
-          background: #0071E3;
-          box-shadow: 0 4px 16px rgba(0, 122, 255, 0.35);
+          background: #1740B8;
+          box-shadow: 0 4px 16px rgba(29, 78, 216, 0.35);
         }
 
         .tab-button {
           padding: 10px 20px;
           background: transparent;
           border: none;
-          color: #6e6e73;
+          color: #64748B;
           font-weight: 600;
           font-size: 14px;
           cursor: pointer;
@@ -449,8 +449,8 @@ export default function VoorraadPage() {
         }
 
         .tab-button.active {
-          color: #007AFF;
-          border-bottom-color: #007AFF;
+          color: #1D4ED8;
+          border-bottom-color: #1D4ED8;
         }
 
         .table-container {
@@ -476,7 +476,7 @@ export default function VoorraadPage() {
           text-align: left;
           font-size: 0.75rem;
           font-weight: 600;
-          color: #6e6e73;
+          color: #64748B;
           text-transform: uppercase;
           letter-spacing: 0.04em;
           background: rgba(255, 255, 255, 0.5);
@@ -486,7 +486,7 @@ export default function VoorraadPage() {
         .table td {
           padding: 12px 16px;
           font-size: 0.875rem;
-          color: #1d1d1f;
+          color: #0C1B33;
           border-top: 1px solid rgba(0, 0, 0, 0.06);
         }
 
@@ -538,12 +538,12 @@ export default function VoorraadPage() {
         .stat-value {
           font-size: 2rem;
           font-weight: bold;
-          color: #1d1d1f;
+          color: #0C1B33;
         }
 
         .stat-label {
           font-size: 0.875rem;
-          color: #6e6e73;
+          color: #64748B;
         }
 
         .location-grid {
@@ -563,7 +563,7 @@ export default function VoorraadPage() {
           padding: 24px 20px;
           cursor: pointer;
           text-align: left;
-          color: #1d1d1f;
+          color: #0C1B33;
           font-family: inherit;
           transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
           box-shadow:
@@ -585,12 +585,12 @@ export default function VoorraadPage() {
         }
 
         .location-card-all {
-          background: rgba(0, 122, 255, 0.08);
-          border-color: rgba(0, 122, 255, 0.2);
+          background: rgba(29, 78, 216, 0.08);
+          border-color: rgba(29, 78, 216, 0.2);
         }
 
         .location-card-all:hover {
-          background: rgba(0, 122, 255, 0.14);
+          background: rgba(29, 78, 216, 0.14);
         }
 
         .location-icon {
@@ -601,7 +601,7 @@ export default function VoorraadPage() {
         .location-name {
           font-size: 1.05rem;
           font-weight: 700;
-          color: #1d1d1f;
+          color: #0C1B33;
         }
 
         .location-stats {
@@ -609,11 +609,11 @@ export default function VoorraadPage() {
           flex-direction: column;
           gap: 2px;
           font-size: 0.85rem;
-          color: #6e6e73;
+          color: #64748B;
         }
 
         .location-stats strong {
-          color: #1d1d1f;
+          color: #0C1B33;
           font-weight: 700;
         }
       `}</style>
@@ -659,10 +659,10 @@ export default function VoorraadPage() {
             <>
               {/* Location Picker */}
               <div className="glass-card" style={{ textAlign: 'center', padding: '2rem 1.5rem' }}>
-                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1d1d1f', margin: '0 0 0.5rem 0' }}>
+                <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#0C1B33', margin: '0 0 0.5rem 0' }}>
                   Kies een locatie
                 </h1>
-                <p style={{ fontSize: '0.95rem', color: '#6e6e73', margin: 0 }}>
+                <p style={{ fontSize: '0.95rem', color: '#64748B', margin: 0 }}>
                   Selecteer eerst een locatie om de voorraad voor die locatie te bekijken.
                 </p>
               </div>
@@ -706,10 +706,10 @@ export default function VoorraadPage() {
               {user?.role === 'admin' && (
                 <div className="glass-card" style={{ marginTop: '1.5rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1d1d1f' }}>
+                    <label style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0C1B33' }}>
                       Nieuwe locatie aanmaken
                     </label>
-                    <p style={{ fontSize: '0.8rem', color: '#6e6e73', margin: 0 }}>
+                    <p style={{ fontSize: '0.8rem', color: '#64748B', margin: 0 }}>
                       Een locatie wordt vanzelf zichtbaar zodra het eerste product erop wordt geboekt. Vul hier een naam in om direct te starten met die locatie.
                     </p>
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
@@ -834,7 +834,7 @@ export default function VoorraadPage() {
                     <tbody>
                       {getVisibleProducts().length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#6e6e73' }}>
+                          <td colSpan={8} style={{ textAlign: 'center', padding: '2rem', color: '#64748B' }}>
                             Geen producten gevonden{selectedLocation && selectedLocation !== '__all__' ? ` op locatie "${selectedLocation}"` : ''}
                           </td>
                         </tr>
@@ -846,20 +846,20 @@ export default function VoorraadPage() {
                               <div>
                                 <div>{product.type}</div>
                                 {product.description && (
-                                  <div style={{ fontSize: '0.75rem', color: '#6e6e73' }}>
+                                  <div style={{ fontSize: '0.75rem', color: '#64748B' }}>
                                     {product.description}
                                   </div>
                                 )}
                               </div>
                             </td>
-                            <td style={{ color: '#6e6e73' }}>{product.articleNumber || '-'}</td>
+                            <td style={{ color: '#64748B' }}>{product.articleNumber || '-'}</td>
                             <td>{product.category}</td>
-                            <td style={{ color: '#6e6e73' }}>{product.location}</td>
+                            <td style={{ color: '#64748B' }}>{product.location}</td>
                             <td>
                               <span style={{ fontWeight: 600, color: product.isLowStock ? '#d97706' : '#047857' }}>
                                 {product.currentStock}
                               </span>
-                              <span style={{ color: '#6e6e73', marginLeft: '4px' }}>
+                              <span style={{ color: '#64748B', marginLeft: '4px' }}>
                                 {product.unit}
                               </span>
                             </td>
@@ -874,7 +874,7 @@ export default function VoorraadPage() {
                                 style={{
                                   background: 'none',
                                   border: 'none',
-                                  color: '#007AFF',
+                                  color: '#1D4ED8',
                                   cursor: 'pointer',
                                   marginRight: '1rem',
                                 }}
@@ -888,7 +888,7 @@ export default function VoorraadPage() {
                                     style={{
                                       background: 'none',
                                       border: 'none',
-                                      color: '#1d1d1f',
+                                      color: '#0C1B33',
                                       cursor: 'pointer',
                                       marginRight: '1rem',
                                     }}
@@ -936,7 +936,7 @@ export default function VoorraadPage() {
                   <tbody>
                     {movements.length === 0 ? (
                       <tr>
-                        <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: '#6e6e73' }}>
+                        <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: '#64748B' }}>
                           Geen mutaties gevonden
                         </td>
                       </tr>
@@ -962,7 +962,7 @@ export default function VoorraadPage() {
                             <span style={{ fontWeight: 600 }}>
                               {movement.type === 'IN' ? '+' : '-'}{movement.quantity}
                             </span>
-                            <span style={{ color: '#6e6e73', marginLeft: '4px' }}>
+                            <span style={{ color: '#64748B', marginLeft: '4px' }}>
                               {movement.product.unit}
                             </span>
                           </td>
@@ -992,14 +992,14 @@ export default function VoorraadPage() {
               width: '100%',
               boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
             }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1d1d1f' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: '#0C1B33' }}>
                 {editingProduct ? 'Product bewerken' : 'Nieuw product'}
               </h2>
               
               <form onSubmit={handleProductSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#0C1B33', marginBottom: '0.5rem' }}>
                       Merk *
                     </label>
                     <input
@@ -1012,7 +1012,7 @@ export default function VoorraadPage() {
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#0C1B33', marginBottom: '0.5rem' }}>
                       Type *
                     </label>
                     <input
@@ -1027,7 +1027,7 @@ export default function VoorraadPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#0C1B33', marginBottom: '0.5rem' }}>
                     Artikelnummer
                   </label>
                   <input
@@ -1041,7 +1041,7 @@ export default function VoorraadPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#0C1B33', marginBottom: '0.5rem' }}>
                       Categorie *
                     </label>
                     <select
@@ -1056,7 +1056,7 @@ export default function VoorraadPage() {
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#0C1B33', marginBottom: '0.5rem' }}>
                       Locatie
                     </label>
                     <input
@@ -1071,7 +1071,7 @@ export default function VoorraadPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#0C1B33', marginBottom: '0.5rem' }}>
                       Eenheid
                     </label>
                     <select
@@ -1086,7 +1086,7 @@ export default function VoorraadPage() {
                     </select>
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#0C1B33', marginBottom: '0.5rem' }}>
                       Min. voorraad
                     </label>
                     <input
@@ -1101,7 +1101,7 @@ export default function VoorraadPage() {
 
                 {!editingProduct && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#0C1B33', marginBottom: '0.5rem' }}>
                       Beginvoorraad
                     </label>
                     <input
@@ -1116,7 +1116,7 @@ export default function VoorraadPage() {
                 )}
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#0C1B33', marginBottom: '0.5rem' }}>
                     Omschrijving (optioneel)
                   </label>
                   <textarea
@@ -1146,7 +1146,7 @@ export default function VoorraadPage() {
                       background: '#f5f5f7',
                       border: '1px solid rgba(0,0,0,0.1)',
                       borderRadius: '8px',
-                      color: '#1d1d1f',
+                      color: '#0C1B33',
                       fontWeight: 600,
                       cursor: 'pointer',
                     }}
@@ -1171,16 +1171,16 @@ export default function VoorraadPage() {
               width: '100%',
               boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
             }}>
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', color: '#1d1d1f' }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem', color: '#0C1B33' }}>
                 Voorraadmutatie
               </h2>
-              <p style={{ color: '#6e6e73', marginBottom: '1.5rem' }}>
+              <p style={{ color: '#64748B', marginBottom: '1.5rem' }}>
                 {selectedProduct.brand} {selectedProduct.type} (huidige voorraad: {selectedProduct.currentStock} {selectedProduct.unit})
               </p>
               
               <form onSubmit={handleStockSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#0C1B33', marginBottom: '0.5rem' }}>
                     Type mutatie
                   </label>
                   <div style={{ display: 'flex', gap: '1rem' }}>
@@ -1208,7 +1208,7 @@ export default function VoorraadPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#0C1B33', marginBottom: '0.5rem' }}>
                     Aantal ({selectedProduct.unit})
                   </label>
                   <input
@@ -1222,7 +1222,7 @@ export default function VoorraadPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#1d1d1f', marginBottom: '0.5rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#0C1B33', marginBottom: '0.5rem' }}>
                     Reden/opmerking (optioneel)
                   </label>
                   <input
@@ -1253,7 +1253,7 @@ export default function VoorraadPage() {
                       background: '#f5f5f7',
                       border: '1px solid rgba(0,0,0,0.1)',
                       borderRadius: '8px',
-                      color: '#1d1d1f',
+                      color: '#0C1B33',
                       fontWeight: 600,
                       cursor: 'pointer',
                     }}

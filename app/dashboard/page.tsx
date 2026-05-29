@@ -99,7 +99,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f7' }}>
-        <p style={{ color: '#6e6e73', fontSize: '15px' }}>Laden...</p>
+        <p style={{ color: '#64748B', fontSize: '15px' }}>Laden...</p>
       </div>
     );
   }
@@ -161,21 +161,27 @@ export default function DashboardPage() {
         }
 
         .card-icon {
-          font-size: 2.2rem;
-          margin-bottom: 14px;
-          display: block;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 46px;
+          height: 46px;
+          margin-bottom: 16px;
+          border-radius: 12px;
+          color: var(--accent-color);
+          background: color-mix(in srgb, var(--accent-color) 10%, transparent);
         }
 
         .card-title {
           font-size: 17px;
           font-weight: 600;
-          color: #1d1d1f;
+          color: #0C1B33;
           margin: 0 0 6px 0;
         }
 
         .card-description {
           font-size: 13px;
-          color: #6e6e73;
+          color: #64748B;
           margin: 0 0 18px 0;
           line-height: 1.5;
         }
@@ -197,7 +203,7 @@ export default function DashboardPage() {
 
         .stat-label {
           font-size: 11px;
-          color: #6e6e73;
+          color: #64748B;
           text-transform: uppercase;
           letter-spacing: 0.04em;
           font-weight: 500;
@@ -241,11 +247,11 @@ export default function DashboardPage() {
           <div className="cards-grid">
             <div
               className="module-card"
-              style={{ '--accent-color': '#FF9500' } as React.CSSProperties}
+              style={{ '--accent-color': '#1D4ED8' } as React.CSSProperties}
               onClick={() => router.push('/dashboard/oliemonsters')}
             >
               <div className="card-accent" />
-              <span className="card-icon">🛢️</span>
+              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/></svg></span>
               <h2 className="card-title">Oliemonsters 2025</h2>
               <p className="card-description">Overzicht en beheer van oliemonster analyses 2025</p>
               <div className="card-stats">
@@ -262,11 +268,11 @@ export default function DashboardPage() {
 
             <div
               className="module-card"
-              style={{ '--accent-color': '#007AFF' } as React.CSSProperties}
+              style={{ '--accent-color': '#1E40AF' } as React.CSSProperties}
               onClick={() => router.push('/dashboard/oliemonsters2026')}
             >
               <div className="card-accent" />
-              <span className="card-icon">🛢️</span>
+              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/></svg></span>
               <h2 className="card-title">Oliemonsters 2026</h2>
               <p className="card-description">Overzicht en beheer van oliemonster analyses 2026</p>
               <div className="card-stats">
@@ -287,11 +293,11 @@ export default function DashboardPage() {
           <div className="cards-grid">
             <div
               className="module-card"
-              style={{ '--accent-color': '#34C759' } as React.CSSProperties}
+              style={{ '--accent-color': '#0F766E' } as React.CSSProperties}
               onClick={() => router.push('/dashboard/voorraad')}
             >
               <div className="card-accent" />
-              <span className="card-icon">📦</span>
+              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/><path d="m7.5 4.27 9 5.15"/></svg></span>
               <h2 className="card-title">Voorraadbeheer</h2>
               <p className="card-description">Beheer voorraad van filters, olie en andere producten</p>
               <div className="card-stats">
@@ -300,7 +306,7 @@ export default function DashboardPage() {
                   <div className="stat-label">Producten</div>
                 </div>
                 <div className="stat-item">
-                  <div className="stat-value" style={{ color: stats.lowStock > 0 ? '#FF3B30' : '#34C759' }}>
+                  <div className="stat-value" style={{ color: stats.lowStock > 0 ? '#DC2626' : '#16A34A' }}>
                     {stats.lowStock}
                   </div>
                   <div className="stat-label">Lage voorraad</div>
@@ -310,11 +316,11 @@ export default function DashboardPage() {
 
             <div
               className="module-card"
-              style={{ '--accent-color': '#5856D6' } as React.CSSProperties}
+              style={{ '--accent-color': '#4338CA' } as React.CSSProperties}
               onClick={() => router.push('/dashboard/ultimo')}
             >
               <div className="card-accent" />
-              <span className="card-icon">📝</span>
+              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg></span>
               <h2 className="card-title">Ultimo-opmerkingen</h2>
               <p className="card-description">Opmerkingen per onderhoudstaak (looprouteregel) bijhouden en exact terugvinden</p>
               <div className="card-stats">

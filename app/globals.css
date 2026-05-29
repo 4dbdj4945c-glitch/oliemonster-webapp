@@ -3,30 +3,30 @@
 /* ============ Design tokens (Apple light theme) ============ */
 :root {
   /* Colors */
-  --background: #eef1f6;
+  --background: #F4F6F8;
   --surface: rgba(255, 255, 255, 0.65);
   --surface-solid: #ffffff;
   --surface-elevated: rgba(255, 255, 255, 0.75);
-  --foreground: #1d1d1f;
-  --text-primary: #1d1d1f;
-  --text-secondary: #6e6e73;
-  --text-tertiary: #aeaeb2;
+  --foreground: #0C1B33;
+  --text-primary: #0C1B33;
+  --text-secondary: #64748B;
+  --text-tertiary: #94A3B8;
 
   --border: rgba(0, 0, 0, 0.08);
   --border-subtle: rgba(255, 255, 255, 0.5);
   --border-strong: rgba(0, 0, 0, 0.12);
 
   /* Accent / semantic */
-  --accent: #007AFF;
-  --accent-hover: #0071E3;
-  --accent-soft: rgba(0, 122, 255, 0.12);
-  --success: #34C759;
-  --success-soft: rgba(52, 199, 89, 0.12);
-  --warning: #FF9500;
-  --warning-soft: rgba(255, 149, 0, 0.12);
-  --danger: #FF3B30;
-  --danger-soft: rgba(255, 59, 48, 0.08);
-  --danger-soft-border: rgba(255, 59, 48, 0.2);
+  --accent: #1D4ED8;
+  --accent-hover: #1740B8;
+  --accent-soft: rgba(29, 78, 216, 0.12);
+  --success: #16A34A;
+  --success-soft: rgba(22, 163, 74, 0.12);
+  --warning: #F97316;
+  --warning-soft: rgba(249, 115, 22, 0.12);
+  --danger: #DC2626;
+  --danger-soft: rgba(220, 38, 38, 0.08);
+  --danger-soft-border: rgba(220, 38, 38, 0.2);
 
   /* Surfaces */
   --toolbar-bg: rgba(255, 255, 255, 0.72);
@@ -64,13 +64,10 @@ html, body {
 body {
   background: var(--background);
   background-image:
-    radial-gradient(at 15% 18%, rgba(0, 122, 255, 0.18) 0%, transparent 45%),
-    radial-gradient(at 85% 10%, rgba(175, 82, 222, 0.14) 0%, transparent 50%),
-    radial-gradient(at 75% 85%, rgba(52, 199, 89, 0.14) 0%, transparent 50%),
-    radial-gradient(at 10% 80%, rgba(255, 149, 0, 0.12) 0%, transparent 45%);
+    radial-gradient(at 50% -15%, rgba(29, 78, 216, 0.06) 0%, transparent 55%);
   background-attachment: fixed;
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -201,7 +198,7 @@ img[src="/header_logo.png"] {
 }
 
 .nav-btn-danger:hover:not(:disabled) {
-  background: rgba(255, 59, 48, 0.12);
+  background: rgba(220, 38, 38, 0.12);
 }
 
 .user-badge {
@@ -326,7 +323,7 @@ img[src="/header_logo.png"] {
 
 .btn-primary:hover:not(:disabled) {
   background: var(--accent-hover);
-  box-shadow: 0 2px 12px rgba(0, 122, 255, 0.3);
+  box-shadow: 0 2px 12px rgba(29, 78, 216, 0.3);
 }
 
 .btn-secondary {
@@ -349,7 +346,7 @@ img[src="/header_logo.png"] {
 
 .btn-danger:hover:not(:disabled) {
   background: #E02D24;
-  box-shadow: 0 2px 12px rgba(255, 59, 48, 0.3);
+  box-shadow: 0 2px 12px rgba(220, 38, 38, 0.3);
 }
 
 .btn-success {
@@ -395,7 +392,7 @@ img[src="/header_logo.png"] {
 
 .glass-button:hover:not(:disabled) {
   background: var(--accent-hover);
-  box-shadow: 0 2px 12px rgba(0, 122, 255, 0.3);
+  box-shadow: 0 2px 12px rgba(29, 78, 216, 0.3);
 }
 
 .glass-button:disabled {
@@ -465,7 +462,7 @@ img[src="/header_logo.png"] {
 }
 
 .badge-purple {
-  background: rgba(175, 82, 222, 0.12);
+  background: rgba(29, 78, 216, 0.12);
   color: #7D2FB3;
 }
 
@@ -591,19 +588,19 @@ img[src="/header_logo.png"] {
 .alert-success {
   background: var(--success-soft);
   color: #1F7A34;
-  border-color: rgba(52, 199, 89, 0.25);
+  border-color: rgba(22, 163, 74, 0.25);
 }
 
 .alert-info {
   background: var(--accent-soft);
   color: #0050B3;
-  border-color: rgba(0, 122, 255, 0.25);
+  border-color: rgba(29, 78, 216, 0.25);
 }
 
 .alert-warning {
   background: var(--warning-soft);
   color: #B56200;
-  border-color: rgba(255, 149, 0, 0.25);
+  border-color: rgba(249, 115, 22, 0.25);
 }
 
 .alert-danger {

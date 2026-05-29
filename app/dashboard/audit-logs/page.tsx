@@ -85,7 +85,7 @@ export default function AuditLogsPage() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f7' }}>
-        <p style={{ color: '#6e6e73', fontSize: '15px' }}>Laden...</p>
+        <p style={{ color: '#64748B', fontSize: '15px' }}>Laden...</p>
       </div>
     );
   }

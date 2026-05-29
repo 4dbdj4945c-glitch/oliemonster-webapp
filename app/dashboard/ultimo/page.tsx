@@ -159,7 +159,7 @@ export default function UltimoPage() {
     fontFamily: 'inherit',
   };
   const labelStyle: React.CSSProperties = {
-    fontSize: '0.78rem', color: '#6e6e73', fontWeight: 600, display: 'block', marginBottom: '0.3rem',
+    fontSize: '0.78rem', color: '#64748B', fontWeight: 600, display: 'block', marginBottom: '0.3rem',
   };
 
   return (
@@ -198,7 +198,7 @@ export default function UltimoPage() {
           <button
             type="button"
             onClick={openAdd}
-            style={{ padding: '10px 16px', background: '#007AFF', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+            style={{ padding: '10px 16px', background: '#1D4ED8', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
           >
             + Nieuwe taak
           </button>
@@ -206,9 +206,9 @@ export default function UltimoPage() {
       </div>
 
       {loading ? (
-        <p style={{ color: '#6e6e73' }}>Laden...</p>
+        <p style={{ color: '#64748B' }}>Laden...</p>
       ) : tasks.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#6e6e73' }}>
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748B' }}>
           {search
             ? <>Geen taken gevonden voor “{search}”.</>
             : <>Nog geen taken. {isAdmin && 'Klik op “+ Nieuwe taak” om te beginnen.'}</>}
@@ -227,9 +227,9 @@ export default function UltimoPage() {
                   style={{ padding: '16px 18px', cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start' }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#007AFF', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{task.jobName}</div>
-                    <div style={{ fontSize: '1.02rem', fontWeight: 600, color: '#1d1d1f', marginTop: '2px' }}>{task.taskDescription}</div>
-                    {task.installation && <div style={{ fontSize: '0.82rem', color: '#6e6e73', marginTop: '3px' }}>📍 {task.installation}</div>}
+                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#1D4ED8', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{task.jobName}</div>
+                    <div style={{ fontSize: '1.02rem', fontWeight: 600, color: '#0C1B33', marginTop: '2px' }}>{task.taskDescription}</div>
+                    {task.installation && <div style={{ fontSize: '0.82rem', color: '#64748B', marginTop: '3px' }}>📍 {task.installation}</div>}
                     {task.lastComment && (
                       <div style={{ fontSize: '0.84rem', color: '#3c3c43', marginTop: '8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         <span style={{ color: '#8e8e93' }}>Laatst{task.lastDate ? ` (${formatDate(task.lastDate)})` : ''}: </span>
@@ -238,10 +238,10 @@ export default function UltimoPage() {
                     )}
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#6e6e73', background: '#f2f2f7', borderRadius: '9999px', padding: '3px 9px', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.72rem', color: '#64748B', background: '#f2f2f7', borderRadius: '9999px', padding: '3px 9px', fontWeight: 600 }}>
                       {task.commentsCount}×
                     </span>
-                    <span style={{ fontSize: '0.78rem', color: '#007AFF' }}>{expanded ? '▲ sluit' : '▼ historie'}</span>
+                    <span style={{ fontSize: '0.78rem', color: '#1D4ED8' }}>{expanded ? '▲ sluit' : '▼ historie'}</span>
                   </div>
                 </div>
 
@@ -249,8 +249,8 @@ export default function UltimoPage() {
                   <div style={{ padding: '0 18px 18px' }}>
                     {isAdmin && (
                       <div style={{ display: 'flex', gap: '14px', marginBottom: '10px' }}>
-                        <button type="button" onClick={() => openEdit(task)} style={{ background: 'none', border: 'none', color: '#007AFF', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', padding: 0 }}>Taak bewerken</button>
-                        <button type="button" onClick={() => deleteTask(task)} style={{ background: 'none', border: 'none', color: '#FF3B30', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', padding: 0 }}>Taak verwijderen</button>
+                        <button type="button" onClick={() => openEdit(task)} style={{ background: 'none', border: 'none', color: '#1D4ED8', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', padding: 0 }}>Taak bewerken</button>
+                        <button type="button" onClick={() => deleteTask(task)} style={{ background: 'none', border: 'none', color: '#DC2626', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', padding: 0 }}>Taak verwijderen</button>
                       </div>
                     )}
                     <UltimoCommentsPanel taskId={task.id} isAdmin={!!isAdmin} onChange={loadTasks} />
@@ -270,7 +270,7 @@ export default function UltimoPage() {
         footer={
           <>
             <button type="button" onClick={() => setShowModal(false)} style={{ padding: '8px 16px', background: '#f5f5f7', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 500, cursor: 'pointer' }}>Annuleren</button>
-            <button type="button" onClick={saveTask} disabled={saving} style={{ padding: '8px 16px', background: '#007AFF', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>Opslaan</button>
+            <button type="button" onClick={saveTask} disabled={saving} style={{ padding: '8px 16px', background: '#1D4ED8', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>Opslaan</button>
           </>
         }
       >
@@ -288,7 +288,7 @@ export default function UltimoPage() {
             <label style={labelStyle}>Installatie / object <span style={{ fontWeight: 400 }}>(optioneel)</span></label>
             <input list="dl-installation" value={form.installation} onChange={(e) => setForm({ ...form, installation: e.target.value })} placeholder="bv. Pomp P-301 / Ketelhuis" style={inputStyle} />
           </div>
-          {formError && <div style={{ color: '#FF3B30', fontSize: '0.85rem' }}>{formError}</div>}
+          {formError && <div style={{ color: '#DC2626', fontSize: '0.85rem' }}>{formError}</div>}
         </div>
       </Modal>
     </AppShell>

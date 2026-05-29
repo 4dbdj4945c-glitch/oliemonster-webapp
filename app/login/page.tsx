@@ -105,7 +105,7 @@ export default function LoginPage() {
           display: block;
           font-size: 13px;
           font-weight: 500;
-          color: #6e6e73;
+          color: #64748B;
           margin-bottom: 6px;
         }
 
@@ -115,7 +115,7 @@ export default function LoginPage() {
           background: #f5f5f7;
           border: 1px solid rgba(0, 0, 0, 0.15);
           border-radius: 10px;
-          color: #1d1d1f;
+          color: #0C1B33;
           font-size: 15px;
           outline: none;
           transition: border-color 0.15s, box-shadow 0.15s;
@@ -123,12 +123,12 @@ export default function LoginPage() {
         }
 
         .input::placeholder {
-          color: #aeaeb2;
+          color: #94A3B8;
         }
 
         .input:focus {
-          border-color: #007AFF;
-          box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+          border-color: #1D4ED8;
+          box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
           background: #ffffff;
         }
 
@@ -142,7 +142,7 @@ export default function LoginPage() {
         .remember input[type="checkbox"] {
           width: 16px;
           height: 16px;
-          accent-color: #007AFF;
+          accent-color: #1D4ED8;
           cursor: pointer;
         }
 
@@ -154,9 +154,9 @@ export default function LoginPage() {
         }
 
         .error {
-          background: rgba(255, 59, 48, 0.08);
-          border: 1px solid rgba(255, 59, 48, 0.2);
-          color: #FF3B30;
+          background: rgba(220, 38, 38, 0.08);
+          border: 1px solid rgba(220, 38, 38, 0.2);
+          color: #DC2626;
           padding: 10px 14px;
           border-radius: 8px;
           font-size: 14px;
@@ -167,7 +167,7 @@ export default function LoginPage() {
         .login-btn {
           width: 100%;
           padding: 13px;
-          background: #007AFF;
+          background: #1D4ED8;
           border: none;
           border-radius: 10px;
           color: white;
@@ -179,7 +179,7 @@ export default function LoginPage() {
         }
 
         .login-btn:hover:not(:disabled) {
-          background: #0071E3;
+          background: #1740B8;
         }
 
         .login-btn:disabled {
