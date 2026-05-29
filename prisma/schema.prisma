@@ -176,3 +176,46 @@ model ContactNote {
   @@index([contactId])
   @@index([createdAt])
 }
+
+// ============================================
+// ULTIMO-OPMERKINGEN
+// ============================================
+// Een onderhoudstaak (looprouteregel) keert periodiek terug onder dezelfde
+// jobnaam, maar met telkens een nieuw jobnummer. De stabiele eenheid is dus
+// jobnaam + taakomschrijving (+ installatie). Per cyclus plaats je daar een
+// opmerking bij (UltimoComment). De velden lastDate/lastComment/lastJobNumber
+// spiegelen de meest recente opmerking als cache, zodat de lijst snel laadt.
+
+model UltimoTask {
+  id              Int      @id @default(autoincrement())
+  jobName         String              // Jobnaam (bijv. "Onderhoud pompen hal 2")
+  taskDescription String              // Looprouteregel / taakomschrijving
+  installation    String?             // Installatie / object (optioneel)
+  lastDate        DateTime?           // cache: datum van de meest recente opmerking
+  lastComment     String?             // cache: tekst van de meest recente opmerking
+  lastJobNumber   String?             // cache: jobnummer van de meest recente opmerking
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  comments        UltimoComment[]
+
+  @@index([jobName])
+  @@index([taskDescription])
+}
+
+model UltimoComment {
+  id        Int      @id @default(autoincrement())
+  taskId    Int
+  date      DateTime?            // datum waarop je de opmerking plaatste
+  jobNumber String?              // jobnummer van die cyclus (wisselt per keer)
+  text      String               // de opmerking zoals in Ultimo geplaatst
+  userId    Int?                 // wie de opmerking vastlegde
+  username  String?              // gebruikersnaam voor referentie
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task      UltimoTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([date])
+}

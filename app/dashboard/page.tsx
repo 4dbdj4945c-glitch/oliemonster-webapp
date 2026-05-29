@@ -20,6 +20,7 @@ export default function DashboardPage() {
     oilSamplesTaken2026: 0,
     products: 0,
     lowStock: 0,
+    ultimoTasks: 0,
   });
   const router = useRouter();
 
@@ -47,10 +48,11 @@ export default function DashboardPage() {
 
   const loadStats = async () => {
     try {
-      const [res2025, res2026, productsRes] = await Promise.allSettled([
+      const [res2025, res2026, productsRes, ultimoRes] = await Promise.allSettled([
         fetch('/api/samples?year=2025'),
         fetch('/api/samples?year=2026'),
         fetch('/api/products'),
+        fetch('/api/ultimo-tasks'),
       ]);
 
       if (res2025.status === 'fulfilled' && res2025.value.ok) {
@@ -75,6 +77,13 @@ export default function DashboardPage() {
           ...prev,
           products: data.length,
           lowStock: data.filter((p: any) => p.currentStock <= p.minStock).length,
+        }));
+      }
+      if (ultimoRes.status === 'fulfilled' && ultimoRes.value.ok) {
+        const data = await ultimoRes.value.json();
+        setStats(prev => ({
+          ...prev,
+          ultimoTasks: data.length,
         }));
       }
     } catch (error) {
@@ -295,6 +304,23 @@ export default function DashboardPage() {
                     {stats.lowStock}
                   </div>
                   <div className="stat-label">Lage voorraad</div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              className="module-card"
+              style={{ '--accent-color': '#5856D6' } as React.CSSProperties}
+              onClick={() => router.push('/dashboard/ultimo')}
+            >
+              <div className="card-accent" />
+              <span className="card-icon">📝</span>
+              <h2 className="card-title">Ultimo-opmerkingen</h2>
+              <p className="card-description">Opmerkingen per onderhoudstaak (looprouteregel) bijhouden en exact terugvinden</p>
+              <div className="card-stats">
+                <div className="stat-item">
+                  <div className="stat-value">{stats.ultimoTasks}</div>
+                  <div className="stat-label">Taken</div>
                 </div>
               </div>
             </div>
