@@ -330,6 +330,23 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+
+            <div
+              className="module-card"
+              style={{ '--accent-color': '#B45309' } as React.CSSProperties}
+              onClick={() => router.push('/dashboard/print-calculator')}
+            >
+              <div className="card-accent" />
+              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg></span>
+              <h2 className="card-title">Printkosten calculator</h2>
+              <p className="card-description">Kostprijs en adviesverkoopprijs per bedrukt item (UV-printer) berekenen</p>
+              <div className="card-stats">
+                <div className="stat-item">
+                  <div className="stat-value">€</div>
+                  <div className="stat-label">Kostprijs per stuk</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
