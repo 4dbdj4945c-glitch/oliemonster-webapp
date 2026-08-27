@@ -13,8 +13,11 @@ export interface PlaceHit {
 
 export interface StreetHit {
   street: string;
-  lat: number;
+  lat: number; // representatief midpunt
   lng: number;
+  lines: number[][][]; // volledige straatlijn(en): [ [ [lng,lat], ... ], ... ]
+  a: { lat: number; lng: number }; // eindpunt A
+  b: { lat: number; lng: number }; // eindpunt B
 }
 
 // "POINT(5.5601 51.3835)" -> { lng, lat }
@@ -26,6 +29,59 @@ function parsePoint(wkt: string | undefined): { lat: number; lng: number } | nul
   const lat = parseFloat(m[2]);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return { lat, lng };
+}
+
+// "x y, x y, ..." -> [[lng,lat], ...]
+function parseCoordPairs(body: string): number[][] {
+  return body
+    .split(',')
+    .map((pair) => pair.trim().split(/\s+/).map(Number))
+    .filter((c) => c.length >= 2 && Number.isFinite(c[0]) && Number.isFinite(c[1]))
+    .map((c) => [c[0], c[1]]);
+}
+
+// LINESTRING(...) of MULTILINESTRING((...),(...)) -> array van lijnen [[lng,lat],...]
+function parseLines(wkt: string | undefined): number[][][] {
+  if (!wkt) return [];
+  if (wkt.startsWith('MULTILINESTRING')) {
+    const inner = wkt.slice(wkt.indexOf('(') + 1, wkt.lastIndexOf(')'));
+    const groups = inner.match(/\(([^)]*)\)/g) || [];
+    return groups.map((g) => parseCoordPairs(g.slice(1, -1))).filter((l) => l.length > 0);
+  }
+  if (wkt.startsWith('LINESTRING')) {
+    const inner = wkt.slice(wkt.indexOf('(') + 1, wkt.lastIndexOf(')'));
+    const line = parseCoordPairs(inner);
+    return line.length ? [line] : [];
+  }
+  return [];
+}
+
+function haversine(aLng: number, aLat: number, bLng: number, bLat: number): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(aLat)) * Math.cos(toRad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// De twee verst-uiteenliggende punten van een straat = de uiteinden (entry/exit).
+function farthestPair(lines: number[][][]): { a: number[]; b: number[] } | null {
+  const pts = lines.flat();
+  if (pts.length === 0) return null;
+  if (pts.length === 1) return { a: pts[0], b: pts[0] };
+  let best = 0;
+  let a = pts[0];
+  let b = pts[pts.length - 1];
+  for (let i = 0; i < pts.length; i++) {
+    for (let j = i + 1; j < pts.length; j++) {
+      const d = haversine(pts[i][0], pts[i][1], pts[j][0], pts[j][1]);
+      if (d > best) { best = d; a = pts[i]; b = pts[j]; }
+    }
+  }
+  return { a, b };
 }
 
 /** Zoek woonplaatsen op (voor de autocomplete). */
@@ -64,9 +120,10 @@ export async function getStreets(place: string): Promise<StreetHit[]> {
   const PAGE = 100;
   const MAX_RECORDS = 3000; // veiligheidsgrens tegen extreem grote plaatsen
 
-  // Een straat kan uit meerdere weg-segmenten bestaan; neem één representatief
-  // punt per unieke straatnaam.
-  const byStreet = new Map<string, StreetHit>();
+  // Een straat kan uit meerdere weg-records/segmenten bestaan; verzamel alle
+  // lijnen per unieke straatnaam en onthoud een centroïde als midpunt.
+  const linesByStreet = new Map<string, number[][][]>();
+  const centroidByStreet = new Map<string, { lat: number; lng: number }>();
   let start = 0;
   let numFound = Infinity;
 
@@ -75,7 +132,7 @@ export async function getStreets(place: string): Promise<StreetHit[]> {
       `${BASE}?q=*` +
       `&fq=${encodeURIComponent('type:weg')}` +
       `&fq=${encodeURIComponent(`woonplaatsnaam:"${p}"`)}` +
-      `&fl=${encodeURIComponent('straatnaam,centroide_ll')}` +
+      `&fl=${encodeURIComponent('straatnaam,centroide_ll,geometrie_ll')}` +
       `&rows=${PAGE}&start=${start}` +
       `&sort=${encodeURIComponent('straatnaam asc')}`;
 
@@ -93,14 +150,39 @@ export async function getStreets(place: string): Promise<StreetHit[]> {
 
     for (const d of docs) {
       const street: string = d.straatnaam;
-      if (!street || byStreet.has(street)) continue;
-      const pt = parsePoint(d.centroide_ll);
-      if (!pt) continue;
-      byStreet.set(street, { street, lat: pt.lat, lng: pt.lng });
+      if (!street) continue;
+      const lines = parseLines(d.geometrie_ll);
+      if (lines.length) {
+        const existing = linesByStreet.get(street) || [];
+        linesByStreet.set(street, existing.concat(lines));
+      }
+      if (!centroidByStreet.has(street)) {
+        const pt = parsePoint(d.centroide_ll);
+        if (pt) centroidByStreet.set(street, pt);
+      }
     }
 
     start += PAGE;
   }
 
-  return Array.from(byStreet.values()).sort((a, b) => a.street.localeCompare(b.street, 'nl'));
+  const hits: StreetHit[] = [];
+  for (const [street, lines] of linesByStreet.entries()) {
+    const ends = farthestPair(lines);
+    if (!ends) continue;
+    const centroid = centroidByStreet.get(street);
+    const mid = centroid ?? {
+      lng: (ends.a[0] + ends.b[0]) / 2,
+      lat: (ends.a[1] + ends.b[1]) / 2,
+    };
+    hits.push({
+      street,
+      lat: mid.lat,
+      lng: mid.lng,
+      lines,
+      a: { lat: ends.a[1], lng: ends.a[0] },
+      b: { lat: ends.b[1], lng: ends.b[0] },
+    });
+  }
+
+  return hits.sort((a, b) => a.street.localeCompare(b.street, 'nl'));
 }

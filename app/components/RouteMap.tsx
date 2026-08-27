@@ -10,6 +10,8 @@ export interface MapStreet {
   lng: number;
   isDone: boolean;
   orderIndex: number;
+  /** Volledige straatlijn(en): [ [ [lng,lat], ... ], ... ] */
+  lines?: number[][][] | null;
 }
 
 interface RouteMapProps {
@@ -80,40 +82,58 @@ export default function RouteMap({
     const overlay = overlayRef.current;
     if (!L || !map || !overlay) return;
     overlay.clearLayers();
+    const bounds: [number, number][] = [];
 
-    // Route-lijn (GeoJSON is lng,lat → Leaflet wil lat,lng)
+    // 1) Rij-route als subtiele gidslijn onder de straten (GeoJSON lng,lat → lat,lng).
     if (geometry && geometry.length > 1) {
       const latlngs = geometry.map((c) => [c[1], c[0]] as [number, number]);
       L.polyline(latlngs, {
         color: '#1D4ED8',
-        weight: 4,
-        opacity: 0.75,
+        weight: 3,
+        opacity: 0.45,
+        dashArray: '4 7',
       }).addTo(overlay);
     }
 
-    // Straat-markers
-    const bounds: [number, number][] = [];
+    // 2) Elke straat als volledige, gekleurde lijn (rood = te rijden, groen = gereden).
     for (const s of streets) {
-      bounds.push([s.lat, s.lng]);
-      const marker = L.circleMarker([s.lat, s.lng], {
-        radius: 9,
-        color: '#ffffff',
-        weight: 2,
-        fillColor: s.isDone ? '#16A34A' : '#DC2626',
-        fillOpacity: 0.95,
-      });
-      marker.bindTooltip(`${s.orderIndex + 1}. ${s.street}${s.isDone ? ' ✓' : ''}`, {
-        direction: 'top',
-        offset: [0, -6],
-      });
-      if (onToggleRef.current) {
-        marker.on('click', () => onToggleRef.current?.(s.id, !s.isDone));
+      const color = s.isDone ? '#16A34A' : '#DC2626';
+      const handleClick = () => onToggleRef.current?.(s.id, !s.isDone);
+
+      if (s.lines && s.lines.length) {
+        for (const line of s.lines) {
+          const latlngs = line.map((c) => [c[1], c[0]] as [number, number]);
+          latlngs.forEach((ll) => bounds.push(ll));
+          const pl = L.polyline(latlngs, {
+            color,
+            weight: 7,
+            opacity: 0.9,
+            lineCap: 'round',
+            lineJoin: 'round',
+          });
+          pl.bindTooltip(`${s.orderIndex + 1}. ${s.street}${s.isDone ? ' ✓' : ''}`, { sticky: true });
+          if (onToggleRef.current) pl.on('click', handleClick);
+          pl.addTo(overlay);
+        }
       }
-      marker.addTo(overlay);
+
+      // Genummerd label + klikpunt op het midpunt van de straat.
+      bounds.push([s.lat, s.lng]);
+      const label = L.marker([s.lat, s.lng], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${color};color:#fff;font:700 12px/1 system-ui;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)">${s.orderIndex + 1}</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12],
+        }),
+      });
+      label.bindTooltip(`${s.orderIndex + 1}. ${s.street}${s.isDone ? ' ✓' : ''}`, { direction: 'top', offset: [0, -10] });
+      if (onToggleRef.current) label.on('click', handleClick);
+      label.addTo(overlay);
     }
 
     if (!fittedRef.current && bounds.length > 0) {
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 17 });
       fittedRef.current = true;
     }
   };

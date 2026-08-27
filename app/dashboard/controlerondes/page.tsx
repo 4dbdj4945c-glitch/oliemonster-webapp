@@ -39,9 +39,16 @@ interface RoundStreet {
   street: string;
   lat: number;
   lng: number;
+  geometry: string | null;
   orderIndex: number;
   isDone: boolean;
   doneAt: string | null;
+}
+
+interface RouteStep {
+  text: string;
+  name: string;
+  distance: number;
 }
 
 interface RoundDetail {
@@ -51,6 +58,7 @@ interface RoundDetail {
   notes: string | null;
   routeGeometry: string | null;
   routeDistance: number | null;
+  routeSteps: string | null;
   streets: RoundStreet[];
 }
 
@@ -262,7 +270,7 @@ export default function ControleRondesPage() {
   // Kaart-preview van de selectie in de wizard
   const wizardMapStreets: MapStreet[] = allStreets
     .filter((s) => selectedStreets.has(s.street))
-    .map((s, i) => ({ id: i, street: s.street, lat: s.lat, lng: s.lng, isDone: false, orderIndex: i }));
+    .map((s, i) => ({ id: i, street: s.street, lat: s.lat, lng: s.lng, isDone: false, orderIndex: i, lines: s.lines }));
 
   const createRound = async () => {
     setWizardError('');
@@ -272,7 +280,7 @@ export default function ControleRondesPage() {
     try {
       const streets = allStreets
         .filter((s) => selectedStreets.has(s.street))
-        .map((s) => ({ street: s.street, lat: s.lat, lng: s.lng }));
+        .map((s) => ({ street: s.street, lat: s.lat, lng: s.lng, lines: s.lines, a: s.a, b: s.b }));
       const res = await apiFetch('/api/control-rounds', {
         method: 'POST',
         body: JSON.stringify({ name: roundName, place: selectedPlace, notes: roundNotes, streets }),
@@ -368,15 +376,23 @@ export default function ControleRondesPage() {
       (pos) => {
         const { latitude, longitude } = pos.coords;
         setUserPos({ lat: latitude, lng: longitude });
-        // Automatisch afvinken van dichtbijgelegen, nog niet-gereden straten.
+        // Automatisch afvinken zodra je dicht genoeg bij een punt van de straat komt.
         if (autoMarkRef.current) {
           const d = detailRef.current;
           if (d) {
             for (const s of d.streets) {
               if (s.isDone) continue;
-              if (haversine(latitude, longitude, s.lat, s.lng) <= GPS_MARK_RADIUS) {
-                setStreetDone(s.id, true);
+              let minDist = haversine(latitude, longitude, s.lat, s.lng);
+              const lines = parseLines(s.geometry);
+              if (lines) {
+                for (const line of lines) {
+                  for (const c of line) {
+                    const dist = haversine(latitude, longitude, c[1], c[0]);
+                    if (dist < minDist) minDist = dist;
+                  }
+                }
               }
+              if (minDist <= GPS_MARK_RADIUS) setStreetDone(s.id, true);
             }
           }
         }
@@ -402,9 +418,22 @@ export default function ControleRondesPage() {
     try { return JSON.parse(detail.routeGeometry); } catch { return null; }
   })();
 
+  const parseLines = (g: string | null): number[][][] | null => {
+    if (!g) return null;
+    try { return JSON.parse(g); } catch { return null; }
+  };
+
   const detailMapStreets: MapStreet[] = detail
-    ? detail.streets.map((s) => ({ id: s.id, street: s.street, lat: s.lat, lng: s.lng, isDone: s.isDone, orderIndex: s.orderIndex }))
+    ? detail.streets.map((s) => ({
+        id: s.id, street: s.street, lat: s.lat, lng: s.lng,
+        isDone: s.isDone, orderIndex: s.orderIndex, lines: parseLines(s.geometry),
+      }))
     : [];
+
+  const routeSteps: RouteStep[] | null = (() => {
+    if (!detail?.routeSteps) return null;
+    try { return JSON.parse(detail.routeSteps); } catch { return null; }
+  })();
 
   const doneCount = detail ? detail.streets.filter((s) => s.isDone).length : 0;
   const totalCount = detail ? detail.streets.length : 0;
@@ -496,6 +525,12 @@ export default function ControleRondesPage() {
         .gps-on { background: #16A34A; }
         .gps-on:hover:not(:disabled) { background: #128a3d; }
         .check { width: 20px; height: 20px; accent-color: #16A34A; cursor: pointer; }
+        .steps { list-style: none; counter-reset: step; margin: 0; padding: 0; }
+        .step { counter-increment: step; display: flex; align-items: center; gap: 12px; padding: 9px 4px; border-top: 1px solid rgba(0,0,0,0.05); font-size: 14px; }
+        .step:first-child { border-top: none; }
+        .step::before { content: counter(step); flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: rgba(29,78,216,0.1); color: #1D4ED8; font-size: 12px; font-weight: 700; }
+        .step-text { flex: 1; }
+        .step-dist { color: #64748B; font-size: 12px; white-space: nowrap; }
       `}</style>
 
       <div className="wrap">
@@ -769,6 +804,28 @@ export default function ControleRondesPage() {
                     ))}
                   </div>
                 </div>
+              </div>
+
+              {/* Routebeschrijving */}
+              <div className="card" style={{ marginTop: 14 }}>
+                <div style={{ fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                  Routebeschrijving
+                </div>
+                {routeSteps && routeSteps.length > 0 ? (
+                  <ol className="steps">
+                    {routeSteps.map((st, i) => (
+                      <li key={i} className="step">
+                        <span className="step-text">{st.text}</span>
+                        {st.distance > 0 && <span className="step-dist">{st.distance >= 1000 ? `${(st.distance / 1000).toFixed(1)} km` : `${st.distance} m`}</span>}
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <p style={{ color: '#64748B', fontSize: 13, margin: 0 }}>
+                    Geen stap-voor-stap beschrijving beschikbaar (routeservice was niet bereikbaar). Rijd de straten in de genummerde volgorde hierboven.
+                  </p>
+                )}
               </div>
             </>
           )}

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { optimizeRoute, RoutePoint } from '@/lib/routePlanner';
+import { optimizeRoute, RouteStreet } from '@/lib/routePlanner';
 
 // GET - Lijst van alle controlerondes met voortgang (aantal straten / gereden).
 export async function GET() {
@@ -50,29 +50,45 @@ export async function POST(request: NextRequest) {
       name?: string;
       place?: string;
       notes?: string | null;
-      streets?: { street?: string; lat?: number; lng?: number }[];
+      streets?: {
+        street?: string;
+        lat?: number;
+        lng?: number;
+        lines?: number[][][];
+        a?: { lat?: number; lng?: number };
+        b?: { lat?: number; lng?: number };
+      }[];
     };
 
     if (!name?.trim() || !place?.trim()) {
       return NextResponse.json({ error: 'Naam en plaats zijn verplicht' }, { status: 400 });
     }
 
-    const points: RoutePoint[] = (streets || [])
-      .filter(
-        (s) =>
-          s.street?.trim() &&
-          typeof s.lat === 'number' &&
-          typeof s.lng === 'number' &&
-          Number.isFinite(s.lat) &&
-          Number.isFinite(s.lng)
-      )
-      .map((s) => ({ street: s.street!.trim(), lat: s.lat!, lng: s.lng! }));
+    const valid = (streets || []).filter(
+      (s) =>
+        s.street?.trim() &&
+        typeof s.lat === 'number' && Number.isFinite(s.lat) &&
+        typeof s.lng === 'number' && Number.isFinite(s.lng)
+    );
 
-    if (points.length === 0) {
+    if (valid.length === 0) {
       return NextResponse.json({ error: 'Selecteer minstens één straat' }, { status: 400 });
     }
 
-    const optimized = await optimizeRoute(points);
+    // Endpoints voor de route; val terug op het midpunt als ze ontbreken.
+    const routeStreets: RouteStreet[] = valid.map((s) => ({
+      street: s.street!.trim(),
+      a: {
+        lat: typeof s.a?.lat === 'number' ? s.a!.lat : s.lat!,
+        lng: typeof s.a?.lng === 'number' ? s.a!.lng : s.lng!,
+      },
+      b: {
+        lat: typeof s.b?.lat === 'number' ? s.b!.lat : s.lat!,
+        lng: typeof s.b?.lng === 'number' ? s.b!.lng : s.lng!,
+      },
+    }));
+
+    const optimized = await optimizeRoute(routeStreets);
 
     const round = await prisma.controlRound.create({
       data: {
@@ -81,11 +97,13 @@ export async function POST(request: NextRequest) {
         notes: notes?.trim() || null,
         routeGeometry: optimized.geometry.length ? JSON.stringify(optimized.geometry) : null,
         routeDistance: optimized.distance,
+        routeSteps: optimized.steps ? JSON.stringify(optimized.steps) : null,
         streets: {
-          create: points.map((p, i) => ({
-            street: p.street,
-            lat: p.lat,
-            lng: p.lng,
+          create: valid.map((s, i) => ({
+            street: s.street!.trim(),
+            lat: s.lat!,
+            lng: s.lng!,
+            geometry: s.lines && s.lines.length ? JSON.stringify(s.lines) : null,
             orderIndex: optimized.order[i] ?? i,
           })),
         },
@@ -97,7 +115,7 @@ export async function POST(request: NextRequest) {
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.CREATE_CONTROL_ROUND,
-      details: { id: round.id, name: round.name, place: round.place, streets: points.length },
+      details: { id: round.id, name: round.name, place: round.place, streets: valid.length },
       request,
     });
 

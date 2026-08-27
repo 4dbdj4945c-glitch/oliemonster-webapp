@@ -97,8 +97,9 @@ model ControlRound {
   name          String              // Naam van de ronde (bijv. "Wijk Noord controle")
   place         String              // Woonplaats waarin de ronde valt
   notes         String?             // Optionele notities
-  routeGeometry String?             // Cache: berekend route-traject als GeoJSON LineString (coords)
+  routeGeometry String?             // Cache: berekend rij-traject als GeoJSON-coords [[lng,lat],...]
   routeDistance Float?              // Cache: totale afstand in meters (indien bekend)
+  routeSteps    String?             // Cache: stap-voor-stap routebeschrijving als JSON
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -111,8 +112,9 @@ model ControlRoundStreet {
   id         Int      @id @default(autoincrement())
   roundId    Int
   street     String              // Straatnaam
-  lat        Float               // Representatieve coördinaat (centroïde) - breedtegraad
-  lng        Float               // Representatieve coördinaat (centroïde) - lengtegraad
+  lat        Float               // Representatief midpunt - breedtegraad (label/GPS-fallback)
+  lng        Float               // Representatief midpunt - lengtegraad
+  geometry   String?             // Volledige straatlijn(en) als JSON: [[[lng,lat],...],...]
   orderIndex Int      @default(0)  // Positie in de berekende rijvolgorde
   isDone     Boolean  @default(false)  // Of deze straat al gereden/gecontroleerd is
   doneAt     DateTime?           // Wanneer afgevinkt
