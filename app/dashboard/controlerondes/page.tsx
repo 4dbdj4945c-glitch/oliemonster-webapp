@@ -45,12 +45,6 @@ interface RoundStreet {
   doneAt: string | null;
 }
 
-interface RouteStep {
-  text: string;
-  name: string;
-  distance: number;
-}
-
 interface RoundDetail {
   id: number;
   name: string;
@@ -430,10 +424,6 @@ export default function ControleRondesPage() {
       }))
     : [];
 
-  const routeSteps: RouteStep[] | null = (() => {
-    if (!detail?.routeSteps) return null;
-    try { return JSON.parse(detail.routeSteps); } catch { return null; }
-  })();
 
   const doneCount = detail ? detail.streets.filter((s) => s.isDone).length : 0;
   const totalCount = detail ? detail.streets.length : 0;
@@ -804,28 +794,6 @@ export default function ControleRondesPage() {
                     ))}
                   </div>
                 </div>
-              </div>
-
-              {/* Routebeschrijving */}
-              <div className="card" style={{ marginTop: 14 }}>
-                <div style={{ fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1D4ED8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                  Routebeschrijving
-                </div>
-                {routeSteps && routeSteps.length > 0 ? (
-                  <ol className="steps">
-                    {routeSteps.map((st, i) => (
-                      <li key={i} className="step">
-                        <span className="step-text">{st.text}</span>
-                        {st.distance > 0 && <span className="step-dist">{st.distance >= 1000 ? `${(st.distance / 1000).toFixed(1)} km` : `${st.distance} m`}</span>}
-                      </li>
-                    ))}
-                  </ol>
-                ) : (
-                  <p style={{ color: '#64748B', fontSize: 13, margin: 0 }}>
-                    Geen stap-voor-stap beschrijving beschikbaar (routeservice was niet bereikbaar). Rijd de straten in de genummerde volgorde hierboven.
-                  </p>
-                )}
               </div>
             </>
           )}

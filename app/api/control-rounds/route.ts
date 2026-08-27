@@ -97,15 +97,22 @@ export async function POST(request: NextRequest) {
         notes: notes?.trim() || null,
         routeGeometry: optimized.geometry.length ? JSON.stringify(optimized.geometry) : null,
         routeDistance: optimized.distance,
-        routeSteps: optimized.steps ? JSON.stringify(optimized.steps) : null,
+        routeSteps: null,
         streets: {
-          create: valid.map((s, i) => ({
-            street: s.street!.trim(),
-            lat: s.lat!,
-            lng: s.lng!,
-            geometry: s.lines && s.lines.length ? JSON.stringify(s.lines) : null,
-            orderIndex: optimized.order[i] ?? i,
-          })),
+          create: valid.map((s, i) => {
+            // Voorkeur: nauwkeurig OSRM-wegtraject; anders de (grove) PDOK-lijn.
+            const osrm = optimized.streetGeometries[i];
+            const geometry = osrm && osrm.length
+              ? JSON.stringify([osrm])
+              : (s.lines && s.lines.length ? JSON.stringify(s.lines) : null);
+            return {
+              street: s.street!.trim(),
+              lat: s.lat!,
+              lng: s.lng!,
+              geometry,
+              orderIndex: optimized.order[i] ?? i,
+            };
+          }),
         },
       },
       include: { streets: { orderBy: { orderIndex: 'asc' } } },

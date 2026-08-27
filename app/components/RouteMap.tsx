@@ -85,13 +85,14 @@ export default function RouteMap({
     const bounds: [number, number][] = [];
 
     // 1) Rij-route als subtiele gidslijn onder de straten (GeoJSON lng,lat → lat,lng).
+    //    Toont hoe je van de ene straat naar de volgende rijdt.
     if (geometry && geometry.length > 1) {
       const latlngs = geometry.map((c) => [c[1], c[0]] as [number, number]);
       L.polyline(latlngs, {
-        color: '#1D4ED8',
-        weight: 3,
-        opacity: 0.45,
-        dashArray: '4 7',
+        color: '#64748B',
+        weight: 2,
+        opacity: 0.5,
+        dashArray: '3 7',
       }).addTo(overlay);
     }
 

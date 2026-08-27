@@ -2,15 +2,16 @@
  * Route-planning voor controlerondes.
  *
  * Elke geselecteerde straat moet in z'n geheel gereden worden. We behandelen
- * een straat daarom als een te rijden segment met twee uiteinden (A en B).
- * De volgorde en rijrichting bepalen we met een nearest-neighbour-heuristiek:
- * vanaf het vorige eindpunt rijden we telkens naar het dichtstbijzijnde uiteinde
- * van een nog niet gereden straat en rijden die straat helemaal door. Zo wordt
- * er niet onnodig gekeerd en ontstaat een logische ronde.
+ * een straat als een te rijden segment met twee uiteinden (A en B). De volgorde
+ * en rijrichting bepalen we met een nearest-neighbour-heuristiek: vanaf het
+ * vorige eindpunt rijden we telkens naar het dichtstbijzijnde uiteinde van een
+ * nog niet gereden straat en rijden die straat helemaal door. Zo wordt er niet
+ * onnodig gekeerd en ontstaat een logische ronde.
  *
- * Met die volgorde vragen we OSRM een echte auto-route over de wegen op,
- * inclusief stap-voor-stap navigatie (afslag + straatnaam + afstand). Als OSRM
- * niet beschikbaar is, vallen we terug op rechte verbindingen zonder navigatie.
+ * Met die volgorde vragen we OSRM een echte auto-route op. Belangrijk: OSRM
+ * geeft het wegdek nauwkeurig terug (volgt bochten), terwijl de PDOK-geometrie
+ * grof vereenvoudigd is. We halen daarom per straat het bijbehorende wegtraject
+ * uit de OSRM-route en gebruiken dát voor het inkleuren van de straat.
  */
 
 export interface LatLng {
@@ -24,21 +25,15 @@ export interface RouteStreet {
   b: LatLng; // eindpunt B
 }
 
-export interface RouteStep {
-  text: string; // leesbare instructie in het Nederlands
-  name: string; // straatnaam waar de manoeuvre op slaat
-  distance: number; // meters te rijden na deze instructie
-}
-
 export interface OptimizedRoute {
   /** order[i] = positie van straat i in de rijvolgorde */
   order: number[];
-  /** Rij-traject als GeoJSON-coördinaten [[lng, lat], ...] */
+  /** Volledig rij-traject als GeoJSON-coords [[lng,lat],...] (incl. verbindingen) */
   geometry: number[][];
+  /** Per straat (originele index) het wegtraject uit OSRM, of null bij fallback */
+  streetGeometries: (number[][] | null)[];
   /** Totale afstand in meters (null bij fallback) */
   distance: number | null;
-  /** Stap-voor-stap routebeschrijving (null bij fallback) */
-  steps: RouteStep[] | null;
   /** true = via OSRM over echte wegen, false = fallback met rechte lijnen */
   followsRoads: boolean;
 }
@@ -58,7 +53,7 @@ function haversine(a: LatLng, b: LatLng): number {
 }
 
 interface Leg {
-  index: number; // straat-index
+  index: number; // originele straat-index
   enter: LatLng;
   exit: LatLng;
 }
@@ -72,7 +67,6 @@ function orderStreets(streets: RouteStreet[]): Leg[] {
   const used = new Array(n).fill(false);
   const legs: Leg[] = [];
 
-  // Kies startpunt: zuidwestelijkste uiteinde.
   let current: LatLng = streets[0].a;
   let bestScore = Infinity;
   for (const s of streets) {
@@ -96,42 +90,14 @@ function orderStreets(streets: RouteStreet[]): Leg[] {
     if (bestIdx === -1) break;
     used[bestIdx] = true;
     const s = streets[bestIdx];
-    const enter = enterAtA ? s.a : s.b;
-    const exit = enterAtA ? s.b : s.a;
-    legs.push({ index: bestIdx, enter, exit });
-    current = exit;
+    legs.push({
+      index: bestIdx,
+      enter: enterAtA ? s.a : s.b,
+      exit: enterAtA ? s.b : s.a,
+    });
+    current = legs[legs.length - 1].exit;
   }
   return legs;
-}
-
-function maneuverText(type: string, modifier: string | undefined, name: string): string {
-  const straat = name ? ` ${name}` : '';
-  const dir = (() => {
-    switch (modifier) {
-      case 'left': return 'linksaf';
-      case 'slight left': return 'iets naar links';
-      case 'sharp left': return 'scherp linksaf';
-      case 'right': return 'rechtsaf';
-      case 'slight right': return 'iets naar rechts';
-      case 'sharp right': return 'scherp rechtsaf';
-      case 'straight': return 'rechtdoor';
-      case 'uturn': return 'keren';
-      default: return '';
-    }
-  })();
-  switch (type) {
-    case 'depart': return `Vertrek${straat ? ` op${straat}` : ''}`;
-    case 'arrive': return 'Aankomst — ronde compleet';
-    case 'turn': return `Sla ${dir || 'af'}${straat ? ` naar${straat}` : ''}`;
-    case 'new name': return `Ga verder${straat ? ` op${straat}` : ''}`;
-    case 'continue': return `Ga rechtdoor${straat ? ` op${straat}` : ''}`;
-    case 'merge': return `Voeg in${straat ? ` op${straat}` : ''}`;
-    case 'roundabout':
-    case 'rotary': return `Neem de rotonde${straat ? ` naar${straat}` : ''}`;
-    case 'fork': return `Houd ${dir || 'aan'}${straat ? ` naar${straat}` : ''}`;
-    case 'end of road': return `Sla ${dir || 'af'}${straat ? ` naar${straat}` : ''}`;
-    default: return `${dir ? `Ga ${dir}` : 'Rijd verder'}${straat ? ` op${straat}` : ''}`;
-  }
 }
 
 function fallback(streets: RouteStreet[], legs: Leg[]): OptimizedRoute {
@@ -142,13 +108,19 @@ function fallback(streets: RouteStreet[], legs: Leg[]): OptimizedRoute {
     geometry.push([leg.enter.lng, leg.enter.lat]);
     geometry.push([leg.exit.lng, leg.exit.lat]);
   });
-  return { order, geometry, distance: null, steps: null, followsRoads: false };
+  return {
+    order,
+    geometry,
+    streetGeometries: new Array(streets.length).fill(null),
+    distance: null,
+    followsRoads: false,
+  };
 }
 
 /** Bepaal de route. Gooit nooit; valt terug op rechte lijnen bij problemen. */
 export async function optimizeRoute(streets: RouteStreet[]): Promise<OptimizedRoute> {
   if (streets.length === 0) {
-    return { order: [], geometry: [], distance: null, steps: null, followsRoads: false };
+    return { order: [], geometry: [], streetGeometries: [], distance: null, followsRoads: false };
   }
 
   const legs = orderStreets(streets);
@@ -159,7 +131,9 @@ export async function optimizeRoute(streets: RouteStreet[]): Promise<OptimizedRo
     return fallback(streets, legs);
   }
 
-  // Waypoints: per straat enter->exit; sluit de ronde door terug te keren naar start.
+  // Waypoints: per straat enter->exit; sluit de ronde door terug te keren.
+  // Dit maakt de OSRM-legs voorspelbaar: even legs (0,2,4,...) = straat rijden,
+  // oneven legs = verbinding naar de volgende straat.
   const waypoints: LatLng[] = [];
   legs.forEach((leg) => { waypoints.push(leg.enter); waypoints.push(leg.exit); });
   if (legs.length > 0) waypoints.push(legs[0].enter);
@@ -178,25 +152,31 @@ export async function optimizeRoute(streets: RouteStreet[]): Promise<OptimizedRo
     if (!res.ok) return fallback(streets, legs);
     const data = await res.json();
     const route = data?.routes?.[0];
-    if (data.code !== 'Ok' || !route?.geometry?.coordinates) {
+    if (data.code !== 'Ok' || !route?.geometry?.coordinates || !route.legs) {
       return fallback(streets, legs);
     }
 
     const geometry: number[][] = route.geometry.coordinates;
     const distance: number | null = typeof route.distance === 'number' ? route.distance : null;
 
-    const steps: RouteStep[] = [];
-    for (const leg of route.legs ?? []) {
-      for (const st of leg.steps ?? []) {
-        const m = st.maneuver ?? {};
-        const text = maneuverText(m.type, m.modifier, st.name || '');
-        // Sla nul-afstand 'new name'-ruis over, behalve vertrek/aankomst.
-        if (st.distance < 5 && m.type !== 'depart' && m.type !== 'arrive') continue;
-        steps.push({ text, name: st.name || '', distance: Math.round(st.distance || 0) });
+    // Haal per straat het wegtraject uit de bijbehorende (even) OSRM-leg.
+    const streetGeometries: (number[][] | null)[] = new Array(streets.length).fill(null);
+    for (let k = 0; k < legs.length; k++) {
+      const osrmLeg = route.legs[2 * k];
+      if (!osrmLeg?.steps) continue;
+      const coordsOut: number[][] = [];
+      for (const st of osrmLeg.steps) {
+        const c = st.geometry?.coordinates;
+        if (!Array.isArray(c)) continue;
+        for (const pt of c) {
+          const last = coordsOut[coordsOut.length - 1];
+          if (!last || last[0] !== pt[0] || last[1] !== pt[1]) coordsOut.push(pt);
+        }
       }
+      if (coordsOut.length >= 2) streetGeometries[legs[k].index] = coordsOut;
     }
 
-    return { order, geometry, distance, steps: steps.length ? steps : null, followsRoads: true };
+    return { order, geometry, streetGeometries, distance, followsRoads: true };
   } catch {
     return fallback(streets, legs);
   }
