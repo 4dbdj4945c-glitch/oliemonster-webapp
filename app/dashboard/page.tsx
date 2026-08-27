@@ -18,8 +18,7 @@ export default function DashboardPage() {
     oilSamplesTaken2025: 0,
     oilSamples2026: 0,
     oilSamplesTaken2026: 0,
-    products: 0,
-    lowStock: 0,
+    controlRounds: 0,
     ultimoTasks: 0,
   });
   const router = useRouter();
@@ -48,10 +47,10 @@ export default function DashboardPage() {
 
   const loadStats = async () => {
     try {
-      const [res2025, res2026, productsRes, ultimoRes] = await Promise.allSettled([
+      const [res2025, res2026, roundsRes, ultimoRes] = await Promise.allSettled([
         fetch('/api/samples?year=2025'),
         fetch('/api/samples?year=2026'),
-        fetch('/api/products'),
+        fetch('/api/control-rounds'),
         fetch('/api/ultimo-tasks'),
       ]);
 
@@ -71,12 +70,11 @@ export default function DashboardPage() {
           oilSamplesTaken2026: data.filter((s: any) => s.isTaken && !s.isDisabled).length,
         }));
       }
-      if (productsRes.status === 'fulfilled' && productsRes.value.ok) {
-        const data = await productsRes.value.json();
+      if (roundsRes.status === 'fulfilled' && roundsRes.value.ok) {
+        const data = await roundsRes.value.json();
         setStats(prev => ({
           ...prev,
-          products: data.length,
-          lowStock: data.filter((p: any) => p.currentStock <= p.minStock).length,
+          controlRounds: data.length,
         }));
       }
       if (ultimoRes.status === 'fulfilled' && ultimoRes.value.ok) {
@@ -294,22 +292,16 @@ export default function DashboardPage() {
             <div
               className="module-card"
               style={{ '--accent-color': '#0F766E' } as React.CSSProperties}
-              onClick={() => router.push('/dashboard/voorraad')}
+              onClick={() => router.push('/dashboard/controlerondes')}
             >
               <div className="card-accent" />
-              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/><path d="m7.5 4.27 9 5.15"/></svg></span>
-              <h2 className="card-title">Voorraadbeheer</h2>
-              <p className="card-description">Beheer voorraad van filters, olie en andere producten</p>
+              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></span>
+              <h2 className="card-title">Controlerondes</h2>
+              <p className="card-description">Plan en rijd controlerondes langs geselecteerde straten met live route en voortgang</p>
               <div className="card-stats">
                 <div className="stat-item">
-                  <div className="stat-value">{stats.products}</div>
-                  <div className="stat-label">Producten</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-value" style={{ color: stats.lowStock > 0 ? '#DC2626' : '#16A34A' }}>
-                    {stats.lowStock}
-                  </div>
-                  <div className="stat-label">Lage voorraad</div>
+                  <div className="stat-value">{stats.controlRounds}</div>
+                  <div className="stat-label">Rondes</div>
                 </div>
               </div>
             </div>

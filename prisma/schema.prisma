@@ -84,61 +84,44 @@ model AuditLog {
 }
 
 // ============================================
-// VOORRAADBEHEER
+// CONTROLERONDES
 // ============================================
+// Een controleronde is een geplande route langs geselecteerde straten in een
+// woonplaats. De straten worden via PDOK gekozen; de rijvolgorde + het
+// route-traject over de echte wegen wordt berekend (OSRM) en opgeslagen.
+// Tijdens het rijden wordt per straat bijgehouden of die al gereden is
+// (handmatig afvinken of automatisch via GPS).
 
-model Product {
+model ControlRound {
   id            Int      @id @default(autoincrement())
-  brand         String              // Merk (bijv. "Shell", "Mann Filter")
-  type          String              // Type (bijv. "Helix Ultra", "HU 716/2 x")
-  articleNumber String?             // Artikelnummer (optioneel)
-  category      String              // Categorie (bijv. "Filters", "Olie", "Vetten")
-  location      String   @default("Hoofdmagazijn")  // Locatie waar product ligt
-  unit          String   @default("stuks")  // Eenheid (stuks, liters, kg)
-  minStock      Int      @default(0)        // Minimale voorraad voor waarschuwing
-  description   String?             // Optionele omschrijving
-  isActive      Boolean  @default(true)     // Of product actief is
+  name          String              // Naam van de ronde (bijv. "Wijk Noord controle")
+  place         String              // Woonplaats waarin de ronde valt
+  notes         String?             // Optionele notities
+  routeGeometry String?             // Cache: berekend route-traject als GeoJSON LineString (coords)
+  routeDistance Float?              // Cache: totale afstand in meters (indien bekend)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  stockItems     StockItem[]
-  stockMovements StockMovement[]
+  streets       ControlRoundStreet[]
 
-  @@index([category])
-  @@index([brand])
-  @@index([articleNumber])
+  @@index([place])
 }
 
-model StockItem {
-  id        Int      @id @default(autoincrement())
-  productId Int
-  quantity  Int      @default(0)   // Huidige voorraad
-  location  String   @default("Hoofdmagazijn")  // Locatie van voorraad
-  updatedAt DateTime @updatedAt
+model ControlRoundStreet {
+  id         Int      @id @default(autoincrement())
+  roundId    Int
+  street     String              // Straatnaam
+  lat        Float               // Representatieve coördinaat (centroïde) - breedtegraad
+  lng        Float               // Representatieve coördinaat (centroïde) - lengtegraad
+  orderIndex Int      @default(0)  // Positie in de berekende rijvolgorde
+  isDone     Boolean  @default(false)  // Of deze straat al gereden/gecontroleerd is
+  doneAt     DateTime?           // Wanneer afgevinkt
+  createdAt  DateTime @default(now())
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  round      ControlRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
 
-  @@unique([productId, location])  // Één stock item per product per locatie
-  @@index([productId])
-  @@index([location])
-}
-
-model StockMovement {
-  id        Int      @id @default(autoincrement())
-  productId Int
-  type      String              // "IN" of "OUT"
-  quantity  Int                 // Aantal (altijd positief)
-  location  String   @default("Hoofdmagazijn")
-  reason    String?             // Reden/opmerking
-  userId    Int?                // Wie heeft de mutatie gedaan
-  username  String?             // Gebruikersnaam voor referentie
-  createdAt DateTime @default(now())
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@index([productId])
-  @@index([type])
-  @@index([createdAt])
+  @@index([roundId])
+  @@index([orderIndex])
 }
 
 // ============================================
