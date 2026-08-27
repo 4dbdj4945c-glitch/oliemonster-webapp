@@ -52,30 +52,55 @@ export async function searchPlaces(query: string): Promise<PlaceHit[]> {
   return hits;
 }
 
-/** Haal alle straten binnen een woonplaats op, met representatieve coördinaat. */
+/**
+ * Haal alle straten binnen een woonplaats op, met representatieve coördinaat.
+ * De PDOK-endpoint geeft maximaal 100 records per aanroep, dus pagineren we
+ * met `start` tot alle straten binnen zijn.
+ */
 export async function getStreets(place: string): Promise<StreetHit[]> {
   const p = place.trim();
   if (!p) return [];
-  const url =
-    `${BASE}?q=*` +
-    `&fq=${encodeURIComponent('type:weg')}` +
-    `&fq=${encodeURIComponent(`woonplaatsnaam:"${p}"`)}` +
-    `&fl=${encodeURIComponent('straatnaam,centroide_ll')}` +
-    `&rows=2000&sort=${encodeURIComponent('straatnaam asc')}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('PDOK straten-ophalen mislukt');
-  const data = await res.json();
-  const docs: any[] = data?.response?.docs ?? [];
+
+  const PAGE = 100;
+  const MAX_RECORDS = 3000; // veiligheidsgrens tegen extreem grote plaatsen
 
   // Een straat kan uit meerdere weg-segmenten bestaan; neem één representatief
   // punt per unieke straatnaam.
   const byStreet = new Map<string, StreetHit>();
-  for (const d of docs) {
-    const street: string = d.straatnaam;
-    if (!street || byStreet.has(street)) continue;
-    const pt = parsePoint(d.centroide_ll);
-    if (!pt) continue;
-    byStreet.set(street, { street, lat: pt.lat, lng: pt.lng });
+  let start = 0;
+  let numFound = Infinity;
+
+  while (start < numFound && start < MAX_RECORDS) {
+    const url =
+      `${BASE}?q=*` +
+      `&fq=${encodeURIComponent('type:weg')}` +
+      `&fq=${encodeURIComponent(`woonplaatsnaam:"${p}"`)}` +
+      `&fl=${encodeURIComponent('straatnaam,centroide_ll')}` +
+      `&rows=${PAGE}&start=${start}` +
+      `&sort=${encodeURIComponent('straatnaam asc')}`;
+
+    const res = await fetch(url);
+    if (!res.ok) {
+      // Eerste pagina mislukt = echte fout; latere pagina: gebruik wat we hebben.
+      if (start === 0) throw new Error('PDOK straten-ophalen mislukt');
+      break;
+    }
+
+    const data = await res.json();
+    numFound = data?.response?.numFound ?? 0;
+    const docs: any[] = data?.response?.docs ?? [];
+    if (docs.length === 0) break;
+
+    for (const d of docs) {
+      const street: string = d.straatnaam;
+      if (!street || byStreet.has(street)) continue;
+      const pt = parsePoint(d.centroide_ll);
+      if (!pt) continue;
+      byStreet.set(street, { street, lat: pt.lat, lng: pt.lng });
+    }
+
+    start += PAGE;
   }
+
   return Array.from(byStreet.values()).sort((a, b) => a.street.localeCompare(b.street, 'nl'));
 }
