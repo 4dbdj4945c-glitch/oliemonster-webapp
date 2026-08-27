@@ -83,10 +83,13 @@ export default function ControleRondesPage() {
   const [wizardStep, setWizardStep] = useState<'place' | 'streets'>('place');
   const [placeQuery, setPlaceQuery] = useState('');
   const [placeHits, setPlaceHits] = useState<PlaceHit[]>([]);
+  const [placeHighlight, setPlaceHighlight] = useState(0);
+  const [placeOpen, setPlaceOpen] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
   const [allStreets, setAllStreets] = useState<StreetHit[]>([]);
   const [streetsLoading, setStreetsLoading] = useState(false);
   const [streetSearch, setStreetSearch] = useState('');
+  const [streetHighlight, setStreetHighlight] = useState(0);
   const [selectedStreets, setSelectedStreets] = useState<Set<string>>(new Set());
   const [roundName, setRoundName] = useState('');
   const [roundNotes, setRoundNotes] = useState('');
@@ -145,19 +148,46 @@ export default function ControleRondesPage() {
     if (view !== 'new' || wizardStep !== 'place') return;
     const q = placeQuery;
     if (q.trim().length < 2) { setPlaceHits([]); return; }
+    // Niet opnieuw zoeken als het veld al exact de gekozen plaats bevat.
+    if (selectedPlace && q.trim() === selectedPlace) return;
     const t = setTimeout(async () => {
       try {
-        setPlaceHits(await searchPlaces(q));
+        const hits = await searchPlaces(q);
+        setPlaceHits(hits);
+        setPlaceHighlight(0);
+        setPlaceOpen(true);
       } catch {
         setPlaceHits([]);
       }
     }, 250);
     return () => clearTimeout(t);
-  }, [placeQuery, view, wizardStep]);
+  }, [placeQuery, view, wizardStep, selectedPlace]);
+
+  const onPlaceKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setPlaceOpen(true);
+      setPlaceHighlight((h) => Math.min(h + 1, placeHits.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setPlaceHighlight((h) => Math.max(h - 1, 0));
+    } else if (e.key === 'Escape') {
+      setPlaceOpen(false);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      let hits = placeHits;
+      if (hits.length === 0 && placeQuery.trim().length >= 2) {
+        try { hits = await searchPlaces(placeQuery); } catch { hits = []; }
+      }
+      const pick = hits[placeHighlight] || hits[0];
+      if (pick) choosePlace(pick.name);
+    }
+  };
 
   const choosePlace = async (place: string) => {
     setSelectedPlace(place);
     setPlaceHits([]);
+    setPlaceOpen(false);
     setPlaceQuery(place);
     setStreetsLoading(true);
     setWizardError('');
@@ -201,6 +231,24 @@ export default function ControleRondesPage() {
   const filteredStreets = allStreets.filter((s) =>
     s.street.toLowerCase().includes(streetSearch.toLowerCase())
   );
+
+  const onStreetKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setStreetHighlight((h) => Math.min(h + 1, filteredStreets.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setStreetHighlight((h) => Math.max(h - 1, 0));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const pick = filteredStreets[streetHighlight] || filteredStreets[0];
+      if (pick) {
+        toggleStreet(pick.street);
+        setStreetSearch('');
+        setStreetHighlight(0);
+      }
+    }
+  };
 
   const selectAllFiltered = () => {
     setSelectedStreets((prev) => {
@@ -423,10 +471,17 @@ export default function ControleRondesPage() {
           border: 1px solid rgba(0,0,0,0.1); border-radius: 9px; font-size: 15px; color: #0C1B33; outline: none;
         }
         .input:focus { border-color: #1D4ED8; box-shadow: 0 0 0 3px rgba(29,78,216,0.15); }
-        .hitlist { list-style: none; margin: 6px 0 0; padding: 0; border: 1px solid rgba(0,0,0,0.08); border-radius: 10px; overflow: hidden; }
+        .combo { position: relative; }
+        .hitlist {
+          list-style: none; margin: 4px 0 0; padding: 0;
+          border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; overflow: hidden;
+          position: absolute; left: 0; right: 0; top: 100%; z-index: 20;
+          background: #fff; box-shadow: 0 12px 30px rgba(15,23,42,0.14);
+        }
         .hit { padding: 10px 14px; cursor: pointer; font-size: 14px; border-top: 1px solid rgba(0,0,0,0.05); }
         .hit:first-child { border-top: none; }
-        .hit:hover { background: rgba(29,78,216,0.08); }
+        .hit:hover, .hit-active { background: rgba(29,78,216,0.1); }
+        .row-active { background: rgba(29,78,216,0.08); }
         .street-list { max-height: 46vh; overflow-y: auto; border: 1px solid rgba(0,0,0,0.07); border-radius: 12px; }
         .street-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-top: 1px solid rgba(0,0,0,0.05); font-size: 14px; cursor: pointer; }
         .street-row:first-child { border-top: none; }
@@ -525,23 +580,39 @@ export default function ControleRondesPage() {
               {wizardStep === 'place' && (
                 <div className="card" style={{ maxWidth: 560 }}>
                   <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Plaatsnaam</label>
-                  <input
-                    className="input"
-                    autoFocus
-                    placeholder="Typ een plaatsnaam, bijv. Heeze"
-                    value={placeQuery}
-                    onChange={(e) => { setPlaceQuery(e.target.value); setSelectedPlace(null); }}
-                  />
-                  {placeHits.length > 0 && (
-                    <ul className="hitlist">
-                      {placeHits.map((h) => (
-                        <li key={h.label} className="hit" onClick={() => choosePlace(h.name)}>
-                          <strong>{h.name}</strong>
-                          {h.label !== h.name && <span style={{ color: '#64748B' }}> — {h.label}</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <div className="combo">
+                    <input
+                      className="input"
+                      autoFocus
+                      role="combobox"
+                      aria-expanded={placeOpen && placeHits.length > 0}
+                      aria-autocomplete="list"
+                      placeholder="Typ een plaatsnaam, bijv. Heeze"
+                      value={placeQuery}
+                      onChange={(e) => { setPlaceQuery(e.target.value); setSelectedPlace(null); setPlaceOpen(true); }}
+                      onFocus={() => { if (placeHits.length > 0) setPlaceOpen(true); }}
+                      onBlur={() => setTimeout(() => setPlaceOpen(false), 150)}
+                      onKeyDown={onPlaceKeyDown}
+                    />
+                    {placeOpen && placeHits.length > 0 && (
+                      <ul className="hitlist">
+                        {placeHits.map((h, i) => (
+                          <li
+                            key={h.label}
+                            className={`hit ${i === placeHighlight ? 'hit-active' : ''}`}
+                            onMouseEnter={() => setPlaceHighlight(i)}
+                            onMouseDown={(e) => { e.preventDefault(); choosePlace(h.name); }}
+                          >
+                            <strong>{h.name}</strong>
+                            {h.label !== h.name && <span style={{ color: '#64748B' }}> — {h.label}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <p style={{ fontSize: 12, color: '#64748B', margin: '8px 2px 0' }}>
+                    Kies uit de lijst of druk op Enter voor de eerste suggestie.
+                  </p>
                   {streetsLoading && <p style={{ color: '#64748B', fontSize: 13, marginTop: 12 }}>Straten ophalen…</p>}
                   {wizardError && <div className="err">{wizardError}</div>}
                 </div>
@@ -550,12 +621,15 @@ export default function ControleRondesPage() {
               {wizardStep === 'streets' && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
                   <div className="card">
-                    <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                    <div style={{ marginBottom: 10 }}>
                       <input
                         className="input"
-                        placeholder="Zoek straat…"
+                        role="combobox"
+                        aria-autocomplete="list"
+                        placeholder="Typ om te zoeken, Enter voegt de bovenste toe…"
                         value={streetSearch}
-                        onChange={(e) => setStreetSearch(e.target.value)}
+                        onChange={(e) => { setStreetSearch(e.target.value); setStreetHighlight(0); }}
+                        onKeyDown={onStreetKeyDown}
                       />
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -571,10 +645,14 @@ export default function ControleRondesPage() {
                       {filteredStreets.length === 0 ? (
                         <div style={{ padding: 16, color: '#64748B', fontSize: 14 }}>Geen straten.</div>
                       ) : (
-                        filteredStreets.map((s) => {
+                        filteredStreets.map((s, i) => {
                           const sel = selectedStreets.has(s.street);
                           return (
-                            <label key={s.street} className={`street-row ${sel ? 'done' : ''}`}>
+                            <label
+                              key={s.street}
+                              className={`street-row ${sel ? 'done' : ''} ${i === streetHighlight ? 'row-active' : ''}`}
+                              onMouseEnter={() => setStreetHighlight(i)}
+                            >
                               <input type="checkbox" className="check" checked={sel} onChange={() => toggleStreet(s.street)} />
                               <span>{s.street}</span>
                             </label>
