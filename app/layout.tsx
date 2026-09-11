@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import FetchPatcher from "./components/FetchPatcher";
@@ -28,9 +28,21 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    // 'default' i.p.v. 'black-translucent': voorkomt dat de app-inhoud achter
+    // de statusbalk doorloopt in de geïnstalleerde iOS-PWA. Dat verschoof de
+    // layout en zorgde ervoor dat taps hoger landden dan de knop/het veld.
+    statusBarStyle: 'default',
     title: 'IDS Portal',
   },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  // 'auto' (niet 'cover'): houd de inhoud binnen het veilige schermgebied,
+  // zodat de weergave en de tap-posities gelijk lopen.
+  viewportFit: 'auto',
+  themeColor: '#0C1B33',
 };
 
 export default function RootLayout({
