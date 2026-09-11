@@ -20,6 +20,8 @@
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.2.3",
     "iron-session": "^8.0.4",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "leaflet": "^1.9.4",
     "next": "^16.0.7",
     "prisma": "^5.22.0",

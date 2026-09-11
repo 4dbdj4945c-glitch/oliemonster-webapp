@@ -6,6 +6,7 @@ import PhotoModal from '@/app/components/PhotoModal';
 import HelpModal from '@/app/components/HelpModal';
 import Tooltip from '@/app/components/Tooltip';
 import SampleAttemptsPanel from '@/app/components/SampleAttemptsPanel';
+import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
 
 interface User {
   userId: number;
@@ -42,6 +43,7 @@ export default function DashboardPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [statusFilter, setStatusFilter] = useState<'all' | 'taken' | 'notTaken' | 'cancelled'>('all');
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
   const router = useRouter();
 
   // Form state
@@ -324,6 +326,25 @@ export default function DashboardPage() {
       alert('Fout bij uploaden van foto');
     } finally {
       setUploadingPhoto(null);
+    }
+  };
+
+  const handleGeneratePdf = async () => {
+    setGeneratingPdf(true);
+    try {
+      // Haal altijd het volledige jaaroverzicht op (negeer filter/zoeken)
+      const response = await fetch('/api/samples?year=2026');
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || 'Fout bij ophalen van monsters voor PDF');
+        return;
+      }
+      await generateSamplesPdf(data, 2026);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Fout bij genereren van PDF');
+    } finally {
+      setGeneratingPdf(false);
     }
   };
 
@@ -615,6 +636,16 @@ export default function DashboardPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="glass-input flex-1"
             />
+            <button
+              onClick={handleGeneratePdf}
+              disabled={generatingPdf}
+              className="nav-btn"
+              style={{ padding: '10px 16px', fontSize: '14px' }}
+              title="Download een PDF met alle oliemonsters van 2026 en de datum waarop ze zijn genomen"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+              {generatingPdf ? 'Bezig...' : 'PDF genereren'}
+            </button>
             {user?.role === 'admin' && (
               <button
                 onClick={openAddModal}
