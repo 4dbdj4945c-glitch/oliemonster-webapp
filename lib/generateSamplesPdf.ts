@@ -122,14 +122,13 @@ export async function generateSamplesPdf(samples: PdfSample[], year: number): Pr
   autoTable(doc, {
     startY: headerBottom + 20,
     margin: { left: marginX, right: marginX },
-    head: [['Status', 'O-nummer', 'Datum afname', 'Locatie', 'Omschrijving', 'Type olie']],
+    head: [['Status', 'O-nummer', 'Datum', 'Locatie', 'Omschrijving']],
     body: sorted.map((s) => [
       statusLabel(s),
       s.oNumber,
       s.isTaken ? formatDate(s.sampleDate) : '-',
       s.location,
       s.description,
-      s.oilType || '-',
     ]),
     styles: {
       font: 'helvetica',
@@ -149,11 +148,10 @@ export async function generateSamplesPdf(samples: PdfSample[], year: number): Pr
     alternateRowStyles: { fillColor: [244, 246, 248] },
     columnStyles: {
       0: { cellWidth: 28 },
-      1: { cellWidth: 26, fontStyle: 'bold' },
-      2: { cellWidth: 26 },
-      3: { cellWidth: 45 },
+      1: { cellWidth: 28, fontStyle: 'bold' },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 55 },
       4: { cellWidth: 'auto' },
-      5: { cellWidth: 40 },
     },
     // Kleur de statuscel per regel
     didParseCell: (data) => {
