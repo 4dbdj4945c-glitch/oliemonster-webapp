@@ -84,40 +84,45 @@ export default function SetPasswordPage() {
           display: flex;
           align-items: center;
           justify-content: center;
-          padding: 0 20px;
+          padding: 24px 20px;
+          background: #f5f5f7;
         }
 
         .card {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(20px);
-          border-radius: 24px;
-          padding: 48px 40px;
+          background: #ffffff;
+          border-radius: 18px;
+          padding: 48px 40px 40px;
           width: 100%;
-          max-width: 480px;
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+          max-width: 420px;
+          border: 1px solid rgba(0, 0, 0, 0.06);
+          box-shadow: 0 4px 40px rgba(0, 0, 0, 0.1);
         }
 
         .logo {
-          height: 80px;
+          height: 44px;
           object-fit: contain;
           margin-bottom: 24px;
         }
 
         .title {
-          font-size: 28px;
+          font-size: 26px;
           font-weight: 700;
-          color: white;
+          color: #0C1B33;
           margin-bottom: 12px;
           text-align: center;
+          letter-spacing: -0.3px;
         }
 
         .subtitle {
           font-size: 14px;
-          color: rgba(255, 255, 255, 0.8);
+          color: #64748B;
           text-align: center;
           margin-bottom: 32px;
           line-height: 1.6;
+        }
+
+        .subtitle strong {
+          color: #0C1B33;
         }
 
         .input-group {
@@ -126,7 +131,7 @@ export default function SetPasswordPage() {
 
         .label {
           display: block;
-          color: rgba(255, 255, 255, 0.9);
+          color: #3c3c43;
           font-size: 14px;
           font-weight: 500;
           margin-bottom: 8px;
@@ -134,30 +139,31 @@ export default function SetPasswordPage() {
 
         .input {
           width: 100%;
-          padding: 14px 16px;
-          background: rgba(255, 255, 255, 0.1);
-          border: none;
-          border-bottom: 2px solid rgba(255, 255, 255, 0.3);
-          border-radius: 0;
-          color: white;
+          padding: 12px 14px;
+          background: rgba(255, 255, 255, 0.7);
+          border: 1px solid rgba(0, 0, 0, 0.1);
+          border-radius: 8px;
+          color: #0C1B33;
           font-size: 16px;
-          transition: all 0.3s ease;
+          font-family: inherit;
+          transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
           outline: none;
         }
 
         .input::placeholder {
-          color: rgba(255, 255, 255, 0.5);
+          color: #94A3B8;
         }
 
         .input:focus {
-          background: rgba(255, 255, 255, 0.15);
-          border-bottom-color: rgba(255, 255, 255, 0.8);
+          background: rgba(255, 255, 255, 0.95);
+          border-color: #1D4ED8;
+          box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
         }
 
         .error {
-          background: rgba(239, 68, 68, 0.2);
-          border: 1px solid rgba(239, 68, 68, 0.4);
-          color: #fca5a5;
+          background: rgba(220, 38, 38, 0.08);
+          border: 1px solid rgba(220, 38, 38, 0.2);
+          color: #CC2900;
           padding: 12px;
           border-radius: 8px;
           margin-bottom: 16px;
@@ -168,36 +174,35 @@ export default function SetPasswordPage() {
         .button {
           width: 100%;
           padding: 14px;
-          background: linear-gradient(135deg, #c2410c 0%, #f97316 100%);
+          background: #1D4ED8;
           border: none;
-          border-radius: 12px;
+          border-radius: 8px;
           color: white;
-          font-size: 16px;
+          font-size: 15px;
           font-weight: 600;
           cursor: pointer;
-          transition: all 0.3s ease;
-          text-transform: uppercase;
-          letter-spacing: 1px;
+          transition: background 0.15s ease, box-shadow 0.15s ease;
           margin-top: 8px;
+          font-family: inherit;
+          box-shadow: 0 2px 8px rgba(29, 78, 216, 0.25);
         }
 
         .button:hover {
-          background: linear-gradient(135deg, #f97316 0%, #fbbf24 100%);
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+          background: #1740B8;
+          box-shadow: 0 4px 16px rgba(29, 78, 216, 0.35);
         }
 
         .tip {
           margin-top: 20px;
           font-size: 13px;
-          color: rgba(255, 255, 255, 0.6);
+          color: #64748B;
           text-align: center;
           line-height: 1.5;
         }
 
         @media (max-width: 640px) {
           .card {
-            padding: 32px 24px;
+            padding: 36px 24px 28px;
           }
         }
       `}</style>
