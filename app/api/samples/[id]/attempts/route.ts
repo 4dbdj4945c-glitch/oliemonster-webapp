@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { syncLatestAttemptToSample } from '@/lib/sampleAttempts';
+import { isOilViewer2025 } from '@/lib/roles';
 
 // GET - Alle pogingen voor een monster (chronologisch, oudste eerst)
 export async function GET(
@@ -17,6 +18,11 @@ export async function GET(
 
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+
+    // De beperkte kijker heeft geen toegang tot de pogingen-details.
+    if (isOilViewer2025(session.role)) {
+      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
     }
 
     const { id } = await params;

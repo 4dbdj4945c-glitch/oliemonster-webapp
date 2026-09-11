@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { isOilViewer2025 } from '@/lib/roles';
 
 interface User {
   userId: number;
@@ -37,6 +38,8 @@ export default function DashboardPage() {
       const data = await response.json();
       if (!data.isLoggedIn) { router.push('/login'); return; }
       if (data.requiresPasswordChange) { router.push('/set-password'); return; }
+      // Beperkte kijker: alleen Oliemonsters 2025, stuur direct daarheen.
+      if (isOilViewer2025(data.role)) { router.replace('/dashboard/oliemonsters'); return; }
       setUser(data);
     } catch {
       router.push('/login');

@@ -11,6 +11,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const cookieStore = await cookies();
+    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+    if (session.role !== 'admin') {
+      return NextResponse.json({ error: 'Alleen admins kunnen foto’s uploaden' }, { status: 403 });
+    }
+
     const { id } = await params;
 
     // Check if Blob token is configured
@@ -60,9 +69,6 @@ export async function POST(
     });
 
     // Log foto upload
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-    
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',
@@ -87,6 +93,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const cookieStore = await cookies();
+    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+    if (session.role !== 'admin') {
+      return NextResponse.json({ error: 'Alleen admins kunnen foto’s verwijderen' }, { status: 403 });
+    }
+
     const { id } = await params;
     const sample = await prisma.oilSample.findUnique({
       where: { id: parseInt(id) },
@@ -106,9 +121,6 @@ export async function DELETE(
     });
 
     // Log foto verwijdering
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-    
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
+import { isOilViewer2025 } from '@/lib/roles';
 
 // GET - Lijst van alle taken (met optionele zoekfunctie)
 // Doorzoekt jobnaam, taakomschrijving, installatie en de gecachte laatste opmerking + jobnummer.
@@ -14,6 +15,10 @@ export async function GET(request: NextRequest) {
 
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+
+    if (isOilViewer2025(session.role)) {
+      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
+import { ALLOWED_ROLES } from '@/lib/roles';
 
 // GET - Lijst van alle gebruikers (alleen admin)
 export async function GET(request: NextRequest) {
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (role !== 'admin' && role !== 'user') {
+    if (!ALLOWED_ROLES.includes(role)) {
       return NextResponse.json(
         { error: 'Ongeldige rol' },
         { status: 400 }

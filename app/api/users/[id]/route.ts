@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
+import { ALLOWED_ROLES } from '@/lib/roles';
 
 // PUT - Gebruiker bijwerken (alleen admin)
 export async function PUT(
@@ -61,7 +62,7 @@ export async function PUT(
     }
 
     // Valideer rol als deze wordt gewijzigd
-    if (role && role !== 'admin' && role !== 'user') {
+    if (role && !ALLOWED_ROLES.includes(role)) {
       return NextResponse.json(
         { error: 'Ongeldige rol' },
         { status: 400 }

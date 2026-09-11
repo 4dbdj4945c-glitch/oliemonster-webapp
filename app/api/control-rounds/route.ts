@@ -5,6 +5,7 @@ import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { optimizeRoute, RouteStreet } from '@/lib/routePlanner';
+import { isOilViewer2025 } from '@/lib/roles';
 
 // GET - Lijst van alle controlerondes met voortgang (aantal straten / gereden).
 export async function GET() {
@@ -14,6 +15,10 @@ export async function GET() {
 
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+
+    if (isOilViewer2025(session.role)) {
+      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
     }
 
     const rounds = await prisma.controlRound.findMany({
@@ -43,6 +48,10 @@ export async function POST(request: NextRequest) {
 
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+
+    if (isOilViewer2025(session.role)) {
+      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
     }
 
     const body = await request.json();

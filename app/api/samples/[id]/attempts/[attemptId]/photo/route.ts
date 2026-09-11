@@ -13,6 +13,15 @@ export async function POST(
   { params }: { params: Promise<{ id: string; attemptId: string }> }
 ) {
   try {
+    const cookieStore = await cookies();
+    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+    if (session.role !== 'admin') {
+      return NextResponse.json({ error: 'Alleen admins kunnen foto’s uploaden' }, { status: 403 });
+    }
+
     const { id, attemptId } = await params;
     const oilSampleId = parseInt(id);
     const aId = parseInt(attemptId);
@@ -48,9 +57,6 @@ export async function POST(
 
     await syncLatestAttemptToSample(oilSampleId);
 
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',
@@ -73,6 +79,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; attemptId: string }> }
 ) {
   try {
+    const cookieStore = await cookies();
+    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+    if (!session.isLoggedIn) {
+      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+    if (session.role !== 'admin') {
+      return NextResponse.json({ error: 'Alleen admins kunnen foto’s verwijderen' }, { status: 403 });
+    }
+
     const { id, attemptId } = await params;
     const oilSampleId = parseInt(id);
     const aId = parseInt(attemptId);
@@ -88,9 +103,6 @@ export async function DELETE(
     });
 
     await syncLatestAttemptToSample(oilSampleId);
-
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
 
     await createAuditLog({
       userId: session.userId,

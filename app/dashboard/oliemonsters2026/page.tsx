@@ -99,6 +99,12 @@ export default function DashboardPage() {
         return;
       }
 
+      // Beperkte kijker mag 2026 niet zien; stuur naar 2025.
+      if (data.role === 'viewer_oil2025') {
+        router.replace('/dashboard/oliemonsters');
+        return;
+      }
+
       setUser(data);
     } catch (error) {
       router.push('/login');

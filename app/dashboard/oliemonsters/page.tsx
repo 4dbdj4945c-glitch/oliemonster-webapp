@@ -7,6 +7,7 @@ import HelpModal from '@/app/components/HelpModal';
 import Tooltip from '@/app/components/Tooltip';
 import SampleAttemptsPanel from '@/app/components/SampleAttemptsPanel';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
+import { isOilViewer2025 } from '@/lib/roles';
 
 interface User {
   userId: number;
@@ -602,10 +603,12 @@ export default function DashboardPage() {
               <span style={{ color: '#64748B', fontSize: '13px', fontWeight: 500 }}>Oliemonsters 2025</span>
             </div>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-              <button onClick={() => router.push('/dashboard')} className="nav-btn" aria-label="Terug">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
-                Terug
-              </button>
+              {!isOilViewer2025(user?.role) && (
+                <button onClick={() => router.push('/dashboard')} className="nav-btn" aria-label="Terug">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
+                  Terug
+                </button>
+              )}
               {user?.role === 'admin' && (
                 <button onClick={() => router.push('/dashboard/admin')} className="nav-btn" aria-label="Instellingen">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -636,16 +639,18 @@ export default function DashboardPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="glass-input flex-1"
             />
-            <button
-              onClick={handleGeneratePdf}
-              disabled={generatingPdf}
-              className="nav-btn"
-              style={{ padding: '10px 16px', fontSize: '14px' }}
-              title="Download een PDF met alle oliemonsters van 2025 en de datum waarop ze zijn genomen"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
-              {generatingPdf ? 'Bezig...' : 'PDF genereren'}
-            </button>
+            {!isOilViewer2025(user?.role) && (
+              <button
+                onClick={handleGeneratePdf}
+                disabled={generatingPdf}
+                className="nav-btn"
+                style={{ padding: '10px 16px', fontSize: '14px' }}
+                title="Download een PDF met alle oliemonsters van 2025 en de datum waarop ze zijn genomen"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+                {generatingPdf ? 'Bezig...' : 'PDF genereren'}
+              </button>
+            )}
             {user?.role === 'admin' && (
               <button
                 onClick={openAddModal}

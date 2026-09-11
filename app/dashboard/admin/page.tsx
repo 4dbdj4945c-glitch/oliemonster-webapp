@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell, NavButton, Icons, Modal } from '@/app/components/ui';
+import { ROLE_LABELS } from '@/lib/roles';
 
 interface User {
   id: number;
@@ -319,8 +320,8 @@ export default function AdminPage() {
                         )}
                       </td>
                       <td>
-                        <span className={`badge ${user.role === 'admin' ? 'badge-purple' : 'badge-info'}`}>
-                          {user.role === 'admin' ? 'Admin' : 'Gebruiker'}
+                        <span className={`badge ${user.role === 'admin' ? 'badge-purple' : user.role === 'viewer_oil2025' ? 'badge-gray' : 'badge-info'}`}>
+                          {ROLE_LABELS[user.role] ?? user.role}
                         </span>
                       </td>
                       <td style={{ color: 'var(--text-secondary)' }}>
@@ -458,7 +459,13 @@ export default function AdminPage() {
             >
               <option value="user">Gebruiker</option>
               <option value="admin">Admin</option>
+              <option value="viewer_oil2025">Kijker – Oliemonsters 2025</option>
             </select>
+            {formData.role === 'viewer_oil2025' && (
+              <p style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+                Alleen-lezen toegang tot uitsluitend de module Oliemonsters 2025 (incl. foto&apos;s bekijken). Geen andere modules, geen wijzigingen.
+              </p>
+            )}
           </div>
 
           {formError && (
