@@ -41,13 +41,21 @@ export default function PhotoModal({ photoUrl, onClose, sampleNumber }: PhotoMod
 
         {/* Foto */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={photoUrl} alt="Oliemonster foto" className="foto-beeld" />
+        <img
+          src={photoUrl}
+          alt="Oliemonster foto"
+          className="foto-beeld"
+          title="Klik voor volledig formaat"
+          onClick={() => window.open(photoUrl, '_blank', 'noopener')}
+        />
+        <div className="foto-onderschrift">Klik op de foto voor volledig formaat</div>
       </div>
 
       <style jsx>{`
         .foto-paneel {
           position: relative;
-          max-width: 56rem;
+          /* Klein venster op desktop; de foto zelf opent op volledig formaat in een nieuw tabblad */
+          max-width: min(480px, 90vw);
           max-height: 90vh;
           background: var(--wit);
           border: 1px solid var(--grijs-200);
@@ -58,8 +66,16 @@ export default function PhotoModal({ photoUrl, onClose, sampleNumber }: PhotoMod
         .foto-beeld {
           display: block;
           max-width: 100%;
-          max-height: 90vh;
+          max-height: 60vh;
           object-fit: contain;
+          cursor: zoom-in;
+        }
+        .foto-onderschrift {
+          padding: 10px 14px;
+          border-top: 1px solid var(--grijs-200);
+          font-size: 12px;
+          color: var(--grijs-500);
+          text-align: center;
         }
         .foto-knop {
           position: absolute;
@@ -96,6 +112,9 @@ export default function PhotoModal({ photoUrl, onClose, sampleNumber }: PhotoMod
             max-height: 100dvh;
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
+          }
+          .foto-onderschrift {
+            display: none;
           }
           .foto-knop {
             top: max(12px, env(safe-area-inset-top));
