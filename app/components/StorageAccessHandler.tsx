@@ -81,6 +81,44 @@ export default function StorageAccessHandler() {
         .cookie-tekst {
           flex: 1;
           min-width: 200px;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+
+        .cookie-knoppen {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        /* Telefoon: onderaan het scherm, dus niet over de balk bovenaan; knoppen op volle breedte */
+        @media (max-width: 640px) {
+          .cookie-banner {
+            top: auto;
+            bottom: calc(12px + env(safe-area-inset-bottom));
+            left: 12px;
+            right: 12px;
+          }
+
+          .cookie-banner .alert {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 14px;
+          }
+
+          .cookie-tekst {
+            min-width: 0;
+            font-size: 14px;
+          }
+
+          .cookie-knoppen {
+            flex-wrap: nowrap;
+          }
+
+          .cookie-knoppen .btn {
+            flex: 1 1 0;
+            min-height: 44px;
+          }
         }
 
         .cookie-tekst strong {
@@ -104,9 +142,14 @@ export default function StorageAccessHandler() {
             Deze applicatie heeft toegang nodig tot cookies om je sessie op te slaan, anders kun je niet inloggen.
             <span className="cookie-sub">We gebruiken alleen noodzakelijke cookies voor authenticatie.</span>
           </div>
-          <button type="button" onClick={requestAccess} className="btn btn-sm">
-            Cookies toestaan
-          </button>
+          <div className="cookie-knoppen">
+            <button type="button" onClick={requestAccess} className="btn btn-primary">
+              Cookies toestaan
+            </button>
+            <button type="button" onClick={() => setShowPrompt(false)} className="btn" aria-label="Melding sluiten">
+              Sluiten
+            </button>
+          </div>
         </div>
       </div>
     </>

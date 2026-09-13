@@ -109,7 +109,7 @@ export default function AuditLogsPage() {
 
       <div className="card" style={{ marginBottom: '16px' }}>
         <p className="section-label">Filters</p>
-        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label" htmlFor="audit-actie">Filter op actie</label>
             <select
@@ -151,7 +151,7 @@ export default function AuditLogsPage() {
       ) : (
         <div className="table-container">
           <div className="table-scroll">
-            <table className="table">
+            <table className="table table-kaarten">
               <thead>
                 <tr>
                   <th>Tijdstip</th>
@@ -165,24 +165,25 @@ export default function AuditLogsPage() {
               <tbody>
                 {logs.map((log) => (
                   <tr key={log.id}>
-                    <td className="text-secondary" style={{ whiteSpace: 'nowrap' }}>
+                    <td className="kaart-kop text-secondary sm:whitespace-nowrap" data-label="Tijdstip">
                       {new Date(log.createdAt).toLocaleString('nl-NL')}
                     </td>
-                    <td style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>
+                    <td className="sm:whitespace-nowrap" data-label="Gebruiker" style={{ fontWeight: 500 }}>
                       {log.username}
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    <td className="kaart-status sm:whitespace-nowrap" data-label="Actie">
                       <span className={getActionBadgeClass(log.action)}>
                         {log.action}
                       </span>
                     </td>
-                    <td className="text-secondary" style={{ maxWidth: '360px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.details || undefined}>
+                    {/* Op desktop afgekapt met puntjes (volledige tekst in de title), op de telefoon volledig en afbreekbaar */}
+                    <td className="text-secondary sm:max-w-[360px] sm:truncate [overflow-wrap:anywhere]" data-label="Details" title={log.details || undefined}>
                       {log.details || '-'}
                     </td>
-                    <td className="text-secondary" style={{ whiteSpace: 'nowrap' }}>
+                    <td className="text-secondary sm:whitespace-nowrap" data-label="IP-adres">
                       {log.ipAddress || '-'}
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    <td data-label="Status">
                       <span className={log.success ? 'badge badge-success' : 'badge badge-danger'}>
                         {log.success ? 'Geslaagd' : 'Mislukt'}
                       </span>

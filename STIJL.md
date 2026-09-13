@@ -64,3 +64,20 @@ naar deze kleuren. `--accent` is blauw, `--primary` is oranje.
 - Geen inline kleuren: gebruik tokens (`var(--grijs-500)`) of klassen.
 - Geen em-dashes in teksten. Geen uitroeptekens.
 - Geen `filter: invert()` op het logo: het logo is wit en hoort op navy.
+
+## Mobiel
+
+De portal wordt op de telefoon gebruikt (PWA). Onder 640px regelt `globals.css` automatisch:
+velden 16px hoog 44px (geen inzoomen op iOS), knoppen minimaal 44px, modals als onderpaneel
+met vaste kop en voet, de balk bovenaan met een horizontaal scrollende knoppenrij.
+
+Per pagina hoort:
+- **Tabellen** krijgen `class="table table-kaarten"` en elke `<td>` een `data-label="Kolomnaam"`.
+  De belangrijkste cel krijgt `class="kaart-kop"` (wordt de titel), een statusbadge `kaart-status`,
+  de knoppen `kaart-acties`, een cel die op mobiel weg mag `kaart-leeg`. Op de telefoon wordt elke rij
+  dan een kaart; op desktop blijft het een gewone tabel.
+- **Statistiektegels** in `.stats-grid` (2 kolommen op telefoon, 4 op desktop).
+- **Knoppenrijen** in `.knoppenrij` (volle breedte op telefoon).
+- **Filters** onder elkaar, selects op volle breedte.
+- Numerieke velden krijgen `inputMode="decimal"` of `"numeric"`, zodat het juiste toetsenbord opent.
+- Niets mag horizontaal scrollen behalve een tabel op desktop in `.table-scroll`.

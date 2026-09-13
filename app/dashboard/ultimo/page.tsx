@@ -173,6 +173,64 @@ export default function UltimoPage() {
         </>
       }
     >
+      <style jsx>{`
+        .zoekrij {
+          display: flex;
+          gap: 10px;
+          align-items: center;
+          margin: 8px 0 20px;
+          flex-wrap: wrap;
+        }
+        .zoekveld {
+          position: relative;
+          flex: 1 1 280px;
+        }
+        .taak-rechts {
+          flex-shrink: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 6px;
+        }
+        .taak-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          font-size: 12px;
+          font-weight: 500;
+          color: var(--blue);
+        }
+        /* Telefoon: zoekveld en knop onder elkaar op volle breedte, tikdoelen 40px */
+        @media (max-width: 640px) {
+          .zoekrij {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+          }
+          .zoekveld {
+            flex: none;
+          }
+          .zoekrij :global(.btn) {
+            width: 100%;
+          }
+          .taak-rechts {
+            gap: 8px;
+          }
+          .taak-rechts :global(.badge) {
+            min-height: 32px;
+            padding: 0 12px;
+            font-size: 12px;
+          }
+          .taak-toggle {
+            min-height: 40px;
+            padding: 0 10px;
+            margin-right: -10px;
+            border-radius: var(--radius-md);
+            font-size: 13px;
+          }
+        }
+      `}</style>
+
       <h1 className="page-title">Ultimo-opmerkingen</h1>
       <p className="page-subtitle">
         Houd per onderhoudstaak (looprouteregel) bij welke opmerking je wanneer in Ultimo plaatste, en kopieer &apos;m de volgende keer exact opnieuw.
@@ -183,8 +241,8 @@ export default function UltimoPage() {
       <datalist id="dl-task">{taskDescs.map((v) => <option key={v} value={v} />)}</datalist>
       <datalist id="dl-installation">{installations.map((v) => <option key={v} value={v} />)}</datalist>
 
-      <div style={{ display: 'flex', gap: '10px', alignItems: 'center', margin: '8px 0 20px', flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: '1 1 280px' }}>
+      <div className="zoekrij">
+        <div className="zoekveld">
           <span style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', display: 'flex', color: 'var(--grijs-400)', pointerEvents: 'none' }}>
             {SearchIcon}
           </span>
@@ -194,6 +252,10 @@ export default function UltimoPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Zoek op taak, jobnaam, installatie, jobnummer of opmerking"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="none"
+            spellCheck={false}
             style={{ paddingLeft: '36px' }}
           />
         </div>
@@ -235,9 +297,9 @@ export default function UltimoPage() {
                       </div>
                     )}
                   </div>
-                  <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                  <div className="taak-rechts">
                     <span className="badge badge-gray">{task.commentsCount}×</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '12px', fontWeight: 500, color: 'var(--blue)' }}>
+                    <span className="taak-toggle">
                       <span style={{ display: 'flex', transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>{ChevronIcon}</span>
                       {expanded ? 'Sluit' : 'Historie'}
                     </span>
@@ -247,7 +309,7 @@ export default function UltimoPage() {
                 {expanded && (
                   <div className="rij-item-romp">
                     {isAdmin && (
-                      <div style={{ display: 'flex', gap: '14px', marginBottom: '12px' }}>
+                      <div style={{ display: 'flex', gap: '14px', marginBottom: '12px', flexWrap: 'wrap' }}>
                         <button type="button" className="btn-link" onClick={() => openEdit(task)}>Taak bewerken</button>
                         <button type="button" className="btn-link btn-link-danger" onClick={() => deleteTask(task)}>Taak verwijderen</button>
                       </div>
@@ -276,16 +338,16 @@ export default function UltimoPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
             <label className="label">Jobnaam</label>
-            <input className="input" list="dl-jobname" value={form.jobName} onChange={(e) => setForm({ ...form, jobName: e.target.value })} placeholder="bv. Onderhoud pompen hal 2" />
+            <input className="input" list="dl-jobname" autoComplete="off" value={form.jobName} onChange={(e) => setForm({ ...form, jobName: e.target.value })} placeholder="bv. Onderhoud pompen hal 2" />
           </div>
           <div>
             <label className="label">Taakomschrijving (looprouteregel)</label>
-            <input className="input" list="dl-task" value={form.taskDescription} onChange={(e) => setForm({ ...form, taskDescription: e.target.value })} placeholder="bv. Controleer lagering pomp 3" />
+            <input className="input" list="dl-task" autoComplete="off" value={form.taskDescription} onChange={(e) => setForm({ ...form, taskDescription: e.target.value })} placeholder="bv. Controleer lagering pomp 3" />
             <p className="hint">Typ &apos;m steeds hetzelfde en kies uit de suggesties, zodat je historie netjes bij elkaar blijft.</p>
           </div>
           <div>
             <label className="label">Installatie / object <span style={{ fontWeight: 400 }}>(optioneel)</span></label>
-            <input className="input" list="dl-installation" value={form.installation} onChange={(e) => setForm({ ...form, installation: e.target.value })} placeholder="bv. Pomp P-301 / Ketelhuis" />
+            <input className="input" list="dl-installation" autoComplete="off" value={form.installation} onChange={(e) => setForm({ ...form, installation: e.target.value })} placeholder="bv. Pomp P-301 / Ketelhuis" />
           </div>
           {formError && <div className="alert alert-danger">{formError}</div>}
         </div>

@@ -1077,3 +1077,275 @@ input[type="range"] {
   line-height: 1.6;
   color: var(--grijs-700);
 }
+
+/* ============================================================
+   Mobiel (telefoon, tot 640px): grote tikdoelen, velden die niet
+   inzoomen, modals als onderpaneel, tabellen als kaarten.
+   ============================================================ */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+button, a, label, input[type="checkbox"], input[type="radio"], select {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* Tabel als kaarten: zet class "table-kaarten" op de <table> en data-label="Kolom"
+   op elke <td>. Een <td class="kaart-kop"> wordt de titel van de kaart, een
+   <td class="kaart-acties"> een rij knoppen onderaan. */
+@media (max-width: 640px) {
+  .table-kaarten thead {
+    display: none;
+  }
+  .table-kaarten,
+  .table-kaarten tbody {
+    display: block;
+    width: 100%;
+  }
+  .table-kaarten tbody tr {
+    display: block;
+    padding: 12px 16px 14px;
+    border-top: 1px solid var(--grijs-200);
+  }
+  .table-kaarten tbody tr:first-child {
+    border-top: none;
+  }
+  .table-kaarten tbody tr:hover {
+    background: transparent;
+  }
+  .table-kaarten td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 0;
+    border: none;
+    font-size: 14px;
+    white-space: normal;
+    text-align: right;
+  }
+  .table-kaarten td[data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 38%;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--grijs-500);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    line-height: 1.6;
+  }
+  .table-kaarten td.kaart-kop {
+    display: block;
+    text-align: left;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--navy);
+    padding: 0 0 6px;
+  }
+  .table-kaarten td.kaart-kop::before {
+    display: none;
+  }
+  .table-kaarten td.kaart-status {
+    justify-content: flex-start;
+    padding-bottom: 8px;
+  }
+  .table-kaarten td.kaart-status::before {
+    display: none;
+  }
+  .table-kaarten td.kaart-acties {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 8px;
+    padding-top: 12px;
+  }
+  .table-kaarten td.kaart-acties::before {
+    display: none;
+  }
+  .table-kaarten td.kaart-acties .btn,
+  .table-kaarten td.kaart-acties .btn-link {
+    min-height: 40px;
+  }
+  .table-kaarten td.kaart-leeg {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .toolbar-inner {
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+  }
+  .toolbar-right {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    row-gap: 8px;
+  }
+  .nav-btn,
+  .user-badge {
+    flex: none;
+    min-height: 40px;
+  }
+
+  .page-title {
+    font-size: 22px;
+  }
+  .page-subtitle {
+    font-size: 13px;
+    margin-bottom: 20px;
+  }
+  .card,
+  .glass-card {
+    padding: 14px;
+  }
+  .card-padded,
+  .glass-card-padded {
+    padding: 16px;
+  }
+
+  /* Velden: 16px voorkomt dat iOS inzoomt bij focus; 44px hoog is een goed tikdoel */
+  .glass-input, .glass-select, .glass-textarea,
+  .input, .select, .textarea,
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  select, textarea {
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .label,
+  .glass-label {
+    font-size: 13px;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 22px;
+    height: 22px;
+  }
+
+  .btn {
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+  .btn-sm,
+  .btn.mini {
+    min-height: 38px;
+    padding: 7px 12px;
+    font-size: 13px;
+  }
+  .btn-lg {
+    min-height: 50px;
+    font-size: 15px;
+  }
+  .btn-link {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 14px;
+  }
+  .icon-btn {
+    min-width: 40px;
+    min-height: 40px;
+    justify-content: center;
+  }
+  /* Rij met knoppen: volle breedte, netjes onder elkaar als ze niet passen */
+  .knoppenrij {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .knoppenrij .btn {
+    flex: 1 1 auto;
+  }
+
+  .tabs button {
+    min-height: 46px;
+  }
+
+  .stat-card {
+    padding: 12px 14px;
+  }
+  .stat-value {
+    font-size: 22px;
+  }
+  .stat-label {
+    font-size: 10px;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .rij-item-kop {
+    min-height: 52px;
+    padding: 12px 14px;
+  }
+  .rij-item-romp {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .leeg {
+    padding: 32px 16px;
+  }
+
+  /* Modal als onderpaneel met vaste kop en voet */
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .modal-content,
+  .modal-content-md,
+  .modal-content-lg {
+    max-width: 100%;
+    max-height: 94dvh;
+    border-radius: 16px 16px 0 0;
+    border-bottom: none;
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    border-radius: 16px 16px 0 0;
+  }
+  .modal-body {
+    padding: 16px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: var(--wit);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    flex-wrap: nowrap;
+  }
+  .modal-footer .btn {
+    flex: 1 1 0;
+    min-height: 46px;
+  }
+
+  .auth-body {
+    padding: 22px 20px 20px;
+  }
+  .auth-foot {
+    padding: 12px 20px;
+  }
+}
+
+@media (min-width: 641px) {
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+}

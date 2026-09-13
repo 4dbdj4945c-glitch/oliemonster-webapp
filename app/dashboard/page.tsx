@@ -200,6 +200,56 @@ export default function DashboardPage() {
           color: var(--accent-color);
           line-height: 1.1;
         }
+
+        /* Telefoon: compacte kaarten, icoon naast de titel, zodat er meer op een scherm past */
+        @media (max-width: 640px) {
+          .cards-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin-bottom: 24px;
+          }
+          .module-card {
+            display: grid;
+            grid-template-columns: 42px 1fr;
+            column-gap: 12px;
+            align-items: center;
+            padding: 16px;
+          }
+          .module-card:hover {
+            transform: none;
+          }
+          .card-icon {
+            width: 38px;
+            height: 38px;
+            margin: 0;
+            grid-column: 1;
+            grid-row: 1;
+          }
+          .card-icon svg {
+            width: 22px;
+            height: 22px;
+          }
+          .card-title {
+            grid-column: 2;
+            grid-row: 1;
+            margin: 0;
+            font-size: 15px;
+          }
+          .card-description {
+            grid-column: 1 / -1;
+            margin: 10px 0 0;
+            font-size: 13px;
+          }
+          .card-stats {
+            grid-column: 1 / -1;
+            gap: 20px;
+            margin-top: 12px;
+            padding-top: 12px;
+          }
+          .stat-value {
+            font-size: 20px;
+          }
+        }
       `}</style>
 
       <div className="page">

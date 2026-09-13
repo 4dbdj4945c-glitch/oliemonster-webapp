@@ -191,7 +191,7 @@ export default function SampleAttemptsPanel({
 
   return (
     <div className="card" style={{ background: 'var(--grijs-50)', padding: '14px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ marginBottom: '12px' }}>
         <div>
           <p className="section-label" style={{ margin: 0 }}>Monsternames (pogingen)</p>
           <p className="hint" style={{ margin: '3px 0 0' }}>
@@ -201,14 +201,16 @@ export default function SampleAttemptsPanel({
           </p>
         </div>
         {isAdmin && (
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={busy}
-            className="btn btn-sm btn-blue"
-          >
-            + Hermonstering
-          </button>
+          <div className="knoppenrij">
+            <button
+              type="button"
+              onClick={handleAdd}
+              disabled={busy}
+              className="btn btn-sm btn-blue"
+            >
+              + Hermonstering
+            </button>
+          </div>
         )}
       </div>
 
@@ -249,7 +251,7 @@ export default function SampleAttemptsPanel({
                       </span>
                     </div>
                     {!isEditing && attempt.remarks && (
-                      <p style={{ fontSize: '13px', color: 'var(--grijs-700)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>
+                      <p style={{ fontSize: '13px', color: 'var(--grijs-700)', margin: '4px 0 0', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
                         {attempt.remarks}
                       </p>
                     )}
@@ -288,7 +290,7 @@ export default function SampleAttemptsPanel({
                         style={{ minHeight: '60px' }}
                       />
                     </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div className="knoppenrij" style={{ display: 'flex', gap: '8px' }}>
                       <button
                         type="button"
                         onClick={() => saveEdit(attempt.id)}
@@ -307,17 +309,23 @@ export default function SampleAttemptsPanel({
                     </div>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', flexWrap: 'wrap', gap: '8px' }}>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2" style={{ marginTop: '8px' }}>
+                    <div className="knoppenrij" style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                       {attempt.photoUrl ? (
                         <>
                           <button
                             type="button"
                             onClick={() => onPhotoClick(attempt.photoUrl!, `${oNumber}, poging ${idx + 1}`)}
                             className="btn-link"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', minHeight: '44px' }}
                           >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={attempt.photoUrl}
+                              alt=""
+                              loading="lazy"
+                              style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--grijs-200)', display: 'block', flex: 'none' }}
+                            />
                             Bekijk foto
                           </button>
                           {isAdmin && (
@@ -350,7 +358,7 @@ export default function SampleAttemptsPanel({
                       )}
                     </div>
                     {isAdmin && (
-                      <div style={{ display: 'flex', gap: '12px' }}>
+                      <div className="knoppenrij" style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                         <button
                           type="button"
                           onClick={() => startEdit(attempt)}

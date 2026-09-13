@@ -63,28 +63,44 @@ export default function LoginPage() {
     <>
       <StorageAccessHandler />
       <style jsx>{`
+        /* "Onthoud mij": het hele label is het tikdoel */
         .remember {
           display: flex;
           align-items: center;
           gap: 8px;
           margin: 4px 0 18px;
-        }
-
-        .remember input[type="checkbox"] {
-          width: 16px;
-          height: 16px;
-          margin: 0;
-        }
-
-        .remember label {
           font-size: 13px;
           color: var(--navy);
           cursor: pointer;
           user-select: none;
         }
 
+        .remember input[type="checkbox"] {
+          width: 16px;
+          height: 16px;
+          margin: 0;
+          flex: none;
+        }
+
         .fout {
           margin-bottom: 14px;
+        }
+
+        @media (max-width: 640px) {
+          .remember {
+            min-height: 44px;
+            gap: 12px;
+            margin: 0 0 12px;
+            font-size: 14px;
+          }
+          .remember input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+          }
+          /* Logoband iets lager op de telefoon; .auth-band komt uit globals.css */
+          :global(.auth-band) {
+            padding: 20px;
+          }
         }
       `}</style>
 
@@ -110,6 +126,9 @@ export default function LoginPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
                 />
               </div>
 
@@ -126,15 +145,15 @@ export default function LoginPage() {
                 />
               </div>
 
-              <div className="remember">
+              <label className="remember" htmlFor="remember-me">
                 <input
                   type="checkbox"
                   id="remember-me"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                 />
-                <label htmlFor="remember-me">Onthoud mij</label>
-              </div>
+                <span>Onthoud mij</span>
+              </label>
 
               {error && <div className="alert alert-danger fout">{error}</div>}
 

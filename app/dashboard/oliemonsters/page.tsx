@@ -383,72 +383,80 @@ export default function DashboardPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="input flex-1"
           />
-          {!isOilViewer2025(user?.role) && (
-            <button
-            type="button"
-            onClick={handleGeneratePdf}
-            disabled={generatingPdf}
-            className="btn"
-            title="Download een PDF met alle oliemonsters van 2025 en de datum waarop ze zijn genomen"
-          >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
-            {generatingPdf ? 'Bezig...' : 'PDF genereren'}
-          </button>
-          )}
-          {isAdmin && (
-            <button type="button" onClick={openAddModal} className="btn btn-primary">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-              Nieuw Monster
-            </button>
+          {(!isOilViewer2025(user?.role) || isAdmin) && (
+            <div className="knoppenrij flex gap-3">
+              {!isOilViewer2025(user?.role) && (
+                <button
+                  type="button"
+                  onClick={handleGeneratePdf}
+                  disabled={generatingPdf}
+                  className="btn"
+                  title="Download een PDF met alle oliemonsters van 2025 en de datum waarop ze zijn genomen"
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+                  {generatingPdf ? 'Bezig...' : 'PDF genereren'}
+                </button>
+              )}
+              {isAdmin && (
+                <button type="button" onClick={openAddModal} className="btn btn-primary">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                  Nieuw Monster
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
 
       {/* Filteren en sorteren */}
       <div className="card" style={{ marginBottom: '16px' }}>
-        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center flex-wrap">
-          <label className="label" style={{ margin: 0 }}>Status:</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="select"
-            style={{ width: 'auto' }}
-          >
-            <option value="all">Alle monsters</option>
-            <option value="taken">Genomen</option>
-            <option value="notTaken">Niet genomen</option>
-            <option value="cancelled">Geannuleerd</option>
-          </select>
+        <div className="filters">
+          <div className="filter-veld">
+            <label className="label filter-label">Status:</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="select filter-select"
+            >
+              <option value="all">Alle monsters</option>
+              <option value="taken">Genomen</option>
+              <option value="notTaken">Niet genomen</option>
+              <option value="cancelled">Geannuleerd</option>
+            </select>
+          </div>
 
-          <label className="label" style={{ margin: 0, marginLeft: '8px' }}>Sorteren op:</label>
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="select"
-            style={{ width: 'auto' }}
-          >
-            <option value="newest">Laatst toegevoegd</option>
-            <option value="oNumber">O-nummer</option>
-            <option value="sampleDate">Datum</option>
-            <option value="location">Locatie</option>
-          </select>
+          <div className="filter-veld">
+            <label className="label filter-label">Sorteren op:</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="select filter-select"
+            >
+              <option value="newest">Laatst toegevoegd</option>
+              <option value="oNumber">O-nummer</option>
+              <option value="sampleDate">Datum</option>
+              <option value="location">Locatie</option>
+            </select>
+          </div>
 
           {sortBy !== 'newest' && (
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-              className="select"
-              style={{ width: 'auto' }}
-            >
-              <option value="asc">Oplopend</option>
-              <option value="desc">Aflopend</option>
-            </select>
+            <div className="filter-veld">
+              <label className="label filter-label filter-label-mobiel">Volgorde:</label>
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                className="select filter-select"
+              >
+                <option value="asc">Oplopend</option>
+                <option value="desc">Aflopend</option>
+              </select>
+            </div>
           )}
         </div>
       </div>
 
       {/* Statistieken */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+      <div className="stats-grid mb-6">
         <div
           className="stat-card"
           onClick={() => setStatusFilter('all')}
@@ -511,7 +519,7 @@ export default function DashboardPage() {
       {/* Tabel met monsters */}
       <div className="table-container">
         <div className="table-scroll">
-          <table className="table">
+          <table className="table table-kaarten">
             <thead>
               <tr>
                 {visibleColumns.includes('status') && (<th>Status</th>)}
@@ -528,7 +536,7 @@ export default function DashboardPage() {
             <tbody>
               {samples.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 7 : 6} style={{ textAlign: 'center', padding: '32px', color: 'var(--grijs-500)' }}>
+                  <td colSpan={isAdmin ? 7 : 6} style={{ textAlign: 'center', justifyContent: 'center', padding: '32px', color: 'var(--grijs-500)' }}>
                     Geen monsters gevonden
                   </td>
                 </tr>
@@ -536,7 +544,7 @@ export default function DashboardPage() {
                 getSortedSamples().map((sample) => (
                   <tr key={sample.id} style={{ opacity: sample.isDisabled ? 0.6 : 1 }}>
                     {visibleColumns.includes('status') && (
-                      <td style={{ whiteSpace: 'nowrap' }}>
+                      <td data-label="Status" className="kaart-status" style={{ whiteSpace: 'nowrap' }}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                           <span
                             className={`badge ${
@@ -562,9 +570,8 @@ export default function DashboardPage() {
                       </td>
                     )}
                     {visibleColumns.includes('oNumber') && (
-                      <td style={{
+                      <td data-label="O-nummer" className="kaart-kop font-medium" style={{
                         whiteSpace: 'nowrap',
-                        fontWeight: 500,
                         textDecoration: sample.isDisabled ? 'line-through' : 'none',
                         opacity: sample.isDisabled ? 0.7 : 1
                       }}>
@@ -572,31 +579,31 @@ export default function DashboardPage() {
                       </td>
                     )}
                     {visibleColumns.includes('sampleDate') && (
-                      <td style={{ whiteSpace: 'nowrap' }}>
+                      <td data-label="Datum" style={{ whiteSpace: 'nowrap' }}>
                         {sample.isTaken && sample.sampleDate ? new Date(sample.sampleDate).toLocaleDateString('nl-NL') : '-'}
                       </td>
                     )}
                     {visibleColumns.includes('location') && (
-                      <td style={{ opacity: sample.isDisabled ? 0.7 : 1 }}>
+                      <td data-label="Locatie" style={{ opacity: sample.isDisabled ? 0.7 : 1 }}>
                         {sample.location}
                       </td>
                     )}
                     {visibleColumns.includes('description') && (
-                      <td>
+                      <td data-label="Omschrijving">
                         {sample.description}
                       </td>
                     )}
                     {visibleColumns.includes('oilType') && (
-                      <td>
+                      <td data-label="Type olie">
                         {sample.oilType || '-'}
                       </td>
                     )}
                     {visibleColumns.includes('remarks') && (
-                      <td>
+                      <td data-label="Opmerkingen">
                         {sample.remarks || '-'}
                       </td>
                     )}
-                    <td style={{ whiteSpace: 'nowrap' }}>
+                    <td data-label="Foto" style={{ whiteSpace: 'nowrap' }}>
                       {sample.photoUrl ? (
                         <button
                           type="button"
@@ -626,21 +633,19 @@ export default function DashboardPage() {
                       )}
                     </td>
                     {isAdmin && (
-                      <td style={{ whiteSpace: 'nowrap' }}>
+                      <td data-label="Acties" className="kaart-acties" style={{ whiteSpace: 'nowrap' }}>
                         <button
                           type="button"
                           onClick={() => handleAddAttempt(sample)}
                           title="Nieuwe monstername (hermonstering) toevoegen"
-                          className="btn btn-sm"
-                          style={{ marginRight: '10px' }}
+                          className="btn btn-sm sm:mr-2.5"
                         >
                           + Hermonstering
                         </button>
                         <button
                           type="button"
                           onClick={() => openEditModal(sample)}
-                          className="btn-link"
-                          style={{ marginRight: '14px' }}
+                          className="btn-link sm:mr-3.5"
                         >
                           Bewerken
                         </button>
@@ -831,6 +836,47 @@ export default function DashboardPage() {
         onClose={() => setShowHelpModal(false)}
         userRole={user?.role || 'user'}
       />
+
+      <style jsx>{`
+        /* Filters: op de telefoon twee kolommen met het label boven het veld,
+           op desktop een rij met de labels naast de velden. */
+        .filters {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px 12px;
+        }
+        .filter-veld {
+          min-width: 0;
+        }
+        .filter-label {
+          margin: 0 0 5px;
+        }
+        @media (min-width: 641px) {
+          .filters {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+          }
+          .filter-veld {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          .filter-veld:nth-child(2) {
+            margin-left: 8px;
+          }
+          .filter-label {
+            margin: 0;
+          }
+          .filter-label-mobiel {
+            display: none;
+          }
+          .filter-select {
+            width: auto;
+          }
+        }
+      `}</style>
     </AppShell>
   );
 }

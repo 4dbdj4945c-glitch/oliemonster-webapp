@@ -257,7 +257,7 @@ export default function AdminPage() {
           </button>
         </div>
 
-        <div style={{ padding: '24px' }}>
+        <div className="p-4 sm:p-6">
           {saveMessage && (
             <div className="alert alert-success" style={{ marginBottom: '16px' }}>
               {saveMessage}
@@ -266,16 +266,16 @@ export default function AdminPage() {
 
           {activeTab === 'users' && (
             <div>
-              <div className="flex items-center justify-between gap-3 flex-wrap" style={{ marginBottom: '16px' }}>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ marginBottom: '16px' }}>
                 <p className="section-label" style={{ margin: 0 }}>Gebruikersbeheer</p>
-                <button type="button" onClick={openAddModal} className="btn btn-primary">
+                <button type="button" onClick={openAddModal} className="btn btn-primary w-full sm:w-auto">
                   Nieuwe gebruiker
                 </button>
               </div>
 
               <div className="table-container">
                 <div className="table-scroll">
-                  <table className="table">
+                  <table className="table table-kaarten">
                     <thead>
                       <tr>
                         <th>Gebruikersnaam</th>
@@ -293,22 +293,22 @@ export default function AdminPage() {
                         </tr>
                       ) : users.map((user) => (
                         <tr key={user.id}>
-                          <td style={{ fontWeight: 500 }}>
+                          <td className="kaart-kop" data-label="Gebruikersnaam" style={{ fontWeight: 500 }}>
                             {user.username}
                             {user.id === sessionUser?.userId && (
                               <span className="text-tertiary" style={{ marginLeft: '8px', fontSize: '12px' }}>(jij)</span>
                             )}
                           </td>
-                          <td>
+                          <td className="kaart-status" data-label="Rol">
                             <span className={rolBadgeClass(user.role)}>
                               {ROLE_LABELS[user.role] ?? user.role}
                             </span>
                           </td>
-                          <td className="text-secondary" style={{ whiteSpace: 'nowrap' }}>
+                          <td className="text-secondary sm:whitespace-nowrap" data-label="Aangemaakt">
                             {new Date(user.createdAt).toLocaleDateString('nl-NL')}
                           </td>
-                          <td>
-                            <div className="flex gap-1.5" style={{ whiteSpace: 'nowrap' }}>
+                          <td className="kaart-acties" data-label="Acties">
+                            <div className="flex flex-wrap sm:flex-nowrap gap-1.5">
                               <button type="button" onClick={() => openEditModal(user)} className="btn btn-sm">
                                 Bewerken
                               </button>
@@ -353,7 +353,8 @@ export default function AdminPage() {
                       htmlFor={column.id}
                       className="flex items-center justify-between gap-3"
                       style={{
-                        padding: '12px 14px',
+                        minHeight: '44px',
+                        padding: '10px 14px',
                         background: 'var(--grijs-50)',
                         border: '1px solid var(--grijs-200)',
                         borderRadius: 'var(--radius-md)',
@@ -367,7 +368,8 @@ export default function AdminPage() {
                           checked={checked}
                           onChange={() => toggleColumn(column.id)}
                           disabled={column.required}
-                          style={{ width: '16px', height: '16px', cursor: 'inherit' }}
+                          className="size-4 flex-none"
+                          style={{ cursor: 'inherit' }}
                         />
                         <span style={{ fontSize: '14px', fontWeight: 500, color: column.required ? 'var(--grijs-500)' : 'var(--navy)' }}>
                           {column.name}

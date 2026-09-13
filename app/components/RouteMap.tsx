@@ -60,6 +60,9 @@ export default function RouteMap({
       const map = L.map(containerRef.current, {
         zoomControl: true,
         attributionControl: true,
+        // Telefoon: slepen en knijpen om te zoomen expliciet aan.
+        dragging: true,
+        touchZoom: true,
       }).setView([52.1, 5.3], 7);
       L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
@@ -122,6 +125,19 @@ export default function RouteMap({
           pl.bindTooltip(tooltip, { sticky: true });
           if (onToggleRef.current) pl.on('click', handleClick);
           pl.addTo(overlay);
+          // Onzichtbare bredere lijn eronder als tikdoel op de telefoon.
+          if (onToggleRef.current) {
+            const hit = L.polyline(latlngs, {
+              color: '#000',
+              weight: 24,
+              opacity: 0,
+              interactive: true,
+            });
+            hit.bindTooltip(tooltip, { sticky: true });
+            hit.on('click', handleClick);
+            hit.addTo(overlay);
+            pl.bringToFront();
+          }
         }
       }
 
@@ -130,12 +146,13 @@ export default function RouteMap({
       const label = L.marker([s.lat, s.lng], {
         icon: L.divIcon({
           className: '',
-          html: `<div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${color};color:#fff;font:700 12px/1 Inter,system-ui,sans-serif;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)">${s.orderIndex + 1}</div>`,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
+          // 32px: groot genoeg om op de telefoon te tikken.
+          html: `<div style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:${color};color:#fff;font:700 13px/1 Inter,system-ui,sans-serif;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)">${s.orderIndex + 1}</div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16],
         }),
       });
-      label.bindTooltip(tooltip, { direction: 'top', offset: [0, -10] });
+      label.bindTooltip(tooltip, { direction: 'top', offset: [0, -12] });
       if (onToggleRef.current) label.on('click', handleClick);
       label.addTo(overlay);
     }
@@ -167,7 +184,7 @@ export default function RouteMap({
     layer.clearLayers();
     if (userPos) {
       L.circleMarker([userPos.lat, userPos.lng], {
-        radius: 8,
+        radius: 9,
         color: '#ffffff',
         weight: 3,
         fillColor: KLEUR_POSITIE,
@@ -184,11 +201,15 @@ export default function RouteMap({
       style={{
         height: typeof height === 'number' ? `${height}px` : height,
         width: '100%',
+        maxWidth: '100%',
         background: 'var(--wit)',
         border: '1px solid var(--grijs-200)',
-        borderRadius: 'var(--radius)',
+        borderRadius: 12,
         boxShadow: 'var(--shadow-sm)',
         overflow: 'hidden',
+        // Eigen stacking context: niets van de kaart (zoomknoppen, tooltips) komt boven de rest van de pagina.
+        position: 'relative',
+        isolation: 'isolate',
         zIndex: 0,
       }}
     />

@@ -83,6 +83,13 @@ export default function SetPasswordPage() {
           color: var(--navy);
           font-weight: 600;
         }
+
+        @media (max-width: 640px) {
+          /* Logoband iets lager op de telefoon; .auth-band komt uit globals.css */
+          :global(.auth-band) {
+            padding: 20px;
+          }
+        }
       `}</style>
 
       <div className="auth-page">

@@ -127,14 +127,15 @@ export default function PrintCalculatorPage() {
     );
   }
 
-  const field = (label: string, key: string, unit: string, step = 'any', help?: string) => (
+  // mode: 'numeric' voor velden met alleen gehele getallen (cijfertoetsenbord zonder komma)
+  const field = (label: string, key: string, unit: string, step = 'any', help?: string, mode: 'decimal' | 'numeric' = 'decimal') => (
     <label className="field">
       <span className="label">{label}</span>
       <div className="field-input-wrap">
         <input
           className="input"
           type="number"
-          inputMode="decimal"
+          inputMode={mode}
           step={step}
           min="0"
           value={v[key]}
@@ -199,6 +200,16 @@ export default function PrintCalculatorPage() {
         .breakdown td { padding: 9px 0; text-align: right; color: var(--navy); border-bottom: 1px solid var(--grijs-200); }
         .breakdown td:first-child { text-align: left; color: var(--grijs-500); }
         .breakdown tr.total td { font-weight: 700; border-top: 2px solid var(--grijs-200); border-bottom: none; padding-top: 11px; }
+
+        /* Telefoon: velden onder elkaar, resultaattegels in 2 kolommen, resetknop volle breedte */
+        @media (max-width: 640px) {
+          .layout { gap: 16px; }
+          .fields { grid-template-columns: 1fr; gap: 12px; }
+          .actions { margin-top: 14px; }
+          .actions :global(.btn) { width: 100%; min-height: 44px; font-size: 14px; }
+          .stats { gap: 10px; }
+          .tabel-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        }
       `}</style>
 
       <h1 className="page-title">Printkosten calculator</h1>
@@ -223,7 +234,7 @@ export default function PrintCalculatorPage() {
             <p className="section-label">Tijd &amp; tarief</p>
             <div className="fields">
               {field('Uurtarief', 'uurtarief', '€/u')}
-              {field('Aantal per plaat', 'batchGrootte', 'stuks')}
+              {field('Aantal per plaat', 'batchGrootte', 'stuks', 'any', undefined, 'numeric')}
               {field('Printtijd per plaat', 'printtijdPlaat', 'min', 'any', 'Printer draait zelf, telt als machinetijd')}
               {field('Hands-on tijd per plaat', 'handsOnTijd', 'min', 'any', 'Plaat in-/uitleggen, job starten')}
             </div>
@@ -233,7 +244,7 @@ export default function PrintCalculatorPage() {
             <p className="section-label">Machine</p>
             <div className="fields">
               {field('Aanschafprijs printer', 'printerPrijs', '€')}
-              {field('Levensduur', 'printerLevensduurUren', 'print-uren', 'any', 'Over hoeveel draaiuren je de printer afschrijft')}
+              {field('Levensduur', 'printerLevensduurUren', 'print-uren', 'any', 'Over hoeveel draaiuren je de printer afschrijft', 'numeric')}
               {field('Reinigingsinkt', 'reinigingsInktPerUur', 'ml/u', 'any', 'Inkt die self-cleaning per print-uur verbruikt')}
             </div>
           </div>
@@ -271,6 +282,7 @@ export default function PrintCalculatorPage() {
 
           <div className="card card-padded">
             <p className="section-label">Opbouw kostprijs</p>
+            <div className="tabel-scroll">
             <table className="breakdown">
               <thead>
                 <tr>
@@ -307,6 +319,7 @@ export default function PrintCalculatorPage() {
                 </tr>
               </tbody>
             </table>
+            </div>
 
             <p className="section-label" style={{ margin: '22px 0 10px' }}>Verkoop</p>
             <table className="breakdown">

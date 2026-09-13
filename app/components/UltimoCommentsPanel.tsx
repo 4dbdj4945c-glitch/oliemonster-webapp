@@ -184,7 +184,42 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', gap: '8px' }}>
+      <style jsx>{`
+        .opm-kop {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin-bottom: 12px;
+          flex-wrap: wrap;
+        }
+        .opm-tekst {
+          min-height: 100px;
+        }
+        .opm-acties {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        /* Telefoon: kopieren is de hoofdactie, dus volle breedte en 44px hoog */
+        @media (max-width: 640px) {
+          .opm-acties .opm-kopieer {
+            flex: 1 1 100%;
+            justify-content: center;
+            min-height: 44px;
+            font-size: 14px;
+          }
+          .opm-acties :global(.icon-btn) {
+            flex: 1 1 auto;
+            min-height: 40px;
+            justify-content: center;
+            font-size: 13px;
+          }
+        }
+      `}</style>
+
+      <div className="opm-kop">
         <div>
           <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--navy)', margin: 0 }}>Opmerkingen-historie</h3>
           <p style={{ fontSize: '12px', color: 'var(--grijs-500)', margin: '2px 0 0' }}>
@@ -215,14 +250,14 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
             </div>
             <div>
               <label className="label">Jobnummer (optioneel)</label>
-              <input className="input" type="text" value={newDraft.jobNumber} placeholder="bv. 2026-00831" onChange={(e) => setNewDraft({ ...newDraft, jobNumber: e.target.value })} />
+              <input className="input" type="text" inputMode="text" autoComplete="off" value={newDraft.jobNumber} placeholder="bv. 2026-00831" onChange={(e) => setNewDraft({ ...newDraft, jobNumber: e.target.value })} />
             </div>
           </div>
           <div>
             <label className="label">Opmerking</label>
-            <textarea className="textarea" value={newDraft.text} onChange={(e) => setNewDraft({ ...newDraft, text: e.target.value })} rows={3} placeholder="De opmerking zoals je 'm in Ultimo plaatst" />
+            <textarea className="textarea opm-tekst" value={newDraft.text} onChange={(e) => setNewDraft({ ...newDraft, text: e.target.value })} rows={3} placeholder="De opmerking zoals je 'm in Ultimo plaatst" />
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div className="knoppenrij" style={{ display: 'flex', gap: '8px' }}>
             <button type="button" className="btn btn-blue btn-sm" onClick={handleAdd} disabled={busy}>Opslaan</button>
             <button type="button" className="btn btn-sm" onClick={() => { setAdding(false); setNewDraft({ ...emptyDraft }); }}>Annuleren</button>
           </div>
@@ -259,11 +294,11 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
                       </div>
                       <div>
                         <label className="label">Jobnummer</label>
-                        <input className="input" type="text" value={editDraft.jobNumber} onChange={(e) => setEditDraft({ ...editDraft, jobNumber: e.target.value })} />
+                        <input className="input" type="text" inputMode="text" autoComplete="off" value={editDraft.jobNumber} onChange={(e) => setEditDraft({ ...editDraft, jobNumber: e.target.value })} />
                       </div>
                     </div>
-                    <textarea className="textarea" value={editDraft.text} onChange={(e) => setEditDraft({ ...editDraft, text: e.target.value })} rows={3} />
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <textarea className="textarea opm-tekst" value={editDraft.text} onChange={(e) => setEditDraft({ ...editDraft, text: e.target.value })} rows={3} />
+                    <div className="knoppenrij" style={{ display: 'flex', gap: '8px' }}>
                       <button type="button" className="btn btn-blue btn-sm" onClick={() => saveEdit(c.id)} disabled={busy}>Opslaan</button>
                       <button type="button" className="btn btn-sm" onClick={() => setEditingId(null)}>Annuleren</button>
                     </div>
@@ -271,10 +306,10 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
                 ) : (
                   <>
                     <p style={{ fontSize: '14px', color: 'var(--navy)', margin: '0 0 10px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.text}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    <div className="opm-acties">
                       <button
                         type="button"
-                        className="btn btn-sm"
+                        className="btn btn-sm opm-kopieer"
                         onClick={() => copyText(c)}
                         style={copied ? { color: 'var(--groen-tekst)', borderColor: '#BBF7D0', background: 'var(--groen-light)' } : undefined}
                       >
