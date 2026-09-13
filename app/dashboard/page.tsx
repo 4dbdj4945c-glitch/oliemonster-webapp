@@ -342,6 +342,25 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+
+            {/* E-mail editor: losstaand HTML-bestand in public/, opent in een nieuw tabblad.
+                Bron en uitleg: Documents/Claude/email-templates/ (sync-webapp.sh kopieert 'm hierheen). */}
+            <div
+              className="module-card"
+              style={{ '--accent-color': '#C2410C' } as React.CSSProperties}
+              onClick={() => window.open('/email-editor.html', '_blank', 'noopener')}
+            >
+              <div className="card-accent" />
+              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
+              <h2 className="card-title">E-mail opstellen</h2>
+              <p className="card-description">Opgemaakte mails in huisstijl samenstellen vanuit sjablonen en plakken in Apple Mail</p>
+              <div className="card-stats">
+                <div className="stat-item">
+                  <div className="stat-value">6</div>
+                  <div className="stat-label">Sjablonen</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

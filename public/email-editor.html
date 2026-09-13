@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>E-mail editor, It's Done Services</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* Kleuren van de website itsdoneservices.nl */
+  :root {
+    --navy: #0c1b33;
+    --navy-mid: #1a2d50;
+    --blue: #1d4ed8;
+    --blue-light: #eff4ff;
+    --oranje: #f97316;
+    --oranje-hover: #ea6b0e;
+    --wit: #ffffff;
+    --grijs-50: #f8fafc;
+    --grijs-100: #f1f5f9;
+    --grijs-200: #e2e8f0;
+    --grijs-400: #94a3b8;
+    --grijs-500: #64748b;
+    --grijs-700: #334155;
+    --radius: 12px;
+    --schaduw-sm: 0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04);
+    --schaduw: 0 4px 16px rgba(0,0,0,.08);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--grijs-100);
+    color: var(--navy);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Balk bovenaan ---------- */
+  .balk {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 20px;
+    background: var(--navy); color: #fff;
+  }
+  .balk h1 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+  .balk .spacer { flex: 1; }
+
+  button {
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    padding: 9px 15px; border-radius: 8px; border: 1px solid var(--grijs-200);
+    background: #fff; color: var(--navy); cursor: pointer;
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  button:hover { background: var(--grijs-50); }
+  .balk button { background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.2); color: #fff; }
+  .balk button:hover { background: rgba(255,255,255,.2); }
+  .balk button.on { background: #fff; color: var(--navy); border-color: #fff; }
+  button.primair {
+    background: var(--oranje); border-color: var(--oranje); color: #fff; font-weight: 700;
+    box-shadow: 0 4px 14px rgba(249,115,22,.3);
+  }
+  .balk button.primair:hover, button.primair:hover { background: var(--oranje-hover); border-color: var(--oranje-hover); color: #fff; }
+  button.mini { padding: 6px 11px; font-size: 12px; font-weight: 500; }
+
+  /* ---------- Indeling ---------- */
+  .app { display: flex; align-items: flex-start; }
+  .paneel {
+    width: 440px; min-width: 440px;
+    height: calc(100vh - 57px); overflow-y: auto;
+    background: #fff; border-right: 1px solid var(--grijs-200);
+  }
+  .toneel {
+    flex: 1; height: calc(100vh - 57px); overflow-y: auto;
+    padding: 28px; display: flex; justify-content: center;
+  }
+
+  /* ---------- Tabbladen ---------- */
+  .tabs { display: flex; border-bottom: 1px solid var(--grijs-200); position: sticky; top: 0; background: #fff; z-index: 5; }
+  .tabs button {
+    flex: 1; border: none; border-radius: 0; padding: 14px 0;
+    border-bottom: 2px solid transparent; color: var(--grijs-500); background: none; font-weight: 600;
+  }
+  .tabs button.on { color: var(--navy); border-bottom-color: var(--oranje); }
+  .tab { display: none; padding: 20px; }
+  .tab.on { display: block; }
+
+  /* ---------- Velden ---------- */
+  .groep { margin-bottom: 26px; }
+  .groep > h3 {
+    margin: 0 0 12px 0; font-size: 11px; font-weight: 700;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--blue);
+  }
+  label { display: block; margin-bottom: 12px; }
+  label > span { display: block; margin-bottom: 5px; font-size: 12px; font-weight: 500; color: var(--grijs-500); }
+  input[type=text], input[type=url], textarea, select {
+    width: 100%; padding: 9px 11px; font-family: inherit; font-size: 13px; font-weight: 400;
+    border: 1px solid var(--grijs-200); border-radius: 8px; background: #fff; color: var(--navy);
+  }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-light); }
+  textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+  .rij2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .kleur { display: flex; align-items: center; gap: 8px; }
+  .kleur input[type=color] { width: 34px; height: 34px; padding: 0; border: 1px solid var(--grijs-200); border-radius: 8px; background: none; cursor: pointer; flex: none; }
+  .kleur input[type=text] { flex: 1; font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+
+  .schuif { display: flex; align-items: center; gap: 10px; }
+  .schuif input[type=range] { flex: 1; accent-color: var(--oranje); }
+  .schuif output { width: 46px; text-align: right; font-size: 12px; color: var(--grijs-500); font-variant-numeric: tabular-nums; }
+
+  .schakel { display: flex; align-items: center; justify-content: space-between; padding: 11px 0; border-bottom: 1px solid var(--grijs-200); margin: 0; }
+  .schakel:last-child { border-bottom: none; }
+  .schakel span { margin: 0; font-size: 13px; font-weight: 500; color: var(--navy); }
+  input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--oranje); cursor: pointer; flex: none; }
+
+  .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .presets button { padding: 11px 8px; font-size: 12px; font-weight: 600; line-height: 1.5; }
+  .presets button.on { border-color: var(--oranje); box-shadow: 0 0 0 1px var(--oranje); }
+  .stip { display: inline-block; width: 9px; height: 9px; border-radius: 5px; margin-right: 5px; vertical-align: -1px; border: 1px solid rgba(0,0,0,.12); }
+
+  /* ---------- Blokken ---------- */
+  .blok {
+    border: 1px solid var(--grijs-200); border-radius: var(--radius);
+    margin-bottom: 10px; background: #fff; overflow: hidden;
+  }
+  .blok.sleep { opacity: .4; }
+  .blok.doel { border-color: var(--oranje); box-shadow: 0 0 0 1px var(--oranje); }
+  .blokkop {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    background: var(--grijs-50); cursor: pointer; user-select: none;
+  }
+  .blokkop .greep { cursor: grab; color: var(--grijs-400); font-size: 13px; letter-spacing: -2px; }
+  .blokkop .naam { flex: 1; font-size: 13px; font-weight: 600; }
+  .blokkop .naam em { font-style: normal; font-weight: 400; color: var(--grijs-400); }
+  .blokkop .knopjes { display: flex; gap: 2px; }
+  .blokkop .knopjes button {
+    border: none; background: none; padding: 4px 7px; border-radius: 6px;
+    font-size: 13px; color: var(--grijs-500); font-weight: 400;
+  }
+  .blokkop .knopjes button:hover { background: var(--grijs-200); color: var(--navy); }
+  .blokkop .knopjes button.rood:hover { background: #fee2e2; color: #dc2626; }
+  .blokromp { padding: 14px 12px 4px 12px; border-top: 1px solid var(--grijs-200); display: none; }
+  .blok.open .blokromp { display: block; }
+  .blok.open .pijl { transform: rotate(90deg); }
+  .pijl { color: var(--grijs-400); font-size: 11px; transition: transform .15s; }
+
+  .datarij { display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .datarij input { margin: 0; }
+  .lijstrij { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .weg { border: none; background: none; color: var(--grijs-400); font-size: 16px; padding: 4px 7px; border-radius: 6px; }
+  .weg:hover { background: #fee2e2; color: #dc2626; }
+
+  .toevoeg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .toevoeg button { text-align: left; padding: 10px 12px; font-weight: 500; }
+  .toevoeg button b { display: block; font-weight: 600; margin-bottom: 2px; }
+  .toevoeg button small { color: var(--grijs-500); font-weight: 400; }
+
+  .hint { font-size: 12px; line-height: 1.6; color: var(--grijs-500); margin: 8px 0 0 0; }
+  .hint code { background: var(--grijs-100); padding: 1px 5px; border-radius: 4px; font-size: 11px; }
+  .hint.waarschuw { color: #b45309; }
+  .hint.waarschuw:empty { display: none; }
+  .toevoeg button.on { border-color: var(--oranje); box-shadow: 0 0 0 1px var(--oranje); }
+  .bewaard { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--grijs-200); border-radius: 8px; margin-bottom: 6px; }
+  .bewaard .info { flex: 1; min-width: 0; }
+  .bewaard .info b { display: block; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bewaard .info small { color: var(--grijs-500); font-size: 11px; }
+  .leeg { font-size: 12px; color: var(--grijs-400); padding: 6px 0; }
+
+  iframe {
+    border: 1px solid var(--grijs-200); border-radius: var(--radius); background: #fff;
+    width: 100%; max-width: 780px; height: 1500px; box-shadow: var(--schaduw);
+    transition: max-width .2s;
+  }
+  iframe.mobiel { max-width: 390px; }
+
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--navy); color: #fff; padding: 13px 22px; border-radius: 10px;
+    font-size: 13px; font-weight: 600; opacity: 0; pointer-events: none;
+    transition: opacity .2s, transform .2s; z-index: 50; box-shadow: var(--schaduw);
+  }
+  #toast.zie { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.fout { background: #dc2626; }
+  #kopieerbak { position: fixed; left: -9999px; top: 0; width: 700px; }
+</style>
+</head>
+<body>
+
+<div class="balk">
+  <h1>E-mail editor</h1>
+  <div class="spacer"></div>
+  <button id="btnDesktop" class="on">Desktop</button>
+  <button id="btnMobiel">Mobiel</button>
+  <button id="btnReset">Leegmaken</button>
+  <button id="btnHtml">Kopieer HTML</button>
+  <button id="btnDownload">Download</button>
+  <button id="btnOpenMail" title="Kopieert de mail en opent een nieuw bericht met ontvanger en onderwerp ingevuld">Open in Mail</button>
+  <button id="btnMail" class="primair">Kopieer voor Apple Mail</button>
+</div>
+
+<div class="app">
+  <div class="paneel">
+    <div class="tabs">
+      <button data-tab="sjablonen" class="on">Sjablonen</button>
+      <button data-tab="blokken">Blokken</button>
+      <button data-tab="uiterlijk">Uiterlijk</button>
+      <button data-tab="algemeen">Algemeen</button>
+    </div>
+
+    <!-- ============ SJABLONEN ============ -->
+    <div class="tab on" id="tab-sjablonen">
+      <div class="groep">
+        <h3>Start vanuit een sjabloon</h3>
+        <div class="toevoeg" id="sjabloonknoppen"></div>
+        <p class="hint">Een sjabloon zet de blokken, het onderwerp en de preheader klaar. Wat je hieronder al hebt ingevuld blijft staan.</p>
+      </div>
+      <div class="groep">
+        <h3>Invulvelden</h3>
+        <div id="invulvelden"></div>
+        <p class="hint">Schrijf <code>{{naam}}</code> in een tekst en het wordt in de hele mail vervangen door wat je hier invult. Je kunt zelf velden toevoegen.</p>
+        <p class="hint waarschuw" id="invulWaarschuwing"></p>
+      </div>
+      <div class="groep">
+        <h3>Bewaarde mails</h3>
+        <div id="bewaardlijst"></div>
+        <button id="btnBewaar" class="mini" style="margin-top:6px">+ Huidige mail bewaren</button>
+        <p class="hint">Bewaard in deze browser, los van de mail waar je nu aan werkt. Handig om een halve mail te parkeren of een eigen sjabloon te houden.</p>
+      </div>
+    </div>
+
+    <!-- ============ BLOKKEN ============ -->
+    <div class="tab" id="tab-blokken">
+      <div class="groep">
+        <h3>De mail van boven naar beneden</h3>
+        <div id="blokkenlijst"></div>
+        <p class="hint">Klik op een blok om het te openen. Sleep aan de greep om de volgorde te wijzigen.</p>
+      </div>
+      <div class="groep">
+        <h3>Blok toevoegen</h3>
+        <div class="toevoeg" id="toevoegknoppen"></div>
+      </div>
+    </div>
+
+    <!-- ============ UITERLIJK ============ -->
+    <div class="tab" id="tab-uiterlijk">
+      <div class="groep">
+        <h3>Kleurenschema</h3>
+        <div class="presets" id="presets"></div>
+        <p class="hint">De eerste twee volgen de opmaak van itsdoneservices.nl.</p>
+      </div>
+
+      <div class="groep">
+        <h3>Kleuren</h3>
+        <label><span>Accent (knoppen en blokkoppen)</span><div class="kleur"><input type="color" data-kleur="accent" /><input type="text" data-veld="accent" /></div></label>
+        <label><span>Labeltjes boven koppen</span><div class="kleur"><input type="color" data-kleur="labelKleur" /><input type="text" data-veld="labelKleur" /></div></label>
+        <label><span>Donkere blokkoppen en balken</span><div class="kleur"><input type="color" data-kleur="donkerKleur" /><input type="text" data-veld="donkerKleur" /></div></label>
+        <label><span>Achtergrond pagina</span><div class="kleur"><input type="color" data-kleur="paginaBg" /><input type="text" data-veld="paginaBg" /></div></label>
+        <label><span>Achtergrond card</span><div class="kleur"><input type="color" data-kleur="cardBg" /><input type="text" data-veld="cardBg" /></div></label>
+        <label><span>Achtergrond blokken</span><div class="kleur"><input type="color" data-kleur="blokBg" /><input type="text" data-veld="blokBg" /></div></label>
+        <label><span>Koppen</span><div class="kleur"><input type="color" data-kleur="kopKleur" /><input type="text" data-veld="kopKleur" /></div></label>
+        <label><span>Lopende tekst</span><div class="kleur"><input type="color" data-kleur="tekstKleur" /><input type="text" data-veld="tekstKleur" /></div></label>
+        <label><span>Bijzaken (labels, footer)</span><div class="kleur"><input type="color" data-kleur="dofKleur" /><input type="text" data-veld="dofKleur" /></div></label>
+        <label><span>Scheidingslijnen</span><div class="kleur"><input type="color" data-kleur="lijnKleur" /><input type="text" data-veld="lijnKleur" /></div></label>
+      </div>
+
+      <div class="groep">
+        <h3>Typografie</h3>
+        <label><span>Lettertype</span>
+          <select data-veld="font">
+            <option value="'Inter',-apple-system,'Segoe UI',Arial,sans-serif">Inter (zoals de website)</option>
+            <option value="'Montserrat',Arial,Helvetica,sans-serif">Montserrat (logo-huisstijl)</option>
+            <option value="-apple-system,'Segoe UI',Arial,sans-serif">Systeemletter</option>
+            <option value="Arial,Helvetica,sans-serif">Arial</option>
+            <option value="Georgia,'Times New Roman',serif">Georgia (serif)</option>
+          </select>
+        </label>
+        <p class="hint">Bij plakken gaat er geen lettertype mee. De ontvanger ziet Inter of Montserrat alleen als dat op zijn apparaat staat. Anders krijgt hij de terugval: Arial of de systeemletter. Dat is normaal.</p>
+        <label class="schakel"><span>Voorbeeld met webfont tonen</span><input type="checkbox" data-veld="previewWebfont" /></label>
+        <p class="hint">Uit: het voorbeeld laat de mail zien zoals de meeste ontvangers 'm krijgen, met hun systeemletter. Aan: met Inter of Montserrat, zoals het eruitziet bij iemand die dat lettertype heeft.</p>
+        <label><span>Titelgrootte</span><div class="schuif"><input type="range" data-veld="titelGrootte" min="20" max="46" step="1" /><output data-uit="titelGrootte"></output></div></label>
+        <label><span>Tekstgrootte</span><div class="schuif"><input type="range" data-veld="tekstGrootte" min="12" max="19" step="1" /><output data-uit="tekstGrootte"></output></div></label>
+        <label><span>Regelafstand</span><div class="schuif"><input type="range" data-veld="regelafstand" min="14" max="22" step="1" /><output data-uit="regelafstand"></output></div></label>
+        <label><span>Koppen dikte</span>
+          <select data-veld="kopGewicht">
+            <option value="800">Extra zwaar (zoals de website)</option>
+            <option value="700">Zwaar</option>
+            <option value="600">Halfvet</option>
+            <option value="500">Medium</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="groep">
+        <h3>Vormgeving</h3>
+        <label><span>Breedte van de card</span><div class="schuif"><input type="range" data-veld="breedte" min="480" max="700" step="10" /><output data-uit="breedte"></output></div></label>
+        <label><span>Marge links en rechts</span><div class="schuif"><input type="range" data-veld="zijmarge" min="0" max="32" step="2" /><output data-uit="zijmarge"></output></div></label>
+        <p class="hint">Op <strong>0</strong> loopt de mail op een telefoon van rand tot rand. Op desktop zie je hier niets van, want daar staat de card toch gecentreerd in een breed venster. Deze marge telt alleen mee zodra het scherm smaller is dan de card.</p>
+        <label><span>Marge boven en onder</span><div class="schuif"><input type="range" data-veld="buitenmarge" min="0" max="48" step="2" /><output data-uit="buitenmarge"></output></div></label>
+        <label><span>Binnenruimte</span><div class="schuif"><input type="range" data-veld="ruimte" min="16" max="56" step="2" /><output data-uit="ruimte"></output></div></label>
+        <label><span>Ronde hoeken</span><div class="schuif"><input type="range" data-veld="radius" min="0" max="24" step="1" /><output data-uit="radius"></output></div></label>
+        <label><span>Uitlijning titel en intro</span>
+          <select data-veld="uitlijning"><option value="left">Links</option><option value="center">Gecentreerd</option></select>
+        </label>
+      </div>
+
+      <div class="groep">
+        <h3>Logo bovenaan</h3>
+        <label><span>Plaatsing</span>
+          <select data-veld="logoPlek">
+            <option value="band">In een gekleurde balk (zoals de website)</option>
+            <option value="boven">Los boven de card</option>
+            <option value="geen">Geen logo</option>
+          </select>
+        </label>
+        <label><span>Welk logo?</span>
+          <select data-veld="logoBron">
+            <option value="wit">=DONESERVICES wit (ingesloten)</option>
+            <option value="zwart">=DONESERVICES zwart (ingesloten)</option>
+            <option value="url">Eigen afbeelding via URL</option>
+          </select>
+        </label>
+        <label id="logoUrlVeld"><span>Logo (URL)</span><input type="url" data-veld="logoUrl" placeholder="https://..." /></label>
+        <label id="logoBandVeld"><span>Kleur van de balk</span><div class="kleur"><input type="color" data-kleur="logoBandBg" /><input type="text" data-veld="logoBandBg" /></div></label>
+        <label><span>Breedte</span><div class="schuif"><input type="range" data-veld="logoBreedte" min="80" max="320" step="10" /><output data-uit="logoBreedte"></output></div></label>
+        <p class="hint">De ingesloten logo's gaan mee naar Apple Mail zonder dat je iets hoeft te hosten. Een eigen URL moet een publiek bereikbare PNG of JPG zijn. SVG blijft leeg in Gmail en Outlook.</p>
+      </div>
+    </div>
+
+    <!-- ============ ALGEMEEN ============ -->
+    <div class="tab" id="tab-algemeen">
+      <div class="groep">
+        <h3>Inbox</h3>
+        <label><span>Aan (ontvanger, voor de knop Open in Mail)</span><input type="text" data-veld="aan" placeholder="naam@bedrijf.nl" /></label>
+        <label><span>Onderwerp (gaat mee met Open in Mail, komt niet in de tekst van de mail)</span><input type="text" data-veld="onderwerp" /></label>
+        <label><span>Preheader (het zinnetje naast het onderwerp in de inbox)</span><input type="text" data-veld="preheader" /></label>
+        <label><span>Hoe?</span>
+          <select data-veld="preheaderStijl">
+            <option value="zichtbaar">Als klein regeltje bovenaan (werkt altijd)</option>
+            <option value="verborgen">Onzichtbaar in de mail (klassiek)</option>
+            <option value="geen">Geen preheader</option>
+          </select>
+        </label>
+        <p class="hint"><strong>Onzichtbaar</strong> is de nette manier en werkt gegarandeerd als je de HTML echt verstuurt (knop Download). Plak je de mail in Apple Mail, dan kan Mail verborgen tekst bij het plakken weggooien. Dan ziet je ontvanger 'm dus niet. <strong>Zichtbaar</strong> heeft dat probleem niet: het is gewoon een klein regeltje boven de mail, en dat is precies wat de inbox als voorbeeldtekst laat zien.</p>
+      </div>
+      <div class="groep">
+        <h3>Footer</h3>
+        <label class="schakel"><span>Footer tonen</span><input type="checkbox" data-veld="toonFooter" /></label>
+        <label style="margin-top:12px"><span>Regel 1</span><input type="text" data-veld="footer1" /></label>
+        <div class="rij2">
+          <label><span>Website</span><input type="text" data-veld="website" /></label>
+          <label><span>Telefoon</span><input type="text" data-veld="footerTel" /></label>
+        </div>
+        <label class="schakel"><span>Afmeldlink tonen</span><input type="checkbox" data-veld="toonAfmeld" /></label>
+        <label style="margin-top:12px"><span>Afmeldlink</span><input type="text" data-veld="afmeldlink" /></label>
+      </div>
+      <div class="groep">
+        <h3>Opzet als bestand</h3>
+        <p class="hint" style="margin-top:0">Je invoer wordt automatisch in deze browser bewaard. Wil je een opzet als bestand bewaren, bijvoorbeeld als reservekopie, gebruik dan de knoppen hieronder.</p>
+        <div class="rij2" style="margin-top:12px">
+          <button id="btnOpslaan">Opzet opslaan</button>
+          <button id="btnLaden">Opzet laden</button>
+        </div>
+        <input type="file" id="bestandIn" accept=".json" hidden />
+      </div>
+    </div>
+  </div>
+
+  <div class="toneel"><iframe id="preview" title="Voorbeeld"></iframe></div>
+</div>
+
+<div id="toast"></div>
+<div id="kopieerbak" contenteditable="true"></div>
+
+<script>
+window.__fouten = [];
+window.addEventListener("error", e => window.__fouten.push(e.message + " @regel " + e.lineno));
+</script>
+<script>
+"use strict";
+
+/* Ingesloten huisstijl-logo's als data-URI, zodat er niets gehost hoeft te worden.
+   Apple Mail maakt er bij het plakken zelf een bijlage van. */
+const LOGO_DATA = {
+  zwart: "data:image/png;base64,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",
+  wit: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAtAAAABICAYAAADf/cKbAAAQAElEQVR4nOydB7gU1RXHz4s9mmjsioVYY6zYjUYROxawiw0Eu4hYA8aOYtRYQUVExV6xRUBRERs2EDWWRKOiEkBRVNRETPDl/2fuxnn37ds7szvlzu75fd/5Zndmdnd27sydc8895WeiKIqiKIqiKEpkfiaKoiiKoiiKokRGFWhFURRFURRFiYEq0IqiKIqiKIoSA1WgFUVRFEVRFCUGqkAriqIoiqIoSgxUgVYURVEURVGUGMzr2uET+eXiUjBWkFnfNIn8R5RUaG5uXhiLzSHLQpY0spRZLgb5CjID8nloOR3yYlNT079EUQoGrvlfSetrncI+dFZIZkIm6HWuKAG4dxbCYsHQqtm+3h841nYS3N9h4fOOz7DPjHzKJf7DN6JkBtpmRQn63CXkp7ZZFPKd/NT/sk3eR9u8KxnQVGnjJyILyfxLFO9BMOfHzivO+XI0X+KkT8ZiZUkXKolsvK8luNFeh7wJeQMN+ZrUATiPy2GxF2QPSEfI/BKf7yFjIQ9RcG4+lZzA//mlBO1VjmmQ9XB8n0uO4Bh7YzGowi7DcYyHSW2/cQAWd4q/3Ib/eIhkDM4L+8ZtIDw/e0vQcUeFg/fxkMchYyAT8R9+lJTAsf4Zi5PFP/bF/75PqgT/62gsrpXk4SDnGyMc7H8oQXu9gON9XRIE/2EfLO61VnfC7zwlBQL/4yQsLg2t4jlbLcp1jc9ejMWpoVXD8LkjxANwbL/GYl9IFwmMQnFm5T+GPGbkCfynryUlcJyXYHGK+Md++N/3SgrgPy8vQf/bDbKxxIPXJ/te9sGptY3TAq1EojQaKrFj6QUugtlYvAB5UgLl8WU05n+lAODYaU0+DsKHwAZSO7RCdDZyHb5/ggQPl2twTr4Vf+BgYSSOb8uitJWSDGjz32LBh/t+kOWlOuaTQPmmnA+Ziu+9HsuhuJ6mipI3ixspsRVk7iAN7cR+6BkJBqdJKAb3Q/4JaRdaR2W0MAo0zgmVypOs1ZelOShME/yfdbA4ELIn5DdSPStJ0FccYb73RSwegAzBuZklSmzMbAXvxYMhv5fq4cDoKCP83gcl0DMelwRRH+j0WUACi+0AyPOQaWjMC810hJfQOgs5By8nS6AAJKE8l4Ojyov4O/i9fpCfiz9sKpWtv0odwY7bWMregvSV6pXncvC7zob8E7/xAGRrUXxlEQkG+PegnWZCBkFWkyoxSuYl1updjeWzKNBCGx4A0HJ/gxQMDo4hnBF5A9JfalOey0ELNp9nH+F3zjKznEpEcL52kKD/vU5qU57L0RUyBr/xd8jxxg21ZtQCnT2cCu5HQSPSOnEuOtk3xAPMDU/l4UQJfJmzgj5NF0JOMkrM1Tgn/5b8ORrHw2ndW0SpW9DGO0vQaa9UYTe6G02ETDUyzSw5w0RrJu8X+kmvClkXskkb38OOvCt+cxSWp+DaekeSh/EGf5f8mSHJQneLWl0saOFaNCQLVdiX7Uk3qt5or1PRVn+W6hgqgQHlF+Y93YNOgxwjxeB0670v/XMk0HarY3GeBO4AlaAvLV15phmZbuQLCeJ9OBBuZ5YcVK3fxvewLzgX0he/fRmWVyQww2pb+325xz+TGsE5WhoLnqeDHLs+J3M9i2WKBP0x+1/2MdRbSv0vPQE6SNA2y5T5jjUgV0FOx++eiXYZJjWgCnS+0Ke4CxqSDXpWnm4MOIYtJJhuXFbygxc/rTXH4nj2wPl4U/JnGI7lHRzLK6LUHWhbKjHXlNnE2I8RkHGQ56oJSsF3c+ZmJwj91Ne0Ns91ZcI+N+K7e0myjMR3Hi71x6v4X9tJghijAWfCOODZSIL2Kmc5vAT7sr8+GMfwgcSAyiY+O0Ra+gF3x7rTse1L8RgcI91b1gutokvb5VIQjO/2nyRwqyoHlbCHIZziH4v2iJx8AN/N5xUH37xm6La5lLULFToOnA7HvjvWGNhmewuMSqHfyBwTtEnXlxXKbOZg5lHI0/ivz0hM8N00bHC2r4cEPu5hqOdcj31O4HZ8/0SpAnXhyJ95JLD4vovG3ElygO4TEvj95ak8h+H05gQc15GSP+x46Q/ty7lREgJtSj/ncsozZxxWRad6KOTGah98DCCGXAThVDGnJIeX2W1NUaKS+POKvqqQsaadeD3QGnaoBP2hDY0Mr+K6WVfic6UEymcJWr6PFf+xg1Pvwnmq2eqYNmijRekuJUHgYznlmUrz1vgv7SDHQB6LozwT7D8DciuEgypeN7SglusrmMTgJTMYUQxGwX1CWivPf4PsinPKGKQB1SjPBJ+bCXkQwlk/tg+v5X9Yu9EfvmpfflWg/YGBa6M4rSAZYTqZRyRwn6h2NoLBEvRbYiQy/eIGQm6UIAL2bbO9Gug7zkDDO5PyV6oBWhbYNjpjUyegLTthcbe1mlOi66LD7Q6ZLgmC73vOZEyhMv10aNO5ongD2mi2UYoYANpRgjiQMHT7GIfrJ5b/LL6PgYT3WKv7+NynGD9t23J3iXiOmfmhW2TXMpvpBrAx2qML5FlJEHzfHVisJYGryNvWZroYPGGysjQ8OA9MKMBMafZ9dBrO41qQUZIgZrDDwFe685wV2vQI1k2SKlGFQOS3tfghmmBAjqA4ylzRCH0pOS3YLubXcUBzHr6TwQjd0ozkNYExzAoSN5iRHRMVAE6vjI1ijTDWWyostODwwRTHgsPOaGN8R0fzEMoL+lXRX6qHNBbsYHaXOsLkdH7IWs1p+W3xX6dJiuD7qaR3xDF0lyAFVKJR4XVOplkf0DZPm6wsjMvoHdpEy9nTJkvPP2J8JQPMDgy9L1ktbxY/ocUunOr2KV/iddoCbULXpevLbKKbwLk4/kclRUzQKAfmd+NY6L5xRmgzjUL3Yj1TpP5VGhu6AW1qrTsS5+V6SRlatdEGt0mQIrMmA4Yq0DVa4dEYdGqnvBBeb1L/dJQgHQvzyMaJyKV/JK0cW6WRcN6kp+ODO6ry3CxBurl+OJ4PJSbGmneHEf4+Hfnpl7ZnxK+gsk8L8Gb4ru8lP7rjGF7BMVwtSpFhfuFFQu95fXZKW3kOg9+i0uSr4uQrmc+YmmA5Ru3TVzk8O0jlly4CkY0BVD7xPTQ+bBNaTR9d764DM8jsaa2+TDzG+KiXU8AuwLk/QzIGv3kmjmmcBHn2OYvJ52ivRleecU6YSOFoa/WpWSjPJYwes7PUiLpwpGTV4EjU+Nb1hHDaj6mARsf4Clo8H5SEMVOGnB5pH/EjdMVYH/9h/2qU53LQpxTCzm4zCVL7RYGBLKkkbI/JlbQ8iVJI0HaMOehrreYD9iNRlDbA9cFp3yHW6nVwPR0q8bCV0PXwHYkGRiYEg2vDGUrY948UT6FxBYvby2w6Kg/luQR+m/UfmBFinASzyjeJ0tt6/14NGW5yRRXojM4BLpD7ILQsU3H8KuLHdkDHcKUkC60dW0TYbw7kMBzzTmmNmPG9LCrDwApGp0cZyOxmKjLlCRWwhzWosLAwSf/SofesNllTKiOlYWDQn50ZaCD6ggUkOn+RQBkNc5J4hDGynGCtZpBls3gIjpcuk1TuF7Q27YNjHio5w5ktyLaQu6XBQVsxoLOPtfpCKSiqQGcMbiJO+9FxPmpkaR+TYLxm8D0ciR8YYVf6XnNKe7hkgBl9skR4FHeVU/A/eki+0AeSLiXVlDNX8qWz9X5kzm5BSkEwCuTx1mrGuewlETHfYRsBdkFf4lM2FvplhweZdF/x0nJqim/Rr3kJaxPdDUeI4huM7/qVte4uKSiqQOcAbmwmAe8oQfq62RE+crvxG6oak3ppQIRd6c+9WbWpY6oFv0cLAq3RUVIk3YT/s5zkC11stMBK8Whvva+1MIfSQKCfGietXfH2kHgMl0Ap/f/Xil9W6P7W+8H43z+In9B6uZa17g6mJRTFR9pb7z9sKlBRHhtVoAPH/syhJQJyBV5GSWvDAIRaHewHRtiHlZiY8P1vkgMmncxuEm1Q4UP6r/2hyJ8oSpFob71XBVqJi+0LvYsJGo+EURjs/OM9TOBeruAYtpeWucmpOA8WDzGuG8dZqydAuoviK+2t94Xuf1WBbpmmJ/sfb2piHuY/RNi1qwmUiA0+xwpbu7l242/kpTyXaAoq/kUJzOlp8pRWS5SB00sR9rnM5BTOg0zTetUJdrWw90VR4sHAsPC9xyDxbSQerD4bLqxCd7Dekj924ZTbm/wtnMKAzHlC71kIhX7P/xXFV+zy2oXuf1WB9gDc8MwzeluEXaNYkctxRYR96DP2hHgAjoMFBy527MaOs9rzERUm4p8RYT/m9lxBskfv3/h8br3Po92UAoP+iTN1dvGFDhIDo5TafX7vPOMqjB+2ndrLS1cIY0za21p9nWbT8R57MFbo/lcfwP7AKmWvOPbphI4jlqXDpEhylRAdb5R4b8Dx0Cr/tmO3A6osqxv1GJgfeFcJLBuVYFDhaFNdSfGbj633q4mixMcuvlVNjMqfrPelwip5car1fowp/OMjdtqzb0WrehaBuup/VYH2BDPt1C3CrnGn+aK4QxwnfhLFtSVuHtYSLteduVO0xqXkcHGzjgQJ8xW/+cR6v7ooSnxmWu9jK9BGObUrUUbp8xIHg38q74dYq70snIJjZdVf2yj0Z5zPz0Xxnbrqf1WB9gh0APQHcmW/2NXkUnRiAlu6Ona7E7/7mniI8Q8f79htb0n/OJhtY0iEXemnfpooPmNbQLppOkKlCr603lebJclWUtdMKm1pTGiYCd8Hf0e/95j4iZ02kGlXC1mIowGx+99f4npP/RmeFqpA+8e1ju2sDuUKCCzxe3GXED9d/OYUx/ZfZ5RDlflfX46w34U5BhUqbuzqnqtAzhFFqY2qAtegpDKHse0mkWlKOzOAtGc2vXLps+hivR9t/NIVz0E7vSetXTMH4xpcRArIvJU2okdonlea/ykFo6mpuciFEViummmDlqiwD/2aHxA3LuvzJFzQk8VjcHwv4OaaIpWDDZiHNdUKhXSxwXHQH/oNSKUc1ByU3o99OyRV+lxJDrTJWLTNsxIMLkv0xzpWxXxQFCUadjaByVI97LvC1TB3olEgQ/9jxt+EU+iVC3D0ApyXX2CxtbX6YVGKxNkS6DklWNWXZdi7SMGoqED/WuR7+WGmRqlnCDrNOegk2JlW8oXbSKLhUqCL0vGwyMpRFbanrkAT+tihbVjJ7kVIpfK9TGvFoMINtMqdl3DW5Vlr3QNoryPRXrXmW1cag2Wt95Olem6VIKNQqfof4zM483aEpAyuef6W/azxuXAKn2nh+JU5EpRHVwoCrq37cN0xi004c80eWPcclp2xfZYUBHXh8JPHHds3Mh1fm2A7LdjtpTJF6XhGOrZXlR+7Goy/eJTARbqVaFChh6AN2VGXcw0aivvmBg+qXCr+Y2f/mSxVYpTVq63Vh2ZUWIWzauF8+t4WTjFsbL1/FufvG1GKBv3Y7ZR2W0JewXVfGEu0KtB+MtmxnUGErvRtUe0tmwAAEABJREFUyzu2T0PHM1GKAYNZKlUnnA833eKSESZP9VURdmVQ4RmieAfa8FIsBpXZ1BMyFe12OcR1DykNCK6Ldlisaq2eLLXBazFs9aVfch9JH7twynDcG1+Kv9iDW1fqV8VDjOvojhKkHwyzBuRB3GMvmKqYXjOvKD4yWYJKeZWszAx+eqPCdtfDf5IUBFpocDO9K5UHDfy/MyU7WMJ7Q3Hn2D4Pxz7BBAsVkS1w/OMkW7rhfE2TlMFv9MF/Y1qlCyQYlIbpCzke2zl4uwnyEPZ35QNXGoNdyqz7QGqASiuuteF4eWRo9bFYd2Fa7hT47vWw6BheJa1zU/uGrUBPFaWQ4Lp+3RTEuV9alo8nm0Mex3beV8MlGNh9Ip6hCrSHGD9odgztKuzmmt5r59jus5WhHF84tlOBflMyAm30I9qIvtevQ1astKsElQrXK2hQIV2B4pYprpWFJCPQJpegbViaeYS0dnlitcvORr7BfmMlmA0Zic99LEqjYsdjPJVQrANT2tHvuWQ4KeVmvkHSwU65OaoAfZStQBcuyYHyE7je3maskAQuTD3L7EJD4XmQc7Ef3SfHSNAHP+eDQUNdOPxlsmO7S4F2WaCztNYmgUuBdg0YEsdMddIaNduxK1P0MKhwYVG8A+34KhbrQwZI2/cFo//pm3cN5CNaRiBDIPtn6T4UkV7N+fCk1DnNwaDZ9sO9UBLAZN0YZa0+VVKgOXBD2d9a7WXhFIuVrfeNqkD3bM6HsZIwHHxCeklgqHiurd0kCDpkwCuP4Wscy6OQU5oDBTwXVIH2l8mO7apAtyQXf1Xc+G9J9KDCe0XxEkZ+Q86C0OJ+NORvjo8w8IqWyLsgX6ATnwihNXuHZi3pXs/Y+ZHfwjXjCvqOw6XWexZW2UmS5wRpOQP9BlM8isfgPLCmgT1rri4cdQKuP+bzZnrRTSWYEawEZyl5XzD71iRcG+yD74TQeLCSZIQq0KZks4e4XCwWqnG7r2mK2sI1RZpbInYTVHhphF13wc19niheg/a8DrKWBFZpWhejTGvTH56ZPTjFOBPtfDeEQaQLiFIXoC0Z6Gf7ap4jCYLr7ikJ3MLCnCgJgv/BZ8PR1uoiVPIr90z7VpS6AvfAK5B98HIxCXKUs0+d4/gYZwEPkCCfOmcIqVSfBllRUkR9oP0dRLjyb7tS93zm2L6MFAvX8X4u+cKpVk4lbefY70zc1OMLHFTYMKCNGKRLOR1ttjaWjApn+3aUwKWjLfig38/It/gsrdQ3m/R5WTBdWle3y4LXJF1yM3agDeneY1frG8uctpI8VGZvDb1PurAKAxXD1y+fFd6n3MT//5Q+BNIyuJ75uPPu+7PAvvbr9R7/P2jvr8UEEKLZWVthWwir/NLyvIbj4xsYuag5yC99M+TupFMeqgLtLys7tn/l2D7dsb1oCvSyju2pZ22oBG5M9u3MbclARteol0GFG+Ez74pSCIyrDuVKvkf7rSNBQSNanjeTtnORc2bkcAo+8z4/j+8aJOnCIMfDRakZY62lQnustYn3+Z6SDhxwcUZr6dA6Bvz1khrB/6HByParvpyVVqUYUFleKvSez7HMgsdzxDb0jTJ+ww2BUaYfNFKqc0FXjw3NkoHui7bx8a2MDMLnOFt8RlIZPVSB9pe0FWiXQuobruN1/d/UoR8tblAGFTI3aSUXmlJQYYcCVF0aD/mjZIv3fo1oNz60KbRsiLGQ0DrNIDMGwyxV5mPMHXwV9t0Xy4N8TMvkOZnOFqKd+NBlSWu7L+b1uWNa9y6VWfw2A/rCKeUOxrr+2OaaWXTBqfFwwPW/pXURF59hPx++t4r2HFMSAPcBY6JGG5lLc5ASj9ZpFgfatMzHGJvCeKUuzUHV2XukRlSB9hAThOSK7Hel0VILdA7QUon26yZmpFwBpue5n0FntF6Lv8zE8Y0TpSLGQnK/Ed7De2PRHbJ7md0ZKMPrZB98bowo3mB81ul6Qwv+1mV24RTwthnkKWe2l7Plp4E4C6scZ9bVgl045YamYlXy+1Ra1gMo2nNMSQlcxy9hQWHtBcYq0H+6h7S+RmjsYIzKbvhMlAQAbaJBhH6yaoR9XnVsdynQq5uoZu/BcdICtKhjt9wt0CVwUz4k0VJb0WI5UJS6A9fACAit0bx2aaW2fRjpg8qKWx1EiUriPtDsAyHbQU6FMEsOLby3SHnlmXEL62fhemWUWjv/Mwv7zC9Vgs/+Tlpa5jhwL0LqujB2P7++KIoF4wUg/SSIJWO2pHLpDg/BPXGd1IBaoP2kk2P7VGPxqgQDDL6DtJV7mEUi6G5wt/jPXo7tU30rP4vjYeAZH1auoMJ+2O9Fo3QrdYYpuNIDbcwB1XAJKmyVoHWR1bY2x37/EMXFKjhX50htcGZvJSOMVVgywmdobe6TUsBgJajc0ve6ZOhi6lLOalwv1WFbnx8qYHEnVtA9OPR+Z1GUNjC+/UMp6DvOwvJca5cjsf5j7HeBVEFFBRrD03k+mW/x7lIwmv7T9NiK8kWRE6wf4dj+hmN7qVIe/YP2qbAbLWRFUKD3cGy/X/yEij87/FUc+zF/5SYmUE2pQ2gRQRt3xMsHpGUpaAbDDJEgw4dSmfZSuwtDHGgFpn/wALTfvyRjqNzimuHAOhyseDLWDYvr9oXPMG95V2t10azPhIVmwilDl8Z/46zA66IoFcA1QtcOZhHhQHi+0KYBWM8ZQ1fu/1ZUVKCniMyPL02rjGh6zPNjZ5lTzApFaEhWuVrXsVvUhPePSGUFeldGZVPZFk/B8XGq+/eO3R4RDwkFFU6UynmqaYkcbR4ERSuxrkQEbcuKlZ3RzlSiw8oMXQg2wPbMUkQpFaHSOhjt8YTkD5XFsAJN305aXUdLPPpKS5dNFk55VgoGlRzcK1BNWqR5ZeCYKtCKE1w/D+P6YZBhOPaEaRGZmSZ2VhP1gfaPKI0YNWfnSAn83NqCfsWHiN8cI4G7SVvQMuRtBS3jL8msCy6LEaeTeXM3iVLvMA/vd9a6U0TJAvYXzH7CwcrTRt639mF6wgniAeg/nsfiZWv1SRIDY4SwZzUTKT+eE3aAdhqVGpU6xVQOvcVafRDuk6UlJqpAe4QJEHEptBNxAUyRCGA/5sx8ybHb+fhdL33hTcfvSqE2Bv/zP+IxpmhKlAqETJtVhIpgSg3gepghQQnaMLuK4mJcU+0sDFkJwhSSHSkS5PAOF+OgdfM28Qe7yun2Jg95VBhEFU6rydnZmlN45chI630nE2iuKFHpLy2rGzP7TuyBmCrQbstgltBKsLBjn3slHg87tvNhcaz4CZVnV6aQQgTf4UF9jkSbdj0JD4P9RKl3bAVtMVMcQMkYk1P2AGs13dtcsShZQZ9N2yXx5CgfNMaRvtbqy31223NhDBL2DE4UA4WizAXXEHO5P2WtjpL9rAWqQLcsC5ob9IGU1pYGG3YaQyUegyEzHfucjd//uXgEjofJ8k9w7MabwCdLkQu6ckQpv3qLuR6UOgUdON0GZlurY3fgSjKgPZ7E4gprNYverC45Y5Rd+9lwYMQpZw7Gw4VTGBgZ9xniI/b5ODimVV5R3rHeqwJdRHDjMz0Ro4sXcOx6adwgM5NP1DU6Z2qnO33xv8VxMEKWmTUWdOx6alNxStCyLTgAYpW6bx278jrg9fArx34+F2BR3Nj5hFWBzheWyw6XhWb/c7/pj/JmmATKbwm6+x0f4XN/sN4PbSpW4ZS2uEhaGoaoy1wsihIdO+uGKtBFg1kwJHCzWM6xKzuLi6Q6mIppsmMfpoqrNr9oYhglnlOWWzl2nYQHwR1Sw085tqdyb+CYP5DAKuSC14Nr4KMKdLH5XBRvMLEUTD0Z9o2kVTP3gDuj9NqW4+MqFVbBNhaDWS+0ipbsy6UOMGkFz7JW74L/fJAoSjRmWO9jGxBVgc4fTkW5lEVyQlOVuUiNlfa0CLv2Qgd0ruQLc+K68j6TvlIbrpslNR9BtAd9oc+Q2tH7t9isZr3XYio5g3vzPWmd5YK5l12pNLOAym+4X+IM1WEV9rf/xz34f0Wuj2BzLcQuBHOTqbioKC5s96z3JCb6AM4JZpiAsMRvFEWQSb5r8vXF5xl86Cr/Tc7Ccd2W9bQlfbAhf5EgxZeLR/B/npECYyofPShKQ2Ishytaq98WJXdwb1IxszM93IM2W0xyxCi/dvaME8u53pnCKbYhosip61phfMP7Wav53HoE/38FUZTKrGm9j23AUAU6B3BzbyOB/82hEXZnztIekgz7Q2ZF2I/TYM/jOF1uJYmA32GlPir3u0XYfTrkcKkPukm0oEKl/rALHH1hfOQVP2C56Omh98uKHwHLthJMJaBzmf2YVzysWD+L68tZwbZo4D9xQHGztZqW+cfwXHFltFIaFGMgtO8btUD7DBptQcggCdKnLB/hI19DdkQn4Qo6iwS+hyOs3SFR8iZvAnkTx3uU8dNOHKZYgjDIhVWk1ozwESoYPB+fSvqkfm/gf9DXkjdxlEFNOdQHOia43pJwnUmC0633rnSTSobg3vxKWscqMLVdrik/jRJsVxBs4aphgtJt144ilu2OBM5JDywetVb/FvKsL5ZoHEd/HzK65A3OQTeIq9JyFvSU1nFnj0tMVIHOAFwwm0OYTo7W5N4SzVmd/s6dmqqoz14J4/rQPeLuzM5Bn+RJOP4tJEFMgAunrP8klctcl+B0XVcc/18lGzLJk2qCCves8ve0amEMcM2xXOsALMdXU3UqwePYG4u1rdVaQMczTKlrO13apR4oQrYyzEIi4WDBo6Vl4RT6CRciX34N8J6yXRQ7QF7DuYkSY5QKxmhG18SBkKcb2bUE/52zONdBXsDrvSRfbAPGEFN4LhaqQKcEfdAg50A4LfAC5DjIkhE//gNkZzRoFJ/l2OB7WQp8YIyPsHOm0nE7ZEepAXyekdKcdmMJ3TgPor447iekDsH/YinyfqKkBq455sItBchyMPiapXRkdRx8qA+3Vo/GNaD+z37CimW+pbajMmwHz80trNJG4RSmP63r2SoTYL+ztC7LzuJEtET3kYzBbzLG4RX5yTVxOXMsmbhGegjzrLO6MF1rRuA8nJ916lzetxAG8a8UXi2BIS82XpZwzphjcUJnSHWw8ZcIyZKhZbWFSeieQEvri5Ii+P4/4n/TRSROarwDJUjgz86KU2YMguMAYVZJ8L2zsH1RCSoIlmQNCdJD7SAtLSNROQbfO0TqGPy/S0z0eFfxizU4EJR8mYLzM0xqo720tPLzIfY6/htTN16I7/9QUga/tREWLNhhz7jknflGaQOmtjPWMrpOlPLSM7UdZwxchZ7SOiYcUjMt44NDqw80MyxUIsOzK6wbcKM0ADgvM8w9xhoCnazNV9J9QAJDzEuSIsb3mj7oHNT8wtpMXWO2NCbLWu9ZaXgPnK/z0Cb3STbwd3a21t2K3/9IqkAVaL/KWNMqu081UwnVgN+5mNPZEijCccoIc3Cwl5EW4NTFrcsAAAYuSURBVPskQRh1vhuO8zVpDNjB02LhU0UtDn7Olnx5WYJCElWDa+h583DlwK99aBPLNR9mMuJckIYibR6onGHgA9UeQB6c9gNdqQ2mtkMb0qobHsT3wbqHTQXDPKBSPEB+KrbEZzmtrLtb+12LY/y3NAj4r1+jXWio4QyrXURmc8iL2P4Ylv2x7yRJEGP9p/sM4yyWKbMLM2EdZPKNNyIc1LAfD/vn0x/6Xpw7DlBpSHggjdkS4zLK+3ctaxOfLVUnJVAXDj+g9ZZVpbbNSnkugd97Dov1IRPFLziYWLeBlOdSUOEu4i69rlQBzi8znlCJtlMg8sHXC/IBOtoHIIclMc3KmRgIFXQG7/KhaivPf8Qx3S6K96Cd6Ltpp7a7C+0bx/CQGEYpvtZaTYue7ZY0SBoMpreDcMDKINDvy+yyE+RVtN2TkGMgS0kN0Ccewuc345V4vsspz3/AMe3XwMpzqV0YvHdcmc28bkdA3sK5HJBUzBW/B8KqvtQnbOWZ7bVzLW2iCnT+cFS6JhpxcF5+aia/KEfnfNhPkXyhDxtTSG0bt2x5PYD/zPPP/K1zREkcnN+ZEKaRZArJctZmutDQujcVHS8fsgMh20F+Y7IblAXbloFswABByNUQDvyYyYHV45Yt85HrcBxx4hCU/LFT29FV7y7Jjysh/62w/RZcY9OlQTG1DziDNryNXWgRvQbymQks7kc3OpNDuyzYtjhkHUhXyBAIg8DfhVwl5UtBc4Z3E872ijIXnAuecyqz5dw2uJ7GBrbHTMidJnPHhiaOpSzYtgiE7oYdIafTzxnC7GU8/7uU+Qjvix1q1THUhSMfaD1gIN8gXyysplrhMFx0t2J5jARRqjWNzGMyVYIpyWHmWBoW427A6f4rREkFnGNe57fiPLNwD11UyqWV7GCkf2mFcVGaYoT9Jzv1ONbqaRJYo26V9GBF0V7iB+fjv54pdQBT2+G80qpJa1Yp+Gl7undgW+b3Kn6Tit8d0nY9gUulwcE5YuYrzigxfzbv8wPb2HULI3Mx9zljhKhofSHBIJh9xIISDfrUnozfHyHp0BPH2FP8YCBjquJ8wGQX29ektGO77F1mNxosDjAyF9MunKH91Cxp7Wf/GyfnN105zub9IzWiFuhsob8NgwuWR+P18tE9Acc02zwM2kswEvxK0oWdE4NfVmGgYKMrzyVwHmhduluUVMF5HgqhEswp2HcifoypqDhjs7FEV54ZeEtFcpWUlWclRUxqOzvl4EV4sK8t+dCWkvxkPRZOqRaci3chLBBGVwFmMfk+wscYDM/6BAzuZrGvKMozLZq98VvtU1Se6wampYWwqBT7UubCj9IuTK9LS/WWkNUkuvLMLF5r4/eOSUJ5JmqBTheOQjm9Q9+5EWZ6vhCYtEAX4MHAnKPbQ7pIkI5nGakNKsgTJMhGQBlPpV2UctCyxCnIDqKkCl2osBhscpXyeu9kZGWpHs6qjDLyeFIFkZTc4YwEr5HSfcmy7Extt17WfRmVZPry4uV21qa6LZxSC6aOAN0v2GZUwHYwsqFUb1B8C8LAxDGQp00sixIDnDPGYHUx7cKZAF7P7H83laA8ezUwHTDjXdj/juQgShKmYg4+GMvnmzLfEpdLwZi3qfma5X6YOTevqomeXkzSgx0mp3pmmSUtqky79bHUITiftLxRkaYfKZVpunm0dX7pWz1ZggIy9G2mBX6sL4qEIz0bAx7Ok5wxiffbihKehGOsqUAC/fmkdVlp30gijV1V0K9Ogqwo7SVQpim0WNPyweue1zhTU30eEg6UxyQd5V/hGJmb/XfiJ1QonpIqwP+iVWq30KoP8V03iwfg2Nj+B1urH8HxTZCMMdllwtk3fvDJv57+wtJSwR9vahF4A46R9zKVNbYr+1z6MzOPMy3PfM5xMPyZJcwPPjoLP3OTWWRL8ZNnTC2DxDEZjNgubA/mbqZ/eqlduKS+xT6X7THTvKZ7B7NZ0WjxnaSIVjJTEsFY7hhUw2mvaU1BhT1FURRFUZS6QxVoRVEURVEURYmBBhEqiqIoiqIoSgxUgVYURVEURVGUGKgCrSiKoiiKoigxUAVaURRFURRFUWKgCrSiKIqiKIqixOB/AAAA//90ohpAAAAABklEQVQDAOLRnv1qkZTvAAAAAElFTkSuQmCC"
+};
+
+const SLEUTEL = "itds-email-editor-v2";
+
+/* Versie van de opgeslagen opzet. Verhoog dit als een nieuwe standaard ook
+   moet gelden voor wat al in de browser bewaard is; zie migreer(). */
+const VERSIE = 4;
+
+/* ============================================================
+   1. Blokdefinities
+   ============================================================ */
+const BLOKTYPES = {
+  titel: {
+    naam: "Titel", omschrijving: "Kop met labeltje",
+    maak: () => ({ eyebrow: "Bevestiging", titel: "Je opdracht staat ingepland" }),
+    velden: [
+      { k: "eyebrow", l: "Labeltje erboven", t: "text" },
+      { k: "titel", l: "Titel", t: "textarea", hoog: 60 }
+    ],
+    samenvatting: b => b.titel
+  },
+  tekst: {
+    naam: "Tekst", omschrijving: "Aanhef en alinea",
+    maak: () => ({ aanhef: "Beste Jan,", tekst: "Bedankt voor je opdracht. Hieronder vind je alles wat we hebben afgesproken." }),
+    velden: [
+      { k: "aanhef", l: "Aanhef (leeg = geen)", t: "text" },
+      { k: "tekst", l: "Tekst", t: "textarea" }
+    ],
+    samenvatting: b => b.aanhef || b.tekst
+  },
+  gegevens: {
+    naam: "Gegevensblok", omschrijving: "Tabel met label en waarde",
+    maak: () => ({ kop: "Opdrachtgegevens", stijl: "accent", rijen: [
+      { label: "Opdrachtnummer", waarde: "ITDS-2026-0184" },
+      { label: "Datum", waarde: "16 juli 2026" },
+      { label: "Werkzaamheden", waarde: "Revisie hydraulisch aggregaat" }
+    ] }),
+    velden: [
+      { k: "kop", l: "Kop", t: "text" },
+      { k: "stijl", l: "Stijl van de kop", t: "keuze", opties: [["accent", "Accentkleur"], ["donker", "Donker"], ["vlak", "Geen kopbalk"]] },
+      { k: "rijen", l: "Rijen", t: "rijen" }
+    ],
+    samenvatting: b => b.kop
+  },
+  paneel: {
+    naam: "Paneel", omschrijving: "Blok met tekst en uitgelichte regel",
+    maak: () => ({ kop: "Planning", stijl: "donker", tekst: "De onderdelen zijn besteld en worden begin volgende week geleverd.", highlight: "Uitvoering: donderdag 23 juli 2026" }),
+    velden: [
+      { k: "kop", l: "Kop", t: "text" },
+      { k: "stijl", l: "Stijl van de kop", t: "keuze", opties: [["accent", "Accentkleur"], ["donker", "Donker"], ["vlak", "Geen kopbalk"]] },
+      { k: "tekst", l: "Tekst", t: "textarea" },
+      { k: "highlight", l: "Uitgelichte regel onderaan", t: "text" }
+    ],
+    samenvatting: b => b.kop
+  },
+  lijst: {
+    naam: "Lijst", omschrijving: "Opsomming met vinkjes",
+    maak: () => ({ kop: "Wat we doen", teken: "check", items: ["Storing verhelpen", "Onderdelen vervangen", "Installatie testen"] }),
+    velden: [
+      { k: "kop", l: "Kop (leeg = geen)", t: "text" },
+      { k: "teken", l: "Opsommingsteken", t: "keuze", opties: [["check", "Vinkje"], ["stip", "Bolletje"], ["streep", "Streepje"], ["nummer", "Nummer"]] },
+      { k: "items", l: "Regels", t: "items" }
+    ],
+    samenvatting: b => b.kop || (b.items[0] || "")
+  },
+  knop: {
+    naam: "Knop", omschrijving: "Oproep tot actie",
+    maak: () => ({ kop: "Vragen tussendoor?", tekst: "Bel of mail gerust. Ik reageer meestal dezelfde dag nog.", knoptekst: "Neem contact op", link: "tel:+31850604300", vol: false }),
+    velden: [
+      { k: "kop", l: "Kop (leeg = geen)", t: "text" },
+      { k: "tekst", l: "Tekst (leeg = geen)", t: "textarea", hoog: 60 },
+      { k: "knoptekst", l: "Knoptekst", t: "text" },
+      { k: "link", l: "Link", t: "text", hint: "Bellen: tel:+31850604300 of mailen: mailto:info@itsdoneservices.nl" },
+      { k: "vol", l: "Knop over de volle breedte", t: "schakel" }
+    ],
+    samenvatting: b => b.knoptekst
+  },
+  afbeelding: {
+    naam: "Afbeelding", omschrijving: "Foto of plaatje",
+    maak: () => ({ url: "", breedte: 520, link: "" }),
+    velden: [
+      { k: "url", l: "Afbeelding (URL)", t: "text", hint: "Publiek bereikbare PNG of JPG." },
+      { k: "breedte", l: "Breedte", t: "getal", min: 80, max: 700, stap: 10 },
+      { k: "link", l: "Klik gaat naar (leeg = geen link)", t: "text" }
+    ],
+    samenvatting: b => b.url ? b.url.split("/").pop() : "nog geen afbeelding"
+  },
+  bijlagen: {
+    naam: "Bijlagen", omschrijving: "Lijst met meegestuurde bestanden",
+    maak: () => ({ kop: "Bijlagen", items: [] }),
+    velden: [
+      { k: "kop", l: "Kop (leeg = geen)", t: "text" },
+      { k: "items", l: "Bestanden", t: "bestanden" }
+    ],
+    samenvatting: b => b.items.length ? b.items.length + " bestand" + (b.items.length === 1 ? "" : "en") : "nog geen bestanden"
+  },
+  citaat: {
+    naam: "Citaat", omschrijving: "Een ontvangen mail eronder",
+    maak: () => ({ afzender: "", datum: "", tekst: "", streep: true }),
+    velden: [
+      { k: "afzender", l: "Afzender", t: "text" },
+      { k: "datum", l: "Datum en tijd", t: "text", hint: "Bijvoorbeeld: 15 juli 2026 om 14:22" },
+      { k: "tekst", l: "De ontvangen mail", t: "textarea", hoog: 150, hint: "Plak hier de tekst van het bericht. Lege regels blijven behouden." },
+      { k: "streep", l: "Streep ernaast", t: "schakel" }
+    ],
+    samenvatting: b => b.afzender || (b.tekst || "").slice(0, 30)
+  },
+  handtekening: {
+    naam: "Ondertekening", omschrijving: "Groet met contactgegevens",
+    maak: () => ({ lijn: true, groet: "Met vriendelijke groet,", naam: "Roel Mandigers", functie: "It's Done Services", telefoon: "085 060 4300", email: "info@itsdoneservices.nl", fotoUrl: "" }),
+    velden: [
+      { k: "lijn", l: "Scheidingslijn erboven", t: "schakel" },
+      { k: "groet", l: "Groet", t: "text" },
+      { k: "naam", l: "Naam", t: "text" },
+      { k: "functie", l: "Functie of bedrijf", t: "text" },
+      { k: "telefoon", l: "Telefoon", t: "text" },
+      { k: "email", l: "E-mail", t: "text" },
+      { k: "fotoUrl", l: "Foto (URL, leeg = geen)", t: "text" }
+    ],
+    samenvatting: b => b.naam
+  },
+  scheiding: {
+    naam: "Scheidingslijn", omschrijving: "Dunne lijn",
+    maak: () => ({ kleur: "lijn" }),
+    velden: [{ k: "kleur", l: "Kleur", t: "keuze", opties: [["lijn", "Scheidingslijn"], ["accent", "Accentkleur"]] }],
+    samenvatting: () => ""
+  },
+  ruimte: {
+    naam: "Witruimte", omschrijving: "Lege ruimte",
+    maak: () => ({ hoogte: 24 }),
+    velden: [{ k: "hoogte", l: "Hoogte", t: "getal", min: 8, max: 80, stap: 4 }],
+    samenvatting: b => b.hoogte + "px"
+  }
+};
+
+/* ============================================================
+   2. Standaardwaarden
+   ============================================================ */
+/* Ondertekening die in elk sjabloon terugkomt. */
+const HANDTEKENING = { type: "handtekening", lijn: true, groet: "Met vriendelijke groet,", naam: "Roel Mandigers", functie: "It's Done Services", telefoon: "085 060 4300", email: "info@itsdoneservices.nl", fotoUrl: "" };
+
+/* ============================================================
+   2. Sjablonen
+   Elke mail begint bij een sjabloon. Teksten gebruiken invulvelden
+   als {{naam}}; die worden bij het bouwen van de mail vervangen door
+   wat in s.invul staat. Register volgt de schrijfstijlgids: offerte,
+   factuur en herinnering zakelijk; afgerond en bevindingen voor een
+   bekende klant.
+   ============================================================ */
+const SJABLONEN = {
+  afspraak: {
+    naam: "Afspraak bevestigen", omschrijving: "Opdracht staat ingepland",
+    onderwerp: "Bevestiging van je opdracht {{opdrachtnummer}}",
+    preheader: "Je opdracht staat ingepland. Hier staan de afspraken.",
+    invul: ["naam", "opdrachtnummer", "datum", "werkzaamheden", "locatie", "bedrag"],
+    blokken: [
+      { type: "titel", eyebrow: "Bevestiging", titel: "Je opdracht staat ingepland" },
+      { type: "tekst", aanhef: "Hallo {{naam}},", tekst: "Bedankt voor je opdracht. Hieronder staat wat we hebben afgesproken. Klopt er iets niet? Laat het weten, dan pas ik het aan voordat ik langskom." },
+      { type: "gegevens", kop: "Opdrachtgegevens", stijl: "accent", rijen: [
+        { label: "Opdrachtnummer", waarde: "{{opdrachtnummer}}" },
+        { label: "Datum", waarde: "{{datum}}" },
+        { label: "Werkzaamheden", waarde: "{{werkzaamheden}}" },
+        { label: "Locatie", waarde: "{{locatie}}" },
+        { label: "Bedrag", waarde: "{{bedrag}} excl. btw" }
+      ] },
+      { type: "paneel", kop: "Planning", stijl: "donker", tekst: "Zorg dat de installatie bereikbaar is en spanningsloos gemaakt kan worden. Reken op een halve dag werk.", highlight: "Uitvoering: {{datum}}" },
+      { type: "knop", kop: "Vragen tussendoor?", tekst: "Bel of mail gerust.", knoptekst: "Bel 085 060 4300", link: "tel:+31850604300", vol: false },
+      HANDTEKENING
+    ]
+  },
+  offerte: {
+    naam: "Offerte", omschrijving: "Prijs en wat erin zit",
+    onderwerp: "Offerte {{opdrachtnummer}}: {{werkzaamheden}}",
+    preheader: "De offerte voor {{werkzaamheden}}. Alles wat nodig is zit erin.",
+    invul: ["naam", "opdrachtnummer", "werkzaamheden", "locatie", "bedrag", "datum"],
+    blokken: [
+      { type: "titel", eyebrow: "Offerte", titel: "Offerte voor {{werkzaamheden}}" },
+      { type: "tekst", aanhef: "Beste {{naam}},", tekst: "Hierbij de offerte voor {{werkzaamheden}} op {{locatie}}. Alles wat nodig is voor een complete klus zit erin. Geen verrassingen achteraf." },
+      { type: "gegevens", kop: "Offerte in het kort", stijl: "accent", rijen: [
+        { label: "Offertenummer", waarde: "{{opdrachtnummer}}" },
+        { label: "Werkzaamheden", waarde: "{{werkzaamheden}}" },
+        { label: "Locatie", waarde: "{{locatie}}" },
+        { label: "Prijs", waarde: "{{bedrag}} excl. btw" },
+        { label: "Geldig tot", waarde: "{{datum}}" }
+      ] },
+      { type: "lijst", kop: "Wat zit erin", teken: "check", items: ["Arbeid, materiaal en voorrijkosten", "Testen en afstellen na montage", "Afvoeren van de oude onderdelen"] },
+      { type: "paneel", kop: "Vervolg", stijl: "donker", tekst: "Laat weten of dit akkoord is, dan zet ik het in de planning. Na akkoord binnen twee weken inplanbaar.", highlight: "Akkoord? Antwoord op deze mail." },
+      { type: "bijlagen", kop: "Bijlage", items: [{ naam: "Offerte {{opdrachtnummer}}.pdf", grootte: "" }] },
+      HANDTEKENING
+    ]
+  },
+  afgerond: {
+    naam: "Werk afgerond", omschrijving: "Klaar, getest, wat je moet weten",
+    onderwerp: "Klaar: {{werkzaamheden}} op {{locatie}}",
+    preheader: "Het werk is gedaan en getest.",
+    invul: ["naam", "werkzaamheden", "locatie", "datum"],
+    blokken: [
+      { type: "titel", eyebrow: "Afgerond", titel: "Het werk is klaar" },
+      { type: "tekst", aanhef: "Hoi {{naam}},", tekst: "Op {{datum}} heb ik {{werkzaamheden}} op {{locatie}} afgerond. Installatie getest, draait weer zoals het hoort." },
+      { type: "lijst", kop: "Gedaan", teken: "check", items: ["Oorzaak van de storing gevonden en weggenomen", "Versleten onderdelen vervangen", "Installatie getest onder werkdruk"] },
+      { type: "paneel", kop: "Let op", stijl: "donker", tekst: "Houd de eerste week de druk en het oliepeil in de gaten. Zie je iets afwijkends, bel me direct.", highlight: "Factuur volgt binnen een week." },
+      Object.assign({}, HANDTEKENING, { groet: "Houdoe," })
+    ]
+  },
+  factuur: {
+    naam: "Factuur verstuurd", omschrijving: "Factuur als bijlage, hoe te betalen",
+    onderwerp: "Factuur {{opdrachtnummer}}",
+    preheader: "Factuur voor {{werkzaamheden}}. Betalen voor {{vervaldatum}}.",
+    invul: ["naam", "opdrachtnummer", "datum", "werkzaamheden", "bedrag", "vervaldatum", "iban"],
+    blokken: [
+      { type: "titel", eyebrow: "Factuur", titel: "Factuur {{opdrachtnummer}}" },
+      { type: "tekst", aanhef: "Hallo {{naam}},", tekst: "Hierbij de factuur voor {{werkzaamheden}}. De factuur zit als pdf bij deze mail." },
+      { type: "gegevens", kop: "Factuurgegevens", stijl: "accent", rijen: [
+        { label: "Factuurnummer", waarde: "{{opdrachtnummer}}" },
+        { label: "Factuurdatum", waarde: "{{datum}}" },
+        { label: "Werkzaamheden", waarde: "{{werkzaamheden}}" },
+        { label: "Bedrag", waarde: "{{bedrag}} incl. btw" },
+        { label: "Betalen voor", waarde: "{{vervaldatum}}" }
+      ] },
+      { type: "paneel", kop: "Betalen", stijl: "donker", tekst: "Maak het bedrag over op {{iban}} op naam van It's Done Services. Zet het factuurnummer erbij.", highlight: "{{bedrag}} voor {{vervaldatum}}" },
+      { type: "bijlagen", kop: "Bijlage", items: [{ naam: "Factuur {{opdrachtnummer}}.pdf", grootte: "" }] },
+      HANDTEKENING
+    ]
+  },
+  herinnering: {
+    naam: "Betalingsherinnering", omschrijving: "Factuur staat nog open",
+    onderwerp: "Herinnering: factuur {{opdrachtnummer}} staat open",
+    preheader: "De factuur van {{datum}} is nog niet betaald.",
+    invul: ["naam", "opdrachtnummer", "datum", "bedrag", "vervaldatum", "uiterlijk", "iban"],
+    blokken: [
+      { type: "titel", eyebrow: "Herinnering", titel: "Factuur {{opdrachtnummer}} staat nog open" },
+      { type: "tekst", aanhef: "Hallo {{naam}},", tekst: "De factuur van {{datum}} is nog niet betaald. De vervaldatum was {{vervaldatum}}. Heb je 'm inmiddels overgemaakt, dan kun je deze mail negeren." },
+      { type: "gegevens", kop: "Openstaand", stijl: "accent", rijen: [
+        { label: "Factuurnummer", waarde: "{{opdrachtnummer}}" },
+        { label: "Factuurdatum", waarde: "{{datum}}" },
+        { label: "Bedrag", waarde: "{{bedrag}}" },
+        { label: "Vervaldatum", waarde: "{{vervaldatum}}" }
+      ] },
+      { type: "paneel", kop: "Wat ik van je vraag", stijl: "donker", tekst: "Maak {{bedrag}} over op {{iban}} op naam van It's Done Services, met het factuurnummer erbij. Klopt er iets niet aan de factuur? Bel me, dan lossen we het op.", highlight: "Uiterlijk {{uiterlijk}}" },
+      { type: "bijlagen", kop: "Bijlage", items: [{ naam: "Factuur {{opdrachtnummer}}.pdf", grootte: "" }] },
+      HANDTEKENING
+    ]
+  },
+  advies: {
+    naam: "Bevindingen onderhoud", omschrijving: "Rapport op urgentie, met vervolg",
+    onderwerp: "Bevindingen onderhoudsronde {{locatie}}",
+    preheader: "Rapport van de ronde van {{datum}}, ingedeeld op urgentie.",
+    invul: ["naam", "locatie", "datum", "volgende"],
+    blokken: [
+      { type: "titel", eyebrow: "Bevindingen", titel: "Onderhoudsronde {{locatie}}" },
+      { type: "tekst", aanhef: "Hoi {{naam}},", tekst: "Op {{datum}} de onderhoudsronde gedaan op {{locatie}}. Hier het rapport, ingedeeld op urgentie." },
+      { type: "lijst", kop: "Direct, deze week", teken: "streep", items: ["Hydrauliekpomp persmachine 2 lekt aan de zuigzijde. Pakking vervangen. Een ochtend werk.", "Drukschakelaar hoofdaggregaat schakelt onregelmatig. Staat nu op de hand. Nieuwe besteld."] },
+      { type: "lijst", kop: "Binnen drie maanden", teken: "streep", items: ["Pneumatische cilinder inpaklijn loopt trager dan de andere. Afdichting versleten. Mee in de volgende beurt.", "Filter koelcircuit vervangen. Interval naar drie maanden."] },
+      { type: "lijst", kop: "Geen actie", teken: "check", items: ["Circulatiepompen draaien probleemloos."] },
+      { type: "paneel", kop: "Vervolg", stijl: "donker", tekst: "Offerte voor de directe punten stuur ik morgen. Laat weten wanneer ik de rest kan inplannen.", highlight: "Volgende ronde: {{volgende}}" },
+      Object.assign({}, HANDTEKENING, { groet: "Houdoe," })
+    ]
+  }
+};
+
+/** Sjabloonblokken omzetten naar volwaardige blokken met id en alle velden. */
+function maakBlokken(lijst) {
+  return lijst
+    .filter(b => b && BLOKTYPES[b.type])
+    .map(b => Object.assign({ id: nieuwId(), open: false }, BLOKTYPES[b.type].maak(), structuredClone(b)));
+}
+
+/* ============================================================
+   2b. Standaardwaarden
+   ============================================================ */
+const STANDAARD = {
+  aan: "",
+  onderwerp: SJABLONEN.afspraak.onderwerp,
+  preheader: SJABLONEN.afspraak.preheader,
+  preheaderStijl: "zichtbaar",
+  sjabloon: "afspraak",
+
+  // Voorbeeldwaarden, zodat de eerste mail er meteen compleet uitziet.
+  invul: [
+    { k: "naam", w: "Jan" },
+    { k: "opdrachtnummer", w: "ITDS-2026-0184" },
+    { k: "datum", w: "donderdag 23 juli 2026" },
+    { k: "werkzaamheden", w: "Revisie hydraulisch aggregaat" },
+    { k: "locatie", w: "Industrieweg 12, Geldrop" },
+    { k: "bedrag", w: "€ 1.480,00" }
+  ],
+
+  blokken: maakBlokken(SJABLONEN.afspraak.blokken),
+
+  // Kleuren, overgenomen van itsdoneservices.nl
+  accent: "#F97316",
+  labelKleur: "#1D4ED8",
+  donkerKleur: "#0C1B33",
+  paginaBg: "#F1F5F9",
+  cardBg: "#FFFFFF",
+  blokBg: "#F8FAFC",
+  kopKleur: "#0C1B33",
+  tekstKleur: "#334155",
+  dofKleur: "#64748B",
+  lijnKleur: "#E2E8F0",
+
+  font: "'Inter',-apple-system,'Segoe UI',Arial,sans-serif",
+  previewWebfont: false,
+  titelGrootte: 32,
+  tekstGrootte: 17,
+  regelafstand: 17,
+  kopGewicht: "800",
+  breedte: 600,
+  ruimte: 32,
+  radius: 12,
+  uitlijning: "left",
+  zijmarge: 0,
+  buitenmarge: 24,
+
+  logoPlek: "band",
+  logoBron: "wit",
+  logoUrl: "",
+  logoBandBg: "#0C1B33",
+  logoBreedte: 180,
+
+  toonFooter: true,
+  footer1: "It's Done Services · Heeze · KvK 12345678",
+  website: "itsdoneservices.nl",
+  footerTel: "085 060 4300",
+  toonAfmeld: true,
+  afmeldlink: "#",
+  versie: VERSIE
+};
+
+const SCHEMAS = {
+  "Website licht": {
+    accent: "#F97316", labelKleur: "#1D4ED8", donkerKleur: "#0C1B33", paginaBg: "#F1F5F9",
+    cardBg: "#FFFFFF", blokBg: "#F8FAFC", kopKleur: "#0C1B33", tekstKleur: "#334155",
+    dofKleur: "#64748B", lijnKleur: "#E2E8F0", logoBandBg: "#0C1B33", logoBron: "wit"
+  },
+  "Website navy": {
+    accent: "#F97316", labelKleur: "#F97316", donkerKleur: "#1A2D50", paginaBg: "#E2E8F0",
+    cardBg: "#0C1B33", blokBg: "#1A2D50", kopKleur: "#FFFFFF", tekstKleur: "#CBD5E1",
+    dofKleur: "#94A3B8", lijnKleur: "#2C4066", logoBandBg: "#1A2D50", logoBron: "wit"
+  },
+  "Blauw zakelijk": {
+    accent: "#1D4ED8", labelKleur: "#1D4ED8", donkerKleur: "#0C1B33", paginaBg: "#F1F5F9",
+    cardBg: "#FFFFFF", blokBg: "#EFF4FF", kopKleur: "#0C1B33", tekstKleur: "#334155",
+    dofKleur: "#64748B", lijnKleur: "#DBE4FF", logoBandBg: "#0C1B33", logoBron: "wit"
+  },
+  "Logo-huisstijl rood": {
+    accent: "#E30613", labelKleur: "#E30613", donkerKleur: "#111111", paginaBg: "#F2F2F2",
+    cardBg: "#FFFFFF", blokBg: "#F7F7F7", kopKleur: "#111111", tekstKleur: "#4A4A4A",
+    dofKleur: "#6E6E6E", lijnKleur: "#E2E2E2", logoBandBg: "#111111", logoBron: "wit"
+  }
+};
+
+let s = laadOpslag();
+
+/* ============================================================
+   3. Hulpjes
+   ============================================================ */
+const $  = (q, el) => (el || document).querySelector(q);
+const $$ = (q, el) => Array.from((el || document).querySelectorAll(q));
+
+function esc(t) {
+  return String(t == null ? "" : t)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function escBr(t) { return esc(t).replace(/\r?\n/g, "<br />"); }
+function escUrl(u) {
+  const t = String(u == null ? "" : u).trim();
+  if (/^(javascript|data|vbscript):/i.test(t.replace(/\s/g, ""))) return "#";
+  return esc(t);
+}
+function isDonker(hex) {
+  const h = String(hex).replace("#", "");
+  if (h.length !== 6) return false;
+  const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) < 140;
+}
+/** Leesbare tekstkleur op een gegeven achtergrond. */
+function opKleur(bg) { return isDonker(bg) ? "#FFFFFF" : "#0C1B33"; }
+
+function nieuwId() { return "b" + Math.random().toString(36).slice(2, 9); }
+
+function toast(tekst, fout) {
+  const t = $("#toast");
+  t.textContent = tekst;
+  t.className = "zie" + (fout ? " fout" : "");
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => { t.className = ""; }, 3200);
+}
+
+/* ============================================================
+   4. Blokken naar e-mail-HTML
+   ============================================================ */
+function bouwBlok(b, st) {
+  const p = st.ruimte;
+  const font = st.font;
+  const rond = st.radius + "px";
+
+  /* Alle lettergroottes hangen aan één instelling, zodat de mail overal
+     mee groeit als je 'm groter zet. gr(-2) = twee punten kleiner dan de
+     lopende tekst, met een ondergrens zodat niets onleesbaar wordt. */
+  const gr = (verschil, ondergrens) => Math.max(ondergrens || 13, st.tekstGrootte + verschil);
+  const lhv = fs => Math.round(fs * (st.regelafstand / 10));
+  const lh = lhv(st.tekstGrootte);
+
+  /* Laat een lang woord (URL, e-mailadres, bestandsnaam) afbreken. Let op:
+     'anywhere' en niet 'break-word': alleen 'anywhere' verlaagt óók de
+     minimale breedte van een tabelcel, en dus kan de mail pas dan écht
+     krimpen op een telefoon. Met break-word blijft het woord de boel
+     openduwen en verkleint Mail de hele mail. */
+  const breek = "overflow-wrap:anywhere; word-break:break-word;";
+  const wrap = (inhoud, padding) => `<tr><td class="pad" style="padding:${padding};">${inhoud}</td></tr>`;
+
+  /* Kopbalk van een gegevens- of paneelblok. */
+  const kopbalk = (kop, stijl) => {
+    if (!kop.trim() || stijl === "vlak") return "";
+    const bg = stijl === "accent" ? st.accent : st.donkerKleur;
+    return `<tr><td style="background-color:${bg}; padding:15px 24px; font-family:${font}; font-weight:700; font-size:${gr(1, 15)}px; letter-spacing:-.01em; color:${opKleur(bg)};">${escBr(kop)}</td></tr>`;
+  };
+
+  switch (b.type) {
+
+    case "titel": {
+      const d = [];
+      if (b.eyebrow.trim()) {
+        d.push(`<p style="margin:0 0 12px 0; font-family:${font}; font-weight:700; font-size:${gr(-4, 12)}px; line-height:${lhv(gr(-4, 12))}px; letter-spacing:.14em; text-transform:uppercase; color:${st.labelKleur};">${escBr(b.eyebrow)}</p>`);
+      }
+      if (b.titel.trim()) {
+        d.push(`<h1 style="margin:0; font-family:${font}; font-weight:${st.kopGewicht}; font-size:${st.titelGrootte}px; line-height:${Math.round(st.titelGrootte * 1.15)}px; letter-spacing:-.03em; color:${st.kopKleur}; ${breek}">${escBr(b.titel)}</h1>`);
+      }
+      return d.length ? `<tr><td class="pad" align="${st.uitlijning}" style="padding:${p + 4}px ${p}px 0 ${p}px;">${d.join("")}</td></tr>` : "";
+    }
+
+    case "tekst": {
+      const d = [];
+      if (b.aanhef.trim()) {
+        d.push(`<p style="margin:0 0 16px 0; font-family:${font}; font-weight:600; font-size:${st.tekstGrootte}px; line-height:${lh}px; color:${st.kopKleur}; ${breek}">${escBr(b.aanhef)}</p>`);
+      }
+      if (b.tekst.trim()) {
+        d.push(`<p style="margin:0; font-family:${font}; font-weight:400; font-size:${st.tekstGrootte}px; line-height:${lh}px; color:${st.tekstKleur}; ${breek}">${escBr(b.tekst)}</p>`);
+      }
+      return d.length ? `<tr><td class="pad" align="${st.uitlijning}" style="padding:24px ${p}px 0 ${p}px;">${d.join("")}</td></tr>` : "";
+    }
+
+    case "gegevens": {
+      const rijen = (b.rijen || []).filter(r => r.label.trim() || r.waarde.trim());
+      if (!rijen.length) return "";
+      const cellen = rijen.map((r, i) => {
+        const rand = i === rijen.length - 1 ? "" : ` border-bottom:1px solid ${st.lijnKleur};`;
+        return `<tr>
+          <td width="42%" style="padding:12px 8px 12px 0; font-weight:400; color:${st.dofKleur};${rand}">${escBr(r.label)}</td>
+          <td style="padding:12px 0; font-weight:600; color:${st.kopKleur};${rand}">${escBr(r.waarde)}</td>
+        </tr>`;
+      }).join("");
+      return wrap(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:${rond}; overflow:hidden; border:1px solid ${st.lijnKleur};">
+        ${kopbalk(b.kop, b.stijl)}
+        <tr><td style="background-color:${st.blokBg}; padding:8px 24px 20px 24px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:${font}; font-size:${gr(-1, 14)}px; line-height:${lhv(gr(-1, 14))}px;">${cellen}</table>
+        </td></tr></table>`, `24px ${p}px 0 ${p}px`);
+    }
+
+    case "paneel": {
+      if (!b.tekst.trim() && !b.highlight.trim() && !b.kop.trim()) return "";
+      const d = [];
+      if (b.tekst.trim()) {
+        d.push(`<p style="margin:0${b.highlight.trim() ? " 0 18px 0" : ""}; font-family:${font}; font-weight:400; font-size:${gr(-1, 14)}px; line-height:${lhv(gr(-1, 14))}px; color:${st.tekstKleur}; ${breek}">${escBr(b.tekst)}</p>`);
+      }
+      if (b.highlight.trim()) {
+        d.push(`<p style="margin:0; font-family:${font}; font-weight:700; font-size:${gr(3, 17)}px; line-height:${lhv(gr(3, 17))}px; letter-spacing:-.02em; color:${st.kopKleur}; ${breek}">${escBr(b.highlight)}</p>`);
+      }
+      return wrap(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:${rond}; overflow:hidden; border:1px solid ${st.lijnKleur};">
+        ${kopbalk(b.kop, b.stijl)}
+        <tr><td style="background-color:${st.blokBg}; padding:20px 24px;">${d.join("")}</td></tr>
+      </table>`, `16px ${p}px 0 ${p}px`);
+    }
+
+    case "lijst": {
+      const items = (b.items || []).filter(i => i.trim());
+      if (!items.length && !b.kop.trim()) return "";
+      const teken = i => {
+        if (b.teken === "check") return `<span style="color:${st.accent}; font-weight:700;">&#10003;</span>`;
+        if (b.teken === "stip") return `<span style="color:${st.accent};">&#9679;</span>`;
+        if (b.teken === "nummer") return `<span style="color:${st.accent}; font-weight:700;">${i + 1}.</span>`;
+        return `<span style="color:${st.accent};">&ndash;</span>`;
+      };
+      const lijstFs = gr(-1, 14);
+      const regels = items.map((it, i) => `<tr>
+        <td width="26" valign="top" style="padding:0 0 10px 0; font-family:${font}; font-size:${lijstFs}px; line-height:${lhv(lijstFs)}px;">${teken(i)}</td>
+        <td valign="top" style="padding:0 0 10px 0; font-family:${font}; font-weight:400; font-size:${lijstFs}px; line-height:${lhv(lijstFs)}px; color:${st.tekstKleur}; ${breek}">${escBr(it)}</td>
+      </tr>`).join("");
+      const kop = b.kop.trim()
+        ? `<p style="margin:0 0 14px 0; font-family:${font}; font-weight:700; font-size:${gr(1, 15)}px; letter-spacing:-.01em; color:${st.kopKleur};">${escBr(b.kop)}</p>` : "";
+      return wrap(`${kop}<table role="presentation" cellpadding="0" cellspacing="0" border="0">${regels}</table>`, `24px ${p}px 0 ${p}px`);
+    }
+
+    case "knop": {
+      const d = [];
+      if (b.kop.trim()) {
+        d.push(`<h2 style="margin:0 0 10px 0; font-family:${font}; font-weight:${st.kopGewicht}; font-size:${gr(6, 20)}px; line-height:${lhv(gr(6, 20))}px; letter-spacing:-.02em; color:${st.kopKleur}; ${breek}">${escBr(b.kop)}</h2>`);
+      }
+      if (b.tekst.trim()) {
+        d.push(`<p style="margin:0 0 22px 0; font-family:${font}; font-weight:400; font-size:${gr(-1, 14)}px; line-height:${lhv(gr(-1, 14))}px; color:${st.tekstKleur};">${escBr(b.tekst)}</p>`);
+      }
+      if (b.knoptekst.trim()) {
+        d.push(`<table role="presentation" class="btn" cellpadding="0" cellspacing="0" border="0"${b.vol ? ' width="100%"' : ""}${st.uitlijning === "center" && !b.vol ? ' align="center"' : ""}>
+          <tr><td align="center" bgcolor="${st.accent}" style="background-color:${st.accent}; border-radius:10px;">
+            <a href="${escUrl(b.link)}" style="display:inline-block; padding:17px 32px; font-family:${font}; font-weight:700; font-size:${gr(0, 15)}px; color:${opKleur(st.accent)}; text-decoration:none; border-radius:10px;">${esc(b.knoptekst)}</a>
+          </td></tr></table>`);
+      }
+      return d.length ? `<tr><td class="pad" align="${st.uitlijning}" style="padding:32px ${p}px 0 ${p}px;">${d.join("")}</td></tr>` : "";
+    }
+
+    case "bijlagen": {
+      const items = (b.items || []).filter(i => i.naam.trim());
+      if (!items.length) return "";
+      const fs = gr(-1, 14);
+      const regels = items.map((it, i) => {
+        const deel = it.naam.split(".");
+        const ext = (deel.length > 1 ? deel.pop() : "").toUpperCase().slice(0, 4) || "?";
+        const rand = i === items.length - 1 ? "" : ` border-bottom:1px solid ${st.lijnKleur};`;
+        return `<tr>
+          <td width="54" valign="middle" style="padding:11px 12px 11px 0;${rand}">
+            <span style="display:inline-block; padding:5px 8px; border-radius:6px; background-color:${st.donkerKleur}; font-family:${font}; font-size:${Math.max(9, fs - 5)}px; font-weight:700; letter-spacing:.05em; color:${opKleur(st.donkerKleur)};">${esc(ext)}</span>
+          </td>
+          <td valign="middle" style="padding:11px 0; font-family:${font}; font-size:${fs}px; font-weight:600; color:${st.kopKleur}; word-break:break-all;${rand}">${escBr(it.naam)}</td>
+          <td align="right" valign="middle" style="padding:11px 0 11px 8px; font-family:${font}; font-size:${gr(-3, 12)}px; font-weight:400; color:${st.dofKleur}; white-space:nowrap;${rand}">${esc(it.grootte)}</td>
+        </tr>`;
+      }).join("");
+      const kop = b.kop.trim()
+        ? `<p style="margin:0 0 6px 0; font-family:${font}; font-weight:700; font-size:${gr(1, 15)}px; letter-spacing:-.01em; color:${st.kopKleur};">${escBr(b.kop)}</p>` : "";
+      return wrap(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:${rond}; border:1px solid ${st.lijnKleur};">
+        <tr><td style="background-color:${st.blokBg}; padding:18px 22px;">
+          ${kop}
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">${regels}</table>
+        </td></tr>
+      </table>`, `24px ${p}px 0 ${p}px`);
+    }
+
+    case "citaat": {
+      if (!b.tekst.trim()) return "";
+      const fs = gr(-2, 13);
+      let regel = "";
+      if (b.afzender.trim() && b.datum.trim()) regel = `Op ${esc(b.datum)} schreef ${esc(b.afzender)}:`;
+      else if (b.afzender.trim()) regel = `${esc(b.afzender)} schreef:`;
+      else if (b.datum.trim()) regel = `Op ${esc(b.datum)}:`;
+
+      const tekst = `<p style="margin:0; font-family:${font}; font-weight:400; font-size:${fs}px; line-height:${lhv(fs)}px; color:${st.dofKleur}; ${breek}">${escBr(b.tekst)}</p>`;
+
+      // De streep is een eigen tabelcel, geen border-left: dat houdt Outlook heel.
+      const body = b.streep
+        ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+             <tr>
+               <td width="3" bgcolor="${st.lijnKleur}" style="background-color:${st.lijnKleur}; width:3px; font-size:0; line-height:0;">&nbsp;</td>
+               <td width="16" style="width:16px; font-size:0; line-height:0;">&nbsp;</td>
+               <td valign="top">${tekst}</td>
+             </tr>
+           </table>`
+        : tekst;
+
+      return wrap(`${regel ? `<p style="margin:0 0 12px 0; font-family:${font}; font-weight:400; font-size:${gr(-3, 12)}px; color:${st.dofKleur};">${regel}</p>` : ""}${body}`, `28px ${p}px 0 ${p}px`);
+    }
+
+    case "afbeelding": {
+      if (!b.url.trim()) return "";
+      // Breedte in het attribuut, niet in de stijl: Apple Mail rekent een
+      // width:100% in een stijl om naar vaste pixels, attributen laat het staan.
+      const img = `<img src="${escUrl(b.url)}" width="100%" alt="" style="max-width:${b.breedte}px; height:auto; display:block; border:0; border-radius:${rond};" />`;
+      return wrap(b.link.trim() ? `<a href="${escUrl(b.link)}">${img}</a>` : img, `24px ${p}px 0 ${p}px`);
+    }
+
+    case "handtekening": {
+      const hFs = gr(-2, 13);
+      const d = `<p style="margin:0 0 4px 0; font-weight:400; font-size:${hFs}px; color:${st.dofKleur};">${esc(b.groet)}</p>
+        <p style="margin:0 0 2px 0; font-weight:700; font-size:${gr(1, 15)}px; letter-spacing:-.01em; color:${st.kopKleur};">${esc(b.naam)}</p>
+        ${b.functie.trim() ? `<p style="margin:0 0 8px 0; font-weight:400; font-size:${hFs}px; color:${st.dofKleur};">${esc(b.functie)}</p>` : ""}
+        <p style="margin:0; font-weight:400; font-size:${hFs}px; line-height:${lhv(hFs)}px; color:${st.tekstKleur};">
+          ${b.telefoon.trim() ? `<a href="tel:${escUrl(b.telefoon.replace(/\s/g, ""))}" style="color:${st.tekstKleur}; text-decoration:none;">${esc(b.telefoon)}</a><br />` : ""}
+          ${b.email.trim() ? `<a href="mailto:${escUrl(b.email)}" style="color:${st.accent}; text-decoration:none; font-weight:600;">${esc(b.email)}</a>` : ""}
+        </p>`;
+      const foto = b.fotoUrl.trim()
+        ? `<td width="64" valign="top" style="padding-right:16px;"><img src="${escUrl(b.fotoUrl)}" width="64" height="64" alt="" style="width:64px; height:64px; border-radius:32px; display:block; border:0;" /></td>` : "";
+      const lijn = b.lijn
+        ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:1px solid ${st.lijnKleur}; height:1px; line-height:1px; font-size:0; padding-bottom:26px;">&nbsp;</td></tr></table>` : "";
+      return wrap(`${lijn}<table role="presentation" cellpadding="0" cellspacing="0" border="0"${st.uitlijning === "center" ? ' align="center"' : ""}>
+        <tr>${foto}<td valign="middle" style="font-family:${font}; text-align:${st.uitlijning};">${d}</td></tr>
+      </table>`, `32px ${p}px 0 ${p}px`);
+    }
+
+    case "scheiding":
+      return wrap(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td style="border-top:${b.kleur === "accent" ? "2px" : "1px"} solid ${b.kleur === "accent" ? st.accent : st.lijnKleur}; height:1px; line-height:1px; font-size:0;">&nbsp;</td></tr></table>`, `28px ${p}px 0 ${p}px`);
+
+    case "ruimte":
+      return `<tr><td style="height:${b.hoogte}px; line-height:${b.hoogte}px; font-size:0;">&nbsp;</td></tr>`;
+
+    default:
+      return "";
+  }
+}
+
+function bouwLogo(st) {
+  if (st.logoPlek === "geen") return "";
+  const src = st.logoBron === "url" ? (st.logoUrl.trim() ? escUrl(st.logoUrl) : "") : LOGO_DATA[st.logoBron];
+  if (!src) return "";
+  const img = `<img src="${src}" width="${st.logoBreedte}" alt="It's Done Services" style="width:${st.logoBreedte}px; max-width:${st.logoBreedte}px; display:block; border:0;" />`;
+  if (st.logoPlek === "band") {
+    return `<tr><td align="center" bgcolor="${st.logoBandBg}" style="background-color:${st.logoBandBg}; padding:26px 20px;">${img}</td></tr>`;
+  }
+  return `<tr><td align="center" style="padding:0 0 20px 0;">${img}</td></tr>`;
+}
+
+/** De klassieke verborgen preheader. Werkt bij echt verzonden HTML;
+ *  bij plakken in Mail hangt het ervan af of Mail verborgen inhoud bewaart. */
+function verborgenPreheader(st) {
+  if (st.preheaderStijl !== "verborgen" || !st.preheader.trim()) return "";
+  // De spaties duwen de rest van de tekst uit het inboxvoorbeeld.
+  const vulling = "&#847;&zwnj;&nbsp;".repeat(60);
+  return `<div data-preheader="1" style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:${st.paginaBg}; opacity:0;">${esc(st.preheader)}${vulling}</div>`;
+}
+
+/** Preheader als zichtbaar regeltje boven de card, altijd betrouwbaar,
+ *  ook bij plakken, omdat er niets verborgen hoeft te blijven. */
+function zichtbarePreheader(st) {
+  if (st.preheaderStijl !== "zichtbaar" || !st.preheader.trim()) return "";
+  const fs = Math.max(12, st.tekstGrootte - 4);
+  return `<tr><td data-preheader="zichtbaar" align="${st.uitlijning === "center" ? "center" : "left"}" style="padding:0 6px 12px 6px; font-family:${st.font}; font-weight:500; font-size:${fs}px; line-height:${Math.round(fs * 1.5)}px; color:${st.dofKleur};">${escBr(st.preheader)}</td></tr>`;
+}
+
+function bouwMail(st) {
+  const p = st.ruimte, font = st.font, rond = st.radius + "px";
+
+  const rijen = st.blokken.map(b => bouwBlok(b, st)).filter(Boolean).join("\n");
+  const logoBand = st.logoPlek === "band" ? bouwLogo(st) : "";
+  const logoBoven = st.logoPlek === "boven" ? bouwLogo(st) : "";
+
+  const fFs = Math.max(13, st.tekstGrootte - 3);
+  const footer = st.toonFooter ? `<tr>
+    <td class="pad" align="center" style="padding:26px ${p}px 0 ${p}px; font-family:${font}; font-weight:400; font-size:${fFs}px; line-height:${Math.round(fFs * 1.6)}px; color:${st.dofKleur};">
+      ${escBr(st.footer1)}${st.footer1.trim() ? "<br />" : ""}
+      ${st.website.trim() ? `<a href="https://${escUrl(st.website.replace(/^https?:\/\//, ""))}" style="color:${st.dofKleur}; text-decoration:underline;">${esc(st.website)}</a>` : ""}
+      ${st.footerTel.trim() ? `${st.website.trim() ? "&nbsp;&middot;&nbsp;" : ""}<a href="tel:${escUrl(st.footerTel.replace(/\s/g, ""))}" style="color:${st.dofKleur}; text-decoration:none;">${esc(st.footerTel)}</a>` : ""}
+      ${st.toonAfmeld && st.afmeldlink.trim() ? `&nbsp;&middot;&nbsp;<a href="${escUrl(st.afmeldlink)}" style="color:${st.dofKleur}; text-decoration:underline;">Afmelden</a>` : ""}
+    </td></tr>` : "";
+
+  return `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="nl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="x-apple-disable-message-reformatting" />
+<title>${esc(st.onderwerp)}</title>
+<!--[if mso]><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml><![endif]-->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Montserrat:wght@300;500;700&display=swap" rel="stylesheet" />
+<style type="text/css">
+  body, table, td, a { -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; }
+  table, td { mso-table-lspace:0pt; mso-table-rspace:0pt; }
+  img { -ms-interpolation-mode:bicubic; border:0; height:auto; line-height:100%; outline:none; text-decoration:none; display:block; }
+  body { margin:0 !important; padding:0 !important; width:100% !important; }
+  @media screen and (max-width:${st.breedte + 20}px) {
+    .wrap { width:100% !important; }
+    .pad { padding-left:24px !important; padding-right:24px !important; }
+    .btn a { display:block !important; }
+  }
+</style>
+</head>
+<body style="margin:0; padding:0; background-color:${st.paginaBg};">
+${verborgenPreheader(st)}
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${st.paginaBg};">
+<tr><td align="center" style="padding:${st.buitenmarge}px ${st.zijmarge}px;">
+<!--[if mso]><table role="presentation" width="${st.breedte}" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+<table role="presentation" class="wrap" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:${st.breedte}px; margin:0 auto;">
+${zichtbarePreheader(st)}
+${logoBoven}
+<tr><td style="background-color:${st.cardBg}; border-radius:${rond};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-radius:${rond}; overflow:hidden;">
+${logoBand}
+<tr><td>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+${rijen}
+<tr><td style="height:${p}px; line-height:${p}px; font-size:0;">&nbsp;</td></tr>
+</table>
+</td></tr>
+</table>
+</td></tr>
+${footer}
+</table>
+<!--[if mso]></td></tr></table><![endif]-->
+</td></tr>
+</table>
+</body>
+</html>`;
+}
+
+/* ============================================================
+   5. Blokken-UI
+   ============================================================ */
+function tekenBlokken() {
+  const bak = $("#blokkenlijst");
+  bak.innerHTML = "";
+
+  s.blokken.forEach((b, i) => {
+    const def = BLOKTYPES[b.type];
+    if (!def) return;
+
+    const el = document.createElement("div");
+    el.className = "blok" + (b.open ? " open" : "");
+    el.draggable = false;
+
+    const samen = (def.samenvatting(b) || "").replace(/\s+/g, " ").slice(0, 34);
+    el.innerHTML = `
+      <div class="blokkop">
+        <span class="greep" draggable="true" title="Sleep om te verplaatsen">&#8942;&#8942;</span>
+        <span class="pijl">&#9654;</span>
+        <span class="naam">${esc(def.naam)}${samen ? ` <em>${esc(samen)}</em>` : ""}</span>
+        <span class="knopjes">
+          <button data-doe="omhoog" title="Omhoog"${i === 0 ? " disabled style=opacity:.3" : ""}>&#8593;</button>
+          <button data-doe="omlaag" title="Omlaag"${i === s.blokken.length - 1 ? " disabled style=opacity:.3" : ""}>&#8595;</button>
+          <button data-doe="kopie" title="Dupliceren">&#10697;</button>
+          <button data-doe="weg" class="rood" title="Verwijderen">&#215;</button>
+        </span>
+      </div>
+      <div class="blokromp"></div>`;
+
+    // Open/dicht
+    $(".blokkop", el).addEventListener("click", e => {
+      if (e.target.closest(".knopjes") || e.target.closest(".greep")) return;
+      b.open = !b.open;
+      el.classList.toggle("open", b.open);
+      bewaarOpslag();
+    });
+
+    // Knopjes
+    $$(".knopjes button", el).forEach(knop => {
+      knop.addEventListener("click", () => {
+        const doe = knop.dataset.doe;
+        if (doe === "omhoog" && i > 0) s.blokken.splice(i - 1, 0, s.blokken.splice(i, 1)[0]);
+        if (doe === "omlaag" && i < s.blokken.length - 1) s.blokken.splice(i + 1, 0, s.blokken.splice(i, 1)[0]);
+        if (doe === "kopie") s.blokken.splice(i + 1, 0, Object.assign(structuredClone(b), { id: nieuwId(), open: false }));
+        if (doe === "weg") s.blokken.splice(i, 1);
+        tekenBlokken(); ververs();
+      });
+    });
+
+    // Slepen
+    const greep = $(".greep", el);
+    greep.addEventListener("dragstart", e => { sleepIdx = i; el.classList.add("sleep"); e.dataTransfer.effectAllowed = "move"; });
+    greep.addEventListener("dragend", () => { el.classList.remove("sleep"); $$(".blok").forEach(x => x.classList.remove("doel")); });
+    el.addEventListener("dragover", e => { e.preventDefault(); if (sleepIdx !== null && sleepIdx !== i) el.classList.add("doel"); });
+    el.addEventListener("dragleave", () => el.classList.remove("doel"));
+    el.addEventListener("drop", e => {
+      e.preventDefault();
+      el.classList.remove("doel");
+      if (sleepIdx === null || sleepIdx === i) return;
+      s.blokken.splice(i, 0, s.blokken.splice(sleepIdx, 1)[0]);
+      sleepIdx = null;
+      tekenBlokken(); ververs();
+    });
+
+    tekenBlokRomp($(".blokromp", el), b, def);
+    bak.appendChild(el);
+  });
+}
+let sleepIdx = null;
+
+/** Bouwt de invulvelden van één blok op basis van zijn velddefinities. */
+function tekenBlokRomp(bak, b, def) {
+  bak.innerHTML = "";
+
+  def.velden.forEach(v => {
+    const lab = document.createElement("label");
+
+    if (v.t === "schakel") {
+      lab.className = "schakel";
+      lab.innerHTML = `<span>${esc(v.l)}</span>`;
+      const inp = document.createElement("input");
+      inp.type = "checkbox"; inp.checked = !!b[v.k];
+      inp.addEventListener("change", () => { b[v.k] = inp.checked; ververs(); });
+      lab.appendChild(inp);
+      bak.appendChild(lab);
+      return;
+    }
+
+    lab.innerHTML = `<span>${esc(v.l)}</span>`;
+
+    if (v.t === "text" || v.t === "textarea") {
+      const inp = document.createElement(v.t === "textarea" ? "textarea" : "input");
+      if (v.t === "text") inp.type = "text";
+      if (v.hoog) inp.style.minHeight = v.hoog + "px";
+      inp.value = b[v.k] == null ? "" : b[v.k];
+      inp.addEventListener("input", () => { b[v.k] = inp.value; ververs(); werkKopBij(b); });
+      lab.appendChild(inp);
+
+    } else if (v.t === "keuze") {
+      const sel = document.createElement("select");
+      v.opties.forEach(([w, t]) => {
+        const o = document.createElement("option");
+        o.value = w; o.textContent = t; o.selected = b[v.k] === w;
+        sel.appendChild(o);
+      });
+      sel.addEventListener("change", () => { b[v.k] = sel.value; ververs(); });
+      lab.appendChild(sel);
+
+    } else if (v.t === "getal") {
+      const doos = document.createElement("div");
+      doos.className = "schuif";
+      const inp = document.createElement("input");
+      inp.type = "range"; inp.min = v.min; inp.max = v.max; inp.step = v.stap; inp.value = b[v.k];
+      const uit = document.createElement("output");
+      uit.value = b[v.k] + "px";
+      inp.addEventListener("input", () => { b[v.k] = Number(inp.value); uit.value = inp.value + "px"; ververs(); });
+      doos.appendChild(inp); doos.appendChild(uit);
+      lab.appendChild(doos);
+
+    } else if (v.t === "rijen") {
+      lab.appendChild(maakRijen(b));
+
+    } else if (v.t === "items") {
+      lab.appendChild(maakItems(b));
+
+    } else if (v.t === "bestanden") {
+      lab.appendChild(maakBestanden(b));
+    }
+
+    if (v.hint) {
+      const h = document.createElement("p");
+      h.className = "hint"; h.textContent = v.hint;
+      lab.appendChild(h);
+    }
+    bak.appendChild(lab);
+  });
+}
+
+/** Werkt de samenvatting in de blokkop bij zonder de hele lijst opnieuw te tekenen. */
+function werkKopBij(b) {
+  const i = s.blokken.indexOf(b);
+  const el = $$("#blokkenlijst .blok")[i];
+  if (!el) return;
+  const def = BLOKTYPES[b.type];
+  const samen = (def.samenvatting(b) || "").replace(/\s+/g, " ").slice(0, 34);
+  $(".naam", el).innerHTML = `${esc(def.naam)}${samen ? ` <em>${esc(samen)}</em>` : ""}`;
+}
+
+function maakRijen(b) {
+  const doos = document.createElement("div");
+  const teken = () => {
+    doos.innerHTML = "";
+    b.rijen.forEach((r, i) => {
+      const rij = document.createElement("div");
+      rij.className = "datarij";
+      rij.draggable = true;
+      rij.innerHTML = `<input type="text" placeholder="Label" /><input type="text" placeholder="Waarde" /><button class="weg" title="Verwijderen">&times;</button>`;
+      const [a, w] = $$("input", rij);
+      a.value = r.label; w.value = r.waarde;
+      a.addEventListener("input", () => { r.label = a.value; ververs(); });
+      w.addEventListener("input", () => { r.waarde = w.value; ververs(); });
+      $(".weg", rij).addEventListener("click", () => { b.rijen.splice(i, 1); teken(); ververs(); });
+
+      rij.addEventListener("dragstart", e => { rijIdx = i; rij.classList.add("sleep"); e.stopPropagation(); });
+      rij.addEventListener("dragend", () => rij.classList.remove("sleep"));
+      rij.addEventListener("dragover", e => { e.preventDefault(); e.stopPropagation(); });
+      rij.addEventListener("drop", e => {
+        e.preventDefault(); e.stopPropagation();
+        if (rijIdx === null || rijIdx === i) return;
+        b.rijen.splice(i, 0, b.rijen.splice(rijIdx, 1)[0]);
+        rijIdx = null; teken(); ververs();
+      });
+      doos.appendChild(rij);
+    });
+    const plus = document.createElement("button");
+    plus.className = "mini"; plus.textContent = "+ Rij toevoegen";
+    plus.addEventListener("click", () => { b.rijen.push({ label: "", waarde: "" }); teken(); ververs(); });
+    doos.appendChild(plus);
+  };
+  teken();
+  return doos;
+}
+let rijIdx = null;
+
+/** Bytes naar iets leesbaars: 245760 → "240 kB". */
+function leesbareGrootte(bytes) {
+  if (bytes < 1024) return bytes + " B";
+  if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " kB";
+  const mb = bytes / (1024 * 1024);
+  return (mb < 10 ? mb.toFixed(1) : Math.round(mb)) + " MB";
+}
+
+/** Bestandenlijst met kiezer. Er wordt niets geüpload of gelezen uit het bestand
+ *  zelf, alleen naam en grootte, puur om ze in de mail te kunnen noemen. */
+function maakBestanden(b) {
+  const doos = document.createElement("div");
+
+  const teken = () => {
+    doos.innerHTML = "";
+    b.items.forEach((it, i) => {
+      const rij = document.createElement("div");
+      rij.className = "datarij";
+      rij.innerHTML = `<input type="text" placeholder="Bestandsnaam" /><input type="text" placeholder="Grootte" /><button class="weg" title="Verwijderen">&times;</button>`;
+      const [n, g] = $$("input", rij);
+      n.value = it.naam; g.value = it.grootte;
+      n.addEventListener("input", () => { it.naam = n.value; ververs(); werkKopBij(b); });
+      g.addEventListener("input", () => { it.grootte = g.value; ververs(); });
+      $(".weg", rij).addEventListener("click", () => { b.items.splice(i, 1); teken(); ververs(); werkKopBij(b); });
+      doos.appendChild(rij);
+    });
+
+    const knoppen = document.createElement("div");
+    knoppen.className = "rij2";
+    knoppen.style.marginTop = "8px";
+
+    const kies = document.createElement("button");
+    kies.className = "mini";
+    kies.textContent = "Bestanden kiezen…";
+    const invoer = document.createElement("input");
+    invoer.type = "file"; invoer.multiple = true; invoer.hidden = true;
+    kies.addEventListener("click", () => invoer.click());
+    invoer.addEventListener("change", e => {
+      [...e.target.files].forEach(f => b.items.push({ naam: f.name, grootte: leesbareGrootte(f.size) }));
+      e.target.value = "";
+      teken(); ververs(); werkKopBij(b);
+      toast("Toegevoegd aan de lijst. Sleep de bestanden zelf nog in Mail.");
+    });
+
+    const plus = document.createElement("button");
+    plus.className = "mini";
+    plus.textContent = "+ Handmatig";
+    plus.addEventListener("click", () => { b.items.push({ naam: "", grootte: "" }); teken(); ververs(); });
+
+    knoppen.appendChild(kies); knoppen.appendChild(plus);
+    doos.appendChild(knoppen); doos.appendChild(invoer);
+
+    const h = document.createElement("p");
+    h.className = "hint";
+    h.innerHTML = "Dit zet de bestanden alléén <em>in de tekst</em> van de mail. De bestanden zelf sleep je in Apple Mail het bericht in. Een webpagina mag ze niet op je klembord zetten.";
+    doos.appendChild(h);
+  };
+
+  teken();
+  return doos;
+}
+
+function maakItems(b) {
+  const doos = document.createElement("div");
+  const teken = () => {
+    doos.innerHTML = "";
+    b.items.forEach((it, i) => {
+      const rij = document.createElement("div");
+      rij.className = "lijstrij";
+      rij.innerHTML = `<input type="text" placeholder="Regel" /><button class="weg" title="Verwijderen">&times;</button>`;
+      const inp = $("input", rij);
+      inp.value = it;
+      inp.addEventListener("input", () => { b.items[i] = inp.value; ververs(); });
+      $(".weg", rij).addEventListener("click", () => { b.items.splice(i, 1); teken(); ververs(); });
+      doos.appendChild(rij);
+    });
+    const plus = document.createElement("button");
+    plus.className = "mini"; plus.textContent = "+ Regel toevoegen";
+    plus.addEventListener("click", () => { b.items.push(""); teken(); ververs(); });
+    doos.appendChild(plus);
+  };
+  teken();
+  return doos;
+}
+
+function tekenToevoegKnoppen() {
+  const bak = $("#toevoegknoppen");
+  bak.innerHTML = "";
+  Object.entries(BLOKTYPES).forEach(([type, def]) => {
+    const b = document.createElement("button");
+    b.innerHTML = `<b>${esc(def.naam)}</b><small>${esc(def.omschrijving)}</small>`;
+    b.addEventListener("click", () => {
+      const nieuw = Object.assign({ id: nieuwId(), type, open: true }, def.maak());
+      s.blokken.push(nieuw);
+      tekenBlokken(); ververs();
+      const el = $$("#blokkenlijst .blok").pop();
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      toast(def.naam + " toegevoegd");
+    });
+    bak.appendChild(b);
+  });
+}
+
+/* ============================================================
+   6. Formulier <-> state
+   ============================================================ */
+function vulFormulier() {
+  $$("[data-veld]").forEach(el => {
+    const v = el.dataset.veld;
+    if (!(v in s)) return;
+    if (el.type === "checkbox") el.checked = !!s[v];
+    else el.value = s[v];
+  });
+  $$("[data-kleur]").forEach(el => { el.value = s[el.dataset.kleur]; });
+  $$("[data-uit]").forEach(el => { el.value = eenheid(el.dataset.uit, s[el.dataset.uit]); });
+  tekenBlokken();
+  tekenPresets();
+  tekenSjablonen();
+  tekenInvul();
+  tekenBewaard();
+  toonVoorwaardelijk();
+}
+
+function eenheid(veld, w) {
+  if (veld === "regelafstand") return (w / 10).toFixed(1);
+  return w + "px";
+}
+
+function toonVoorwaardelijk() {
+  $("#logoUrlVeld").style.display = s.logoBron === "url" ? "block" : "none";
+  $("#logoBandVeld").style.display = s.logoPlek === "band" ? "block" : "none";
+}
+
+function koppelFormulier() {
+  $$("[data-veld]").forEach(el => {
+    const gebeurtenis = (el.type === "checkbox" || el.tagName === "SELECT") ? "change" : "input";
+    el.addEventListener(gebeurtenis, () => {
+      const v = el.dataset.veld;
+      s[v] = el.type === "checkbox" ? el.checked : (el.type === "range" ? Number(el.value) : el.value);
+
+      const kl = $(`[data-kleur="${v}"]`);
+      if (kl && /^#[0-9a-f]{6}$/i.test(s[v])) kl.value = s[v];
+      const uit = $(`[data-uit="${v}"]`);
+      if (uit) uit.value = eenheid(v, s[v]);
+      if (kl) tekenPresets();
+      if (v === "logoBron" || v === "logoPlek") toonVoorwaardelijk();
+      ververs();
+    });
+  });
+
+  $$("[data-kleur]").forEach(el => {
+    el.addEventListener("input", () => {
+      const v = el.dataset.kleur;
+      s[v] = el.value.toUpperCase();
+      const tekst = $(`input[data-veld="${v}"]`);
+      if (tekst) tekst.value = s[v];
+      tekenPresets();
+      ververs();
+    });
+  });
+}
+
+function tekenPresets() {
+  const bak = $("#presets");
+  bak.innerHTML = "";
+  Object.entries(SCHEMAS).forEach(([naam, kleuren]) => {
+    const aan = Object.entries(kleuren).every(([k, v]) => String(s[k]).toUpperCase() === String(v).toUpperCase());
+    const b = document.createElement("button");
+    b.className = aan ? "on" : "";
+    b.innerHTML = `<span class="stip" style="background:${kleuren.cardBg}"></span><span class="stip" style="background:${kleuren.accent}"></span><span class="stip" style="background:${kleuren.donkerKleur}"></span><br />${naam}`;
+    b.addEventListener("click", () => { Object.assign(s, kleuren); vulFormulier(); ververs(); });
+    bak.appendChild(b);
+  });
+}
+
+/* ============================================================
+   6b. Invulvelden, sjablonen, bewaarde mails, koppeling
+   ============================================================ */
+
+/** {k: waarde} van alle ingevulde velden (lege waarden tellen niet mee). */
+function invulWaarden(st) {
+  const m = {};
+  (st.invul || []).forEach(r => { const k = String(r.k || "").trim(); if (k && String(r.w || "") !== "") m[k] = String(r.w); });
+  return m;
+}
+function vulIn(tekst, m) {
+  return String(tekst == null ? "" : tekst).replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (heel, k) => (k in m ? m[k] : heel));
+}
+/** Kopie van de opzet waarin alle {{velden}} zijn ingevuld. Hierop bouwt de mail. */
+function metInvul(st) {
+  const m = invulWaarden(st);
+  const loop = x => typeof x === "string" ? vulIn(x, m)
+    : Array.isArray(x) ? x.map(loop)
+    : (x && typeof x === "object") ? Object.fromEntries(Object.entries(x).map(([k, v]) => [k, loop(v)]))
+    : x;
+  const uit = structuredClone(st);
+  uit.onderwerp = vulIn(st.onderwerp, m);
+  uit.preheader = vulIn(st.preheader, m);
+  uit.footer1 = vulIn(st.footer1, m);
+  uit.blokken = loop(st.blokken);
+  return uit;
+}
+/** Velden die in de mail voorkomen maar (nog) niet zijn ingevuld. */
+function ontbrekendeVelden(st) {
+  const ingevuld = metInvul(st);
+  const tekst = JSON.stringify([ingevuld.onderwerp, ingevuld.preheader, ingevuld.blokken]);
+  const set = new Set();
+  tekst.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (heel, k) => { set.add(k); return heel; });
+  return [...set];
+}
+function toonInvulWaarschuwing() {
+  const el = $("#invulWaarschuwing");
+  if (!el) return;
+  const weg = ontbrekendeVelden(s);
+  el.textContent = weg.length ? "Nog niet ingevuld: " + weg.map(k => "{{" + k + "}}").join(", ") : "";
+}
+
+function tekenInvul() {
+  const doos = $("#invulvelden");
+  if (!doos) return;
+  doos.innerHTML = "";
+  s.invul = Array.isArray(s.invul) ? s.invul : [];
+  s.invul.forEach((r, i) => {
+    const rij = document.createElement("div");
+    rij.className = "datarij";
+    rij.innerHTML = `<input type="text" placeholder="veld" /><input type="text" placeholder="waarde" /><button class="weg" title="Verwijderen">&times;</button>`;
+    const [a, w] = $$("input", rij);
+    a.value = r.k; w.value = r.w;
+    a.addEventListener("input", () => { r.k = a.value.replace(/[{}]/g, ""); ververs(); });
+    w.addEventListener("input", () => { r.w = w.value; ververs(); });
+    $(".weg", rij).addEventListener("click", () => { s.invul.splice(i, 1); tekenInvul(); ververs(); });
+    doos.appendChild(rij);
+  });
+  const plus = document.createElement("button");
+  plus.className = "mini"; plus.textContent = "+ Veld toevoegen";
+  plus.addEventListener("click", () => { s.invul.push({ k: "", w: "" }); tekenInvul(); $$("#invulvelden .datarij input").slice(-2)[0].focus(); });
+  doos.appendChild(plus);
+}
+
+function tekenSjablonen() {
+  const bak = $("#sjabloonknoppen");
+  if (!bak) return;
+  bak.innerHTML = "";
+  Object.entries(SJABLONEN).forEach(([sleutel, sj]) => {
+    const b = document.createElement("button");
+    b.className = s.sjabloon === sleutel ? "on" : "";
+    b.innerHTML = `<b>${esc(sj.naam)}</b><small>${esc(sj.omschrijving)}</small>`;
+    b.addEventListener("click", () => {
+      if (!confirm("Sjabloon '" + sj.naam + "' laden? De blokken van de huidige mail worden vervangen. Bewaar 'm eerst als je 'm wilt houden.")) return;
+      pasSjabloonToe(sleutel);
+    });
+    bak.appendChild(b);
+  });
+}
+
+/** Zet blokken, onderwerp en preheader van een sjabloon klaar.
+ *  Ingevulde velden blijven staan; velden van het sjabloon die nog
+ *  ontbreken komen er leeg bij. */
+function pasSjabloonToe(sleutel, stil) {
+  const sj = SJABLONEN[sleutel];
+  if (!sj) return false;
+  const oud = invulWaarden(s);
+  s.sjabloon = sleutel;
+  s.onderwerp = sj.onderwerp;
+  s.preheader = sj.preheader;
+  s.blokken = maakBlokken(sj.blokken);
+  const nieuw = sj.invul.map(k => ({ k, w: oud[k] || "" }));
+  Object.keys(oud).forEach(k => { if (!sj.invul.includes(k)) nieuw.push({ k, w: oud[k] }); });
+  s.invul = nieuw;
+  vulFormulier(); ververs();
+  if (!stil) toast("Sjabloon '" + sj.naam + "' staat klaar. Vul de velden in.");
+  return true;
+}
+
+/* ---- Bewaarde mails (in deze browser) ---- */
+const SLEUTEL_BEWAARD = "itds-email-editor-bewaard";
+
+function leesBewaard() {
+  try { const l = JSON.parse(localStorage.getItem(SLEUTEL_BEWAARD) || "[]"); return Array.isArray(l) ? l : []; }
+  catch (e) { return []; }
+}
+function schrijfBewaard(lijst) {
+  try { localStorage.setItem(SLEUTEL_BEWAARD, JSON.stringify(lijst)); return true; }
+  catch (e) { toast("Bewaren lukte niet. Is de opslag van de browser vol?", true); return false; }
+}
+function datumKort(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return "";
+  return d.toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" }) + " " + d.toLocaleTimeString("nl-NL", { hour: "2-digit", minute: "2-digit" });
+}
+function tekenBewaard() {
+  const bak = $("#bewaardlijst");
+  if (!bak) return;
+  bak.innerHTML = "";
+  const lijst = leesBewaard();
+  if (!lijst.length) {
+    bak.innerHTML = `<p class="leeg">Nog niets bewaard.</p>`;
+    return;
+  }
+  lijst.forEach((it, i) => {
+    const rij = document.createElement("div");
+    rij.className = "bewaard";
+    rij.innerHTML = `<div class="info"><b></b><small></small></div>
+      <button class="mini" data-doe="laad">Laden</button>
+      <button class="mini" data-doe="bijwerk" title="Vervangen door de mail waar je nu aan werkt">Bijwerken</button>
+      <button class="weg" data-doe="weg" title="Verwijderen">&times;</button>`;
+    $("b", rij).textContent = it.naam || "(zonder naam)";
+    $("small", rij).textContent = datumKort(it.datum);
+    $('[data-doe="laad"]', rij).addEventListener("click", () => {
+      if (!confirm("'" + it.naam + "' laden? De mail waar je nu aan werkt wordt vervangen.")) return;
+      zetOpzet(it.opzet);
+      toast("'" + it.naam + "' geladen");
+    });
+    $('[data-doe="bijwerk"]', rij).addEventListener("click", () => {
+      if (!confirm("'" + it.naam + "' vervangen door de huidige mail?")) return;
+      const l = leesBewaard();
+      if (!l[i]) return;
+      l[i] = { id: it.id, naam: it.naam, datum: new Date().toISOString(), opzet: structuredClone(s) };
+      if (schrijfBewaard(l)) { tekenBewaard(); toast("'" + it.naam + "' bijgewerkt"); }
+    });
+    $('[data-doe="weg"]', rij).addEventListener("click", () => {
+      if (!confirm("'" + it.naam + "' verwijderen?")) return;
+      const l = leesBewaard();
+      l.splice(i, 1);
+      if (schrijfBewaard(l)) { tekenBewaard(); toast("Verwijderd"); }
+    });
+    bak.appendChild(rij);
+  });
+}
+function bewaarHuidige() {
+  const voorstel = metInvul(s).onderwerp || "Mail";
+  const naam = prompt("Naam voor deze mail:", voorstel);
+  if (naam == null) return;
+  const l = leesBewaard();
+  l.unshift({ id: nieuwId(), naam: naam.trim() || voorstel, datum: new Date().toISOString(), opzet: structuredClone(s) });
+  if (schrijfBewaard(l)) { tekenBewaard(); toast("Bewaard als '" + (naam.trim() || voorstel) + "'"); }
+}
+
+/** Een opgeslagen opzet (bestand, bewaarde mail) als huidige mail zetten. */
+function zetOpzet(g) {
+  s = Object.assign(structuredClone(STANDAARD), g);
+  s.blokken = maakBlokken(Array.isArray(g.blokken) ? g.blokken : STANDAARD.blokken);
+  s.invul = Array.isArray(g.invul) ? g.invul : [];
+  s.versie = VERSIE;
+  vulFormulier(); ververs();
+}
+
+/* ---- Koppeling: gegevens via de URL ----
+ * Een andere app (de bedrijfs-webapp) kan de editor openen met
+ *   editor.html#gegevens=<JSON, url-gecodeerd of base64url>
+ * met bijvoorbeeld:
+ *   { "sjabloon": "offerte", "aan": "jan@bedrijf.nl",
+ *     "invul": { "naam": "Jan", "opdrachtnummer": "ITDS-2026-0190" } }
+ * Het sjabloon wordt geladen, de velden ingevuld en de hash weer gewist. */
+function leesUrlGegevens() {
+  const m = location.hash.match(/[#&]gegevens=([^&]+)/);
+  if (!m) return null;
+  const ruw = m[1];
+  try { return JSON.parse(decodeURIComponent(ruw)); } catch (e) { /* dan base64url */ }
+  try {
+    const b64 = ruw.replace(/-/g, "+").replace(/_/g, "/") + "===".slice((ruw.length + 3) % 4);
+    const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch (e) { return null; }
+}
+function pasUrlGegevensToe() {
+  const g = leesUrlGegevens();
+  if (!g || typeof g !== "object") return;
+  if (g.sjabloon && SJABLONEN[g.sjabloon]) pasSjabloonToe(g.sjabloon, true);
+  if (typeof g.aan === "string") s.aan = g.aan;
+  if (typeof g.onderwerp === "string") s.onderwerp = g.onderwerp;
+  if (g.invul && typeof g.invul === "object") {
+    Object.entries(g.invul).forEach(([k, w]) => {
+      const bestaand = s.invul.find(r => r.k === k);
+      if (bestaand) bestaand.w = String(w);
+      else s.invul.push({ k, w: String(w) });
+    });
+  }
+  history.replaceState(null, "", location.pathname + location.search);
+  vulFormulier(); ververs();
+  toast("Gegevens overgenomen. Controleer de velden en de tekst.");
+}
+
+/* ============================================================
+   7. Preview, opslag, export
+   ============================================================ */
+let htmlNu = "";
+let onderwerpNu = "";
+
+function ververs() {
+  const st = metInvul(s);
+  htmlNu = bouwMail(st);
+  onderwerpNu = st.onderwerp;
+  // De preview toont wat je plakt: het body-fragment zonder de <style> uit de head,
+  // want die gaat bij kopiëren ook niet mee. Zo liegt het mobiele beeld niet.
+  // Webfonts gaan bij plakken evenmin mee; die laadt de preview alleen op verzoek.
+  const webfont = s.previewWebfont
+    ? `<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Montserrat:wght@300;500;700&display=swap" rel="stylesheet" />`
+    : "";
+  $("#preview").srcdoc =
+    `<!DOCTYPE html><html><head><meta charset="utf-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1" />
+     ${webfont}
+     <style>body{margin:0;padding:0;background:${s.paginaBg};}img{border:0;display:block;}</style>
+     </head><body>${mailFragment()}</body></html>`;
+  toonInvulWaarschuwing();
+  bewaarOpslag();
+}
+
+function bewaarOpslag() {
+  try { localStorage.setItem(SLEUTEL, JSON.stringify(s)); } catch (e) {}
+}
+/** Trekt een oudere opgeslagen opzet bij naar de huidige versie.
+ *  Raakt alleen aan wat nodig is. Teksten, blokken en kleuren blijven van Roel.
+ *  `van` moet uit het OPGESLAGEN bestand komen: st is al samengevoegd met
+ *  STANDAARD en draagt daardoor altijd de huidige versie. */
+function migreer(st, van, opgeslagen) {
+  if (van < 3) {
+    // v3: lettergroottes hangen sinds de mobiel-fix aan één schuifje, met 17 als
+    // nieuwe standaard. Wie nog op de oude 15 stond, gaat mee omhoog.
+    st.tekstGrootte = Math.max(st.tekstGrootte || 0, 17);
+  }
+  if (van < 4) {
+    // v4: invulvelden. Een oudere opzet heeft geen {{velden}} in de tekst,
+    // dus de voorbeeldwaarden van STANDAARD horen daar niet bij.
+    if (!opgeslagen || !Array.isArray(opgeslagen.invul)) st.invul = [];
+    if (!opgeslagen || !opgeslagen.sjabloon) st.sjabloon = "";
+  }
+  st.versie = VERSIE;
+  return st;
+}
+
+function laadOpslag() {
+  try {
+    const raw = localStorage.getItem(SLEUTEL);
+    if (raw) {
+      const opgeslagen = JSON.parse(raw);
+      const uit = migreer(Object.assign(structuredClone(STANDAARD), opgeslagen), opgeslagen.versie || 1, opgeslagen);
+      // Alleen blokken van een bekend type overhouden, met alle velden ingevuld.
+      uit.blokken = maakBlokken(Array.isArray(opgeslagen.blokken) ? opgeslagen.blokken : STANDAARD.blokken);
+      return uit;
+    }
+  } catch (e) {}
+  return structuredClone(STANDAARD);
+}
+
+async function kopieerRijk(html) {
+  try {
+    if (navigator.clipboard && window.ClipboardItem) {
+      await navigator.clipboard.write([new ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([platteTekst(html)], { type: "text/plain" })
+      })]);
+      return true;
+    }
+  } catch (e) { /* door naar terugval */ }
+
+  const bak = $("#kopieerbak");
+  bak.innerHTML = html;
+  const bereik = document.createRange();
+  bereik.selectNodeContents(bak);
+  const sel = window.getSelection();
+  sel.removeAllRanges(); sel.addRange(bereik);
+  const ok = document.execCommand("copy");
+  sel.removeAllRanges(); bak.innerHTML = "";
+  return ok;
+}
+
+function platteTekst(html) {
+  const d = document.createElement("div");
+  d.innerHTML = html;
+  return d.innerText.replace(/\n{3,}/g, "\n\n").trim();
+}
+
+/** Wat je in Mail plakt: alles uit de body, inclusief de preheader.
+ *  De <style> in de head gaat NIET mee. Daarom moet de mail het zonder
+ *  media queries redden en is de opmaak vloeiend (max-width, geen vaste breedte). */
+function mailFragment() {
+  const doc = new DOMParser().parseFromString(bouwMail(metInvul(s)), "text/html");
+  return doc.body.innerHTML.trim();
+}
+
+/* ============================================================
+   8. Knoppen
+   ============================================================ */
+$$(".tabs button").forEach(b => {
+  b.addEventListener("click", () => {
+    $$(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+    $$(".tab").forEach(t => t.classList.toggle("on", t.id === "tab-" + b.dataset.tab));
+  });
+});
+
+$("#btnDesktop").addEventListener("click", () => {
+  $("#preview").classList.remove("mobiel");
+  $("#btnDesktop").classList.add("on"); $("#btnMobiel").classList.remove("on");
+});
+$("#btnMobiel").addEventListener("click", () => {
+  $("#preview").classList.add("mobiel");
+  $("#btnMobiel").classList.add("on"); $("#btnDesktop").classList.remove("on");
+});
+
+$("#btnMail").addEventListener("click", async () => {
+  const ok = await kopieerRijk(mailFragment());
+  toast(ok ? "Gekopieerd. Plak in Apple Mail met ⌘V" : "Kopiëren lukte niet. Gebruik anders Download.", !ok);
+});
+
+$("#btnOpenMail").addEventListener("click", async () => {
+  const ok = await kopieerRijk(mailFragment());
+  const aan = (s.aan || "").replace(/\s+/g, "");
+  const url = "mailto:" + aan + "?subject=" + encodeURIComponent(onderwerpNu || "");
+  window.location.href = url;
+  toast(ok ? "Nieuw bericht geopend. Plak de mail met ⌘V." : "Bericht geopend, maar kopiëren lukte niet. Gebruik Kopieer voor Apple Mail.", !ok);
+});
+
+$("#btnBewaar").addEventListener("click", bewaarHuidige);
+
+$("#btnHtml").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(htmlNu); toast("HTML-broncode gekopieerd"); }
+  catch (e) { toast("Kopiëren lukte niet. Gebruik Download.", true); }
+});
+
+$("#btnDownload").addEventListener("click", () => {
+  const naam = (onderwerpNu || "email").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "email";
+  downloadBestand(naam + ".html", htmlNu, "text/html");
+  toast("Gedownload als " + naam + ".html");
+});
+
+$("#btnOpslaan").addEventListener("click", () => {
+  downloadBestand("email-opzet.json", JSON.stringify(s, null, 2), "application/json");
+  toast("Opzet opgeslagen");
+});
+$("#btnLaden").addEventListener("click", () => $("#bestandIn").click());
+$("#bestandIn").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const lezer = new FileReader();
+  lezer.onload = () => {
+    try {
+      const g = JSON.parse(lezer.result);
+      if (!g || typeof g !== "object") throw new Error("geen opzet");
+      zetOpzet(g);
+      toast("Opzet geladen");
+    } catch (err) { toast("Dit bestand kon ik niet lezen", true); }
+  };
+  lezer.readAsText(f);
+  e.target.value = "";
+});
+
+$("#btnReset").addEventListener("click", () => {
+  if (!confirm("Alles terugzetten naar de standaardopzet? Je huidige mail gaat verloren.")) return;
+  s = structuredClone(STANDAARD);
+  vulFormulier(); ververs();
+  toast("Teruggezet naar standaard");
+});
+
+function downloadBestand(naam, inhoud, type) {
+  const a = document.createElement("a");
+  const url = URL.createObjectURL(new Blob([inhoud], { type: type + ";charset=utf-8" }));
+  a.href = url; a.download = naam;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/* ============================================================
+   9. Start
+   ============================================================ */
+tekenToevoegKnoppen();
+vulFormulier();
+koppelFormulier();
+ververs();
+pasUrlGegevensToe();
+</script>
+</body>
+</html>
