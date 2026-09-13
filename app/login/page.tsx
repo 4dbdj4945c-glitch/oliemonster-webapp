@@ -63,183 +63,88 @@ export default function LoginPage() {
     <>
       <StorageAccessHandler />
       <style jsx>{`
-        .page {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #f5f5f7;
-          padding: 24px;
-        }
-
-        .card {
-          background: #ffffff;
-          border-radius: 18px;
-          padding: 48px 40px 40px;
-          width: 100%;
-          max-width: 380px;
-          box-shadow: 0 4px 40px rgba(0, 0, 0, 0.1);
-          border: 1px solid rgba(0, 0, 0, 0.06);
-        }
-
-        @media (max-width: 480px) {
-          .card { padding: 36px 24px 28px; }
-        }
-
-        .logo-wrap {
-          display: flex;
-          justify-content: center;
-          margin-bottom: 36px;
-        }
-
-        .logo {
-          height: 64px;
-          object-fit: contain;
-        }
-
-        .field {
-          margin-bottom: 14px;
-        }
-
-        .field label {
-          display: block;
-          font-size: 13px;
-          font-weight: 500;
-          color: #64748B;
-          margin-bottom: 6px;
-        }
-
-        .input {
-          width: 100%;
-          padding: 11px 14px;
-          background: #f5f5f7;
-          border: 1px solid rgba(0, 0, 0, 0.15);
-          border-radius: 10px;
-          color: #0C1B33;
-          font-size: 15px;
-          outline: none;
-          transition: border-color 0.15s, box-shadow 0.15s;
-          font-family: inherit;
-        }
-
-        .input::placeholder {
-          color: #94A3B8;
-        }
-
-        .input:focus {
-          border-color: #1D4ED8;
-          box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
-          background: #ffffff;
-        }
-
         .remember {
           display: flex;
           align-items: center;
           gap: 8px;
-          margin: 14px 0 20px;
+          margin: 4px 0 18px;
         }
 
         .remember input[type="checkbox"] {
           width: 16px;
           height: 16px;
-          accent-color: #1D4ED8;
-          cursor: pointer;
+          margin: 0;
         }
 
         .remember label {
-          font-size: 14px;
-          color: #3c3c43;
+          font-size: 13px;
+          color: var(--navy);
           cursor: pointer;
           user-select: none;
         }
 
-        .error {
-          background: rgba(220, 38, 38, 0.08);
-          border: 1px solid rgba(220, 38, 38, 0.2);
-          color: #DC2626;
-          padding: 10px 14px;
-          border-radius: 8px;
-          font-size: 14px;
-          text-align: center;
+        .fout {
           margin-bottom: 14px;
-        }
-
-        .login-btn {
-          width: 100%;
-          padding: 13px;
-          background: #1D4ED8;
-          border: none;
-          border-radius: 10px;
-          color: white;
-          font-size: 15px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: background 0.15s;
-          font-family: inherit;
-        }
-
-        .login-btn:hover:not(:disabled) {
-          background: #1740B8;
-        }
-
-        .login-btn:disabled {
-          opacity: 0.55;
-          cursor: not-allowed;
         }
       `}</style>
 
-      <div className="page">
-        <div className="card">
-          <div className="logo-wrap">
-            <img src="/header_logo.png" alt="It's Done Services" className="logo" />
+      <div className="auth-page">
+        <div className="auth-card">
+          <div className="auth-band">
+            <img src="/header_logo.png" alt="It's Done Services" />
           </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="field">
-              <label htmlFor="username">Gebruikersnaam</label>
-              <input
-                id="username"
-                type="text"
-                className="input"
-                placeholder="Gebruikersnaam"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                autoComplete="username"
-              />
-            </div>
+          <div className="auth-body">
+            <h1 className="auth-title">Inloggen</h1>
+            <p className="auth-subtitle">Log in met je gebruikersnaam en wachtwoord.</p>
 
-            <div className="field">
-              <label htmlFor="password">Wachtwoord</label>
-              <input
-                id="password"
-                type="password"
-                className="input"
-                placeholder="Wachtwoord"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-              />
-            </div>
+            <form onSubmit={handleSubmit}>
+              <div className="veld">
+                <label htmlFor="username" className="label">Gebruikersnaam</label>
+                <input
+                  id="username"
+                  type="text"
+                  className="input"
+                  placeholder="Gebruikersnaam"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  autoComplete="username"
+                />
+              </div>
 
-            <div className="remember">
-              <input
-                type="checkbox"
-                id="remember-me"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-              />
-              <label htmlFor="remember-me">Onthoud mij</label>
-            </div>
+              <div className="veld">
+                <label htmlFor="password" className="label">Wachtwoord</label>
+                <input
+                  id="password"
+                  type="password"
+                  className="input"
+                  placeholder="Wachtwoord"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                />
+              </div>
 
-            {error && <div className="error">{error}</div>}
+              <div className="remember">
+                <input
+                  type="checkbox"
+                  id="remember-me"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                <label htmlFor="remember-me">Onthoud mij</label>
+              </div>
 
-            <button type="submit" className="login-btn" disabled={loading}>
-              {loading ? 'Inloggen...' : 'Inloggen'}
-            </button>
+              {error && <div className="alert alert-danger fout">{error}</div>}
 
-            <InstallButton />
-          </form>
+              <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={loading}>
+                {loading ? 'Inloggen...' : 'Inloggen'}
+              </button>
+
+              <InstallButton />
+            </form>
+          </div>
         </div>
       </div>
     </>

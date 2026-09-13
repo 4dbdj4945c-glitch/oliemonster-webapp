@@ -15,7 +15,7 @@ export const ALLOWED_ROLES = [ROLE_ADMIN, ROLE_USER, ROLE_VIEWER_OIL2025];
 export const ROLE_LABELS: Record<string, string> = {
   [ROLE_ADMIN]: 'Admin',
   [ROLE_USER]: 'Gebruiker',
-  [ROLE_VIEWER_OIL2025]: 'Kijker – Oliemonsters 2025',
+  [ROLE_VIEWER_OIL2025]: 'Kijker, Oliemonsters 2025',
 };
 
 // Is dit de beperkte kijker-rol?

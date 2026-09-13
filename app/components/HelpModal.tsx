@@ -12,124 +12,137 @@ export default function HelpModal({ isOpen, onClose, userRole }: HelpModalProps)
   const isAdmin = userRole === 'admin';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="rounded-lg p-6 max-w-2xl w-full max-h-[80vh] overflow-y-auto" style={{ backgroundColor: 'var(--background)', borderColor: 'var(--border)', border: '1px solid' }}>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--foreground)' }}>
-            Help & Uitleg
-          </h2>
-          <button
-            onClick={onClose}
-            className="text-2xl font-bold transition-colors"
-            style={{ color: 'var(--text-secondary)' }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--foreground)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
-            aria-label="Sluiten"
-          >
-            ×
-          </button>
-        </div>
+    <>
+      <style jsx>{`
+        .help-sectie {
+          margin-bottom: 22px;
+        }
 
-        <div className="space-y-6" style={{ color: 'var(--text-secondary)' }}>
-          {/* Algemene functies voor alle gebruikers */}
-          <section>
-            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>📋 Overzicht</h3>
-            <ul className="list-disc list-inside space-y-1 ml-2">
-              <li><strong>Zoeken:</strong> Gebruik het zoekveld om te zoeken op o-nummer, locatie of omschrijving</li>
-              <li><strong>Sorteren:</strong> Sorteer de lijst op o-nummer, datum, locatie of laatst toegevoegd</li>
-              <li><strong>Status:</strong> Groene badges = genomen, rode badges = niet genomen</li>
-              <li><strong>Foto's:</strong> Klik op "📷 Bekijk foto" om foto's van monsters te bekijken</li>
-            </ul>
-          </section>
+        .help-sectie:last-child {
+          margin-bottom: 0;
+        }
 
-          <section>
-            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>📊 Statistieken</h3>
-            <p className="ml-2">
-              Bovenaan zie je drie kaarten met statistieken: totaal aantal monsters, aantal genomen monsters en aantal niet-genomen monsters.
-            </p>
-          </section>
+        .help-sectie ul {
+          margin: 0;
+          padding-left: 20px;
+          list-style: disc;
+        }
 
-          {isAdmin ? (
-            /* Admin-specifieke functies */
-            <>
-              <section>
-                <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>➕ Monsters Beheren (Admin)</h3>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li><strong>Toevoegen:</strong> Klik op "+ Nieuw Monster" om een monster toe te voegen</li>
-                  <li><strong>Bewerken:</strong> Klik op "Bewerken" bij een monster om deze aan te passen</li>
-                  <li><strong>Verwijderen:</strong> Klik op "Verwijderen" bij een monster om deze te verwijderen</li>
-                  <li><strong>Datum:</strong> Het datumveld is alleen beschikbaar wanneer "Monster is genomen" is aangevinkt</li>
-                  <li><strong>O-nummer:</strong> Elk o-nummer moet uniek zijn - je krijgt een waarschuwing bij duplicaten</li>
-                </ul>
-              </section>
+        .help-sectie li {
+          font-size: 14px;
+          line-height: 1.6;
+          color: var(--grijs-700);
+          margin-bottom: 4px;
+        }
 
-              <section>
-                <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>📷 Foto's Uploaden (Admin)</h3>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>Klik op "+ Upload foto" bij een monster zonder foto</li>
-                  <li>Selecteer een afbeelding van je apparaat</li>
-                  <li>De foto wordt automatisch geüpload en opgeslagen</li>
-                  <li>Foto's dienen als bewijsvoering dat het monster is genomen</li>
-                </ul>
-              </section>
+        .help-sectie p {
+          margin: 0;
+          font-size: 14px;
+          line-height: 1.6;
+          color: var(--grijs-700);
+        }
 
-              <section>
-                <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>⚙️ Beheer Functies (Admin)</h3>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li><strong>Gebruikersbeheer:</strong> Voeg nieuwe gebruikers toe, pas wachtwoorden aan of verwijder gebruikers</li>
-                  <li><strong>Thema aanpassen:</strong> Kies tussen verschillende kleurthema's (blauw, groen, paars, rood, donker)</li>
-                  <li><strong>Kolommen instellen:</strong> Bepaal welke kolommen zichtbaar zijn in het overzicht</li>
-                  <li><strong>Audit Logs:</strong> Bekijk alle acties die in het systeem zijn uitgevoerd</li>
-                </ul>
-              </section>
+        .help-sectie strong {
+          color: var(--navy);
+          font-weight: 600;
+        }
+      `}</style>
 
-              <section>
-                <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>🔒 Beveiliging</h3>
-                <ul className="list-disc list-inside space-y-1 ml-2">
-                  <li>Maximaal 5 inlogpogingen per 15 minuten per IP-adres</li>
-                  <li>Alle acties worden gelogd in de audit logs</li>
-                  <li>Alleen admins kunnen gegevens toevoegen, bewerken of verwijderen</li>
-                </ul>
-              </section>
-            </>
-          ) : (
-            /* Reguliere gebruiker functies */
-            <section>
-              <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>👤 Gebruikersrechten</h3>
-              <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Je kunt alle monsters bekijken en doorzoeken</li>
-                <li>Je kunt foto's bekijken en downloaden</li>
-                <li>Je kunt de lijst sorteren en filteren</li>
-                <li><strong>Let op:</strong> Alleen admins kunnen monsters toevoegen, bewerken of verwijderen</li>
+      <div className="modal-backdrop" onClick={onClose}>
+        <div className="modal-content modal-content-md" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2 className="modal-title">Help en uitleg</h2>
+          </div>
+
+          <div className="modal-body">
+            {/* Algemene functies voor alle gebruikers */}
+            <section className="help-sectie">
+              <h3 className="section-label">Overzicht</h3>
+              <ul>
+                <li><strong>Zoeken:</strong> gebruik het zoekveld om te zoeken op o-nummer, locatie of omschrijving.</li>
+                <li><strong>Sorteren:</strong> sorteer de lijst op o-nummer, datum, locatie of laatst toegevoegd.</li>
+                <li><strong>Status:</strong> groene badges zijn genomen monsters, rode badges niet genomen.</li>
+                <li><strong>Foto&apos;s:</strong> klik op &quot;Bekijk foto&quot; om foto&apos;s van monsters te bekijken.</li>
               </ul>
             </section>
-          )}
 
-          <section>
-            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>🌓 Thema Wijzigen</h3>
-            <p className="ml-2">
-              Klik op de ◐/◑ knop rechts bovenaan om te wisselen tussen licht en donker thema. De wijziging wordt direct zichtbaar.
-            </p>
-          </section>
+            <section className="help-sectie">
+              <h3 className="section-label">Statistieken</h3>
+              <p>
+                Bovenaan zie je drie kaarten met statistieken: totaal aantal monsters, aantal genomen monsters en aantal niet-genomen monsters.
+              </p>
+            </section>
 
-          <section>
-            <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--foreground)' }}>❓ Vragen?</h3>
-            <p className="ml-2">
-              Neem contact op met de beheerder als je vragen hebt of problemen ondervindt met de applicatie.
-            </p>
-          </section>
-        </div>
+            {isAdmin ? (
+              /* Admin-specifieke functies */
+              <>
+                <section className="help-sectie">
+                  <h3 className="section-label">Monsters beheren (admin)</h3>
+                  <ul>
+                    <li><strong>Toevoegen:</strong> klik op &quot;Nieuw monster&quot; om een monster toe te voegen.</li>
+                    <li><strong>Bewerken:</strong> klik op &quot;Bewerken&quot; bij een monster om deze aan te passen.</li>
+                    <li><strong>Verwijderen:</strong> klik op &quot;Verwijderen&quot; bij een monster om deze te verwijderen.</li>
+                    <li><strong>Datum:</strong> het datumveld is alleen beschikbaar wanneer &quot;Monster is genomen&quot; is aangevinkt.</li>
+                    <li><strong>O-nummer:</strong> elk o-nummer moet uniek zijn, je krijgt een waarschuwing bij duplicaten.</li>
+                  </ul>
+                </section>
 
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 rounded transition-all"
-            style={{ backgroundColor: 'var(--accent)', color: 'var(--background)' }}
-          >
-            Sluiten
-          </button>
+                <section className="help-sectie">
+                  <h3 className="section-label">Foto&apos;s uploaden (admin)</h3>
+                  <ul>
+                    <li>Klik op &quot;Upload foto&quot; bij een monster zonder foto.</li>
+                    <li>Selecteer een afbeelding van je apparaat.</li>
+                    <li>De foto wordt automatisch geüpload en opgeslagen.</li>
+                    <li>Foto&apos;s dienen als bewijs dat het monster is genomen.</li>
+                  </ul>
+                </section>
+
+                <section className="help-sectie">
+                  <h3 className="section-label">Beheerfuncties (admin)</h3>
+                  <ul>
+                    <li><strong>Gebruikersbeheer:</strong> voeg nieuwe gebruikers toe, pas wachtwoorden aan of verwijder gebruikers.</li>
+                    <li><strong>Kolommen instellen:</strong> bepaal welke kolommen zichtbaar zijn in het overzicht.</li>
+                    <li><strong>Auditlog:</strong> bekijk alle acties die in het systeem zijn uitgevoerd.</li>
+                  </ul>
+                </section>
+
+                <section className="help-sectie">
+                  <h3 className="section-label">Beveiliging</h3>
+                  <ul>
+                    <li>Maximaal 5 inlogpogingen per 15 minuten per IP-adres.</li>
+                    <li>Alle acties worden vastgelegd in het auditlog.</li>
+                    <li>Alleen admins kunnen gegevens toevoegen, bewerken of verwijderen.</li>
+                  </ul>
+                </section>
+              </>
+            ) : (
+              /* Reguliere gebruiker functies */
+              <section className="help-sectie">
+                <h3 className="section-label">Gebruikersrechten</h3>
+                <ul>
+                  <li>Je kunt alle monsters bekijken en doorzoeken.</li>
+                  <li>Je kunt foto&apos;s bekijken en downloaden.</li>
+                  <li>Je kunt de lijst sorteren en filteren.</li>
+                  <li><strong>Let op:</strong> alleen admins kunnen monsters toevoegen, bewerken of verwijderen.</li>
+                </ul>
+              </section>
+            )}
+
+            <section className="help-sectie">
+              <h3 className="section-label">Vragen</h3>
+              <p>
+                Neem contact op met de beheerder als je vragen hebt of problemen ondervindt met de applicatie.
+              </p>
+            </section>
+          </div>
+
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="btn btn-primary">
+              Sluiten
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

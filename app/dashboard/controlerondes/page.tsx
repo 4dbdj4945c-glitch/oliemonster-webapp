@@ -6,11 +6,15 @@ import dynamic from 'next/dynamic';
 import { apiFetch } from '@/lib/api';
 import { searchPlaces, getStreets, PlaceHit, StreetHit } from '@/lib/pdok';
 import type { MapStreet } from '@/app/components/RouteMap';
+import { AppShell, NavButton, Icons } from '@/app/components/ui';
 
 const RouteMap = dynamic(() => import('@/app/components/RouteMap'), {
   ssr: false,
   loading: () => (
-    <div style={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B', background: 'rgba(255,255,255,0.5)', borderRadius: 16 }}>
+    <div
+      className="laden"
+      style={{ height: 360, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--wit)', border: '1px solid var(--grijs-200)', borderRadius: 'var(--radius)' }}
+    >
       Kaart laden…
     </div>
   ),
@@ -430,376 +434,341 @@ export default function ControleRondesPage() {
   const totalCount = detail ? detail.streets.length : 0;
 
   if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}>
-        Laden…
-      </div>
-    );
+    return <div className="laadscherm">Laden…</div>;
   }
 
+  const gpsIcon = (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
+  );
+  const plusIcon = (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+  );
+  const trashIcon = (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+  );
+
   return (
-    <>
+    <AppShell
+      title="Controlerondes"
+      rightActions={
+        <>
+          {user && <span className="user-badge">{user.username}</span>}
+          {view !== 'list' && (
+            <NavButton icon={Icons.Back} onClick={() => { stopGps(); setView('list'); loadRounds(); }}>Rondes</NavButton>
+          )}
+          <NavButton icon={Icons.Back} onClick={() => router.push('/dashboard')}>Dashboard</NavButton>
+          <NavButton icon={Icons.Logout} danger onClick={handleLogout}>Uitloggen</NavButton>
+        </>
+      }
+    >
+      {/* Alleen pagina-lay-out; kaarten, knoppen, velden en badges komen uit globals.css */}
       <style jsx>{`
-        .wrap { min-height: 100vh; color: #0C1B33; }
-        .toolbar {
-          background: rgba(255,255,255,0.72);
-          backdrop-filter: saturate(180%) blur(28px);
-          -webkit-backdrop-filter: saturate(180%) blur(28px);
-          border-bottom: 1px solid rgba(255,255,255,0.4);
-          position: sticky; top: 0; z-index: 500;
-        }
-        .toolbar-inner { max-width: 1100px; margin: 0 auto; height: 52px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; }
-        .tb-left { display: flex; align-items: center; gap: 12px; }
-        .tb-title { color: #64748B; font-size: 13px; font-weight: 500; }
-        .content { max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
-        .nav-btn {
-          display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px;
-          background: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.6);
-          border-radius: 8px; color: #0C1B33; font-size: 13px; font-weight: 500; cursor: pointer;
-          transition: background .15s;
-        }
-        .nav-btn:hover { background: rgba(255,255,255,0.9); }
-        .nav-btn-danger { background: rgba(220,38,38,0.08); border-color: rgba(220,38,38,0.2); color: #d93025; }
-        .nav-btn-danger:hover { background: rgba(220,38,38,0.14); }
-        .primary {
-          background: #1D4ED8; color: #fff; border: none; border-radius: 9px;
-          padding: 10px 18px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .15s;
-        }
-        .primary:hover:not(:disabled) { background: #1740B8; }
-        .primary:disabled { opacity: .6; cursor: default; }
-        .ghost {
-          background: rgba(255,255,255,0.7); border: 1px solid rgba(0,0,0,0.08);
-          border-radius: 9px; padding: 10px 16px; font-size: 14px; font-weight: 600; color: #0C1B33; cursor: pointer;
-        }
-        .card {
-          background: rgba(255,255,255,0.65);
-          backdrop-filter: saturate(180%) blur(24px);
-          -webkit-backdrop-filter: saturate(180%) blur(24px);
-          border: 1px solid rgba(255,255,255,0.55);
-          border-radius: 16px; padding: 18px;
-          box-shadow: 0 10px 30px rgba(15,23,42,0.08), inset 0 1px 0 rgba(255,255,255,0.7);
-        }
-        .h1 { font-size: 22px; font-weight: 700; margin: 0 0 4px; }
-        .sub { font-size: 14px; color: #64748B; margin: 0 0 20px; }
-        .rounds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 14px; }
-        .round-card { cursor: pointer; transition: transform .15s, box-shadow .15s; }
-        .round-card:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(15,23,42,0.12); }
-        .bar { height: 8px; background: rgba(0,0,0,0.08); border-radius: 999px; overflow: hidden; margin-top: 10px; }
-        .bar-fill { height: 100%; background: #16A34A; border-radius: 999px; transition: width .3s; }
-        .input {
-          width: 100%; padding: 11px 14px; background: rgba(255,255,255,0.85);
-          border: 1px solid rgba(0,0,0,0.1); border-radius: 9px; font-size: 15px; color: #0C1B33; outline: none;
-        }
-        .input:focus { border-color: #1D4ED8; box-shadow: 0 0 0 3px rgba(29,78,216,0.15); }
+        .toprow { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+        .toprow .page-subtitle { margin-bottom: 0; }
+        .acties { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .rounds-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+        .round-kop { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+        .round-naam { font-weight: 700; font-size: 15px; color: var(--navy); }
+        .round-plaats { font-size: 13px; color: var(--grijs-500); margin-top: 2px; }
+        .round-voet { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--grijs-500); }
+        .bar { height: 6px; background: var(--grijs-200); border-radius: 999px; overflow: hidden; margin-top: 14px; }
+        .bar-fill { height: 100%; background: var(--groen); border-radius: 999px; transition: width .3s; }
         .combo { position: relative; }
         .hitlist {
           list-style: none; margin: 4px 0 0; padding: 0;
-          border: 1px solid rgba(0,0,0,0.1); border-radius: 10px; overflow: hidden;
+          border: 1px solid var(--grijs-200); border-radius: var(--radius-md); overflow: hidden;
           position: absolute; left: 0; right: 0; top: 100%; z-index: 20;
-          background: #fff; box-shadow: 0 12px 30px rgba(15,23,42,0.14);
+          background: var(--wit); box-shadow: var(--shadow-lg);
         }
-        .hit { padding: 10px 14px; cursor: pointer; font-size: 14px; border-top: 1px solid rgba(0,0,0,0.05); }
+        .hit { padding: 10px 14px; cursor: pointer; font-size: 14px; border-top: 1px solid var(--grijs-200); color: var(--navy); }
         .hit:first-child { border-top: none; }
-        .hit:hover, .hit-active { background: rgba(29,78,216,0.1); }
-        .row-active { background: rgba(29,78,216,0.08); }
-        .street-list { max-height: 46vh; overflow-y: auto; border: 1px solid rgba(0,0,0,0.07); border-radius: 12px; }
-        .street-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-top: 1px solid rgba(0,0,0,0.05); font-size: 14px; cursor: pointer; }
+        .hit:hover, .hit-active { background: var(--blue-light); }
+        .hit-label { color: var(--grijs-500); }
+        .twocol { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+        .twocol-kaart { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+        .kolom { display: flex; flex-direction: column; gap: 12px; }
+        .selectie-rij { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; font-size: 13px; color: var(--grijs-500); }
+        .selectie-rij strong { color: var(--navy); }
+        .street-list { max-height: 46vh; overflow-y: auto; border: 1px solid var(--grijs-200); border-radius: var(--radius-md); background: var(--wit); }
+        .street-list.hoog { max-height: 60vh; border: none; border-radius: 0; }
+        .street-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-top: 1px solid var(--grijs-200); font-size: 14px; cursor: pointer; color: var(--navy); }
         .street-row:first-child { border-top: none; }
-        .street-row:hover { background: rgba(255,255,255,0.6); }
-        .street-row.done { background: rgba(22,163,74,0.08); }
-        .num { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; border-radius: 7px; font-size: 12px; font-weight: 700; background: rgba(29,78,216,0.1); color: #1D4ED8; }
-        .num.done { background: rgba(22,163,74,0.15); color: #15803D; }
-        .err { color: #b91c1c; background: rgba(239,68,68,0.08); padding: 10px 12px; border-radius: 9px; font-size: 13px; margin-top: 12px; }
-        .toprow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-        .pill { font-size: 12px; color: #64748B; }
-        .gpsbtn { display: inline-flex; align-items: center; gap: 7px; }
-        .gps-on { background: #16A34A; }
-        .gps-on:hover:not(:disabled) { background: #128a3d; }
-        .check { width: 20px; height: 20px; accent-color: #16A34A; cursor: pointer; }
-        .steps { list-style: none; counter-reset: step; margin: 0; padding: 0; }
-        .step { counter-increment: step; display: flex; align-items: center; gap: 12px; padding: 9px 4px; border-top: 1px solid rgba(0,0,0,0.05); font-size: 14px; }
-        .step:first-child { border-top: none; }
-        .step::before { content: counter(step); flex: none; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 6px; background: rgba(29,78,216,0.1); color: #1D4ED8; font-size: 12px; font-weight: 700; }
-        .step-text { flex: 1; }
-        .step-dist { color: #64748B; font-size: 12px; white-space: nowrap; }
+        .street-row:hover { background: var(--grijs-50); }
+        .street-row.row-active { background: var(--blue-light); }
+        .street-row.done { background: var(--groen-light); }
+        .street-row.done .straat { text-decoration: line-through; color: var(--grijs-500); }
+        .straat { flex: 1; }
+        .num { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 24px; border-radius: 6px; font-size: 12px; font-weight: 700; background: var(--blue-light); color: var(--blue); }
+        .num.done { background: var(--groen-light); color: var(--groen-tekst); }
+        .check { width: 18px; height: 18px; }
+        .voortgang-kop { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .voortgang-kop label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--grijs-500); cursor: pointer; }
+        .knoppenrij { display: flex; gap: 8px; margin-top: 14px; }
+        .knoppenrij .btn-primary { flex: 1; }
+        .leeg-lijst { padding: 16px; color: var(--grijs-500); font-size: 14px; }
+        @media (max-width: 760px) {
+          .twocol, .twocol-kaart { grid-template-columns: 1fr; }
+        }
       `}</style>
 
-      <div className="wrap">
-        {/* Toolbar */}
-        <div className="toolbar">
-          <div className="toolbar-inner">
-            <div className="tb-left">
-              <img src="/header_logo.png" alt="It's Done Services" style={{ height: 22, objectFit: 'contain' }} />
-              <span style={{ width: 1, height: 16, background: 'rgba(0,0,0,0.12)' }} />
-              <span className="tb-title">Controlerondes</span>
+      {/* ============ LIJST ============ */}
+      {view === 'list' && (
+        <>
+          <div className="toprow">
+            <div>
+              <h1 className="page-title">Controlerondes</h1>
+              <p className="page-subtitle">Plan een route langs straten en houd tijdens het rijden je voortgang bij.</p>
             </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {view !== 'list' && (
-                <button className="nav-btn" onClick={() => { stopGps(); setView('list'); loadRounds(); }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5"/><path d="M12 5l-7 7 7 7"/></svg>
-                  Rondes
-                </button>
-              )}
-              <button className="nav-btn" onClick={() => router.push('/dashboard')}>Dashboard</button>
-              <button className="nav-btn nav-btn-danger" onClick={handleLogout}>Uitloggen</button>
-            </div>
+            <button className="btn btn-primary" onClick={startNewRound}>{plusIcon} Nieuwe ronde</button>
           </div>
-        </div>
 
-        <div className="content">
-          {/* ============ LIJST ============ */}
-          {view === 'list' && (
-            <>
-              <div className="toprow">
-                <div>
-                  <h1 className="h1">Controlerondes</h1>
-                  <p className="sub" style={{ margin: 0 }}>Plan een route langs straten en houd tijdens het rijden je voortgang bij.</p>
-                </div>
-                <button className="primary" onClick={startNewRound}>+ Nieuwe ronde</button>
-              </div>
-
-              {rounds.length === 0 ? (
-                <div className="card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-                  <p style={{ color: '#64748B', margin: 0 }}>Nog geen rondes. Maak er één aan om te beginnen.</p>
-                </div>
-              ) : (
-                <div className="rounds-grid">
-                  {rounds.map((r) => {
-                    const pct = r.streetsCount ? Math.round((r.doneCount / r.streetsCount) * 100) : 0;
-                    return (
-                      <div key={r.id} className="card round-card" onClick={() => openRoundById(r.id)}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                          <div>
-                            <div style={{ fontWeight: 700, fontSize: 16 }}>{r.name}</div>
-                            <div style={{ fontSize: 13, color: '#64748B' }}>{r.place}</div>
-                          </div>
-                          <button
-                            className="nav-btn nav-btn-danger"
-                            style={{ padding: '4px 8px' }}
-                            onClick={(e) => { e.stopPropagation(); deleteRound(r.id, r.name); }}
-                            aria-label="Verwijderen"
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                          </button>
-                        </div>
-                        <div className="bar"><div className="bar-fill" style={{ width: `${pct}%` }} /></div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 12, color: '#64748B' }}>
-                          <span>{r.doneCount}/{r.streetsCount} straten gereden</span>
-                          {r.routeDistance ? <span>{(r.routeDistance / 1000).toFixed(1)} km</span> : null}
-                        </div>
+          {rounds.length === 0 ? (
+            <div className="leeg">Nog geen rondes. Maak er een aan om te beginnen.</div>
+          ) : (
+            <div className="rounds-grid">
+              {rounds.map((r) => {
+                const pct = r.streetsCount ? Math.round((r.doneCount / r.streetsCount) * 100) : 0;
+                const klaar = r.streetsCount > 0 && r.doneCount >= r.streetsCount;
+                return (
+                  <div key={r.id} className="card card-interactive" onClick={() => openRoundById(r.id)}>
+                    <div className="round-kop">
+                      <div>
+                        <div className="round-naam">{r.name}</div>
+                        <div className="round-plaats">{r.place}</div>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ============ NIEUWE RONDE ============ */}
-          {view === 'new' && (
-            <>
-              <h1 className="h1">Nieuwe ronde</h1>
-              <p className="sub">
-                {wizardStep === 'place' ? 'Stap 1 · Kies een plaats' : `Stap 2 · Kies straten in ${selectedPlace}`}
-              </p>
-
-              {wizardStep === 'place' && (
-                <div className="card" style={{ maxWidth: 560 }}>
-                  <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Plaatsnaam</label>
-                  <div className="combo">
-                    <input
-                      className="input"
-                      autoFocus
-                      role="combobox"
-                      aria-expanded={placeOpen && placeHits.length > 0}
-                      aria-autocomplete="list"
-                      placeholder="Typ een plaatsnaam, bijv. Heeze"
-                      value={placeQuery}
-                      onChange={(e) => { setPlaceQuery(e.target.value); setSelectedPlace(null); setPlaceOpen(true); }}
-                      onFocus={() => { if (placeHits.length > 0) setPlaceOpen(true); }}
-                      onBlur={() => setTimeout(() => setPlaceOpen(false), 150)}
-                      onKeyDown={onPlaceKeyDown}
-                    />
-                    {placeOpen && placeHits.length > 0 && (
-                      <ul className="hitlist">
-                        {placeHits.map((h, i) => (
-                          <li
-                            key={h.label}
-                            className={`hit ${i === placeHighlight ? 'hit-active' : ''}`}
-                            onMouseEnter={() => setPlaceHighlight(i)}
-                            onMouseDown={(e) => { e.preventDefault(); choosePlace(h.name); }}
-                          >
-                            <strong>{h.name}</strong>
-                            {h.label !== h.name && <span style={{ color: '#64748B' }}> — {h.label}</span>}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                  <p style={{ fontSize: 12, color: '#64748B', margin: '8px 2px 0' }}>
-                    Kies uit de lijst of druk op Enter voor de eerste suggestie.
-                  </p>
-                  {streetsLoading && <p style={{ color: '#64748B', fontSize: 13, marginTop: 12 }}>Straten ophalen…</p>}
-                  {wizardError && <div className="err">{wizardError}</div>}
-                </div>
-              )}
-
-              {wizardStep === 'streets' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
-                  <div className="card">
-                    <div style={{ marginBottom: 10 }}>
-                      <input
-                        className="input"
-                        role="combobox"
-                        aria-autocomplete="list"
-                        placeholder="Typ om te zoeken, Enter voegt de bovenste toe…"
-                        value={streetSearch}
-                        onChange={(e) => { setStreetSearch(e.target.value); setStreetHighlight(0); }}
-                        onKeyDown={onStreetKeyDown}
-                      />
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn-danger"
+                        onClick={(e) => { e.stopPropagation(); deleteRound(r.id, r.name); }}
+                        aria-label="Verwijderen"
+                      >
+                        {trashIcon}
+                      </button>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span style={{ fontSize: 13, color: '#64748B' }}>
-                        <strong style={{ color: '#0C1B33' }}>{selectedStreets.size}</strong> geselecteerd · {allStreets.length} straten
+                    <div className="bar"><div className="bar-fill" style={{ width: `${pct}%` }} /></div>
+                    <div className="round-voet">
+                      <span className={`badge ${klaar ? 'badge-success' : r.doneCount > 0 ? 'badge-warning' : 'badge-gray'}`}>
+                        {r.doneCount}/{r.streetsCount} straten gereden
                       </span>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="nav-btn" onClick={selectAllFiltered}>Alles</button>
-                        <button className="nav-btn" onClick={deselectAll}>Wissen</button>
-                      </div>
-                    </div>
-                    <div className="street-list">
-                      {filteredStreets.length === 0 ? (
-                        <div style={{ padding: 16, color: '#64748B', fontSize: 14 }}>Geen straten.</div>
-                      ) : (
-                        filteredStreets.map((s, i) => {
-                          const sel = selectedStreets.has(s.street);
-                          return (
-                            <label
-                              key={s.street}
-                              className={`street-row ${sel ? 'done' : ''} ${i === streetHighlight ? 'row-active' : ''}`}
-                              onMouseEnter={() => setStreetHighlight(i)}
-                            >
-                              <input type="checkbox" className="check" checked={sel} onChange={() => toggleStreet(s.street)} />
-                              <span>{s.street}</span>
-                            </label>
-                          );
-                        })
-                      )}
+                      {r.routeDistance ? <span>{(r.routeDistance / 1000).toFixed(1)} km</span> : null}
                     </div>
                   </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div className="card" style={{ padding: 10 }}>
-                      <RouteMap streets={wizardMapStreets} height={280} fitKey={wizardMapStreets.length} />
-                      <p style={{ fontSize: 12, color: '#64748B', margin: '8px 4px 0' }}>
-                        De rijvolgorde en route over de wegen worden berekend zodra je de ronde aanmaakt.
-                      </p>
-                    </div>
-                    <div className="card">
-                      <label style={{ fontSize: 13, fontWeight: 600, display: 'block', marginBottom: 6 }}>Naam van de ronde</label>
-                      <input
-                        className="input"
-                        placeholder={`Bijv. Controle ${selectedPlace ?? ''}`}
-                        value={roundName}
-                        onChange={(e) => setRoundName(e.target.value)}
-                      />
-                      <label style={{ fontSize: 13, fontWeight: 600, display: 'block', margin: '12px 0 6px' }}>Notitie (optioneel)</label>
-                      <input
-                        className="input"
-                        placeholder="Bijv. wat je precies controleert"
-                        value={roundNotes}
-                        onChange={(e) => setRoundNotes(e.target.value)}
-                      />
-                      {wizardError && <div className="err">{wizardError}</div>}
-                      <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                        <button className="ghost" onClick={() => setWizardStep('place')}>Terug</button>
-                        <button className="primary" style={{ flex: 1 }} onClick={createRound} disabled={creating || selectedStreets.size === 0}>
-                          {creating ? 'Route berekenen…' : `Ronde aanmaken (${selectedStreets.size})`}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
+      {/* ============ NIEUWE RONDE ============ */}
+      {view === 'new' && (
+        <>
+          <h1 className="page-title">Nieuwe ronde</h1>
+          <p className="page-subtitle">
+            {wizardStep === 'place' ? 'Stap 1. Kies een plaats' : `Stap 2. Kies straten in ${selectedPlace}`}
+          </p>
+
+          {wizardStep === 'place' && (
+            <div className="card card-padded" style={{ maxWidth: 560 }}>
+              <p className="section-label">Plaats</p>
+              <label className="label" htmlFor="plaatsnaam">Plaatsnaam</label>
+              <div className="combo">
+                <input
+                  id="plaatsnaam"
+                  className="input"
+                  autoFocus
+                  role="combobox"
+                  aria-expanded={placeOpen && placeHits.length > 0}
+                  aria-autocomplete="list"
+                  placeholder="Typ een plaatsnaam, bijv. Heeze"
+                  value={placeQuery}
+                  onChange={(e) => { setPlaceQuery(e.target.value); setSelectedPlace(null); setPlaceOpen(true); }}
+                  onFocus={() => { if (placeHits.length > 0) setPlaceOpen(true); }}
+                  onBlur={() => setTimeout(() => setPlaceOpen(false), 150)}
+                  onKeyDown={onPlaceKeyDown}
+                />
+                {placeOpen && placeHits.length > 0 && (
+                  <ul className="hitlist">
+                    {placeHits.map((h, i) => (
+                      <li
+                        key={h.label}
+                        className={`hit ${i === placeHighlight ? 'hit-active' : ''}`}
+                        onMouseEnter={() => setPlaceHighlight(i)}
+                        onMouseDown={(e) => { e.preventDefault(); choosePlace(h.name); }}
+                      >
+                        <strong>{h.name}</strong>
+                        {h.label !== h.name && <span className="hit-label">, {h.label}</span>}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <p className="hint">Kies uit de lijst of druk op Enter voor de eerste suggestie.</p>
+              {streetsLoading && <p className="laden">Straten ophalen…</p>}
+              {wizardError && <div className="alert alert-danger" style={{ marginTop: 12 }}>{wizardError}</div>}
+            </div>
           )}
 
-          {/* ============ DETAIL / RIJDEN ============ */}
-          {view === 'detail' && detail && (
-            <>
-              <div className="toprow">
-                <div>
-                  <h1 className="h1">{detail.name}</h1>
-                  <p className="sub" style={{ margin: 0 }}>
-                    {detail.place}
-                    {detail.routeDistance ? ` · ${(detail.routeDistance / 1000).toFixed(1)} km route` : ''}
-                    {detail.notes ? ` · ${detail.notes}` : ''}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button
-                    className={`primary gpsbtn ${gpsActive ? 'gps-on' : ''}`}
-                    onClick={() => (gpsActive ? stopGps() : startGps())}
-                  >
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
-                    {gpsActive ? 'GPS aan — stop' : 'Start live GPS'}
-                  </button>
-                  <button className="ghost" onClick={resetRound}>Reset</button>
-                </div>
-              </div>
-
-              {gpsError && <div className="err" style={{ marginTop: 0, marginBottom: 12 }}>{gpsError}</div>}
-
-              <div className="card" style={{ marginBottom: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 600 }}>{doneCount}/{totalCount} straten gereden</span>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#64748B', cursor: 'pointer' }}>
-                    <input type="checkbox" className="check" checked={autoMark} onChange={(e) => setAutoMark(e.target.checked)} />
-                    Automatisch afvinken via GPS
-                  </label>
-                </div>
-                <div className="bar"><div className="bar-fill" style={{ width: `${totalCount ? (doneCount / totalCount) * 100 : 0}%` }} /></div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.15fr) minmax(0,1fr)', gap: 16, alignItems: 'start' }}>
-                <div className="card" style={{ padding: 10 }}>
-                  <RouteMap
-                    streets={detailMapStreets}
-                    geometry={geometry}
-                    userPos={userPos}
-                    onToggle={(id, next) => setStreetDone(id, next)}
-                    height={440}
+          {wizardStep === 'streets' && (
+            <div className="twocol">
+              <div className="card">
+                <p className="section-label">Straten</p>
+                <div style={{ marginBottom: 10 }}>
+                  <input
+                    className="input"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    placeholder="Typ om te zoeken, Enter voegt de bovenste toe"
+                    value={streetSearch}
+                    onChange={(e) => { setStreetSearch(e.target.value); setStreetHighlight(0); }}
+                    onKeyDown={onStreetKeyDown}
                   />
                 </div>
+                <div className="selectie-rij">
+                  <span>
+                    <strong>{selectedStreets.size}</strong> geselecteerd, {allStreets.length} straten
+                  </span>
+                  <div className="acties">
+                    <button type="button" className="btn btn-sm" onClick={selectAllFiltered}>Alles</button>
+                    <button type="button" className="btn btn-sm" onClick={deselectAll}>Wissen</button>
+                  </div>
+                </div>
+                <div className="street-list">
+                  {filteredStreets.length === 0 ? (
+                    <div className="leeg-lijst">Geen straten.</div>
+                  ) : (
+                    filteredStreets.map((s, i) => {
+                      const sel = selectedStreets.has(s.street);
+                      return (
+                        <label
+                          key={s.street}
+                          className={`street-row ${sel ? 'done' : ''} ${i === streetHighlight ? 'row-active' : ''}`}
+                          onMouseEnter={() => setStreetHighlight(i)}
+                        >
+                          <input type="checkbox" className="check" checked={sel} onChange={() => toggleStreet(s.street)} />
+                          <span>{s.street}</span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
 
-                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                  <div className="street-list" style={{ maxHeight: '60vh', border: 'none' }}>
-                    {detail.streets.map((s) => (
-                      <div
-                        key={s.id}
-                        className={`street-row ${s.isDone ? 'done' : ''}`}
-                        onClick={() => setStreetDone(s.id, !s.isDone)}
-                      >
-                        <span className={`num ${s.isDone ? 'done' : ''}`}>{s.orderIndex + 1}</span>
-                        <span style={{ flex: 1, textDecoration: s.isDone ? 'line-through' : 'none', color: s.isDone ? '#64748B' : '#0C1B33' }}>
-                          {s.street}
-                        </span>
-                        <input
-                          type="checkbox"
-                          className="check"
-                          checked={s.isDone}
-                          onChange={(e) => { e.stopPropagation(); setStreetDone(s.id, e.target.checked); }}
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                    ))}
+              <div className="kolom">
+                <div>
+                  <RouteMap streets={wizardMapStreets} height={280} fitKey={wizardMapStreets.length} />
+                  <p className="hint">De rijvolgorde en route over de wegen worden berekend zodra je de ronde aanmaakt.</p>
+                </div>
+                <div className="card">
+                  <p className="section-label">Ronde</p>
+                  <div className="veld">
+                    <label className="label" htmlFor="rondenaam">Naam van de ronde</label>
+                    <input
+                      id="rondenaam"
+                      className="input"
+                      placeholder={`Bijv. Controle ${selectedPlace ?? ''}`}
+                      value={roundName}
+                      onChange={(e) => setRoundName(e.target.value)}
+                    />
+                  </div>
+                  <div className="veld">
+                    <label className="label" htmlFor="rondenotitie">Notitie (optioneel)</label>
+                    <input
+                      id="rondenotitie"
+                      className="input"
+                      placeholder="Bijv. wat je precies controleert"
+                      value={roundNotes}
+                      onChange={(e) => setRoundNotes(e.target.value)}
+                    />
+                  </div>
+                  {wizardError && <div className="alert alert-danger">{wizardError}</div>}
+                  <div className="knoppenrij">
+                    <button type="button" className="btn" onClick={() => setWizardStep('place')}>Terug</button>
+                    <button type="button" className="btn btn-primary" onClick={createRound} disabled={creating || selectedStreets.size === 0}>
+                      {creating ? 'Route berekenen…' : `Ronde aanmaken (${selectedStreets.size})`}
+                    </button>
                   </div>
                 </div>
               </div>
-            </>
+            </div>
           )}
-        </div>
-      </div>
-    </>
+        </>
+      )}
+
+      {/* ============ DETAIL / RIJDEN ============ */}
+      {view === 'detail' && detail && (
+        <>
+          <div className="toprow">
+            <div>
+              <h1 className="page-title">{detail.name}</h1>
+              <p className="page-subtitle">
+                {detail.place}
+                {detail.routeDistance ? `, ${(detail.routeDistance / 1000).toFixed(1)} km route` : ''}
+                {detail.notes ? `, ${detail.notes}` : ''}
+              </p>
+            </div>
+            <div className="acties">
+              <button
+                type="button"
+                className={`btn ${gpsActive ? 'btn-success' : 'btn-primary'}`}
+                onClick={() => (gpsActive ? stopGps() : startGps())}
+              >
+                {gpsIcon}
+                {gpsActive ? 'GPS aan, stop' : 'Start live GPS'}
+              </button>
+              <button type="button" className="btn btn-danger-soft" onClick={resetRound}>Reset</button>
+            </div>
+          </div>
+
+          {gpsError && <div className="alert alert-danger" style={{ marginBottom: 12 }}>{gpsError}</div>}
+
+          <div className="card" style={{ marginBottom: 14 }}>
+            <div className="voortgang-kop">
+              <span className={`badge ${totalCount > 0 && doneCount >= totalCount ? 'badge-success' : doneCount > 0 ? 'badge-warning' : 'badge-gray'}`}>
+                {doneCount}/{totalCount} straten gereden
+              </span>
+              <label>
+                <input type="checkbox" className="check" checked={autoMark} onChange={(e) => setAutoMark(e.target.checked)} />
+                Automatisch afvinken via GPS
+              </label>
+            </div>
+            <div className="bar"><div className="bar-fill" style={{ width: `${totalCount ? (doneCount / totalCount) * 100 : 0}%` }} /></div>
+          </div>
+
+          <div className="twocol twocol-kaart">
+            <RouteMap
+              streets={detailMapStreets}
+              geometry={geometry}
+              userPos={userPos}
+              onToggle={(id, next) => setStreetDone(id, next)}
+              height={440}
+            />
+
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="card-kop">Straten in rijvolgorde</div>
+              <div className="street-list hoog">
+                {detail.streets.map((s) => (
+                  <div
+                    key={s.id}
+                    className={`street-row ${s.isDone ? 'done' : ''}`}
+                    onClick={() => setStreetDone(s.id, !s.isDone)}
+                  >
+                    <span className={`num ${s.isDone ? 'done' : ''}`}>{s.orderIndex + 1}</span>
+                    <span className="straat">{s.street}</span>
+                    <input
+                      type="checkbox"
+                      className="check"
+                      checked={s.isDone}
+                      onChange={(e) => { e.stopPropagation(); setStreetDone(s.id, e.target.checked); }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </AppShell>
   );
 }

@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "IDS Portal — It's Done Services",
-  description: "Werkportaal voor It's Done Services — onderhoud, registratie en beheer.",
+  title: "IDS Portal, It's Done Services",
+  description: "Werkportaal voor It's Done Services: onderhoud, registratie en beheer.",
   applicationName: "IDS Portal",
   authors: [{ name: "It's Done Services" }],
   keywords: ['it\'s done services', 'portal', 'onderhoud', 'registratie', 'beheer'],

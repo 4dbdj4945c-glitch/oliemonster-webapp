@@ -10,25 +10,6 @@ interface TooltipProps {
 export default function Tooltip({ text, children }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    // Check theme
-    const checkTheme = () => {
-      const theme = localStorage.getItem('theme') || document.documentElement.getAttribute('data-theme');
-      setIsDark(theme === 'dark');
-    };
-    
-    checkTheme();
-    
-    const observer = new MutationObserver(checkTheme);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme']
-    });
-    
-    return () => observer.disconnect();
-  }, []);
 
   useEffect(() => {
     if (isVisible) {
@@ -41,42 +22,73 @@ export default function Tooltip({ text, children }: TooltipProps) {
     }
   }, [isVisible]);
 
-  const bgColor = isDark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.9)';
-  const textColor = isDark ? '#000000' : '#ffffff';
-  const arrowColor = isDark ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.9)';
-
   return (
-    <div 
-      className="relative inline-flex"
-      onMouseEnter={() => setIsVisible(true)}
-      onMouseLeave={() => setIsVisible(false)}
-    >
-      {children}
-      {isAnimating && (
-        <div
-          className="absolute bottom-full left-1/2 mb-2 px-3 py-1.5 text-sm font-medium rounded-lg shadow-lg pointer-events-none whitespace-nowrap z-50 transition-opacity duration-150"
-          style={{
-            backgroundColor: bgColor,
-            color: textColor,
-            opacity: isVisible ? 1 : 0,
-            transform: 'translateX(-50%)',
-          }}
-        >
-          {text}
-          {/* Arrow */}
-          <div
-            className="absolute top-full left-1/2"
-            style={{
-              width: 0,
-              height: 0,
-              borderLeft: '6px solid transparent',
-              borderRight: '6px solid transparent',
-              borderTop: `6px solid ${arrowColor}`,
-              transform: 'translateX(-50%)',
-            }}
-          />
-        </div>
-      )}
-    </div>
+    <>
+      <style jsx>{`
+        .tooltip-wrap {
+          position: relative;
+          display: inline-flex;
+        }
+
+        .tooltip {
+          position: absolute;
+          bottom: 100%;
+          left: 50%;
+          margin-bottom: 8px;
+          transform: translateX(-50%);
+          padding: 6px 10px;
+          background: var(--wit);
+          border: 1px solid var(--grijs-200);
+          border-radius: 8px;
+          box-shadow: var(--shadow-md);
+          color: var(--navy);
+          font-size: 12px;
+          font-weight: 500;
+          line-height: 1.4;
+          white-space: nowrap;
+          pointer-events: none;
+          z-index: 50;
+          transition: opacity 0.15s;
+        }
+
+        .tooltip-pijl {
+          position: absolute;
+          top: 100%;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 0;
+          height: 0;
+          border-left: 6px solid transparent;
+          border-right: 6px solid transparent;
+          border-top: 6px solid var(--grijs-200);
+        }
+
+        .tooltip-pijl::after {
+          content: '';
+          position: absolute;
+          top: -7px;
+          left: -5px;
+          width: 0;
+          height: 0;
+          border-left: 5px solid transparent;
+          border-right: 5px solid transparent;
+          border-top: 5px solid var(--wit);
+        }
+      `}</style>
+
+      <div
+        className="tooltip-wrap"
+        onMouseEnter={() => setIsVisible(true)}
+        onMouseLeave={() => setIsVisible(false)}
+      >
+        {children}
+        {isAnimating && (
+          <div className="tooltip" role="tooltip" style={{ opacity: isVisible ? 1 : 0 }}>
+            {text}
+            <div className="tooltip-pijl" />
+          </div>
+        )}
+      </div>
+    </>
   );
 }

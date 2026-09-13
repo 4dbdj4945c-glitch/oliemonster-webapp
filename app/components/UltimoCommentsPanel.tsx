@@ -27,6 +27,30 @@ function todayISO() {
 
 const emptyDraft = { date: todayISO(), jobNumber: '', text: '' };
 
+const CopyIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+);
+
+const CheckIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+);
+
+const PencilIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>
+);
+
+const TrashIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+);
+
+// Kaartje voor een opmerking of het invoerformulier: grijze rand, lichtgrijze achtergrond
+const kaartStyle: React.CSSProperties = {
+  background: 'var(--grijs-50)',
+  border: '1px solid var(--grijs-200)',
+  borderRadius: 'var(--radius-md)',
+  padding: '12px',
+};
+
 export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props) {
   const [comments, setComments] = useState<UltimoComment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -158,33 +182,23 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
     return new Date(iso).toLocaleDateString('nl-NL');
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '8px 10px',
-    background: '#f5f5f7',
-    border: '1px solid rgba(0,0,0,0.15)',
-    borderRadius: '6px',
-    fontSize: '0.85rem',
-    fontFamily: 'inherit',
-  };
-
   return (
-    <div style={{ border: '1px solid rgba(0,0,0,0.1)', borderRadius: '10px', padding: '1rem', background: '#fafafc' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', gap: '0.5rem' }}>
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', gap: '8px' }}>
         <div>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0C1B33', margin: 0 }}>Opmerkingen-historie</h3>
-          <p style={{ fontSize: '0.75rem', color: '#64748B', margin: '2px 0 0' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--navy)', margin: 0 }}>Opmerkingen-historie</h3>
+          <p style={{ fontSize: '12px', color: 'var(--grijs-500)', margin: '2px 0 0' }}>
             {comments.length === 0
               ? 'Nog geen opmerkingen vastgelegd.'
-              : `${comments.length} opmerking${comments.length === 1 ? '' : 'en'} — nieuwste bovenaan.`}
+              : `${comments.length} opmerking${comments.length === 1 ? '' : 'en'}, nieuwste bovenaan.`}
           </p>
         </div>
         {isAdmin && !adding && (
           <button
             type="button"
+            className="btn btn-blue btn-sm"
             onClick={() => { setAdding(true); setNewDraft({ ...emptyDraft, date: todayISO() }); }}
             disabled={busy}
-            style={{ padding: '6px 12px', background: '#1D4ED8', color: 'white', border: 'none', borderRadius: '7px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1, whiteSpace: 'nowrap' }}
           >
             + Opmerking
           </button>
@@ -193,80 +207,90 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
 
       {/* Nieuw-opmerking formulier */}
       {isAdmin && adding && (
-        <div style={{ background: '#fff', border: '1px solid rgba(29, 78, 216,0.3)', borderRadius: '8px', padding: '0.75rem', marginBottom: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 140px' }}>
-              <label style={{ fontSize: '0.72rem', color: '#64748B', display: 'block', marginBottom: '0.2rem' }}>Datum</label>
-              <input type="date" value={newDraft.date} onChange={(e) => setNewDraft({ ...newDraft, date: e.target.value })} style={inputStyle} />
+        <div style={{ ...kaartStyle, marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="rij2">
+            <div>
+              <label className="label">Datum</label>
+              <input className="input" type="date" value={newDraft.date} onChange={(e) => setNewDraft({ ...newDraft, date: e.target.value })} />
             </div>
-            <div style={{ flex: '1 1 140px' }}>
-              <label style={{ fontSize: '0.72rem', color: '#64748B', display: 'block', marginBottom: '0.2rem' }}>Jobnummer (optioneel)</label>
-              <input type="text" value={newDraft.jobNumber} placeholder="bv. 2026-00831" onChange={(e) => setNewDraft({ ...newDraft, jobNumber: e.target.value })} style={inputStyle} />
+            <div>
+              <label className="label">Jobnummer (optioneel)</label>
+              <input className="input" type="text" value={newDraft.jobNumber} placeholder="bv. 2026-00831" onChange={(e) => setNewDraft({ ...newDraft, jobNumber: e.target.value })} />
             </div>
           </div>
           <div>
-            <label style={{ fontSize: '0.72rem', color: '#64748B', display: 'block', marginBottom: '0.2rem' }}>Opmerking</label>
-            <textarea value={newDraft.text} onChange={(e) => setNewDraft({ ...newDraft, text: e.target.value })} rows={3} placeholder="De opmerking zoals je 'm in Ultimo plaatst…" style={{ ...inputStyle, resize: 'vertical' }} />
+            <label className="label">Opmerking</label>
+            <textarea className="textarea" value={newDraft.text} onChange={(e) => setNewDraft({ ...newDraft, text: e.target.value })} rows={3} placeholder="De opmerking zoals je 'm in Ultimo plaatst" />
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button type="button" onClick={handleAdd} disabled={busy} style={{ padding: '6px 14px', background: '#1D4ED8', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>Opslaan</button>
-            <button type="button" onClick={() => { setAdding(false); setNewDraft({ ...emptyDraft }); }} style={{ padding: '6px 14px', background: '#f5f5f7', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer' }}>Annuleren</button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button type="button" className="btn btn-blue btn-sm" onClick={handleAdd} disabled={busy}>Opslaan</button>
+            <button type="button" className="btn btn-sm" onClick={() => { setAdding(false); setNewDraft({ ...emptyDraft }); }}>Annuleren</button>
           </div>
         </div>
       )}
 
       {loading ? (
-        <p style={{ fontSize: '0.875rem', color: '#64748B' }}>Laden...</p>
+        <p className="laden" style={{ padding: '8px 0' }}>Laden...</p>
       ) : comments.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: '#64748B', fontStyle: 'italic' }}>Geen opmerkingen.</p>
+        <p style={{ fontSize: '13px', color: 'var(--grijs-500)', margin: 0 }}>Geen opmerkingen.</p>
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {comments.map((c) => {
             const isEditing = editingId === c.id;
+            const copied = copiedId === c.id;
             return (
-              <li key={c.id} style={{ background: '#ffffff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '8px', padding: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.875rem', color: '#0C1B33', fontWeight: 600 }}>{formatDate(c.date)}</span>
+              <li key={c.id} style={kaartStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap', fontSize: '12px', color: 'var(--grijs-500)' }}>
+                  <span style={{ fontWeight: 600 }}>{formatDate(c.date)}</span>
                   {c.jobNumber && (
-                    <span style={{ padding: '2px 8px', fontSize: '0.7rem', fontWeight: 600, borderRadius: '9999px', background: 'rgba(29, 78, 216,0.1)', color: '#0040a0' }}>
-                      job {c.jobNumber}
-                    </span>
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span>job {c.jobNumber}</span>
+                    </>
                   )}
                 </div>
 
                 {isEditing ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <div style={{ flex: '1 1 140px' }}>
-                        <label style={{ fontSize: '0.72rem', color: '#64748B', display: 'block', marginBottom: '0.2rem' }}>Datum</label>
-                        <input type="date" value={editDraft.date} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} style={inputStyle} />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div className="rij2">
+                      <div>
+                        <label className="label">Datum</label>
+                        <input className="input" type="date" value={editDraft.date} onChange={(e) => setEditDraft({ ...editDraft, date: e.target.value })} />
                       </div>
-                      <div style={{ flex: '1 1 140px' }}>
-                        <label style={{ fontSize: '0.72rem', color: '#64748B', display: 'block', marginBottom: '0.2rem' }}>Jobnummer</label>
-                        <input type="text" value={editDraft.jobNumber} onChange={(e) => setEditDraft({ ...editDraft, jobNumber: e.target.value })} style={inputStyle} />
+                      <div>
+                        <label className="label">Jobnummer</label>
+                        <input className="input" type="text" value={editDraft.jobNumber} onChange={(e) => setEditDraft({ ...editDraft, jobNumber: e.target.value })} />
                       </div>
                     </div>
-                    <textarea value={editDraft.text} onChange={(e) => setEditDraft({ ...editDraft, text: e.target.value })} rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button type="button" onClick={() => saveEdit(c.id)} disabled={busy} style={{ padding: '6px 12px', background: '#1D4ED8', color: 'white', border: 'none', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>Opslaan</button>
-                      <button type="button" onClick={() => setEditingId(null)} style={{ padding: '6px 12px', background: '#f5f5f7', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer' }}>Annuleren</button>
+                    <textarea className="textarea" value={editDraft.text} onChange={(e) => setEditDraft({ ...editDraft, text: e.target.value })} rows={3} />
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button type="button" className="btn btn-blue btn-sm" onClick={() => saveEdit(c.id)} disabled={busy}>Opslaan</button>
+                      <button type="button" className="btn btn-sm" onClick={() => setEditingId(null)}>Annuleren</button>
                     </div>
                   </div>
                 ) : (
                   <>
-                    <p style={{ fontSize: '0.85rem', color: '#3c3c43', margin: '0 0 0.5rem', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.text}</p>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <p style={{ fontSize: '14px', color: 'var(--navy)', margin: '0 0 10px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{c.text}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <button
                         type="button"
+                        className="btn btn-sm"
                         onClick={() => copyText(c)}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', background: copiedId === c.id ? 'rgba(22, 163, 74,0.15)' : 'rgba(29, 78, 216,0.1)', color: copiedId === c.id ? '#1a7f37' : '#0040a0', border: 'none', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                        style={copied ? { color: 'var(--groen-tekst)', borderColor: '#BBF7D0', background: 'var(--groen-light)' } : undefined}
                       >
-                        {copiedId === c.id ? '✓ Gekopieerd' : '📋 Kopieer opmerking'}
+                        {copied ? CheckIcon : CopyIcon}
+                        {copied ? 'Gekopieerd' : 'Kopieer opmerking'}
                       </button>
                       {isAdmin && (
                         <>
-                          <button type="button" onClick={() => startEdit(c)} style={{ background: 'none', border: 'none', color: '#1D4ED8', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', padding: 0 }}>Bewerken</button>
-                          <button type="button" onClick={() => handleDelete(c.id)} style={{ background: 'none', border: 'none', color: '#DC2626', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', padding: 0 }}>Verwijderen</button>
+                          <button type="button" className="icon-btn" onClick={() => startEdit(c)} disabled={busy}>
+                            {PencilIcon}
+                            Bewerken
+                          </button>
+                          <button type="button" className="icon-btn icon-btn-danger" onClick={() => handleDelete(c.id)} disabled={busy}>
+                            {TrashIcon}
+                            Verwijderen
+                          </button>
                         </>
                       )}
                     </div>

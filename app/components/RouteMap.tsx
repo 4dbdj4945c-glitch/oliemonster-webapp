@@ -27,6 +27,12 @@ interface RouteMapProps {
   fitKey?: string | number;
 }
 
+// Kaartpalet, afgestemd op de huisstijl (globals.css). Leaflet wil letterlijke hex.
+const KLEUR_BEZOCHT = '#16A34A';   // groen: straat gereden
+const KLEUR_TE_DOEN = '#1D4ED8';   // blauw: nog te rijden
+const KLEUR_POSITIE = '#F97316';   // oranje: huidige positie
+const KLEUR_ROUTE = '#0C1B33';     // navy: rijroute tussen de straten
+
 export default function RouteMap({
   streets,
   geometry,
@@ -89,16 +95,17 @@ export default function RouteMap({
     if (geometry && geometry.length > 1) {
       const latlngs = geometry.map((c) => [c[1], c[0]] as [number, number]);
       L.polyline(latlngs, {
-        color: '#64748B',
+        color: KLEUR_ROUTE,
         weight: 2,
-        opacity: 0.5,
+        opacity: 0.45,
         dashArray: '3 7',
       }).addTo(overlay);
     }
 
-    // 2) Elke straat als volledige, gekleurde lijn (rood = te rijden, groen = gereden).
+    // 2) Elke straat als volledige, gekleurde lijn (blauw = te rijden, groen = gereden).
     for (const s of streets) {
-      const color = s.isDone ? '#16A34A' : '#DC2626';
+      const color = s.isDone ? KLEUR_BEZOCHT : KLEUR_TE_DOEN;
+      const tooltip = `${s.orderIndex + 1}. ${s.street}${s.isDone ? ' (gereden)' : ''}`;
       const handleClick = () => onToggleRef.current?.(s.id, !s.isDone);
 
       if (s.lines && s.lines.length) {
@@ -112,7 +119,7 @@ export default function RouteMap({
             lineCap: 'round',
             lineJoin: 'round',
           });
-          pl.bindTooltip(`${s.orderIndex + 1}. ${s.street}${s.isDone ? ' ✓' : ''}`, { sticky: true });
+          pl.bindTooltip(tooltip, { sticky: true });
           if (onToggleRef.current) pl.on('click', handleClick);
           pl.addTo(overlay);
         }
@@ -123,12 +130,12 @@ export default function RouteMap({
       const label = L.marker([s.lat, s.lng], {
         icon: L.divIcon({
           className: '',
-          html: `<div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${color};color:#fff;font:700 12px/1 system-ui;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)">${s.orderIndex + 1}</div>`,
+          html: `<div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:${color};color:#fff;font:700 12px/1 Inter,system-ui,sans-serif;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3)">${s.orderIndex + 1}</div>`,
           iconSize: [24, 24],
           iconAnchor: [12, 12],
         }),
       });
-      label.bindTooltip(`${s.orderIndex + 1}. ${s.street}${s.isDone ? ' ✓' : ''}`, { direction: 'top', offset: [0, -10] });
+      label.bindTooltip(tooltip, { direction: 'top', offset: [0, -10] });
       if (onToggleRef.current) label.on('click', handleClick);
       label.addTo(overlay);
     }
@@ -163,7 +170,7 @@ export default function RouteMap({
         radius: 8,
         color: '#ffffff',
         weight: 3,
-        fillColor: '#1D4ED8',
+        fillColor: KLEUR_POSITIE,
         fillOpacity: 1,
       })
         .bindTooltip('Jouw positie', { direction: 'top', offset: [0, -6] })
@@ -177,7 +184,10 @@ export default function RouteMap({
       style={{
         height: typeof height === 'number' ? `${height}px` : height,
         width: '100%',
-        borderRadius: 16,
+        background: 'var(--wit)',
+        border: '1px solid var(--grijs-200)',
+        borderRadius: 'var(--radius)',
+        boxShadow: 'var(--shadow-sm)',
         overflow: 'hidden',
         zIndex: 0,
       }}

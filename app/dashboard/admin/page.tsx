@@ -109,7 +109,7 @@ export default function AdminPage() {
         body: JSON.stringify({ key, value }),
       });
       if (response.ok) {
-        setSaveMessage('Instellingen opgeslagen!');
+        setSaveMessage('Instellingen opgeslagen.');
         setTimeout(() => setSaveMessage(''), 3000);
       }
     } catch (error) {
@@ -218,12 +218,16 @@ export default function AdminPage() {
   };
 
   if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f7' }}>
-        <p style={{ color: '#64748B', fontSize: '15px' }}>Laden...</p>
-      </div>
-    );
+    return <div className="laadscherm">Laden...</div>;
   }
+
+  const rolBadgeClass = (role: string) => {
+    if (role === 'admin') return 'badge badge-info';
+    if (role === 'viewer_oil2025') return 'badge badge-warning';
+    return 'badge badge-gray';
+  };
+
+  const sluitModal = () => { setShowUserModal(false); resetForm(); };
 
   return (
     <AppShell
@@ -243,195 +247,175 @@ export default function AdminPage() {
       <h1 className="page-title">Beheer</h1>
       <p className="page-subtitle">Gebruikers en kolomweergave.</p>
 
-      <div className="glass-card glass-card-padded">
-        <div style={{ borderBottom: '1px solid var(--border-subtle)', marginBottom: '20px' }}>
-          <nav style={{ display: 'flex', gap: '4px', marginBottom: '-1px' }}>
-            <button
-              onClick={() => setActiveTab('users')}
-              style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                fontWeight: 500,
-                color: activeTab === 'users' ? 'var(--accent)' : 'var(--text-secondary)',
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeTab === 'users' ? '2px solid var(--accent)' : '2px solid transparent',
-                cursor: 'pointer',
-                transition: 'color 0.15s',
-                fontFamily: 'inherit',
-              }}
-            >
-              Gebruikers
-            </button>
-            <button
-              onClick={() => setActiveTab('columns')}
-              style={{
-                padding: '10px 20px',
-                fontSize: '14px',
-                fontWeight: 500,
-                color: activeTab === 'columns' ? 'var(--accent)' : 'var(--text-secondary)',
-                background: 'transparent',
-                border: 'none',
-                borderBottom: activeTab === 'columns' ? '2px solid var(--accent)' : '2px solid transparent',
-                cursor: 'pointer',
-                transition: 'color 0.15s',
-                fontFamily: 'inherit',
-              }}
-            >
-              Kolommen
-            </button>
-          </nav>
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="tabs">
+          <button type="button" onClick={() => setActiveTab('users')} className={activeTab === 'users' ? 'on' : ''}>
+            Gebruikers
+          </button>
+          <button type="button" onClick={() => setActiveTab('columns')} className={activeTab === 'columns' ? 'on' : ''}>
+            Kolommen
+          </button>
         </div>
 
-        {saveMessage && (
-          <div className="alert alert-success" style={{ marginBottom: '16px' }}>
-            {saveMessage}
-          </div>
-        )}
-
-        {activeTab === 'users' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', margin: 0 }}>
-                Gebruikersbeheer
-              </h2>
-              <button onClick={openAddModal} className="btn btn-primary btn-sm">
-                + Nieuwe Gebruiker
-              </button>
+        <div style={{ padding: '24px' }}>
+          {saveMessage && (
+            <div className="alert alert-success" style={{ marginBottom: '16px' }}>
+              {saveMessage}
             </div>
+          )}
 
-            <div className="table-container">
-              <table className="glass-table">
-                <thead>
-                  <tr>
-                    <th>Gebruikersnaam</th>
-                    <th>Rol</th>
-                    <th>Aangemaakt</th>
-                    <th>Acties</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id}>
-                      <td style={{ fontWeight: 500 }}>
-                        {user.username}
-                        {user.id === sessionUser?.userId && (
-                          <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-tertiary)' }}>(jij)</span>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`badge ${user.role === 'admin' ? 'badge-purple' : user.role === 'viewer_oil2025' ? 'badge-gray' : 'badge-info'}`}>
-                          {ROLE_LABELS[user.role] ?? user.role}
-                        </span>
-                      </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>
-                        {new Date(user.createdAt).toLocaleDateString('nl-NL')}
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <button onClick={() => openEditModal(user)} className="btn btn-secondary btn-sm">
-                            Bewerken
-                          </button>
-                          {user.id !== sessionUser?.userId && (
-                            <>
-                              <button
-                                onClick={() => handleResetPassword(user.id, user.username)}
-                                className="btn btn-secondary btn-sm"
-                                style={{ color: 'var(--warning)' }}
-                              >
-                                Reset wachtwoord
+          {activeTab === 'users' && (
+            <div>
+              <div className="flex items-center justify-between gap-3 flex-wrap" style={{ marginBottom: '16px' }}>
+                <p className="section-label" style={{ margin: 0 }}>Gebruikersbeheer</p>
+                <button type="button" onClick={openAddModal} className="btn btn-primary">
+                  Nieuwe gebruiker
+                </button>
+              </div>
+
+              <div className="table-container">
+                <div className="table-scroll">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Gebruikersnaam</th>
+                        <th>Rol</th>
+                        <th>Aangemaakt</th>
+                        <th>Acties</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.length === 0 ? (
+                        <tr>
+                          <td colSpan={4} className="text-secondary" style={{ textAlign: 'center', padding: '32px 16px' }}>
+                            Nog geen gebruikers.
+                          </td>
+                        </tr>
+                      ) : users.map((user) => (
+                        <tr key={user.id}>
+                          <td style={{ fontWeight: 500 }}>
+                            {user.username}
+                            {user.id === sessionUser?.userId && (
+                              <span className="text-tertiary" style={{ marginLeft: '8px', fontSize: '12px' }}>(jij)</span>
+                            )}
+                          </td>
+                          <td>
+                            <span className={rolBadgeClass(user.role)}>
+                              {ROLE_LABELS[user.role] ?? user.role}
+                            </span>
+                          </td>
+                          <td className="text-secondary" style={{ whiteSpace: 'nowrap' }}>
+                            {new Date(user.createdAt).toLocaleDateString('nl-NL')}
+                          </td>
+                          <td>
+                            <div className="flex gap-1.5" style={{ whiteSpace: 'nowrap' }}>
+                              <button type="button" onClick={() => openEditModal(user)} className="btn btn-sm">
+                                Bewerken
                               </button>
-                              <button onClick={() => handleDelete(user.id)} className="btn btn-secondary btn-sm" style={{ color: 'var(--danger)' }}>
-                                Verwijderen
-                              </button>
-                            </>
+                              {user.id !== sessionUser?.userId && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleResetPassword(user.id, user.username)}
+                                    className="btn btn-sm"
+                                  >
+                                    Wachtwoord resetten
+                                  </button>
+                                  <button type="button" onClick={() => handleDelete(user.id)} className="btn btn-sm btn-danger-soft">
+                                    Verwijderen
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'columns' && (
+            <div>
+              <p className="section-label" style={{ marginBottom: '6px' }}>Kolomconfiguratie</p>
+              <p className="text-secondary" style={{ fontSize: '14px', margin: '0 0 20px 0' }}>
+                Selecteer welke kolommen zichtbaar zijn in het overzicht.
+              </p>
+
+              <div className="flex flex-col gap-2">
+                {AVAILABLE_COLUMNS.map((column) => {
+                  const checked = selectedColumns.includes(column.id);
+                  return (
+                    <label
+                      key={column.id}
+                      htmlFor={column.id}
+                      className="flex items-center justify-between gap-3"
+                      style={{
+                        padding: '12px 14px',
+                        background: 'var(--grijs-50)',
+                        border: '1px solid var(--grijs-200)',
+                        borderRadius: 'var(--radius-md)',
+                        cursor: column.required ? 'default' : 'pointer',
+                      }}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          id={column.id}
+                          checked={checked}
+                          onChange={() => toggleColumn(column.id)}
+                          disabled={column.required}
+                          style={{ width: '16px', height: '16px', cursor: 'inherit' }}
+                        />
+                        <span style={{ fontSize: '14px', fontWeight: 500, color: column.required ? 'var(--grijs-500)' : 'var(--navy)' }}>
+                          {column.name}
+                          {column.required && (
+                            <span className="text-tertiary" style={{ marginLeft: '8px', fontSize: '12px', fontWeight: 400 }}>
+                              (verplicht)
+                            </span>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'columns' && (
-          <div>
-            <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 6px 0' }}>
-              Kolom Configuratie
-            </h2>
-            <p className="glass-text-secondary" style={{ fontSize: '14px', margin: '0 0 20px 0' }}>
-              Selecteer welke kolommen zichtbaar zijn in het overzicht.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {AVAILABLE_COLUMNS.map((column) => {
-                const checked = selectedColumns.includes(column.id);
-                return (
-                  <label
-                    key={column.id}
-                    htmlFor={column.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '12px 14px',
-                      background: '#fafafa',
-                      border: '1px solid var(--border-subtle)',
-                      borderRadius: 'var(--radius-md)',
-                      cursor: column.required ? 'default' : 'pointer',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <input
-                        type="checkbox"
-                        id={column.id}
-                        checked={checked}
-                        onChange={() => toggleColumn(column.id)}
-                        disabled={column.required}
-                        style={{ width: '16px', height: '16px', accentColor: 'var(--accent)', cursor: 'inherit' }}
-                      />
-                      <span style={{
-                        fontSize: '14px',
-                        fontWeight: 500,
-                        color: column.required ? 'var(--text-secondary)' : 'var(--text-primary)',
-                      }}>
-                        {column.name}
-                        {column.required && (
-                          <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--text-tertiary)', fontWeight: 400 }}>
-                            (verplicht)
-                          </span>
-                        )}
+                        </span>
+                      </div>
+                      <span className={`badge ${checked ? 'badge-success' : 'badge-gray'}`}>
+                        {checked ? 'Zichtbaar' : 'Verborgen'}
                       </span>
-                    </div>
-                    <span className={`badge ${checked ? 'badge-success' : 'badge-gray'}`}>
-                      {checked ? 'Zichtbaar' : 'Verborgen'}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
+                    </label>
+                  );
+                })}
+              </div>
 
-            <div className="alert alert-info" style={{ marginTop: '16px' }}>
-              Sommige kolommen zijn verplicht en kunnen niet worden uitgeschakeld.
+              <div className="alert alert-info" style={{ marginTop: '16px' }}>
+                Sommige kolommen zijn verplicht en kunnen niet worden uitgeschakeld.
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <Modal
         open={showUserModal}
-        onClose={() => { setShowUserModal(false); resetForm(); }}
+        onClose={sluitModal}
         title={editingUser ? 'Gebruiker bewerken' : 'Nieuwe gebruiker toevoegen'}
+        footer={
+          <>
+            <button type="button" onClick={sluitModal} className="btn">
+              Annuleren
+            </button>
+            <button type="submit" form="admin-user-form" className="btn btn-primary">
+              {editingUser ? 'Bijwerken' : 'Toevoegen'}
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '14px' }}>
-            <label className="glass-label" htmlFor="admin-username">Gebruikersnaam</label>
+        <form id="admin-user-form" onSubmit={handleSubmit}>
+          <div className="veld">
+            <label className="label" htmlFor="admin-username">Gebruikersnaam</label>
             <input
               id="admin-username"
               type="text"
-              className="glass-input"
+              className="input"
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
               required
@@ -439,53 +423,40 @@ export default function AdminPage() {
           </div>
 
           {editingUser ? (
-            <div className="alert alert-info" style={{ marginBottom: '14px' }}>
-              Gebruik de "Reset wachtwoord" knop in het overzicht om het wachtwoord te resetten.
+            <div className="alert alert-info" style={{ marginBottom: '12px' }}>
+              Gebruik de knop &quot;Wachtwoord resetten&quot; in het overzicht om het wachtwoord te resetten.
             </div>
           ) : (
-            <div className="alert alert-success" style={{ marginBottom: '14px' }}>
-              Geen wachtwoord nodig — de gebruiker stelt zelf een wachtwoord in bij eerste login.
+            <div className="alert alert-success" style={{ marginBottom: '12px' }}>
+              Geen wachtwoord nodig. De gebruiker stelt zelf een wachtwoord in bij de eerste login.
             </div>
           )}
 
-          <div style={{ marginBottom: '14px' }}>
-            <label className="glass-label" htmlFor="admin-role">Rol</label>
+          <div className="veld">
+            <label className="label" htmlFor="admin-role">Rol</label>
             <select
               id="admin-role"
-              className="glass-select"
+              className="select"
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               required
             >
               <option value="user">Gebruiker</option>
               <option value="admin">Admin</option>
-              <option value="viewer_oil2025">Kijker – Oliemonsters 2025</option>
+              <option value="viewer_oil2025">Kijker, Oliemonsters 2025</option>
             </select>
             {formData.role === 'viewer_oil2025' && (
-              <p style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary)' }}>
+              <p className="hint">
                 Alleen-lezen toegang tot uitsluitend de module Oliemonsters 2025 (incl. foto&apos;s bekijken). Geen andere modules, geen wijzigingen.
               </p>
             )}
           </div>
 
           {formError && (
-            <div className="alert alert-danger" style={{ marginBottom: '14px' }}>
+            <div className="alert alert-danger">
               {formError}
             </div>
           )}
-
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-            <button
-              type="button"
-              onClick={() => { setShowUserModal(false); resetForm(); }}
-              className="btn btn-secondary"
-            >
-              Annuleren
-            </button>
-            <button type="submit" className="btn btn-primary">
-              {editingUser ? 'Bijwerken' : 'Toevoegen'}
-            </button>
-          </div>
         </form>
       </Modal>
     </AppShell>

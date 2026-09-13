@@ -78,16 +78,12 @@ export default function AuditLogsPage() {
     if (action.includes('DELETE')) return 'badge badge-warning';
     if (action.includes('CREATE')) return 'badge badge-success';
     if (action.includes('UPDATE')) return 'badge badge-info';
-    if (action.includes('LOGIN')) return 'badge badge-purple';
+    if (action.includes('LOGIN')) return 'badge badge-navy';
     return 'badge badge-gray';
   };
 
   if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f7' }}>
-        <p style={{ color: '#64748B', fontSize: '15px' }}>Laden...</p>
-      </div>
-    );
+    return <div className="laadscherm">Laden...</div>;
   }
 
   return (
@@ -111,14 +107,16 @@ export default function AuditLogsPage() {
       <h1 className="page-title">Audit Logs</h1>
       <p className="page-subtitle">Inzicht in acties en wijzigingen.</p>
 
-      <div className="glass-card" style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+      <div className="card" style={{ marginBottom: '16px' }}>
+        <p className="section-label">Filters</p>
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
           <div>
-            <label className="glass-label">Filter op actie</label>
+            <label className="label" htmlFor="audit-actie">Filter op actie</label>
             <select
+              id="audit-actie"
               value={actionFilter}
               onChange={(e) => setActionFilter(e.target.value)}
-              className="glass-select"
+              className="select"
             >
               <option value="">Alle acties</option>
               <option value="LOGIN">Login</option>
@@ -135,42 +133,39 @@ export default function AuditLogsPage() {
             </select>
           </div>
           <div>
-            <label className="glass-label">Filter op gebruiker</label>
+            <label className="label" htmlFor="audit-gebruiker">Filter op gebruiker</label>
             <input
+              id="audit-gebruiker"
               type="text"
               placeholder="Zoek op gebruikersnaam..."
               value={usernameFilter}
               onChange={(e) => setUsernameFilter(e.target.value)}
-              className="glass-input"
+              className="input"
             />
           </div>
         </div>
       </div>
 
-      <div className="table-container">
-        <div style={{ overflowX: 'auto' }}>
-          <table className="glass-table">
-            <thead>
-              <tr>
-                <th>Tijdstip</th>
-                <th>Gebruiker</th>
-                <th>Actie</th>
-                <th>Details</th>
-                <th>IP Adres</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {logs.length === 0 ? (
+      {logs.length === 0 ? (
+        <div className="leeg">Geen logs gevonden.</div>
+      ) : (
+        <div className="table-container">
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
-                    Geen logs gevonden
-                  </td>
+                  <th>Tijdstip</th>
+                  <th>Gebruiker</th>
+                  <th>Actie</th>
+                  <th>Details</th>
+                  <th>IP-adres</th>
+                  <th>Status</th>
                 </tr>
-              ) : (
-                logs.map((log) => (
+              </thead>
+              <tbody>
+                {logs.map((log) => (
                   <tr key={log.id}>
-                    <td style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
+                    <td className="text-secondary" style={{ whiteSpace: 'nowrap' }}>
                       {new Date(log.createdAt).toLocaleString('nl-NL')}
                     </td>
                     <td style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>
@@ -181,28 +176,28 @@ export default function AuditLogsPage() {
                         {log.action}
                       </span>
                     </td>
-                    <td style={{ maxWidth: '360px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
+                    <td className="text-secondary" style={{ maxWidth: '360px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.details || undefined}>
                       {log.details || '-'}
                     </td>
-                    <td style={{ whiteSpace: 'nowrap', color: 'var(--text-secondary)' }}>
+                    <td className="text-secondary" style={{ whiteSpace: 'nowrap' }}>
                       {log.ipAddress || '-'}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <span className={log.success ? 'badge badge-success' : 'badge badge-danger'}>
-                        {log.success ? 'Success' : 'Failed'}
+                        {log.success ? 'Geslaagd' : 'Mislukt'}
                       </span>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--text-secondary)' }}>
-        Toon de laatste {logs.length} logs
-      </div>
+      <p className="text-secondary" style={{ marginTop: '12px', fontSize: '13px' }}>
+        Toont de laatste {logs.length} logs.
+      </p>
     </AppShell>
   );
 }

@@ -123,18 +123,16 @@ export default function PrintCalculatorPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ color: '#64748B', fontSize: '15px' }}>Laden...</p>
-      </div>
+      <div className="laadscherm">Laden...</div>
     );
   }
 
   const field = (label: string, key: string, unit: string, step = 'any', help?: string) => (
     <label className="field">
-      <span className="field-label">{label}</span>
+      <span className="label">{label}</span>
       <div className="field-input-wrap">
         <input
-          className="glass-input"
+          className="input"
           type="number"
           inputMode="decimal"
           step={step}
@@ -144,7 +142,7 @@ export default function PrintCalculatorPage() {
         />
         <span className="field-unit">{unit}</span>
       </div>
-      {help && <span className="field-help">{help}</span>}
+      {help && <span className="hint">{help}</span>}
     </label>
   );
 
@@ -167,83 +165,53 @@ export default function PrintCalculatorPage() {
         }
         @media (min-width: 900px) {
           .layout { grid-template-columns: 1.3fr 1fr; }
-          .results { position: sticky; top: 90px; }
+          .results { position: sticky; top: 80px; }
         }
-        .group { margin-bottom: 18px; }
-        .group-title {
-          font-size: 12px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: var(--accent);
-          margin: 0 0 14px 0;
-        }
+        .group { margin-bottom: 20px; }
         .fields {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
           gap: 14px 16px;
         }
-        .field { display: flex; flex-direction: column; gap: 6px; }
-        .field-label { font-size: 13px; font-weight: 600; color: var(--text-secondary); }
-        .field-input-wrap { position: relative; display: flex; align-items: center; }
-        .field-input-wrap :global(input) { padding-right: 52px; }
-        .field-unit {
+        .field { display: flex; flex-direction: column; gap: 5px; }
+        .field :global(.label), .field :global(.hint) { margin: 0; }
+        :global(.field-input-wrap) { position: relative; display: flex; align-items: center; }
+        :global(.field-input-wrap input) { padding-right: 52px; }
+        :global(.field-unit) {
           position: absolute;
-          right: 12px;
+          right: 11px;
           font-size: 12px;
-          color: var(--text-tertiary);
+          color: var(--grijs-400);
           pointer-events: none;
         }
-        .field-help { font-size: 11px; color: var(--text-tertiary); line-height: 1.4; }
+        .actions { display: flex; justify-content: flex-end; margin-top: 8px; }
 
-        .hero { text-align: center; padding: 4px 0 18px; }
-        .hero-label {
-          font-size: 12px; font-weight: 600; text-transform: uppercase;
-          letter-spacing: 0.05em; color: var(--text-secondary); margin-bottom: 6px;
-        }
-        .hero-value { font-size: 42px; font-weight: 800; color: var(--text-primary); line-height: 1; letter-spacing: -1px; }
-        .hero-sub { font-size: 13px; color: var(--text-tertiary); margin-top: 8px; }
-
-        .sale-row {
-          display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-          margin: 4px 0 18px;
-        }
-        .sale-box {
-          background: var(--accent-soft);
-          border-radius: var(--radius-lg);
-          padding: 14px; text-align: center;
-        }
-        .sale-box.profit { background: var(--success-soft); }
-        .sale-box-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); margin-bottom: 5px; }
-        .sale-box-value { font-size: 22px; font-weight: 700; color: var(--accent); }
-        .sale-box.profit .sale-box-value { color: var(--success); }
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .stat-hoofd { margin-bottom: 12px; }
+        .stat-sub { font-size: 12px; color: var(--grijs-500); margin-top: 6px; }
 
         .breakdown { width: 100%; border-collapse: collapse; font-size: 13px; }
         .breakdown th {
-          text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
-          color: var(--text-tertiary); font-weight: 600; padding: 0 0 8px; border-bottom: 1px solid var(--border);
+          text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+          color: var(--grijs-500); font-weight: 700; padding: 0 0 8px; border-bottom: 1px solid var(--grijs-200);
         }
         .breakdown th:first-child { text-align: left; }
-        .breakdown td { padding: 9px 0; text-align: right; color: var(--text-primary); border-bottom: 1px solid var(--border-subtle); }
-        .breakdown td:first-child { text-align: left; color: var(--text-secondary); }
-        .breakdown tr.total td { font-weight: 700; border-top: 2px solid var(--border); border-bottom: none; padding-top: 11px; }
-        .breakdown-title { font-size: 13px; font-weight: 700; color: var(--text-primary); margin: 22px 0 10px; }
-
-        .meta-note { font-size: 12px; color: var(--text-tertiary); margin-top: 16px; line-height: 1.5; }
-        .actions { display: flex; justify-content: flex-end; margin-top: 8px; }
+        .breakdown td { padding: 9px 0; text-align: right; color: var(--navy); border-bottom: 1px solid var(--grijs-200); }
+        .breakdown td:first-child { text-align: left; color: var(--grijs-500); }
+        .breakdown tr.total td { font-weight: 700; border-top: 2px solid var(--grijs-200); border-bottom: none; padding-top: 11px; }
       `}</style>
 
       <h1 className="page-title">Printkosten calculator</h1>
       <p className="page-subtitle">
         Reken de kostprijs per bedrukt item uit (methode B: jouw hands-on tijd + machinekost).
-        Pas de getallen aan naar jouw situatie &mdash; ze worden automatisch bewaard.
+        Pas de getallen aan naar jouw situatie, ze worden automatisch bewaard.
       </p>
 
       <div className="layout">
         {/* ---- Invoer ---- */}
-        <div className="glass-card-padded">
+        <div className="card card-padded">
           <div className="group">
-            <p className="group-title">Materiaal &amp; inkt</p>
+            <p className="section-label">Materiaal &amp; inkt</p>
             <div className="fields">
               {field('Materiaal per stuk', 'materiaalPerStuk', '€', 'any', 'Bv. bierviltje: €12,60 / 100 = €0,126')}
               {field('Inktprijs', 'inktPrijsPerMl', '€/ml', 'any', '100 ml flesje ≈ €40 → €0,40/ml')}
@@ -252,17 +220,17 @@ export default function PrintCalculatorPage() {
           </div>
 
           <div className="group">
-            <p className="group-title">Tijd &amp; tarief</p>
+            <p className="section-label">Tijd &amp; tarief</p>
             <div className="fields">
               {field('Uurtarief', 'uurtarief', '€/u')}
               {field('Aantal per plaat', 'batchGrootte', 'stuks')}
-              {field('Printtijd per plaat', 'printtijdPlaat', 'min', 'any', 'Printer draait zelf — telt als machinetijd')}
+              {field('Printtijd per plaat', 'printtijdPlaat', 'min', 'any', 'Printer draait zelf, telt als machinetijd')}
               {field('Hands-on tijd per plaat', 'handsOnTijd', 'min', 'any', 'Plaat in-/uitleggen, job starten')}
             </div>
           </div>
 
           <div className="group">
-            <p className="group-title">Machine</p>
+            <p className="section-label">Machine</p>
             <div className="fields">
               {field('Aanschafprijs printer', 'printerPrijs', '€')}
               {field('Levensduur', 'printerLevensduurUren', 'print-uren', 'any', 'Over hoeveel draaiuren je de printer afschrijft')}
@@ -271,37 +239,38 @@ export default function PrintCalculatorPage() {
           </div>
 
           <div className="group" style={{ marginBottom: 0 }}>
-            <p className="group-title">Verkoop</p>
+            <p className="section-label">Verkoop</p>
             <div className="fields">
               {field('Winstopslag op kostprijs', 'winstopslag', '%')}
             </div>
           </div>
 
           <div className="actions">
-            <button className="btn btn-secondary btn-sm" onClick={resetDefaults}>Terug naar standaardwaarden</button>
+            <button className="btn btn-sm" onClick={resetDefaults}>Terug naar standaardwaarden</button>
           </div>
         </div>
 
         {/* ---- Resultaat ---- */}
         <div className="results">
-          <div className="glass-card-padded">
-            <div className="hero">
-              <div className="hero-label">Kostprijs per stuk</div>
-              <div className="hero-value">{eur(kostprijsStuk)}</div>
-              <div className="hero-sub">bij {batch} stuks per plaat &middot; {eur(totaalBatch)} per plaat</div>
-            </div>
+          <div className="stat-card stat-hoofd">
+            <div className="stat-value" style={{ color: 'var(--oranje)', fontSize: '36px' }}>{eur(kostprijsStuk)}</div>
+            <div className="stat-label">Kostprijs per stuk</div>
+            <div className="stat-sub">bij {batch} stuks per plaat &middot; {eur(totaalBatch)} per plaat</div>
+          </div>
 
-            <div className="sale-row">
-              <div className="sale-box">
-                <div className="sale-box-label">Adviesverkoop</div>
-                <div className="sale-box-value">{eur(verkoopStuk)}</div>
-              </div>
-              <div className="sale-box profit">
-                <div className="sale-box-label">Winst / stuk</div>
-                <div className="sale-box-value">{eur(winstStuk)}</div>
-              </div>
+          <div className="stats">
+            <div className="stat-card">
+              <div className="stat-value" style={{ color: 'var(--oranje)' }}>{eur(verkoopStuk)}</div>
+              <div className="stat-label">Adviesverkoop</div>
             </div>
+            <div className="stat-card">
+              <div className="stat-value" style={{ color: 'var(--groen-tekst)' }}>{eur(winstStuk)}</div>
+              <div className="stat-label">Winst per stuk</div>
+            </div>
+          </div>
 
+          <div className="card card-padded">
+            <p className="section-label">Opbouw kostprijs</p>
             <table className="breakdown">
               <thead>
                 <tr>
@@ -339,7 +308,7 @@ export default function PrintCalculatorPage() {
               </tbody>
             </table>
 
-            <p className="breakdown-title">Verkoop</p>
+            <p className="section-label" style={{ margin: '22px 0 10px' }}>Verkoop</p>
             <table className="breakdown">
               <tbody>
                 <tr>
@@ -357,7 +326,7 @@ export default function PrintCalculatorPage() {
               </tbody>
             </table>
 
-            <p className="meta-note">
+            <p className="hint" style={{ marginTop: '16px' }}>
               Machinekost = {eur(machineKostPerUur)}/print-uur (afschrijving {eur(afschrijvingPerUur)} + reiniging {eur(reinigingPerUur)}).
               De hands-on tijd is jouw eigen werk; de printtijd loopt de printer zelf en telt alleen als machinekost.
             </p>

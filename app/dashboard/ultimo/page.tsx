@@ -26,6 +26,18 @@ interface UltimoTask {
 
 const emptyForm = { jobName: '', taskDescription: '', installation: '' };
 
+const PinIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>
+);
+
+const ChevronIcon = (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+);
+
+const SearchIcon = (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+);
+
 export default function UltimoPage() {
   const [user, setUser] = useState<User | null>(null);
   const [tasks, setTasks] = useState<UltimoTask[]>([]);
@@ -150,19 +162,6 @@ export default function UltimoPage() {
   const taskDescs = Array.from(new Set(tasks.map((t) => t.taskDescription))).sort();
   const installations = Array.from(new Set(tasks.map((t) => t.installation).filter(Boolean) as string[])).sort();
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '10px 12px',
-    background: '#fff',
-    border: '1px solid rgba(0,0,0,0.15)',
-    borderRadius: '8px',
-    fontSize: '0.9rem',
-    fontFamily: 'inherit',
-  };
-  const labelStyle: React.CSSProperties = {
-    fontSize: '0.78rem', color: '#64748B', fontWeight: 600, display: 'block', marginBottom: '0.3rem',
-  };
-
   return (
     <AppShell
       title="Ultimo-opmerkingen"
@@ -176,7 +175,7 @@ export default function UltimoPage() {
     >
       <h1 className="page-title">Ultimo-opmerkingen</h1>
       <p className="page-subtitle">
-        Houd per onderhoudstaak (looprouteregel) bij welke opmerking je wanneer in Ultimo plaatste — en kopieer 'm de volgende keer exact opnieuw.
+        Houd per onderhoudstaak (looprouteregel) bij welke opmerking je wanneer in Ultimo plaatste, en kopieer &apos;m de volgende keer exact opnieuw.
       </p>
 
       {/* Zoekbalk + nieuwe taak */}
@@ -186,72 +185,71 @@ export default function UltimoPage() {
 
       <div style={{ display: 'flex', gap: '10px', alignItems: 'center', margin: '8px 0 20px', flexWrap: 'wrap' }}>
         <div style={{ position: 'relative', flex: '1 1 280px' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+          <span style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', display: 'flex', color: 'var(--grijs-400)', pointerEvents: 'none' }}>
+            {SearchIcon}
+          </span>
           <input
             type="search"
+            className="input"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Zoek op taak, jobnaam, installatie, jobnummer of opmerking…"
-            style={{ ...inputStyle, paddingLeft: '38px' }}
+            placeholder="Zoek op taak, jobnaam, installatie, jobnummer of opmerking"
+            style={{ paddingLeft: '36px' }}
           />
         </div>
         {isAdmin && (
-          <button
-            type="button"
-            onClick={openAdd}
-            style={{ padding: '10px 16px', background: '#1D4ED8', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
-          >
+          <button type="button" className="btn btn-primary" onClick={openAdd}>
             + Nieuwe taak
           </button>
         )}
       </div>
 
       {loading ? (
-        <p style={{ color: '#64748B' }}>Laden...</p>
+        <p className="laden">Laden...</p>
       ) : tasks.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748B' }}>
+        <div className="leeg">
           {search
-            ? <>Geen taken gevonden voor “{search}”.</>
-            : <>Nog geen taken. {isAdmin && 'Klik op “+ Nieuwe taak” om te beginnen.'}</>}
+            ? <>Geen taken gevonden voor &ldquo;{search}&rdquo;.</>
+            : <>Nog geen taken. {isAdmin && 'Klik op "+ Nieuwe taak" om te beginnen.'}</>}
         </div>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {tasks.map((task) => {
             const expanded = expandedId === task.id;
             return (
-              <li
-                key={task.id}
-                style={{ background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '14px', boxShadow: '0 1px 3px rgba(15,23,42,0.06)', overflow: 'hidden' }}
-              >
-                <div
-                  onClick={() => setExpandedId(expanded ? null : task.id)}
-                  style={{ padding: '16px 18px', cursor: 'pointer', display: 'flex', gap: '12px', alignItems: 'flex-start' }}
-                >
+              <li key={task.id} className="rij-item">
+                <div className="rij-item-kop" onClick={() => setExpandedId(expanded ? null : task.id)}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#1D4ED8', textTransform: 'uppercase', letterSpacing: '0.03em' }}>{task.jobName}</div>
-                    <div style={{ fontSize: '1.02rem', fontWeight: 600, color: '#0C1B33', marginTop: '2px' }}>{task.taskDescription}</div>
-                    {task.installation && <div style={{ fontSize: '0.82rem', color: '#64748B', marginTop: '3px' }}>📍 {task.installation}</div>}
+                    <div className="eyebrow">{task.jobName}</div>
+                    <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--navy)', marginTop: '2px' }}>{task.taskDescription}</div>
+                    {task.installation && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--grijs-500)', marginTop: '4px' }}>
+                        {PinIcon}
+                        <span>{task.installation}</span>
+                      </div>
+                    )}
                     {task.lastComment && (
-                      <div style={{ fontSize: '0.84rem', color: '#3c3c43', marginTop: '8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                        <span style={{ color: '#8e8e93' }}>Laatst{task.lastDate ? ` (${formatDate(task.lastDate)})` : ''}: </span>
+                      <div style={{ fontSize: '13px', color: 'var(--grijs-700)', marginTop: '8px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        <span style={{ color: 'var(--grijs-500)' }}>Laatst{task.lastDate ? ` (${formatDate(task.lastDate)})` : ''}: </span>
                         {task.lastComment}
                       </div>
                     )}
                   </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                    <span style={{ fontSize: '0.72rem', color: '#64748B', background: '#f2f2f7', borderRadius: '9999px', padding: '3px 9px', fontWeight: 600 }}>
-                      {task.commentsCount}×
+                  <div style={{ flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                    <span className="badge badge-gray">{task.commentsCount}×</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', fontSize: '12px', fontWeight: 500, color: 'var(--blue)' }}>
+                      <span style={{ display: 'flex', transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>{ChevronIcon}</span>
+                      {expanded ? 'Sluit' : 'Historie'}
                     </span>
-                    <span style={{ fontSize: '0.78rem', color: '#1D4ED8' }}>{expanded ? '▲ sluit' : '▼ historie'}</span>
                   </div>
                 </div>
 
                 {expanded && (
-                  <div style={{ padding: '0 18px 18px' }}>
+                  <div className="rij-item-romp">
                     {isAdmin && (
-                      <div style={{ display: 'flex', gap: '14px', marginBottom: '10px' }}>
-                        <button type="button" onClick={() => openEdit(task)} style={{ background: 'none', border: 'none', color: '#1D4ED8', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', padding: 0 }}>Taak bewerken</button>
-                        <button type="button" onClick={() => deleteTask(task)} style={{ background: 'none', border: 'none', color: '#DC2626', fontSize: '0.8rem', fontWeight: 500, cursor: 'pointer', padding: 0 }}>Taak verwijderen</button>
+                      <div style={{ display: 'flex', gap: '14px', marginBottom: '12px' }}>
+                        <button type="button" className="btn-link" onClick={() => openEdit(task)}>Taak bewerken</button>
+                        <button type="button" className="btn-link btn-link-danger" onClick={() => deleteTask(task)}>Taak verwijderen</button>
                       </div>
                     )}
                     <UltimoCommentsPanel taskId={task.id} isAdmin={!!isAdmin} onChange={loadTasks} />
@@ -270,26 +268,26 @@ export default function UltimoPage() {
         title={editingTask ? 'Taak bewerken' : 'Nieuwe taak'}
         footer={
           <>
-            <button type="button" onClick={() => setShowModal(false)} style={{ padding: '8px 16px', background: '#f5f5f7', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 500, cursor: 'pointer' }}>Annuleren</button>
-            <button type="button" onClick={saveTask} disabled={saving} style={{ padding: '8px 16px', background: '#1D4ED8', color: 'white', border: 'none', borderRadius: '8px', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>Opslaan</button>
+            <button type="button" className="btn" onClick={() => setShowModal(false)}>Annuleren</button>
+            <button type="button" className="btn btn-primary" onClick={saveTask} disabled={saving}>Opslaan</button>
           </>
         }
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
-            <label style={labelStyle}>Jobnaam</label>
-            <input list="dl-jobname" value={form.jobName} onChange={(e) => setForm({ ...form, jobName: e.target.value })} placeholder="bv. Onderhoud pompen hal 2" style={inputStyle} />
+            <label className="label">Jobnaam</label>
+            <input className="input" list="dl-jobname" value={form.jobName} onChange={(e) => setForm({ ...form, jobName: e.target.value })} placeholder="bv. Onderhoud pompen hal 2" />
           </div>
           <div>
-            <label style={labelStyle}>Taakomschrijving (looprouteregel)</label>
-            <input list="dl-task" value={form.taskDescription} onChange={(e) => setForm({ ...form, taskDescription: e.target.value })} placeholder="bv. Controleer lagering pomp 3" style={inputStyle} />
-            <div style={{ fontSize: '0.74rem', color: '#9ca3af', marginTop: '4px' }}>Typ 'm steeds hetzelfde — kies uit de suggesties zodat je historie netjes bij elkaar blijft.</div>
+            <label className="label">Taakomschrijving (looprouteregel)</label>
+            <input className="input" list="dl-task" value={form.taskDescription} onChange={(e) => setForm({ ...form, taskDescription: e.target.value })} placeholder="bv. Controleer lagering pomp 3" />
+            <p className="hint">Typ &apos;m steeds hetzelfde en kies uit de suggesties, zodat je historie netjes bij elkaar blijft.</p>
           </div>
           <div>
-            <label style={labelStyle}>Installatie / object <span style={{ fontWeight: 400 }}>(optioneel)</span></label>
-            <input list="dl-installation" value={form.installation} onChange={(e) => setForm({ ...form, installation: e.target.value })} placeholder="bv. Pomp P-301 / Ketelhuis" style={inputStyle} />
+            <label className="label">Installatie / object <span style={{ fontWeight: 400 }}>(optioneel)</span></label>
+            <input className="input" list="dl-installation" value={form.installation} onChange={(e) => setForm({ ...form, installation: e.target.value })} placeholder="bv. Pomp P-301 / Ketelhuis" />
           </div>
-          {formError && <div style={{ color: '#DC2626', fontSize: '0.85rem' }}>{formError}</div>}
+          {formError && <div className="alert alert-danger">{formError}</div>}
         </div>
       </Modal>
     </AppShell>

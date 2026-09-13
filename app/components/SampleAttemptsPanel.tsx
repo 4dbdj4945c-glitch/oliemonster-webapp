@@ -190,18 +190,11 @@ export default function SampleAttemptsPanel({
   };
 
   return (
-    <div style={{
-      border: '1px solid rgba(0,0,0,0.1)',
-      borderRadius: '10px',
-      padding: '1rem',
-      background: '#fafafc',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
+    <div className="card" style={{ background: 'var(--grijs-50)', padding: '14px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '12px', flexWrap: 'wrap' }}>
         <div>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#0C1B33', margin: 0 }}>
-            Monsternames (pogingen)
-          </h3>
-          <p style={{ fontSize: '0.75rem', color: '#64748B', margin: '2px 0 0' }}>
+          <p className="section-label" style={{ margin: 0 }}>Monsternames (pogingen)</p>
+          <p className="hint" style={{ margin: '3px 0 0' }}>
             {attempts.length === 0
               ? 'Nog geen monsternames vastgelegd.'
               : `${attempts.length} monstername${attempts.length === 1 ? '' : 's'} voor ${oNumber}.`}
@@ -212,17 +205,7 @@ export default function SampleAttemptsPanel({
             type="button"
             onClick={handleAdd}
             disabled={busy}
-            style={{
-              padding: '6px 12px',
-              background: '#1D4ED8',
-              color: 'white',
-              border: 'none',
-              borderRadius: '7px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: busy ? 'not-allowed' : 'pointer',
-              opacity: busy ? 0.6 : 1,
-            }}
+            className="btn btn-sm btn-blue"
           >
             + Hermonstering
           </button>
@@ -230,28 +213,20 @@ export default function SampleAttemptsPanel({
       </div>
 
       {loading ? (
-        <p style={{ fontSize: '0.875rem', color: '#64748B' }}>Laden...</p>
+        <p className="laden" style={{ padding: '8px 0' }}>Laden...</p>
       ) : attempts.length === 0 ? (
-        <p style={{ fontSize: '0.875rem', color: '#64748B', fontStyle: 'italic' }}>
+        <p className="text-secondary" style={{ fontSize: '13px', fontStyle: 'italic', margin: 0 }}>
           Geen monsternames.
         </p>
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {attempts.map((attempt, idx) => {
             const isEditing = editingId === attempt.id;
             return (
-              <li
-                key={attempt.id}
-                style={{
-                  background: '#ffffff',
-                  border: '1px solid rgba(0,0,0,0.08)',
-                  borderRadius: '8px',
-                  padding: '0.75rem',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
+              <li key={attempt.id} className="card" style={{ padding: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '12px' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                       <span style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -259,29 +234,22 @@ export default function SampleAttemptsPanel({
                         width: '22px',
                         height: '22px',
                         borderRadius: '50%',
-                        background: '#e5e5ea',
-                        color: '#0C1B33',
+                        background: 'var(--grijs-200)',
+                        color: 'var(--navy)',
                         fontSize: '12px',
                         fontWeight: 700,
                       }}>
                         {idx + 1}
                       </span>
-                      <span style={{
-                        padding: '2px 8px',
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        borderRadius: '9999px',
-                        background: attempt.isTaken ? 'rgba(22, 163, 74,0.15)' : 'rgba(220, 38, 38,0.12)',
-                        color: attempt.isTaken ? '#1a7f37' : '#CC2900',
-                      }}>
+                      <span className={`badge ${attempt.isTaken ? 'badge-success' : 'badge-danger'}`}>
                         {attempt.isTaken ? 'Genomen' : 'Gepland'}
                       </span>
-                      <span style={{ fontSize: '0.875rem', color: '#0C1B33', fontWeight: 500 }}>
+                      <span style={{ fontSize: '14px', color: 'var(--navy)', fontWeight: 500 }}>
                         {formatDate(attempt.sampleDate)}
                       </span>
                     </div>
                     {!isEditing && attempt.remarks && (
-                      <p style={{ fontSize: '0.8rem', color: '#3c3c43', margin: '0.25rem 0 0', whiteSpace: 'pre-wrap' }}>
+                      <p style={{ fontSize: '13px', color: 'var(--grijs-700)', margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>
                         {attempt.remarks}
                       </p>
                     )}
@@ -289,131 +257,82 @@ export default function SampleAttemptsPanel({
                 </div>
 
                 {isEditing ? (
-                  <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#3c3c43' }}>
+                  <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--navy)', cursor: 'pointer' }}>
                       <input
                         type="checkbox"
                         checked={draft.isTaken}
                         onChange={(e) => setDraft({ ...draft, isTaken: e.target.checked })}
-                        style={{ accentColor: '#1D4ED8' }}
                       />
                       Monster is genomen
                     </label>
                     <div>
-                      <label style={{ fontSize: '0.75rem', color: '#64748B', display: 'block', marginBottom: '0.25rem' }}>
+                      <label className="label">
                         Datum afname {!draft.isTaken && '(optioneel)'}
                       </label>
                       <input
                         type="date"
                         value={draft.sampleDate}
                         onChange={(e) => setDraft({ ...draft, sampleDate: e.target.value })}
-                        style={{
-                          width: '100%',
-                          padding: '8px 10px',
-                          background: '#f5f5f7',
-                          border: '1px solid rgba(0,0,0,0.15)',
-                          borderRadius: '6px',
-                          fontSize: '0.85rem',
-                        }}
+                        className="input"
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.75rem', color: '#64748B', display: 'block', marginBottom: '0.25rem' }}>
-                        Opmerking
-                      </label>
+                      <label className="label">Opmerking</label>
                       <textarea
                         value={draft.remarks}
                         onChange={(e) => setDraft({ ...draft, remarks: e.target.value })}
                         rows={2}
                         placeholder="Bijv. reden hermonstering"
-                        style={{
-                          width: '100%',
-                          padding: '8px 10px',
-                          background: '#f5f5f7',
-                          border: '1px solid rgba(0,0,0,0.15)',
-                          borderRadius: '6px',
-                          fontSize: '0.85rem',
-                          fontFamily: 'inherit',
-                          resize: 'vertical',
-                        }}
+                        className="textarea"
+                        style={{ minHeight: '60px' }}
                       />
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         type="button"
                         onClick={() => saveEdit(attempt.id)}
                         disabled={busy}
-                        style={{
-                          padding: '6px 12px',
-                          background: '#1D4ED8',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          opacity: busy ? 0.6 : 1,
-                        }}
+                        className="btn btn-sm btn-blue"
                       >
                         Opslaan
                       </button>
                       <button
                         type="button"
                         onClick={cancelEdit}
-                        style={{
-                          padding: '6px 12px',
-                          background: '#f5f5f7',
-                          border: '1px solid rgba(0,0,0,0.1)',
-                          borderRadius: '6px',
-                          fontSize: '0.8rem',
-                          fontWeight: 500,
-                          cursor: 'pointer',
-                        }}
+                        className="btn btn-sm"
                       >
                         Annuleren
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                       {attempt.photoUrl ? (
                         <>
                           <button
                             type="button"
-                            onClick={() => onPhotoClick(attempt.photoUrl!, `${oNumber} — poging ${idx + 1}`)}
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#1D4ED8',
-                              fontSize: '0.8rem',
-                              cursor: 'pointer',
-                              padding: 0,
-                              textDecoration: 'underline',
-                            }}
+                            onClick={() => onPhotoClick(attempt.photoUrl!, `${oNumber}, poging ${idx + 1}`)}
+                            className="btn-link"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                           >
-                            📷 Bekijk foto
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                            Bekijk foto
                           </button>
                           {isAdmin && (
                             <button
                               type="button"
                               onClick={() => handlePhotoDelete(attempt.id)}
-                              style={{
-                                background: 'none',
-                                border: 'none',
-                                color: '#DC2626',
-                                fontSize: '0.8rem',
-                                cursor: 'pointer',
-                                padding: 0,
-                              }}
+                              className="btn-link btn-link-danger"
                             >
                               Verwijder foto
                             </button>
                           )}
                         </>
                       ) : isAdmin ? (
-                        <label style={{ fontSize: '0.8rem', color: '#64748B', cursor: 'pointer' }}>
-                          {uploadingPhotoId === attempt.id ? '↻ Uploaden...' : '+ Foto'}
+                        <label className="btn-link" style={{ color: 'var(--grijs-500)', cursor: 'pointer' }}>
+                          {uploadingPhotoId === attempt.id ? 'Uploaden...' : '+ Foto'}
                           <input
                             type="file"
                             accept="image/*"
@@ -427,38 +346,22 @@ export default function SampleAttemptsPanel({
                           />
                         </label>
                       ) : (
-                        <span style={{ fontSize: '0.8rem', color: '#94A3B8' }}>Geen foto</span>
+                        <span className="text-tertiary" style={{ fontSize: '13px' }}>Geen foto</span>
                       )}
                     </div>
                     {isAdmin && (
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', gap: '12px' }}>
                         <button
                           type="button"
                           onClick={() => startEdit(attempt)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#1D4ED8',
-                            fontSize: '0.8rem',
-                            fontWeight: 500,
-                            cursor: 'pointer',
-                            padding: 0,
-                          }}
+                          className="btn-link"
                         >
                           Bewerken
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(attempt.id)}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#DC2626',
-                            fontSize: '0.8rem',
-                            fontWeight: 500,
-                            cursor: 'pointer',
-                            padding: 0,
-                          }}
+                          className="btn-link btn-link-danger"
                         >
                           Verwijderen
                         </button>

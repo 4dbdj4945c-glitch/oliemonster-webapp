@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Modal from '@/app/components/ui/Modal';
 
 export default function InstallButton() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -51,162 +52,81 @@ export default function InstallButton() {
     switch (platform) {
       case 'ios':
         return (
-          <div>
-            <p style={{ marginBottom: '1rem', fontSize: '0.875rem', lineHeight: '1.5' }}>
-              1. Tik op het <strong>Deel</strong> icoon (□↑) onderaan Safari<br/>
-              2. Scroll naar beneden en tik op <strong>"Voeg toe aan beginscherm"</strong><br/>
-              3. Tik op <strong>"Voeg toe"</strong>
-            </p>
-          </div>
+          <ol className="stappen">
+            <li>Tik op <strong>Deel</strong> onderaan in Safari.</li>
+            <li>Scroll naar beneden en tik op <strong>Zet op beginscherm</strong>.</li>
+            <li>Tik op <strong>Voeg toe</strong>.</li>
+          </ol>
         );
       case 'macos':
         return (
-          <div>
-            <p style={{ marginBottom: '1rem', fontSize: '0.875rem', lineHeight: '1.5' }}>
-              1. Klik in Safari op <strong>Deel</strong> (□↑) in de werkbalk<br/>
-              2. Klik op <strong>"Voeg toe aan Dock"</strong><br/>
-              3. De app verschijnt in je Dock
-            </p>
-            <p style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)', marginTop: '1rem' }}>
-              💡 Tip: Sleep de app uit je Dock naar je bureaublad voor snelle toegang
-            </p>
-          </div>
+          <>
+            <ol className="stappen">
+              <li>Klik in Safari op <strong>Deel</strong> in de werkbalk.</li>
+              <li>Klik op <strong>Voeg toe aan Dock</strong>.</li>
+              <li>De app verschijnt in je Dock.</li>
+            </ol>
+            <p className="hint">Tip: sleep de app uit je Dock naar je bureaublad voor snelle toegang.</p>
+          </>
         );
       case 'windows':
         return (
-          <div>
-            <p style={{ marginBottom: '1rem', fontSize: '0.875rem', lineHeight: '1.5' }}>
-              <strong>Chrome/Edge:</strong><br/>
-              1. Klik op het <strong>+</strong> icoon in de adresbalk<br/>
-              2. Of: Menu (⋮) → <strong>"App installeren"</strong><br/>
-              <br/>
-              <strong>Firefox:</strong><br/>
-              Sleep het adresbalk icoon naar je bureaublad
-            </p>
-          </div>
+          <>
+            <p className="section-label">Chrome of Edge</p>
+            <ol className="stappen">
+              <li>Klik op het installatie-icoon in de adresbalk.</li>
+              <li>Of kies in het menu <strong>App installeren</strong>.</li>
+            </ol>
+            <p className="section-label">Firefox</p>
+            <p className="tekst">Sleep het icoon in de adresbalk naar je bureaublad.</p>
+          </>
         );
       case 'android':
         return (
-          <div>
-            <p style={{ marginBottom: '1rem', fontSize: '0.875rem', lineHeight: '1.5' }}>
-              <strong>Chrome:</strong><br/>
-              1. Tik op Menu (⋮) rechtsboven<br/>
-              2. Tik op <strong>"App installeren"</strong> of <strong>"Toevoegen aan startscherm"</strong><br/>
-              3. Tik op <strong>"Installeren"</strong>
-            </p>
-          </div>
+          <>
+            <p className="section-label">Chrome</p>
+            <ol className="stappen">
+              <li>Tik op het menu rechtsboven.</li>
+              <li>Tik op <strong>App installeren</strong> of <strong>Toevoegen aan startscherm</strong>.</li>
+              <li>Tik op <strong>Installeren</strong>.</li>
+            </ol>
+          </>
         );
       default:
         return (
-          <div>
-            <p style={{ fontSize: '0.875rem', lineHeight: '1.5' }}>
-              Gebruik de installeer/toevoegen functie van je browser om deze webapp toe te voegen aan je apparaat.
-            </p>
-          </div>
+          <p className="tekst">
+            Gebruik de installeer- of toevoegfunctie van je browser om deze webapp aan je apparaat toe te voegen.
+          </p>
         );
     }
   };
 
   return (
     <>
-      <style jsx>{`
-        .install-button {
-          width: 100%;
-          margin-top: 1rem;
-          padding: 12px;
-          background: rgba(255, 255, 255, 0.1);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 12px;
-          color: rgba(255, 255, 255, 0.9);
-          font-size: 14px;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.3s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
+      <div className="install-wrap">
+        <button type="button" onClick={handleInstallClick} className="btn btn-block">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          App installeren
+        </button>
+        <p className="install-uitleg">Zet de portal als app op je beginscherm of bureaublad.</p>
+      </div>
+
+      <Modal
+        open={showInstructions}
+        onClose={() => setShowInstructions(false)}
+        title="App installeren"
+        footer={
+          <button type="button" onClick={() => setShowInstructions(false)} className="btn btn-primary">
+            Sluiten
+          </button>
         }
-
-        .install-button:hover {
-          background: rgba(255, 255, 255, 0.15);
-          border-color: rgba(255, 255, 255, 0.3);
-          transform: translateY(-1px);
-        }
-
-        .modal-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0, 0, 0, 0.7);
-          backdrop-filter: blur(4px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 20px;
-          z-index: 1000;
-        }
-
-        .modal-content {
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 24px;
-          padding: 2rem;
-          max-width: 480px;
-          width: 100%;
-          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-
-        .modal-title {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: white;
-          margin-bottom: 1.5rem;
-          text-align: center;
-        }
-
-        .close-button {
-          width: 100%;
-          margin-top: 1.5rem;
-          padding: 12px 24px;
-          background: linear-gradient(135deg, #c2410c 0%, #f97316 100%);
-          border: none;
-          border-radius: 12px;
-          color: white;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.3s ease;
-        }
-
-        .close-button:hover {
-          background: linear-gradient(135deg, #f97316 0%, #fbbf24 100%);
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
-        }
-      `}</style>
-
-      <button onClick={handleInstallClick} className="install-button">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
-        Installeer App
-      </button>
-
-      {showInstructions && (
-        <div className="modal-overlay" onClick={() => setShowInstructions(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2 className="modal-title">📱 Installeer Oliemonster</h2>
-            <div style={{ color: 'rgba(255, 255, 255, 0.9)' }}>
-              {getInstructions()}
-            </div>
-            <button onClick={() => setShowInstructions(false)} className="close-button">
-              Sluiten
-            </button>
-          </div>
-        </div>
-      )}
+      >
+        {getInstructions()}
+      </Modal>
     </>
   );
 }

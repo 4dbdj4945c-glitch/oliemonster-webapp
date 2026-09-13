@@ -99,8 +99,8 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f5f5f7' }}>
-        <p style={{ color: '#64748B', fontSize: '15px' }}>Laden...</p>
+      <div className="laadscherm">
+        <p>Laden...</p>
       </div>
     );
   }
@@ -110,12 +110,17 @@ export default function DashboardPage() {
       <style jsx>{`
         .page {
           min-height: 100vh;
+          background: var(--grijs-100);
         }
 
         .content {
           max-width: 1100px;
           margin: 0 auto;
-          padding: 40px 24px;
+          padding: 32px 24px;
+        }
+
+        @media (max-width: 640px) {
+          .content { padding: 20px 16px; }
         }
 
         .cards-grid {
@@ -125,30 +130,23 @@ export default function DashboardPage() {
           margin-bottom: 32px;
         }
 
+        /* Module-kaart: vlakke witte kaart met accentlijn bovenin */
         .module-card {
-          background: rgba(255, 255, 255, 0.65);
-          backdrop-filter: saturate(180%) blur(24px);
-          -webkit-backdrop-filter: saturate(180%) blur(24px);
-          border: 1px solid rgba(255, 255, 255, 0.55);
-          border-radius: 18px;
+          background: var(--wit);
+          border: 1px solid var(--grijs-200);
+          border-radius: var(--radius);
           padding: 24px;
           cursor: pointer;
-          transition: box-shadow 0.2s, transform 0.2s, background 0.2s;
+          transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
           position: relative;
           overflow: hidden;
-          box-shadow:
-            0 10px 30px rgba(15, 23, 42, 0.08),
-            0 2px 6px rgba(15, 23, 42, 0.04),
-            inset 0 1px 0 rgba(255, 255, 255, 0.7);
+          box-shadow: var(--shadow-sm);
         }
 
         .module-card:hover {
-          background: rgba(255, 255, 255, 0.8);
-          box-shadow:
-            0 16px 40px rgba(15, 23, 42, 0.12),
-            0 4px 10px rgba(15, 23, 42, 0.06),
-            inset 0 1px 0 rgba(255, 255, 255, 0.8);
-          transform: translateY(-3px);
+          border-color: var(--grijs-300);
+          box-shadow: var(--shadow-md);
+          transform: translateY(-2px);
         }
 
         .card-accent {
@@ -158,7 +156,6 @@ export default function DashboardPage() {
           right: 0;
           height: 3px;
           background: var(--accent-color);
-          border-radius: 18px 18px 0 0;
         }
 
         .card-icon {
@@ -168,46 +165,40 @@ export default function DashboardPage() {
           width: 46px;
           height: 46px;
           margin-bottom: 16px;
-          border-radius: 12px;
+          border-radius: var(--radius-md);
           color: var(--accent-color);
           background: color-mix(in srgb, var(--accent-color) 10%, transparent);
         }
 
         .card-title {
-          font-size: 17px;
-          font-weight: 600;
-          color: #0C1B33;
+          font-size: 16px;
+          font-weight: 700;
+          color: var(--navy);
           margin: 0 0 6px 0;
+          letter-spacing: -0.01em;
         }
 
         .card-description {
           font-size: 13px;
-          color: #64748B;
+          color: var(--grijs-500);
           margin: 0 0 18px 0;
           line-height: 1.5;
         }
 
         .card-stats {
           display: flex;
-          gap: 20px;
+          gap: 24px;
           padding-top: 16px;
-          border-top: 1px solid rgba(0, 0, 0, 0.06);
+          border-top: 1px solid var(--grijs-200);
         }
 
+        /* Statistiek in de accentkleur van de kaart; .stat-label komt uit globals.css */
         .stat-value {
-          font-size: 22px;
-          font-weight: 700;
+          font-size: 24px;
+          font-weight: 800;
+          letter-spacing: -0.03em;
           color: var(--accent-color);
-          line-height: 1;
-          margin-bottom: 3px;
-        }
-
-        .stat-label {
-          font-size: 11px;
-          color: #64748B;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-          font-weight: 500;
+          line-height: 1.1;
         }
       `}</style>
 
@@ -216,7 +207,7 @@ export default function DashboardPage() {
         <div className="toolbar">
           <div className="toolbar-inner">
             <div className="toolbar-left">
-              <img src="/header_logo.png" alt="It's Done Services" style={{ height: '22px', objectFit: 'contain' }} />
+              <img src="/header_logo.png" alt="It's Done Services" className="toolbar-logo" />
               <div className="toolbar-divider" />
               <span className="toolbar-title">Registratie & Beheer Portal</span>
             </div>
@@ -248,7 +239,7 @@ export default function DashboardPage() {
           <div className="cards-grid">
             <div
               className="module-card"
-              style={{ '--accent-color': '#1D4ED8' } as React.CSSProperties}
+              style={{ '--accent-color': 'var(--blue)' } as React.CSSProperties}
               onClick={() => router.push('/dashboard/oliemonsters')}
             >
               <div className="card-accent" />
@@ -328,7 +319,7 @@ export default function DashboardPage() {
 
             <div
               className="module-card"
-              style={{ '--accent-color': '#B45309' } as React.CSSProperties}
+              style={{ '--accent-color': 'var(--geel-tekst)' } as React.CSSProperties}
               onClick={() => router.push('/dashboard/print-calculator')}
             >
               <div className="card-accent" />

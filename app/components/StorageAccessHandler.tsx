@@ -13,7 +13,7 @@ export default function StorageAccessHandler() {
   useEffect(() => {
     // Check of we in een iframe zitten
     const isInIframe = window.self !== window.top;
-    
+
     if (!isInIframe) {
       // Niet in iframe, geen actie nodig
       return;
@@ -54,57 +54,61 @@ export default function StorageAccessHandler() {
     return null;
   }
 
-  // Toon prompt voor Safari gebruikers
+  // Toon melding voor Safari-gebruikers
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 10000,
-    }}>
-      <div style={{
-        backgroundColor: 'var(--background)',
-        color: 'var(--foreground)',
-        padding: '30px',
-        borderRadius: '8px',
-        maxWidth: '500px',
-        textAlign: 'center',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
-      }}>
-        <h2 style={{ marginBottom: '15px', fontSize: '24px' }}>🍪 Cookie Toegang Nodig</h2>
-        <p style={{ marginBottom: '20px', lineHeight: '1.6' }}>
-          Deze applicatie heeft toegang nodig tot cookies om je sessie op te slaan.
-          Dit is nodig om in te kunnen loggen en ingelogd te blijven.
-        </p>
-        <button
-          onClick={requestAccess}
-          style={{
-            backgroundColor: 'var(--accent)',
-            color: 'var(--background)',
-            border: 'none',
-            padding: '12px 24px',
-            borderRadius: '4px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-          }}
-        >
-          Cookie Toegang Toestaan
-        </button>
-        <p style={{ 
-          marginTop: '15px', 
-          fontSize: '12px', 
-          color: 'var(--text-secondary)',
-        }}>
-          We gebruiken alleen essentiële cookies voor authenticatie.
-        </p>
+    <>
+      <style jsx>{`
+        .cookie-banner {
+          position: fixed;
+          top: 16px;
+          left: 16px;
+          right: 16px;
+          z-index: 10000;
+          display: flex;
+          justify-content: center;
+        }
+
+        .cookie-banner .alert {
+          width: 100%;
+          max-width: 560px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+          box-shadow: var(--shadow-md);
+        }
+
+        .cookie-tekst {
+          flex: 1;
+          min-width: 200px;
+        }
+
+        .cookie-tekst strong {
+          display: block;
+          font-weight: 700;
+          margin-bottom: 2px;
+        }
+
+        .cookie-sub {
+          display: block;
+          font-size: 12px;
+          opacity: 0.85;
+          margin-top: 2px;
+        }
+      `}</style>
+
+      <div className="cookie-banner" role="alert">
+        <div className="alert alert-info">
+          <div className="cookie-tekst">
+            <strong>Cookies nodig</strong>
+            Deze applicatie heeft toegang nodig tot cookies om je sessie op te slaan, anders kun je niet inloggen.
+            <span className="cookie-sub">We gebruiken alleen noodzakelijke cookies voor authenticatie.</span>
+          </div>
+          <button type="button" onClick={requestAccess} className="btn btn-sm">
+            Cookies toestaan
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

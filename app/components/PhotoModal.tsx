@@ -6,6 +6,16 @@ interface PhotoModalProps {
   sampleNumber?: string;
 }
 
+const knopStijl: React.CSSProperties = {
+  position: 'absolute',
+  top: '12px',
+  width: '36px',
+  height: '36px',
+  padding: 0,
+  borderRadius: '999px',
+  zIndex: 10,
+};
+
 export default function PhotoModal({ photoUrl, onClose, sampleNumber }: PhotoModalProps) {
   const handleDownload = () => {
     const link = document.createElement('a');
@@ -17,47 +27,47 @@ export default function PhotoModal({ photoUrl, onClose, sampleNumber }: PhotoMod
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-      style={{ backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
-    >
-      <div 
-        className="relative max-w-4xl max-h-[90vh] rounded-lg overflow-hidden"
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
         onClick={(e) => e.stopPropagation()}
-        style={{ backgroundColor: 'var(--background)', border: '1px solid var(--border)' }}
+        style={{
+          position: 'relative',
+          maxWidth: '56rem',
+          maxHeight: '90vh',
+          background: 'var(--wit)',
+          border: '1px solid var(--grijs-200)',
+          borderRadius: 'var(--radius)',
+          boxShadow: 'var(--shadow-xl)',
+          overflow: 'hidden',
+        }}
       >
-        {/* Close button */}
+        {/* Sluiten */}
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95 z-10"
-          style={{
-            backgroundColor: 'var(--accent)',
-            border: '1px solid var(--accent)',
-          }}
+          className="btn"
+          style={{ ...knopStijl, right: '12px' }}
           aria-label="Sluiten"
         >
-          <span className="text-xl" style={{ color: 'var(--background)', lineHeight: 1 }}>×</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
         </button>
 
-        {/* Download button */}
+        {/* Downloaden */}
         <button
+          type="button"
           onClick={handleDownload}
-          className="absolute top-4 right-16 w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105 active:scale-95 z-10"
-          style={{
-            backgroundColor: 'var(--accent)',
-            border: '1px solid var(--accent)',
-          }}
+          className="btn"
+          style={{ ...knopStijl, right: '56px' }}
           aria-label="Download"
         >
-          <span className="text-xl" style={{ color: 'var(--background)', lineHeight: 1 }}>↓</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
 
-        {/* Photo */}
-        <img 
-          src={photoUrl} 
-          alt="Oliemonster foto" 
-          className="max-w-full max-h-[90vh] object-contain"
+        {/* Foto */}
+        <img
+          src={photoUrl}
+          alt="Oliemonster foto"
+          style={{ maxWidth: '100%', maxHeight: '90vh', objectFit: 'contain', display: 'block' }}
         />
       </div>
     </div>
