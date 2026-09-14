@@ -205,14 +205,50 @@ button, input, select, textarea {
   display: block;
 }
 
-/* Telefoon: regel 1 = logo + modulenaam + avatar, regel 2 = navigatie en menu's */
+/* Hamburger en paneel voor de telefoon; op desktop verborgen */
+.toolbar-mobiel { display: none; }
+
+/* Telefoon: één regel met logo + modulenaam + hamburger; de rest zit in het paneel */
 @media (max-width: 640px) {
-  .toolbar-inner { padding: 10px 16px; flex-wrap: wrap; row-gap: 10px; }
+  .toolbar-inner { padding: 8px 16px; min-height: 56px; }
   .toolbar-left { flex: 1 1 0; min-width: 0; margin-right: 0; }
   .toolbar-logo { height: 16px; }
-  .toolbar-user-wrap { margin-left: auto; }
   .toolbar-title { font-size: 14px; }
-  .toolbar-right { flex: 1 1 100%; order: 3; justify-content: flex-start; gap: 6px; }
+  .toolbar-right,
+  .toolbar-user-wrap { display: none; }
+  .toolbar-mobiel { display: flex; align-items: center; gap: 6px; flex: none; }
+  .toolbar-hamburger { width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; }
+  .toolbar-mobiel .toolbar-menu { position: static; }
+  .toolbar-mobiel-paneel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    padding: 8px 12px max(12px, env(safe-area-inset-bottom));
+    background: var(--wit);
+    border-bottom: 1px solid var(--grijs-200);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    z-index: 60;
+    animation: menu-in 0.12s ease-out;
+  }
+  .toolbar-mobiel-paneel .toolbar-menu-item { min-height: 44px; font-size: 15px; }
+  .toolbar-menu-kop.toolbar-mobiel-kop {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px 10px;
+  }
+  .toolbar-mobiel-kop > div { display: flex; flex-direction: column; gap: 2px; }
+  .toolbar-menu-label {
+    padding: 10px 12px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blue);
+  }
   .nav-btn { padding: 7px 11px; font-size: 12px; }
   .user-badge { padding: 6px 10px; font-size: 12px; }
   /* Links alleen logo + modulenaam; "IDS Portal" past er niet meer bij */
@@ -221,10 +257,6 @@ button, input, select, textarea {
   .toolbar-module { font-size: 13px; border-left: 0; padding-left: 0; }
   .toolbar .nav-btn .lang { display: none; }
   .toolbar .nav-btn .kort { display: inline; }
-  .toolbar-user { padding: 2px; margin-left: 0; }
-  .toolbar-user-naam { display: none; }
-  .toolbar-avatar { width: 36px; height: 36px; }
-  .toolbar-menu-paneel { min-width: 200px; max-width: calc(100vw - 32px); }
 }
 
 /* Knoppen in de navy balk: doorschijnend wit, zoals in de e-mail editor */

@@ -10,6 +10,8 @@ import { Icons } from './NavButton';
   Links:  logo | IDS Portal | modulenaam
   Rechts: [extra's van de pagina] Terug naar dashboard · Beheer (menu, alleen admin)
           · Help (optioneel) · gebruikersmenu (avatar + naam, met Uitloggen)
+  Telefoon (tot 640px): alleen logo, modulenaam, extra's van de pagina en een hamburgerknop;
+  alle andere opties zitten in het uitklappaneel eronder.
   De balk regelt zelf uitloggen en de sessie (als de pagina geen `user` meegeeft).
 */
 
@@ -143,6 +145,47 @@ export default function AppShell({
               </ToolbarMenu>
             </div>
           )}
+
+          {/* Telefoon: hamburger met alles in een paneel */}
+          <div className="toolbar-mobiel">
+            {rightActions}
+            <ToolbarMenu
+              label="Menu"
+              buttonClass="nav-btn nav-btn-icoon toolbar-hamburger"
+              panelClass="toolbar-mobiel-paneel"
+              button={Icons.Menu}
+              buttonOpen={Icons.Close}
+            >
+              {user && (
+                <div className="toolbar-menu-kop toolbar-mobiel-kop">
+                  <span className="toolbar-avatar" aria-hidden="true">{initiaal(user.username)}</span>
+                  <div>
+                    <strong>{user.username}</strong>
+                    <span>{ROLE_LABELS[user.role] ?? user.role}</span>
+                  </div>
+                </div>
+              )}
+              {toonNavigatie && (
+                <MenuItem icon={Icons.Home} onClick={() => router.push('/dashboard')}>Terug naar dashboard</MenuItem>
+              )}
+              {onHelp && <MenuItem icon={Icons.Help} onClick={onHelp}>Help</MenuItem>}
+              {isAdmin && (
+                <>
+                  <span className="toolbar-menu-label">Beheer</span>
+                  <MenuItem icon={Icons.Logs} onClick={() => router.push('/dashboard/audit-logs')}>Audit logs</MenuItem>
+                  <MenuItem icon={Icons.Columns} onClick={() => router.push('/dashboard/admin?tab=columns')}>Kolommen aanpassen</MenuItem>
+                  <MenuItem icon={Icons.Settings} onClick={() => router.push('/dashboard/admin')}>Instellingen</MenuItem>
+                  <MenuItem icon={Icons.Print} onClick={afdrukken}>Afdrukken</MenuItem>
+                </>
+              )}
+              {user && (
+                <>
+                  <span className="toolbar-menu-scheiding" />
+                  <MenuItem icon={Icons.Logout} danger onClick={handleLogout}>Uitloggen</MenuItem>
+                </>
+              )}
+            </ToolbarMenu>
+          </div>
         </div>
       </div>
       <div className={wide ? 'app-content-wide' : 'app-content'}>{children}</div>
@@ -159,11 +202,14 @@ function initiaal(naam: string): string {
 interface ToolbarMenuProps {
   label: string;
   button: ReactNode;
+  /** Andere knopinhoud zolang het menu open is (bv. een kruisje). */
+  buttonOpen?: ReactNode;
   buttonClass: string;
+  panelClass?: string;
   children: ReactNode;
 }
 
-function ToolbarMenu({ label, button, buttonClass, children }: ToolbarMenuProps) {
+function ToolbarMenu({ label, button, buttonOpen, buttonClass, panelClass = 'toolbar-menu-paneel', children }: ToolbarMenuProps) {
   const [open, setOpen] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
 
@@ -194,10 +240,10 @@ function ToolbarMenu({ label, button, buttonClass, children }: ToolbarMenuProps)
         aria-expanded={open}
         aria-label={label}
       >
-        {button}
+        {open && buttonOpen ? buttonOpen : button}
       </button>
       {open && (
-        <div className="toolbar-menu-paneel" role="menu" onClick={() => setOpen(false)}>
+        <div className={panelClass} role="menu" onClick={() => setOpen(false)}>
           {children}
         </div>
       )}

@@ -46,8 +46,10 @@ naar deze kleuren. `--accent` is blauw, `--primary` is oranje.
   `rightActions` voor echt paginaspecifieke knoppen. Losse knoppen daarin: `NavButton` / `.nav-btn`
   (doorschijnend wit, `.nav-btn-icoon` voor alleen een icoon), `.nav-btn-primary` (oranje, één per balk).
   Uitklapmenu's: `.toolbar-menu > .toolbar-menu-paneel > .toolbar-menu-item` (`-danger`, `-scheiding`, `-kop`).
-  Op de telefoon verdwijnt "IDS Portal" (alleen logo + modulenaam) en tonen knoppen hun korte tekst
-  (`<span class="lang">` / `<span class="kort">`). Het witte logo `header_logo.png` staat er zonder filter in.
+  Op de telefoon (tot 640px) toont de balk alleen logo, modulenaam, `rightActions` en een hamburger
+  (`.toolbar-mobiel`); alle andere opties staan in het uitklappaneel `.toolbar-mobiel-paneel`
+  (kop met avatar en rol, Terug naar dashboard, Help, sectie Beheer, Uitloggen). Knoppen in de balk
+  kunnen een lange en korte tekst hebben (`<span class="lang">` / `<span class="kort">`). Het witte logo `header_logo.png` staat er zonder filter in.
 - **Fotovenster**: `PhotoModal` (`.foto-paneel`, `.foto-beeld`, `.foto-knop`), klein venster op desktop,
   beeldvullend op de telefoon. CSS staat in globals.css.
 - **Kaart**: `.card` (of het oude `.glass-card`), wit met grijze rand. Kop erboven: `.card-kop`.
