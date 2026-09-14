@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell, NavButton, Icons } from '@/app/components/ui';
+import { AppShell } from '@/app/components/ui';
 
 interface User {
   userId: number;
@@ -71,11 +71,6 @@ export default function PrintCalculatorPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
   };
 
   const set = (key: string, value: string) => setV(prev => ({ ...prev, [key]: value }));
@@ -150,12 +145,7 @@ export default function PrintCalculatorPage() {
   return (
     <AppShell
       title="Printkosten calculator"
-      rightActions={
-        <>
-          <NavButton icon={Icons.Back} onClick={() => router.push('/dashboard')}>Dashboard</NavButton>
-          <NavButton icon={Icons.Logout} danger onClick={handleLogout}>Uitloggen</NavButton>
-        </>
-      }
+      user={user}
     >
       <style jsx>{`
         .layout {

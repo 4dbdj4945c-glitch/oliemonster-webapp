@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell, NavButton, Icons } from '@/app/components/ui';
+import { AppShell } from '@/app/components/ui';
 
 interface User {
   userId: number;
@@ -68,11 +68,6 @@ export default function AuditLogsPage() {
     }
   };
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
-  };
-
   const getActionBadgeClass = (action: string): string => {
     if (action.includes('FAILED')) return 'badge badge-danger';
     if (action.includes('DELETE')) return 'badge badge-warning';
@@ -90,19 +85,7 @@ export default function AuditLogsPage() {
     <AppShell
       title="Audit Logs"
       wide
-      rightActions={
-        <>
-          <NavButton onClick={() => router.push('/dashboard/admin')} icon={Icons.Settings} ariaLabel="Instellingen">
-            Instellingen
-          </NavButton>
-          <NavButton onClick={() => router.push('/dashboard')} icon={Icons.Back} ariaLabel="Terug">
-            Terug
-          </NavButton>
-          <NavButton onClick={handleLogout} icon={Icons.Logout} danger ariaLabel="Uitloggen">
-            Uitloggen
-          </NavButton>
-        </>
-      }
+      user={user}
     >
       <h1 className="page-title">Audit Logs</h1>
       <p className="page-subtitle">Inzicht in acties en wijzigingen.</p>

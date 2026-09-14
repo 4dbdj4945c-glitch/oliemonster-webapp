@@ -38,9 +38,18 @@ naar deze kleuren. `--accent` is blauw, `--primary` is oranje.
 
 ## Bouwstenen
 
-- **Balk bovenaan**: `AppShell` (navy). Knoppen daarin: `NavButton` / `.nav-btn`
-  (doorschijnend wit), `.nav-btn-danger` (uitloggen), `.nav-btn-primary` (oranje, één per balk).
-  Het witte logo `header_logo.png` staat er zonder filter in.
+- **Balk bovenaan**: `AppShell` (navy) regelt de hele balk zelf: links logo, "IDS Portal" en de
+  modulenaam (`title`), rechts Vorige, Terug naar dashboard, het Beheer-menu (alleen admin: Audit logs,
+  Kolommen aanpassen, Instellingen, Afdrukken), een Help-knop (als de pagina `onHelp` meegeeft) en het
+  gebruikersmenu (avatar met initiaal, naam, rol en Uitloggen). Een pagina geeft `user` mee (anders haalt
+  de balk de sessie zelf op), optioneel `onPrint` (Beheer > Afdrukken, standaard `window.print()`) en
+  `rightActions` voor echt paginaspecifieke knoppen. Losse knoppen daarin: `NavButton` / `.nav-btn`
+  (doorschijnend wit, `.nav-btn-icoon` voor alleen een icoon), `.nav-btn-primary` (oranje, één per balk).
+  Uitklapmenu's: `.toolbar-menu > .toolbar-menu-paneel > .toolbar-menu-item` (`-danger`, `-scheiding`, `-kop`).
+  Op de telefoon verdwijnt "IDS Portal" (alleen logo + modulenaam) en tonen knoppen hun korte tekst
+  (`<span class="lang">` / `<span class="kort">`). Het witte logo `header_logo.png` staat er zonder filter in.
+- **Fotovenster**: `PhotoModal` (`.foto-paneel`, `.foto-beeld`, `.foto-knop`), klein venster op desktop,
+  beeldvullend op de telefoon. CSS staat in globals.css.
 - **Kaart**: `.card` (of het oude `.glass-card`), wit met grijze rand. Kop erboven: `.card-kop`.
 - **Knoppen**: `.btn` (wit met rand), `.btn-primary` (oranje, de hoofdactie op een pagina),
   `.btn-blue` (blauw, secundaire actie), `.btn-secondary`, `.btn-danger`, `.btn-danger-soft`,
@@ -61,6 +70,8 @@ naar deze kleuren. `--accent` is blauw, `--primary` is oranje.
 - Geen `backdrop-filter`, geen `rgba(255,255,255,x)`-achtergronden, geen inset-schaduwen.
 - Geen eigen `<style jsx>` voor dingen die globals.css al heeft. Alleen voor echte
   lay-out van die pagina (grids, kaartposities).
+- Geen `<style jsx>` in losse componenten onder `app/components/`: daar krijgen de elementen de
+  scope-klasse niet mee en werkt de CSS stilletjes niet (zo ging het mis met PhotoModal). Zet die CSS in globals.css.
 - Geen inline kleuren: gebruik tokens (`var(--grijs-500)`) of klassen.
 - Geen em-dashes in teksten. Geen uitroeptekens.
 - Geen `filter: invert()` op het logo: het logo is wit en hoort op navy.

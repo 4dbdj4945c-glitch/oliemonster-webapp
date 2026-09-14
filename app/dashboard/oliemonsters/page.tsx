@@ -6,7 +6,7 @@ import PhotoModal from '@/app/components/PhotoModal';
 import HelpModal from '@/app/components/HelpModal';
 import Tooltip from '@/app/components/Tooltip';
 import SampleAttemptsPanel from '@/app/components/SampleAttemptsPanel';
-import { AppShell, NavButton, Icons } from '@/app/components/ui';
+import { AppShell } from '@/app/components/ui';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
 import { isOilViewer2025 } from '@/lib/roles';
 
@@ -169,11 +169,6 @@ export default function DashboardPage() {
     });
 
     return sorted;
-  };
-
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
   };
 
   const resetForm = () => {
@@ -360,18 +355,9 @@ export default function DashboardPage() {
     <AppShell
       title="Oliemonsters 2025"
       wide
-      rightActions={
-        <>
-          {!isOilViewer2025(user?.role) && (
-            <NavButton icon={Icons.Back} ariaLabel="Terug" onClick={() => router.push('/dashboard')}>Terug</NavButton>
-          )}
-          {isAdmin && (
-            <NavButton icon={Icons.Settings} ariaLabel="Instellingen" onClick={() => router.push('/dashboard/admin')}>Instellingen</NavButton>
-          )}
-          <NavButton icon={Icons.Help} ariaLabel="Help" onClick={() => setShowHelpModal(true)}>Help</NavButton>
-          <NavButton icon={Icons.Logout} ariaLabel="Uitloggen" danger onClick={handleLogout}>Uitloggen</NavButton>
-        </>
-      }
+      user={user}
+      onHelp={() => setShowHelpModal(true)}
+      onPrint={handleGeneratePdf}
     >
       {/* Zoeken en toevoegen */}
       <div className="card" style={{ marginBottom: '16px' }}>

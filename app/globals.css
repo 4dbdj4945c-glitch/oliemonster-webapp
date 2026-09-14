@@ -155,7 +155,6 @@ button, input, select, textarea {
   min-height: 56px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
 }
 
@@ -164,6 +163,14 @@ button, input, select, textarea {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  margin-right: auto;
+}
+
+/* Gebruikersmenu staat als eigen element helemaal rechts */
+.toolbar-user-wrap {
+  display: flex;
+  align-items: center;
+  flex: none;
 }
 
 .toolbar-divider {
@@ -198,13 +205,28 @@ button, input, select, textarea {
   display: block;
 }
 
+/* Telefoon: regel 1 = logo + modulenaam + avatar, regel 2 = navigatie en menu's */
 @media (max-width: 640px) {
   .toolbar-inner { padding: 10px 16px; flex-wrap: wrap; row-gap: 10px; }
-  .toolbar-left { flex: 1 1 100%; }
+  .toolbar-left { flex: 1 1 0; min-width: 0; margin-right: 0; }
+  .toolbar-logo { height: 16px; }
+  .toolbar-user-wrap { margin-left: auto; }
   .toolbar-title { font-size: 14px; }
-  .toolbar-right { flex: 1 1 100%; justify-content: flex-start; gap: 6px; }
+  .toolbar-right { flex: 1 1 100%; order: 3; justify-content: flex-start; gap: 6px; }
   .nav-btn { padding: 7px 11px; font-size: 12px; }
   .user-badge { padding: 6px 10px; font-size: 12px; }
+  /* Links alleen logo + modulenaam; "IDS Portal" past er niet meer bij */
+  .toolbar-left:has(.toolbar-module) .toolbar-title,
+  .toolbar-left:has(.toolbar-module) .toolbar-divider { display: none; }
+  .toolbar-module { font-size: 13px; border-left: 0; padding-left: 0; }
+  .toolbar .nav-btn .lang { display: none; }
+  .toolbar .nav-btn .kort { display: inline; }
+  .toolbar-user { padding: 2px; margin-left: 0; }
+  .toolbar-user-naam { display: none; }
+  .toolbar-avatar { width: 36px; height: 36px; }
+  /* Vorige: alleen de pijl, zodat de hele rij op een regel past */
+  .toolbar .nav-btn .lang:only-of-type { display: none; }
+  .toolbar-menu-paneel { min-width: 200px; max-width: calc(100vw - 32px); }
 }
 
 /* Knoppen in de navy balk: doorschijnend wit, zoals in de e-mail editor */
@@ -274,6 +296,167 @@ button, input, select, textarea {
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 999px;
   white-space: nowrap;
+}
+
+/* Modulenaam gedimd achter "IDS Portal" */
+.toolbar-module {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+}
+
+/* Knop met alleen een icoon (Help) */
+.nav-btn-icoon {
+  padding: 8px 10px;
+}
+
+/* Lange/korte tekst in balk-knoppen: op desktop de lange, op telefoon de korte */
+.nav-btn .kort { display: none; }
+
+/* Uitklapmenu's in de balk (Beheer, gebruikersmenu) */
+.toolbar-menu {
+  position: relative;
+}
+
+.toolbar-menu-paneel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  padding: 6px;
+  background: var(--wit);
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  animation: menu-in 0.12s ease-out;
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+
+.toolbar-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--navy);
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.toolbar-menu-item svg {
+  color: var(--grijs-500);
+  flex: none;
+}
+
+.toolbar-menu-item:hover,
+.toolbar-menu-item:focus-visible {
+  background: var(--grijs-100);
+  outline: none;
+}
+
+.toolbar-menu-item-danger {
+  color: var(--danger);
+}
+
+.toolbar-menu-item-danger svg {
+  color: var(--danger);
+}
+
+.toolbar-menu-item-danger:hover,
+.toolbar-menu-item-danger:focus-visible {
+  background: var(--danger-soft);
+}
+
+.toolbar-menu-scheiding {
+  display: block;
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--grijs-200);
+}
+
+.toolbar-menu-kop {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px 4px;
+}
+
+.toolbar-menu-kop strong {
+  font-size: 14px;
+  color: var(--navy);
+}
+
+.toolbar-menu-kop span {
+  font-size: 12px;
+  color: var(--grijs-500);
+}
+
+/* Gebruikersmenu: naam + avatar-rondje, zonder knopkader */
+.toolbar-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 4px 4px 10px;
+  margin-left: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.toolbar-user:hover,
+.toolbar-user.on {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.toolbar-user-naam {
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolbar-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--oranje);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+@media print {
+  .toolbar { display: none; }
+  .app-page { background: #fff; }
 }
 
 /* ============ Kaarten ============ */
@@ -1348,4 +1531,75 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
   }
+}
+
+/* ============ Fotovenster (PhotoModal) ============
+   Klein venster op desktop; de foto zelf opent op volledig formaat in een nieuw tabblad.
+   Bewust in globals.css: styled-jsx in losse componenten kreeg de scope-klasse niet mee. */
+.foto-paneel {
+  position: relative;
+  max-width: min(480px, 90vw);
+  max-height: 90vh;
+  background: var(--wit);
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+
+.foto-beeld {
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  cursor: zoom-in;
+}
+
+.foto-onderschrift {
+  padding: 10px 14px;
+  border-top: 1px solid var(--grijs-200);
+  font-size: 12px;
+  color: var(--grijs-500);
+  text-align: center;
+}
+
+.foto-knop {
+  position: absolute;
+  top: 12px;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-radius: 999px;
+  z-index: 10;
+}
+
+.foto-knop-sluiten { right: 12px; }
+.foto-knop-download { right: 56px; }
+
+/* Telefoon: foto op volle breedte, knoppen van 44px binnen het veilige gebied (notch en homebalk). */
+@media (max-width: 640px) {
+  .foto-backdrop { align-items: center; padding: 0; }
+  .foto-paneel {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100dvh;
+    border: none;
+    border-radius: 0;
+  }
+  .foto-beeld {
+    width: 100%;
+    max-height: 100dvh;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .foto-onderschrift { display: none; }
+  .foto-knop {
+    top: max(12px, env(safe-area-inset-top));
+    width: 44px;
+    height: 44px;
+    min-height: 44px;
+  }
+  .foto-knop-sluiten { right: max(12px, env(safe-area-inset-right)); }
+  .foto-knop-download { right: calc(max(12px, env(safe-area-inset-right)) + 52px); }
 }

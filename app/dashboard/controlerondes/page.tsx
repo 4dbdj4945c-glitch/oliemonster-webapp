@@ -145,11 +145,6 @@ export default function ControleRondesPage() {
     }
   };
 
-  const handleLogout = async () => {
-    await apiFetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
-  };
-
   // ---- Plaats zoeken (debounced) ----
   useEffect(() => {
     if (view !== 'new' || wizardStep !== 'place') return;
@@ -461,15 +456,11 @@ export default function ControleRondesPage() {
   return (
     <AppShell
       title="Controlerondes"
+      user={user}
       rightActions={
-        <>
-          {user && <span className="user-badge">{user.username}</span>}
-          {view !== 'list' && (
-            <NavButton icon={Icons.Back} onClick={() => { stopGps(); setView('list'); loadRounds(); }}>Rondes</NavButton>
-          )}
-          <NavButton icon={Icons.Back} onClick={() => router.push('/dashboard')}>Dashboard</NavButton>
-          <NavButton icon={Icons.Logout} danger onClick={handleLogout}>Uitloggen</NavButton>
-        </>
+        view !== 'list' && (
+          <NavButton icon={Icons.Back} onClick={() => { stopGps(); setView('list'); loadRounds(); }}>Rondes</NavButton>
+        )
       }
     >
       {/* Alleen pagina-lay-out; kaarten, knoppen, velden en badges komen uit globals.css.

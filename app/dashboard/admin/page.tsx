@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell, NavButton, Icons, Modal } from '@/app/components/ui';
+import { AppShell, Modal } from '@/app/components/ui';
 import { ROLE_LABELS } from '@/lib/roles';
 
 interface User {
@@ -54,6 +54,10 @@ export default function AdminPage() {
 
   useEffect(() => {
     checkAuth();
+    // Beheer > Kolommen aanpassen opent direct het tabblad Kolommen (?tab=columns).
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'columns') {
+      setActiveTab('columns');
+    }
   }, []);
 
   useEffect(() => {
@@ -233,18 +237,9 @@ export default function AdminPage() {
     <AppShell
       title="Instellingen"
       wide
-      rightActions={
-        <>
-          <NavButton onClick={() => router.push('/dashboard/audit-logs')} icon={Icons.Logs} ariaLabel="Audit Logs">
-            Audit Logs
-          </NavButton>
-          <NavButton onClick={() => router.push('/dashboard')} icon={Icons.Back} ariaLabel="Terug">
-            Terug
-          </NavButton>
-        </>
-      }
+      user={sessionUser}
     >
-      <h1 className="page-title">Beheer</h1>
+      <h1 className="page-title">Instellingen</h1>
       <p className="page-subtitle">Gebruikers en kolomweergave.</p>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

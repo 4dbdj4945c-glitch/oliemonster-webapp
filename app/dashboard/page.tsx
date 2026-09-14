@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isOilViewer2025 } from '@/lib/roles';
+import { AppShell } from '@/app/components/ui';
 
 interface User {
   userId: number;
@@ -92,11 +93,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
-  };
-
   if (loading) {
     return (
       <div className="laadscherm">
@@ -108,21 +104,6 @@ export default function DashboardPage() {
   return (
     <>
       <style jsx>{`
-        .page {
-          min-height: 100vh;
-          background: var(--grijs-100);
-        }
-
-        .content {
-          max-width: 1100px;
-          margin: 0 auto;
-          padding: 32px 24px;
-        }
-
-        @media (max-width: 640px) {
-          .content { padding: 20px 16px; }
-        }
-
         .cards-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -252,35 +233,9 @@ export default function DashboardPage() {
         }
       `}</style>
 
-      <div className="page">
-        {/* Toolbar */}
-        <div className="toolbar">
-          <div className="toolbar-inner">
-            <div className="toolbar-left">
-              <img src="/header_logo.png" alt="It's Done Services" className="toolbar-logo" />
-              <div className="toolbar-divider" />
-              <span className="toolbar-title">Registratie & Beheer Portal</span>
-            </div>
-            <div className="toolbar-right">
-              {user && (
-                <span className="user-badge">{user.username}</span>
-              )}
-              {user?.role === 'admin' && (
-                <button onClick={() => router.push('/dashboard/admin')} className="nav-btn">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                  Beheer
-                </button>
-              )}
-              <button onClick={handleLogout} className="nav-btn nav-btn-danger">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                Uitloggen
-              </button>
-            </div>
-          </div>
-        </div>
-
+      <AppShell user={user}>
         {/* Content */}
-        <div className="content">
+        <div>
           <h1 className="page-title">Welkom, {user?.username}</h1>
           <p className="page-subtitle">Selecteer een module om verder te gaan.</p>
 
@@ -404,7 +359,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      </div>
+      </AppShell>
     </>
   );
 }

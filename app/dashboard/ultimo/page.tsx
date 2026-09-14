@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell, NavButton, Modal, Icons } from '@/app/components/ui';
+import { AppShell, Modal } from '@/app/components/ui';
 import UltimoCommentsPanel from '@/app/components/UltimoCommentsPanel';
 
 interface User {
@@ -91,11 +91,6 @@ export default function UltimoPage() {
     }
   };
 
-  const handleLogout = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    router.push('/login');
-  };
-
   const openAdd = () => {
     setEditingTask(null);
     setForm({ ...emptyForm });
@@ -165,13 +160,7 @@ export default function UltimoPage() {
   return (
     <AppShell
       title="Ultimo-opmerkingen"
-      rightActions={
-        <>
-          {user && <span className="user-badge">{user.username}</span>}
-          <NavButton icon={Icons.Back} onClick={() => router.push('/dashboard')}>Dashboard</NavButton>
-          <NavButton icon={Icons.Logout} danger onClick={handleLogout}>Uitloggen</NavButton>
-        </>
-      }
+      user={user}
     >
       <style jsx>{`
         .zoekrij {
