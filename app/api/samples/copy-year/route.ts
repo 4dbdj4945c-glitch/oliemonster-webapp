@@ -7,8 +7,8 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 
 // POST - Neem de te nemen monsters van een vorig analyse-jaar over naar een nieuw jaar (alleen admin).
 // Body: { fromYear: 2025, toYear: 2026 }
-// Alle niet-geannuleerde monsters uit fromYear worden als "gepland" (niet genomen, zonder datum,
-// foto of opmerking) aangemaakt in toYear. O-nummers die in toYear al bestaan worden overgeslagen.
+// Alle monsters uit fromYear, ook de daar geannuleerde, worden als "gepland" (niet genomen,
+// niet geannuleerd, zonder datum, foto of opmerking) aangemaakt in toYear. O-nummers die in toYear al bestaan worden overgeslagen.
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const bron = await prisma.oilSample.findMany({
-      where: { analysisYear: fromYear, isDisabled: false },
+      where: { analysisYear: fromYear },
       select: { oNumber: true, location: true, description: true, oilType: true },
       orderBy: { oNumber: 'asc' },
     });
@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
           description: s.description,
           oilType: s.oilType,
           isTaken: false,
+          isDisabled: false,
         })),
       });
     }

@@ -358,9 +358,9 @@ export default function DashboardPage() {
 
   const isAdmin = user?.role === 'admin';
 
-  // Neemt alle niet-geannuleerde monsters van 2025 over als geplande monsters voor 2026.
+  // Neemt alle monsters van 2025 (ook de daar geannuleerde) over als geplande monsters voor 2026.
   const handleCopyFrom2025 = async () => {
-    if (!confirm('Alle te nemen monsters van 2025 overnemen naar 2026?\n\nZe worden als "niet genomen" toegevoegd, zonder datum of foto. O-nummers die in 2026 al bestaan worden overgeslagen.')) {
+    if (!confirm('Alle monsters van 2025 overnemen naar 2026?\n\nZe worden als "niet genomen" toegevoegd (ook de in 2025 geannuleerde), zonder datum of foto. O-nummers die in 2026 al bestaan worden overgeslagen.')) {
       return;
     }
     setCopying(true);
@@ -424,7 +424,7 @@ export default function DashboardPage() {
                 onClick={handleCopyFrom2025}
                 disabled={copying}
                 className="btn"
-                title="Neem alle te nemen monsters van 2025 over als geplande monsters voor 2026"
+                title="Neem alle monsters van 2025 over als geplande monsters voor 2026"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                 {copying ? 'Bezig...' : 'Overnemen uit 2025'}
