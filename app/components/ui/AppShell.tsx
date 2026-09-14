@@ -8,7 +8,7 @@ import { Icons } from './NavButton';
 /*
   Navy balk bovenaan elke pagina (zie STIJL.md, "Balk bovenaan").
   Links:  logo | IDS Portal | modulenaam
-  Rechts: [extra's van de pagina] Vorige · Terug naar dashboard · Beheer (menu, alleen admin)
+  Rechts: [extra's van de pagina] Terug naar dashboard · Beheer (menu, alleen admin)
           · Help (optioneel) · gebruikersmenu (avatar + naam, met Uitloggen)
   De balk regelt zelf uitloggen en de sessie (als de pagina geen `user` meegeeft).
 */
@@ -28,7 +28,7 @@ interface AppShellProps {
   /** Toont een Help-knop naast het gebruikersmenu. */
   onHelp?: () => void;
   leftExtra?: ReactNode;
-  /** Paginaspecifieke knoppen, komen vóór "Vorige". */
+  /** Paginaspecifieke knoppen, komen vóór "Terug naar dashboard". */
   rightActions?: ReactNode;
   children: ReactNode;
   wide?: boolean;
@@ -93,17 +93,11 @@ export default function AppShell({
             {rightActions}
 
             {toonNavigatie && (
-              <>
-                <button type="button" className="nav-btn" onClick={() => router.back()} aria-label="Vorige pagina" title="Vorige pagina">
-                  {Icons.Back}
-                  <span className="lang">Vorige</span>
-                </button>
-                <button type="button" className="nav-btn" onClick={() => router.push('/dashboard')} aria-label="Terug naar dashboard">
-                  {Icons.Home}
-                  <span className="lang">Terug naar dashboard</span>
-                  <span className="kort">Dashboard</span>
-                </button>
-              </>
+              <button type="button" className="nav-btn" onClick={() => router.push('/dashboard')} aria-label="Terug naar dashboard">
+                {Icons.Home}
+                <span className="lang">Terug naar dashboard</span>
+                <span className="kort">Dashboard</span>
+              </button>
             )}
 
             {isAdmin && (

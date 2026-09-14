@@ -39,7 +39,7 @@ naar deze kleuren. `--accent` is blauw, `--primary` is oranje.
 ## Bouwstenen
 
 - **Balk bovenaan**: `AppShell` (navy) regelt de hele balk zelf: links logo, "IDS Portal" en de
-  modulenaam (`title`), rechts Vorige, Terug naar dashboard, het Beheer-menu (alleen admin: Audit logs,
+  modulenaam (`title`), rechts Terug naar dashboard, het Beheer-menu (alleen admin: Audit logs,
   Kolommen aanpassen, Instellingen, Afdrukken), een Help-knop (als de pagina `onHelp` meegeeft) en het
   gebruikersmenu (avatar met initiaal, naam, rol en Uitloggen). Een pagina geeft `user` mee (anders haalt
   de balk de sessie zelf op), optioneel `onPrint` (Beheer > Afdrukken, standaard `window.print()`) en

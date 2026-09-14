@@ -224,8 +224,6 @@ button, input, select, textarea {
   .toolbar-user { padding: 2px; margin-left: 0; }
   .toolbar-user-naam { display: none; }
   .toolbar-avatar { width: 36px; height: 36px; }
-  /* Vorige: alleen de pijl, zodat de hele rij op een regel past */
-  .toolbar .nav-btn .lang:only-of-type { display: none; }
   .toolbar-menu-paneel { min-width: 200px; max-width: calc(100vw - 32px); }
 }
 
