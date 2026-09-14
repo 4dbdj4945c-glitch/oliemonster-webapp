@@ -104,6 +104,18 @@ export default function DashboardPage() {
   return (
     <>
       <style jsx>{`
+        /* Sectiekop met het logo van de eigenaar van de modules */
+        .sectie-kop {
+          display: flex;
+          align-items: center;
+          margin: 0 0 14px 0;
+          padding-bottom: 10px;
+          border-bottom: 1px solid var(--grijs-200);
+        }
+        .sectie-logo { display: block; width: auto; }
+        .sectie-logo-ids { height: 18px; }
+        .sectie-logo-mourik { height: 26px; }
+
         .cards-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -239,8 +251,67 @@ export default function DashboardPage() {
           <h1 className="page-title">Welkom, {user?.username}</h1>
           <p className="page-subtitle">Selecteer een module om verder te gaan.</p>
 
-          {/* Oliemonsters */}
-          <div className="section-label">Oliemonsters</div>
+          {/* Sectie It's Done Services: eigen modules */}
+          <div className="sectie-kop">
+            <img src="/logo-navy.png" alt="It's Done Services" className="sectie-logo sectie-logo-ids" />
+          </div>
+          <div className="cards-grid">
+            <div
+              className="module-card"
+              style={{ '--accent-color': '#0F766E' } as React.CSSProperties}
+              onClick={() => router.push('/dashboard/controlerondes')}
+            >
+              <div className="card-accent" />
+              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></span>
+              <h2 className="card-title">Controlerondes</h2>
+              <p className="card-description">Plan en rijd controlerondes langs geselecteerde straten met live route en voortgang</p>
+              <div className="card-stats">
+                <div className="stat-item">
+                  <div className="stat-value">{stats.controlRounds}</div>
+                  <div className="stat-label">Rondes</div>
+                </div>
+              </div>
+            </div>
+            <div
+              className="module-card"
+              style={{ '--accent-color': 'var(--geel-tekst)' } as React.CSSProperties}
+              onClick={() => router.push('/dashboard/print-calculator')}
+            >
+              <div className="card-accent" />
+              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg></span>
+              <h2 className="card-title">Printkosten calculator</h2>
+              <p className="card-description">Kostprijs en adviesverkoopprijs per bedrukt item (UV-printer) berekenen</p>
+              <div className="card-stats">
+                <div className="stat-item">
+                  <div className="stat-value">€</div>
+                  <div className="stat-label">Kostprijs per stuk</div>
+                </div>
+              </div>
+            </div>
+            {/* E-mail editor: losstaand HTML-bestand in public/, opent in een nieuw tabblad.
+                Bron en uitleg: Documents/Claude/email-templates/ (sync-webapp.sh kopieert 'm hierheen). */}
+            <div
+              className="module-card"
+              style={{ '--accent-color': '#C2410C' } as React.CSSProperties}
+              onClick={() => window.open('/email-editor.html', '_blank', 'noopener')}
+            >
+              <div className="card-accent" />
+              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
+              <h2 className="card-title">E-mail opstellen</h2>
+              <p className="card-description">Opgemaakte mails in huisstijl samenstellen vanuit sjablonen en plakken in Apple Mail</p>
+              <div className="card-stats">
+                <div className="stat-item">
+                  <div className="stat-value">6</div>
+                  <div className="stat-label">Sjablonen</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Sectie Mourik: modules voor de opdrachtgever */}
+          <div className="sectie-kop">
+            <img src="/mourik_logo.png" alt="Mourik" className="sectie-logo sectie-logo-mourik" />
+          </div>
           <div className="cards-grid">
             <div
               className="module-card"
@@ -262,7 +333,6 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-
             <div
               className="module-card"
               style={{ '--accent-color': '#1E40AF' } as React.CSSProperties}
@@ -283,28 +353,6 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Overig */}
-          <div className="section-label">Overig</div>
-          <div className="cards-grid">
-            <div
-              className="module-card"
-              style={{ '--accent-color': '#0F766E' } as React.CSSProperties}
-              onClick={() => router.push('/dashboard/controlerondes')}
-            >
-              <div className="card-accent" />
-              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></span>
-              <h2 className="card-title">Controlerondes</h2>
-              <p className="card-description">Plan en rijd controlerondes langs geselecteerde straten met live route en voortgang</p>
-              <div className="card-stats">
-                <div className="stat-item">
-                  <div className="stat-value">{stats.controlRounds}</div>
-                  <div className="stat-label">Rondes</div>
-                </div>
-              </div>
-            </div>
-
             <div
               className="module-card"
               style={{ '--accent-color': '#4338CA' } as React.CSSProperties}
@@ -318,42 +366,6 @@ export default function DashboardPage() {
                 <div className="stat-item">
                   <div className="stat-value">{stats.ultimoTasks}</div>
                   <div className="stat-label">Taken</div>
-                </div>
-              </div>
-            </div>
-
-            <div
-              className="module-card"
-              style={{ '--accent-color': 'var(--geel-tekst)' } as React.CSSProperties}
-              onClick={() => router.push('/dashboard/print-calculator')}
-            >
-              <div className="card-accent" />
-              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg></span>
-              <h2 className="card-title">Printkosten calculator</h2>
-              <p className="card-description">Kostprijs en adviesverkoopprijs per bedrukt item (UV-printer) berekenen</p>
-              <div className="card-stats">
-                <div className="stat-item">
-                  <div className="stat-value">€</div>
-                  <div className="stat-label">Kostprijs per stuk</div>
-                </div>
-              </div>
-            </div>
-
-            {/* E-mail editor: losstaand HTML-bestand in public/, opent in een nieuw tabblad.
-                Bron en uitleg: Documents/Claude/email-templates/ (sync-webapp.sh kopieert 'm hierheen). */}
-            <div
-              className="module-card"
-              style={{ '--accent-color': '#C2410C' } as React.CSSProperties}
-              onClick={() => window.open('/email-editor.html', '_blank', 'noopener')}
-            >
-              <div className="card-accent" />
-              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
-              <h2 className="card-title">E-mail opstellen</h2>
-              <p className="card-description">Opgemaakte mails in huisstijl samenstellen vanuit sjablonen en plakken in Apple Mail</p>
-              <div className="card-stats">
-                <div className="stat-item">
-                  <div className="stat-value">6</div>
-                  <div className="stat-label">Sjablonen</div>
                 </div>
               </div>
             </div>
