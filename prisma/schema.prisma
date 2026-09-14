@@ -21,7 +21,7 @@ model User {
 
 model OilSample {
   id           Int      @id @default(autoincrement())
-  oNumber      String   @unique  // o-nummer
+  oNumber      String            // o-nummer, uniek per analyse-jaar (zie @@unique)
   analysisYear Int      @default(2025)  // analyse-jaar (2025, 2026, ...)
   sampleDate   DateTime?         // cache: datum van de meest recente poging (SampleAttempt)
   location     String            // locatie
@@ -36,6 +36,7 @@ model OilSample {
 
   attempts     SampleAttempt[]
 
+  @@unique([oNumber, analysisYear])
   @@index([analysisYear])
 }
 

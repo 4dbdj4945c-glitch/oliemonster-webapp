@@ -47,10 +47,15 @@ export async function PUT(
       );
     }
 
-    // Check of een ander sample al dit o-nummer heeft
+    // Check of een ander sample in hetzelfde analyse-jaar al dit o-nummer heeft
+    const huidig = await prisma.oilSample.findUnique({ where: { id: parseInt(id) }, select: { analysisYear: true } });
+    if (!huidig) {
+      return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
+    }
     const existing = await prisma.oilSample.findFirst({
       where: {
         oNumber,
+        analysisYear: huidig.analysisYear,
         id: { not: parseInt(id) },
       },
     });

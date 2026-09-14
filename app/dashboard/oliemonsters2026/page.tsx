@@ -45,6 +45,8 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'taken' | 'notTaken' | 'cancelled'>('all');
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [copying, setCopying] = useState(false);
+  const [copyMessage, setCopyMessage] = useState('');
   const router = useRouter();
 
   // Form state
@@ -356,6 +358,37 @@ export default function DashboardPage() {
 
   const isAdmin = user?.role === 'admin';
 
+  // Neemt alle niet-geannuleerde monsters van 2025 over als geplande monsters voor 2026.
+  const handleCopyFrom2025 = async () => {
+    if (!confirm('Alle te nemen monsters van 2025 overnemen naar 2026?\n\nZe worden als "niet genomen" toegevoegd, zonder datum of foto. O-nummers die in 2026 al bestaan worden overgeslagen.')) {
+      return;
+    }
+    setCopying(true);
+    setCopyMessage('');
+    try {
+      const response = await fetch('/api/samples/copy-year', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromYear: 2025, toYear: 2026 }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || 'Fout bij overnemen van monsters');
+        return;
+      }
+      setCopyMessage(
+        data.overgenomen === 0
+          ? `Niets overgenomen: alle ${data.bron} monsters van 2025 staan al in 2026.`
+          : `${data.overgenomen} monsters overgenomen uit 2025${data.overgeslagen ? `, ${data.overgeslagen} bestonden al` : ''}.`
+      );
+      loadSamples();
+    } catch {
+      alert('Fout bij overnemen van monsters');
+    } finally {
+      setCopying(false);
+    }
+  };
+
   return (
     <AppShell
       title="Oliemonsters 2026"
@@ -386,6 +419,18 @@ export default function DashboardPage() {
               {generatingPdf ? 'Bezig...' : 'PDF genereren'}
             </button>
             {isAdmin && (
+              <button
+                type="button"
+                onClick={handleCopyFrom2025}
+                disabled={copying}
+                className="btn"
+                title="Neem alle te nemen monsters van 2025 over als geplande monsters voor 2026"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                {copying ? 'Bezig...' : 'Overnemen uit 2025'}
+              </button>
+            )}
+            {isAdmin && (
               <button type="button" onClick={openAddModal} className="btn btn-primary">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
                 Nieuw Monster
@@ -393,6 +438,9 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+        {copyMessage && (
+          <div className="alert alert-success" style={{ marginTop: '12px' }}>{copyMessage}</div>
+        )}
       </div>
 
       {/* Filteren en sorteren */}

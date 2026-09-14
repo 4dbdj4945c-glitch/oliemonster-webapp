@@ -93,9 +93,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existing = await prisma.oilSample.findUnique({ where: { oNumber } });
+    // O-nummers zijn uniek per analyse-jaar (2025 en 2026 mogen hetzelfde nummer hebben)
+    const jaar = analysisYear ?? 2025;
+    const existing = await prisma.oilSample.findFirst({ where: { oNumber, analysisYear: jaar } });
     if (existing) {
-      return NextResponse.json({ error: 'O-nummer bestaat al' }, { status: 400 });
+      return NextResponse.json({ error: `O-nummer bestaat al in ${jaar}` }, { status: 400 });
     }
 
     const sample = await prisma.oilSample.create({

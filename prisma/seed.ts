@@ -59,7 +59,7 @@ async function main() {
 
   for (const sample of samples) {
     await prisma.oilSample.upsert({
-      where: { oNumber: sample.oNumber },
+      where: { oNumber_analysisYear: { oNumber: sample.oNumber, analysisYear: 2025 } },
       update: {},
       create: sample,
     });
