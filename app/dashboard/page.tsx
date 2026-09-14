@@ -112,7 +112,8 @@ export default function DashboardPage() {
           padding-bottom: 10px;
           border-bottom: 1px solid var(--grijs-200);
         }
-        .sectie-logo { display: block; width: auto; }
+        /* Gedempt: grijs en iets transparant, zodat de kaarten de aandacht houden */
+        .sectie-logo { display: block; width: auto; filter: grayscale(1); opacity: 0.4; }
         .sectie-logo-ids { height: 18px; }
         .sectie-logo-mourik { height: 26px; }
 
