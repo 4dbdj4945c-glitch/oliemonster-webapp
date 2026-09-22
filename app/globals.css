@@ -1685,8 +1685,16 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   color: var(--grijs-500);
 }
 
+/* Tekstlink met icoon */
+.btn-link:has(> .icon) {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
 /* Lege staat: groot icoon boven de tekst */
-.leeg > .icon {
+.leeg > .icon,
+.icon-leeg {
   display: block;
   margin: 0 auto 10px;
   color: var(--grijs-400);

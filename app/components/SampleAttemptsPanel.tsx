@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Icon from './ui/Icon';
 
 export interface SampleAttempt {
   id: number;
@@ -208,7 +209,8 @@ export default function SampleAttemptsPanel({
               disabled={busy}
               className="btn btn-sm btn-blue"
             >
-              + Hermonstering
+              <Icon name="resample" size={16} />
+              Hermonstering
             </button>
           </div>
         )}
@@ -243,7 +245,8 @@ export default function SampleAttemptsPanel({
                       }}>
                         {idx + 1}
                       </span>
-                      <span className={`badge ${attempt.isTaken ? 'badge-success' : 'badge-danger'}`}>
+                      <span className={`badge ${attempt.isTaken ? 'badge-success' : 'badge-info'}`}>
+                        <Icon name={attempt.isTaken ? 'status-taken' : 'status-planned'} size={16} />
                         {attempt.isTaken ? 'Genomen' : 'Gepland'}
                       </span>
                       <span style={{ fontSize: '14px', color: 'var(--navy)', fontWeight: 500 }}>
@@ -334,13 +337,14 @@ export default function SampleAttemptsPanel({
                               onClick={() => handlePhotoDelete(attempt.id)}
                               className="btn-link btn-link-danger"
                             >
+                              <Icon name="image-remove" size={16} />
                               Verwijder foto
                             </button>
                           )}
                         </>
                       ) : isAdmin ? (
                         <label className="btn-link" style={{ color: 'var(--grijs-500)', cursor: 'pointer' }}>
-                          {uploadingPhotoId === attempt.id ? 'Uploaden...' : '+ Foto'}
+                          {uploadingPhotoId === attempt.id ? 'Uploaden...' : <><Icon name="image-upload" size={16} />Foto</>}
                           <input
                             type="file"
                             accept="image/*"
@@ -364,6 +368,7 @@ export default function SampleAttemptsPanel({
                           onClick={() => startEdit(attempt)}
                           className="btn-link"
                         >
+                          <Icon name="pencil" size={16} />
                           Bewerken
                         </button>
                         <button
@@ -371,6 +376,7 @@ export default function SampleAttemptsPanel({
                           onClick={() => handleDelete(attempt.id)}
                           className="btn-link btn-link-danger"
                         >
+                          <Icon name="trash" size={16} />
                           Verwijderen
                         </button>
                       </div>

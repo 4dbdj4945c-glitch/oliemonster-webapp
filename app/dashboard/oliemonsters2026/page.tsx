@@ -6,7 +6,7 @@ import PhotoModal from '@/app/components/PhotoModal';
 import HelpModal from '@/app/components/HelpModal';
 import Tooltip from '@/app/components/Tooltip';
 import SampleAttemptsPanel from '@/app/components/SampleAttemptsPanel';
-import { AppShell } from '@/app/components/ui';
+import { AppShell, Icon } from '@/app/components/ui';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
 
 interface User {
@@ -400,13 +400,16 @@ export default function DashboardPage() {
       {/* Zoeken en toevoegen */}
       <div className="card" style={{ marginBottom: '16px' }}>
         <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="text"
-            placeholder="Zoek op o-nummer, locatie of omschrijving..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="input flex-1"
-          />
+          <label className="zoekveld flex-1">
+            <Icon name="search" />
+            <input
+              type="text"
+              placeholder="Zoek op o-nummer, locatie of omschrijving..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input"
+            />
+          </label>
           <div className="knoppenrij flex gap-3">
             <button
               type="button"
@@ -415,7 +418,7 @@ export default function DashboardPage() {
               className="btn"
               title="Download een PDF met alle oliemonsters van 2026 en de datum waarop ze zijn genomen"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/></svg>
+              <Icon name="file-pdf" />
               {generatingPdf ? 'Bezig...' : 'PDF genereren'}
             </button>
             {/* Alleen zolang 2026 nog leeg is; daarna is overnemen niet meer nodig */}
@@ -427,13 +430,13 @@ export default function DashboardPage() {
                 className="btn"
                 title="Neem alle monsters van 2025 over als geplande monsters voor 2026"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <Icon name="copy-year" />
                 {copying ? 'Bezig...' : 'Overnemen uit 2025'}
               </button>
             )}
             {isAdmin && (
               <button type="button" onClick={openAddModal} className="btn btn-primary">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                <Icon name="plus" />
                 Nieuw Monster
               </button>
             )}
@@ -448,7 +451,7 @@ export default function DashboardPage() {
       <div className="card" style={{ marginBottom: '16px' }}>
         <div className="filters">
           <div className="filter-veld">
-            <label className="label filter-label">Status:</label>
+            <label className="label filter-label"><Icon name="filter" size={16} /> Status:</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
@@ -494,7 +497,7 @@ export default function DashboardPage() {
       {/* Statistieken */}
       <div className="stats-grid mb-6">
         <div
-          className="stat-card"
+          className="stat-card stat-card-icoon"
           onClick={() => setStatusFilter('all')}
           style={{
             cursor: 'pointer',
@@ -502,11 +505,12 @@ export default function DashboardPage() {
             boxShadow: statusFilter === 'all' ? '0 0 0 3px var(--blue-light)' : undefined,
           }}
         >
+          <Icon name="total" />
           <p className="stat-value">{samples.length}</p>
           <p className="stat-label">Totaal monsters</p>
         </div>
         <div
-          className="stat-card"
+          className="stat-card stat-card-icoon"
           onClick={() => setStatusFilter('taken')}
           style={{
             cursor: 'pointer',
@@ -515,13 +519,14 @@ export default function DashboardPage() {
             boxShadow: statusFilter === 'taken' ? '0 0 0 3px var(--groen-light)' : undefined,
           }}
         >
+          <Icon name="status-taken" style={{ color: 'var(--groen-tekst)' }} />
           <p className="stat-value" style={{ color: 'var(--groen-tekst)' }}>
             {samples.filter(s => s.isTaken && !s.isDisabled).length}
           </p>
           <p className="stat-label">Genomen</p>
         </div>
         <div
-          className="stat-card"
+          className="stat-card stat-card-icoon"
           onClick={() => setStatusFilter('notTaken')}
           style={{
             cursor: 'pointer',
@@ -530,13 +535,14 @@ export default function DashboardPage() {
             boxShadow: statusFilter === 'notTaken' ? '0 0 0 3px var(--rood-light)' : undefined,
           }}
         >
+          <Icon name="status-not-taken" style={{ color: 'var(--rood-tekst)' }} />
           <p className="stat-value" style={{ color: 'var(--rood-tekst)' }}>
             {samples.filter(s => !s.isTaken && !s.isDisabled).length}
           </p>
           <p className="stat-label">Niet genomen</p>
         </div>
         <div
-          className="stat-card"
+          className="stat-card stat-card-icoon"
           onClick={() => setStatusFilter('cancelled')}
           style={{
             cursor: 'pointer',
@@ -545,6 +551,7 @@ export default function DashboardPage() {
             boxShadow: statusFilter === 'cancelled' ? '0 0 0 3px var(--grijs-200)' : undefined,
           }}
         >
+          <Icon name="status-cancelled" style={{ color: 'var(--grijs-500)' }} />
           <p className="stat-value" style={{ color: 'var(--grijs-500)' }}>
             {samples.filter(s => s.isDisabled).length}
           </p>
@@ -573,6 +580,7 @@ export default function DashboardPage() {
               {samples.length === 0 ? (
                 <tr>
                   <td colSpan={isAdmin ? 7 : 6} style={{ textAlign: 'center', justifyContent: 'center', padding: '32px', color: 'var(--grijs-500)' }}>
+                    <Icon name="empty" size={32} className="icon-leeg" />
                     Geen monsters gevonden
                   </td>
                 </tr>
@@ -592,6 +600,7 @@ export default function DashboardPage() {
                             }`}
                             title={sample.isDisabled ? sample.remarks || 'Monster geannuleerd' : ''}
                           >
+                            <Icon name={sample.isDisabled ? 'status-cancelled' : sample.isTaken ? 'status-taken' : 'status-not-taken'} size={16} />
                             {sample.isDisabled ? 'Geannuleerd' : sample.isTaken ? 'Genomen' : 'Niet genomen'}
                           </span>
                           {(sample.attemptsCount ?? 0) > 1 && (
@@ -599,6 +608,7 @@ export default function DashboardPage() {
                               className="badge badge-navy"
                               title={`${sample.attemptsCount} monsternames (incl. hermonstering)`}
                             >
+                              <Icon name="resample" size={16} />
                               {sample.attemptsCount}x
                             </span>
                           )}
@@ -647,12 +657,12 @@ export default function DashboardPage() {
                           className="btn-link"
                           style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
                         >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                          <Icon name="camera" size={16} />
                           Bekijk foto
                         </button>
                       ) : isAdmin ? (
                         <label className="btn-link" style={{ color: 'var(--grijs-500)' }}>
-                          {uploadingPhoto === sample.id ? 'Uploaden...' : '+ Upload foto'}
+                          {uploadingPhoto === sample.id ? 'Uploaden...' : <><Icon name="image-upload" size={16} />Upload foto</>}
                           <input
                             type="file"
                             accept="image/*"
@@ -676,21 +686,28 @@ export default function DashboardPage() {
                           title="Nieuwe monstername (hermonstering) toevoegen"
                           className="btn btn-sm sm:mr-2.5"
                         >
-                          + Hermonstering
+                          <Icon name="resample" size={16} />
+                          Hermonstering
                         </button>
                         <button
                           type="button"
                           onClick={() => openEditModal(sample)}
-                          className="btn-link sm:mr-3.5"
+                          className="icon-btn sm:mr-1"
+                          title="Bewerken"
+                          aria-label="Bewerken"
                         >
-                          Bewerken
+                          <Icon name="pencil" size={16} />
+                          <span className="alleen-mobiel">Bewerken</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleDelete(sample.id)}
-                          className="btn-link btn-link-danger"
+                          className="icon-btn icon-btn-danger"
+                          title="Verwijderen"
+                          aria-label="Verwijderen"
                         >
-                          Verwijderen
+                          <Icon name="trash" size={16} />
+                          <span className="alleen-mobiel">Verwijderen</span>
                         </button>
                       </td>
                     )}
