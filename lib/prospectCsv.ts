@@ -214,7 +214,7 @@ export function leesProspectsCsv(tekst: string): CsvLeesResultaat {
       bron: tekstOfNull(rij.bron),
       score: geheelGetal(rij.score, 1, 5),
       scoreReden: tekstOfNull(rij.score_reden),
-      afstandKm: kommaGetal(rij.afstand_km),
+      afstandKm: positiefOfNull(kommaGetal(rij.afstand_km)),
       status: isProspectStatus(statusWaarde) ? statusWaarde : null,
       kanaal: (BENADER_KANALEN as readonly string[]).includes(kanaalWaarde) ? (kanaalWaarde as 'MAIL' | 'LINKEDIN') : null,
       afgemeldOp: datumOfNull(rij.afgemeld_op),
@@ -233,19 +233,32 @@ function tekstOfNull(waarde?: string): string | null {
   return t === '' ? null : t;
 }
 
-function geheelGetal(waarde: string | undefined, min: number, max: number): number | null {
-  const t = (waarde ?? '').replace(/[^0-9-]/g, '');
+/**
+ * Leest een getal zoals mensen het opschrijven: "1.500", "1.500,50", "€ 1500" of "22 km".
+ * De punt is dan duizendtalscheiding en de komma het decimaalteken.
+ */
+function leesGetal(waarde?: string): number | null {
+  let t = (waarde ?? '').trim().replace(/[^0-9.,-]/g, '');
   if (t === '') return null;
-  const n = parseInt(t, 10);
-  if (Number.isNaN(n) || n < min || n > max) return null;
-  return n;
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  else if (/^-?\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, '');
+  const n = parseFloat(t);
+  return Number.isNaN(n) ? null : n;
+}
+
+function geheelGetal(waarde: string | undefined, min: number, max: number): number | null {
+  const n = leesGetal(waarde);
+  if (n === null) return null;
+  const heel = Math.round(n);
+  return heel < min || heel > max ? null : heel;
 }
 
 function kommaGetal(waarde?: string): number | null {
-  const t = (waarde ?? '').trim().replace(',', '.').replace(/[^0-9.]/g, '');
-  if (t === '') return null;
-  const n = parseFloat(t);
-  return Number.isNaN(n) ? null : n;
+  return leesGetal(waarde);
+}
+
+function positiefOfNull(getal: number | null): number | null {
+  return getal !== null && getal >= 0 ? getal : null;
 }
 
 function datumOfNull(waarde?: string): Date | null {
@@ -265,7 +278,8 @@ function datumOfNull(waarde?: string): Date | null {
 
 function csvVeld(waarde: unknown): string {
   if (waarde === null || waarde === undefined) return '';
-  const t = String(waarde);
+  // Een apostrof ervoor, anders voert Excel een tekst die met =, +, - of @ begint uit als formule.
+  const t = /^[=+\-@]/.test(String(waarde)) ? `'${waarde}` : String(waarde);
   return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
 }
 

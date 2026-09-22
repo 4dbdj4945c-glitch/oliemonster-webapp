@@ -14,7 +14,8 @@ import {
   OPVOLGEN_NA_DAGEN,
   segmentLabel,
   kwartaalGrenzen,
-  beginVanVandaag,
+  eindeVanDezeWeek,
+  actieStaatOpen,
   dagenGeleden,
   datumNL,
   datumVoorVeld,
@@ -144,14 +145,8 @@ export default function AcquisitiePage() {
     const waarde = inPijplijn.reduce((som, p) => som + (p.geschatteWaarde ?? 0), 0);
 
     // Acties tot en met zondag van deze week, plus alles wat al te laat is.
-    const eindeWeek = beginVanVandaag();
-    const dagenTotZondag = (7 - eindeWeek.getDay()) % 7;
-    eindeWeek.setDate(eindeWeek.getDate() + dagenTotZondag);
-    const acties = actief.filter((p) => {
-      if (p.status === 'KLANT' || p.status === 'AFGEWEZEN') return false;
-      if (!p.volgendeActieOp) return false;
-      return new Date(p.volgendeActieOp) <= eindeWeek;
-    }).length;
+    const eindeWeek = eindeVanDezeWeek();
+    const acties = actief.filter((p) => actieStaatOpen(p, eindeWeek)).length;
 
     const { start, eind } = kwartaalGrenzen(new Date());
     const nieuweKlanten = prospects.filter((p) => {

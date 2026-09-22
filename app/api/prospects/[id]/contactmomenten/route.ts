@@ -72,7 +72,7 @@ export async function POST(
       data: {
         prospectId,
         datum: datumWaarde,
-        kanaal: (kanaal ?? 'MAIL') as Prisma.ProspectContactmomentCreateInput['kanaal'],
+        kanaal: (isProspectKanaal(kanaal) ? kanaal : 'MAIL') as Prisma.ProspectContactmomentCreateInput['kanaal'],
         samenvatting: samenvatting.trim(),
         uitkomst: uitkomst?.trim() || null,
         aangemaaktDoor: session.username || null,

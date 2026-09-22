@@ -60,7 +60,7 @@ export async function PUT(
       where: { id: contactmomentId },
       data: {
         datum: datumWaarde,
-        kanaal: (kanaal ?? bestaand.kanaal) as Prisma.ProspectContactmomentUpdateInput['kanaal'],
+        kanaal: (isProspectKanaal(kanaal) ? kanaal : bestaand.kanaal) as Prisma.ProspectContactmomentUpdateInput['kanaal'],
         samenvatting: samenvatting.trim(),
         uitkomst: uitkomst?.trim() || null,
       },

@@ -146,10 +146,51 @@ export function beginVanVandaag(): Date {
   return d;
 }
 
+/**
+ * Datums uit de database komen als UTC-middernacht terug. Reken daarom altijd met
+ * de kalenderdag zelf, anders verschuift een datum lokaal een dag en tellen de
+ * cijfers op het dashboard en op de pagina verschillend.
+ */
+export function alsLokaleDatum(iso: string): Date | null {
+  const kop = iso.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (kop) return new Date(Number(kop[1]), Number(kop[2]) - 1, Number(kop[3]));
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 export function datumNL(iso: string | null | undefined): string {
   if (!iso) return '';
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+  const d = alsLokaleDatum(iso);
+  return d ? d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+}
+
+/** Vandaag om 23:59:59, de grens voor "staat open". */
+export function eindeVanVandaag(): Date {
+  const d = new Date();
+  d.setHours(23, 59, 59, 999);
+  return d;
+}
+
+/** Zondag van deze week om 23:59:59. */
+export function eindeVanDezeWeek(): Date {
+  const d = eindeVanVandaag();
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7));
+  return d;
+}
+
+/**
+ * Staat er een actie open op of voor `grens`? Gebruikt door de pagina en door de
+ * modulekaart op het dashboard, zodat beide hetzelfde tellen.
+ */
+export function actieStaatOpen(
+  prospect: { volgendeActieOp: string | null; status: string; archief?: boolean; afgemeldOp?: string | null },
+  grens: Date
+): boolean {
+  if (!prospect.volgendeActieOp) return false;
+  if (prospect.archief || prospect.afgemeldOp) return false;
+  if (prospect.status === 'KLANT' || prospect.status === 'AFGEWEZEN') return false;
+  const d = alsLokaleDatum(prospect.volgendeActieOp);
+  return d !== null && d <= grens;
 }
 
 /** ISO-datum (jjjj-mm-dd) voor een date-veld. */
@@ -163,11 +204,22 @@ export function euroTekst(bedrag: number | null | undefined): string {
   return `€ ${(bedrag ?? 0).toLocaleString('nl-NL')}`;
 }
 
+/**
+ * Geeft de URL alleen terug als het echt een http- of https-adres is. Zo wordt
+ * "voorbeeld.nl" uit een geimporteerde lijst geen link naar een pagina in de portal
+ * zelf, en komt er nooit een javascript:-adres in een href.
+ */
+export function veiligeUrl(url: string | null | undefined): string | null {
+  const t = (url ?? '').trim();
+  if (!t) return null;
+  return /^https?:\/\//i.test(t) ? t : null;
+}
+
 /** Hoeveel hele dagen zit er tussen een datum en vandaag (positief = in het verleden). */
 export function dagenGeleden(iso: string | null | undefined): number | null {
   if (!iso) return null;
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return null;
+  const d = alsLokaleDatum(iso);
+  if (!d) return null;
   d.setHours(0, 0, 0, 0);
   return Math.round((beginVanVandaag().getTime() - d.getTime()) / 86400000);
 }

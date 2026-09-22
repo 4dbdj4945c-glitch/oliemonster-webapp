@@ -8,6 +8,7 @@ import {
   STATUS_LABELS,
   KANAAL_LABELS,
   segmentLabel,
+  veiligeUrl,
   datumNL,
   datumVoorVeld,
   type ContactmomentRegel,
@@ -147,13 +148,13 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
 
       {/* Snel contact leggen */}
       <div className="acq-links">
-        {prospect.website && (
-          <a className="btn btn-sm" href={prospect.website} target="_blank" rel="noopener noreferrer">
+        {veiligeUrl(prospect.website) && (
+          <a className="btn btn-sm" href={veiligeUrl(prospect.website)!} target="_blank" rel="noopener noreferrer">
             <Icon name="website" size={16} />Website
           </a>
         )}
-        {prospect.linkedin && (
-          <a className="btn btn-sm" href={prospect.linkedin} target="_blank" rel="noopener noreferrer">
+        {veiligeUrl(prospect.linkedin) && (
+          <a className="btn btn-sm" href={veiligeUrl(prospect.linkedin)!} target="_blank" rel="noopener noreferrer">
             <Icon name="external-link" size={16} />LinkedIn
           </a>
         )}
@@ -167,8 +168,8 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
             <Icon name="phone" size={16} />{prospect.telefoon}
           </a>
         )}
-        {prospect.bron && (
-          <a className="btn btn-sm" href={prospect.bron} target="_blank" rel="noopener noreferrer">
+        {veiligeUrl(prospect.bron) && (
+          <a className="btn btn-sm" href={veiligeUrl(prospect.bron)!} target="_blank" rel="noopener noreferrer">
             <Icon name="external-link" size={16} />Bron
           </a>
         )}

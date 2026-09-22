@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/prospectApi';
+import { haalSessie, toegangsFout, foutAntwoord, tabelOntbreekt } from '@/lib/prospectApi';
 import { leesProspectsCsv } from '@/lib/prospectCsv';
 
 /** Sleutel om dubbelen te herkennen: bedrijfsnaam + plaats, hoofdletterongevoelig. */
@@ -22,6 +22,10 @@ export async function POST(request: NextRequest) {
 
     if (!csv || !csv.trim()) {
       return NextResponse.json({ error: 'Er is geen CSV meegestuurd' }, { status: 400 });
+    }
+
+    if (csv.length > 2_000_000) {
+      return NextResponse.json({ error: 'Dit bestand is te groot, knip het op in stukken' }, { status: 413 });
     }
 
     let gelezen;
@@ -47,10 +51,13 @@ export async function POST(request: NextRequest) {
       toevoegen.push(p);
     }
 
+    // In één keer wegschrijven: of alle nieuwe regels staan erin, of geen enkele.
+    // skipDuplicates vangt een dubbele naam plus plaats af die we zelf niet zagen.
     let toegevoegd = 0;
-    for (const p of toevoegen) {
-      await prisma.prospect.create({
-        data: {
+    let importFout = '';
+    try {
+      const resultaat = await prisma.prospect.createMany({
+        data: toevoegen.map((p) => ({
           bedrijfsnaam: p.bedrijfsnaam,
           segment: p.segment,
           plaats: p.plaats,
@@ -77,9 +84,14 @@ export async function POST(request: NextRequest) {
           klantSindsOp: p.status === 'KLANT' ? new Date() : null,
           geschatteWaarde: p.geschatteWaarde,
           notities: p.notities,
-        },
+        })),
+        skipDuplicates: true,
       });
-      toegevoegd++;
+      toegevoegd = resultaat.count;
+    } catch (e) {
+      if (tabelOntbreekt(e)) throw e;
+      console.error('Import mislukt:', e);
+      importFout = 'De import is mislukt, er is niets toegevoegd.';
     }
 
     await createAuditLog({
@@ -90,9 +102,15 @@ export async function POST(request: NextRequest) {
         toegevoegd,
         overgeslagen: overgeslagen.length,
         regelsMetFout: gelezen.fouten.length,
+        mislukt: importFout ? true : undefined,
       },
       request,
+      success: !importFout,
     });
+
+    if (importFout) {
+      return NextResponse.json({ error: importFout }, { status: 500 });
+    }
 
     return NextResponse.json({
       toegevoegd,

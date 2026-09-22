@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isOilViewer2025 } from '@/lib/roles';
+import { actieStaatOpen, eindeVanVandaag } from '@/lib/prospects';
 import { AppShell, Icon } from '@/app/components/ui';
 
 interface User {
@@ -94,15 +95,11 @@ export default function DashboardPage() {
       // Acquisitie: aantal prospects en hoeveel acties er open staan (vandaag of eerder)
       if (prospectsRes.status === 'fulfilled' && prospectsRes.value.ok) {
         const data = await prospectsRes.value.json();
-        const vandaag = new Date();
-        vandaag.setHours(23, 59, 59, 999);
+        const grens = eindeVanVandaag();
         setStats(prev => ({
           ...prev,
           prospects: data.length,
-          prospectActies: data.filter((p: any) =>
-            p.volgendeActieOp && new Date(p.volgendeActieOp) <= vandaag
-            && p.status !== 'KLANT' && p.status !== 'AFGEWEZEN'
-          ).length,
+          prospectActies: data.filter((p: any) => actieStaatOpen(p, grens)).length,
         }));
       }
     } catch (error) {

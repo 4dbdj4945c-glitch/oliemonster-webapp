@@ -32,7 +32,7 @@ export function toegangsFout(session: SessionData, adminNodig: boolean): NextRes
 }
 
 export const TABEL_ONTBREEKT =
-  'De acquisitietabellen staan nog niet in de database. Draai db-push-acquisitie.sh in de projectmap en ververs deze pagina.';
+  'De acquisitietabellen staan nog niet in de database. Draai ./db-push-acquisitie.sh in de projectmap en ververs deze pagina.';
 
 /** Herkent de Prisma-fout die je krijgt als de tabel nog niet bestaat. */
 export function tabelOntbreekt(error: unknown): boolean {
