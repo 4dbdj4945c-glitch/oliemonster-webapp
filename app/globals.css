@@ -1685,6 +1685,17 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   color: var(--grijs-500);
 }
 
+/* Sluit-kruisje rechts in de kop van Modal */
+.modal-header:has(> .modal-sluit) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.modal-sluit {
+  margin-right: -6px;
+}
+
 /* Tekstlink met icoon */
 .btn-link:has(> .icon) {
   display: inline-flex;

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell, Modal } from '@/app/components/ui';
+import { AppShell, Modal, Icon } from '@/app/components/ui';
 import UltimoCommentsPanel from '@/app/components/UltimoCommentsPanel';
 
 interface User {
@@ -26,17 +26,8 @@ interface UltimoTask {
 
 const emptyForm = { jobName: '', taskDescription: '', installation: '' };
 
-const PinIcon = (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>
-);
 
-const ChevronIcon = (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
-);
 
-const SearchIcon = (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
-);
 
 export default function UltimoPage() {
   const [user, setUser] = useState<User | null>(null);
@@ -232,9 +223,7 @@ export default function UltimoPage() {
 
       <div className="zoekrij">
         <div className="zoekveld">
-          <span style={{ position: 'absolute', left: '11px', top: '50%', transform: 'translateY(-50%)', display: 'flex', color: 'var(--grijs-400)', pointerEvents: 'none' }}>
-            {SearchIcon}
-          </span>
+          <Icon name="search" />
           <input
             type="search"
             className="input"
@@ -245,12 +234,12 @@ export default function UltimoPage() {
             autoCorrect="off"
             autoCapitalize="none"
             spellCheck={false}
-            style={{ paddingLeft: '36px' }}
           />
         </div>
         {isAdmin && (
           <button type="button" className="btn btn-primary" onClick={openAdd}>
-            + Nieuwe taak
+            <Icon name="plus" />
+            Nieuwe taak
           </button>
         )}
       </div>
@@ -259,9 +248,10 @@ export default function UltimoPage() {
         <p className="laden">Laden...</p>
       ) : tasks.length === 0 ? (
         <div className="leeg">
+          <Icon name="empty" size={32} />
           {search
             ? <>Geen taken gevonden voor &ldquo;{search}&rdquo;.</>
-            : <>Nog geen taken. {isAdmin && 'Klik op "+ Nieuwe taak" om te beginnen.'}</>}
+            : <>Nog geen taken. {isAdmin && 'Klik op "Nieuwe taak" om te beginnen.'}</>}
         </div>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -275,7 +265,7 @@ export default function UltimoPage() {
                     <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--navy)', marginTop: '2px' }}>{task.taskDescription}</div>
                     {task.installation && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: 'var(--grijs-500)', marginTop: '4px' }}>
-                        {PinIcon}
+                        <Icon name="map-pin" size={16} />
                         <span>{task.installation}</span>
                       </div>
                     )}
@@ -287,9 +277,9 @@ export default function UltimoPage() {
                     )}
                   </div>
                   <div className="taak-rechts">
-                    <span className="badge badge-gray">{task.commentsCount}×</span>
+                    <span className="badge badge-gray" title={`${task.commentsCount} opmerkingen`}><Icon name="comment" size={16} />{task.commentsCount}</span>
                     <span className="taak-toggle">
-                      <span style={{ display: 'flex', transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}>{ChevronIcon}</span>
+                      <span style={{ display: 'flex', transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevron-down" size={16} /></span>
                       {expanded ? 'Sluit' : 'Historie'}
                     </span>
                   </div>

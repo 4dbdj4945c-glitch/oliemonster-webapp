@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Icon from './ui/Icon';
 
 export interface UltimoComment {
   id: number;
@@ -27,21 +28,9 @@ function todayISO() {
 
 const emptyDraft = { date: todayISO(), jobNumber: '', text: '' };
 
-const CopyIcon = (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-);
 
-const CheckIcon = (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
-);
 
-const PencilIcon = (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 3a2.8 2.8 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>
-);
 
-const TrashIcon = (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-);
 
 // Kaartje voor een opmerking of het invoerformulier: grijze rand, lichtgrijze achtergrond
 const kaartStyle: React.CSSProperties = {
@@ -235,7 +224,8 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
             onClick={() => { setAdding(true); setNewDraft({ ...emptyDraft, date: todayISO() }); }}
             disabled={busy}
           >
-            + Opmerking
+            <Icon name="plus" size={16} />
+            Opmerking
           </button>
         )}
       </div>
@@ -313,17 +303,17 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
                         onClick={() => copyText(c)}
                         style={copied ? { color: 'var(--groen-tekst)', borderColor: '#BBF7D0', background: 'var(--groen-light)' } : undefined}
                       >
-                        {copied ? CheckIcon : CopyIcon}
+                        <Icon name={copied ? 'check' : 'copy'} size={16} />
                         {copied ? 'Gekopieerd' : 'Kopieer opmerking'}
                       </button>
                       {isAdmin && (
                         <>
                           <button type="button" className="icon-btn" onClick={() => startEdit(c)} disabled={busy}>
-                            {PencilIcon}
+                            <Icon name="pencil" size={16} />
                             Bewerken
                           </button>
                           <button type="button" className="icon-btn icon-btn-danger" onClick={() => handleDelete(c.id)} disabled={busy}>
-                            {TrashIcon}
+                            <Icon name="trash" size={16} />
                             Verwijderen
                           </button>
                         </>

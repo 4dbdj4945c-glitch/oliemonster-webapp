@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Modal from '@/app/components/ui/Modal';
+import Icon from '@/app/components/ui/Icon';
 
 export default function InstallButton() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -105,11 +106,7 @@ export default function InstallButton() {
     <>
       <div className="install-wrap">
         <button type="button" onClick={handleInstallClick} className="btn btn-block">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" style={{ flex: 'none' }}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
+          <Icon name="install-app" />
           App installeren
         </button>
         <p className="install-uitleg">Zet de portal als app op je beginscherm of bureaublad.</p>

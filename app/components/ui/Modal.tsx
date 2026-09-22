@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
+import Icon from './Icon';
 
 type ModalSize = 'sm' | 'md' | 'lg';
 
@@ -36,6 +37,9 @@ export default function Modal({ open, onClose, title, size = 'sm', children, foo
         {title && (
           <div className="modal-header">
             <h2 className="modal-title">{title}</h2>
+            <button type="button" className="icon-btn modal-sluit" onClick={onClose} aria-label="Sluiten" title="Sluiten">
+              <Icon name="close" />
+            </button>
           </div>
         )}
         <div className="modal-body">{children}</div>

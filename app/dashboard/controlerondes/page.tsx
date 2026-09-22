@@ -438,18 +438,12 @@ export default function ControleRondesPage() {
     return <div className="laadscherm">Laden…</div>;
   }
 
-  const gpsIcon = (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor"/></svg>
-  );
-  const plusIcon = (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-  );
-  const trashIcon = (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-  );
-  const kruisIcon = (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
-  );
+  const gpsIcon = <Icon name="gps-live" />;
+  const plusIcon = <Icon name="plus" />;
+  const trashIcon = <Icon name="trash" size={16} />;
+  const kruisIcon = <Icon name="close" size={16} />;
+  const rondeStatus = (klaar: boolean, bezig: boolean) =>
+    <Icon name={klaar ? 'status-round-done' : bezig ? 'status-round-busy' : 'status-round-open'} size={16} />;
 
   const gpsKnopTekst = gpsActive ? 'GPS aan, stop' : 'Start live GPS';
 
@@ -585,7 +579,7 @@ export default function ControleRondesPage() {
           </div>
 
           {rounds.length === 0 ? (
-            <div className="leeg">Nog geen rondes. Maak er een aan om te beginnen.</div>
+            <div className="leeg"><Icon name="empty" size={32} />Nog geen rondes. Maak er een aan om te beginnen.</div>
           ) : (
             <div className="rounds-grid">
               {rounds.map((r) => {
@@ -610,6 +604,7 @@ export default function ControleRondesPage() {
                     <div className="bar"><div className="bar-fill" style={{ width: `${pct}%` }} /></div>
                     <div className="round-voet">
                       <span className={`badge ${klaar ? 'badge-success' : r.doneCount > 0 ? 'badge-warning' : 'badge-gray'}`}>
+                        {rondeStatus(klaar, r.doneCount > 0)}
                         {r.doneCount}/{r.streetsCount} straten gereden
                       </span>
                       {r.routeDistance ? <span>{(r.routeDistance / 1000).toFixed(1)} km</span> : null}
@@ -697,8 +692,8 @@ export default function ControleRondesPage() {
                     <strong>{selectedStreets.size}</strong> geselecteerd, {allStreets.length} straten
                   </span>
                   <div className="knoppenrij selectie-knoppen">
-                    <button type="button" className="btn btn-sm" onClick={selectAllFiltered}>Alles</button>
-                    <button type="button" className="btn btn-sm" onClick={deselectAll} disabled={selectedStreets.size === 0}>Wissen</button>
+                    <button type="button" className="btn btn-sm" onClick={selectAllFiltered}><Icon name="select-all" size={16} />Alles</button>
+                    <button type="button" className="btn btn-sm" onClick={deselectAll} disabled={selectedStreets.size === 0}><Icon name="clear-selection" size={16} />Wissen</button>
                   </div>
                 </div>
                 <div className="street-list">
@@ -810,7 +805,7 @@ export default function ControleRondesPage() {
                 {gpsIcon}
                 {gpsKnopTekst}
               </button>
-              <button type="button" className="btn btn-danger-soft btn-reset" onClick={resetRound}>Reset</button>
+              <button type="button" className="btn btn-danger-soft btn-reset" onClick={resetRound}><Icon name="reset" />Reset</button>
             </div>
           </div>
 
@@ -819,6 +814,7 @@ export default function ControleRondesPage() {
           <div className="card" style={{ marginBottom: 14 }}>
             <div className="voortgang-kop">
               <span className={`badge ${voortgangBadge}`}>
+                {rondeStatus(totalCount > 0 && doneCount >= totalCount, doneCount > 0)}
                 {doneCount}/{totalCount} straten gereden
               </span>
               <label className="autovink">

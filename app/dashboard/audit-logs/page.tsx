@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell } from '@/app/components/ui';
+import { AppShell, Icon } from '@/app/components/ui';
 
 interface User {
   userId: number;
@@ -117,20 +117,23 @@ export default function AuditLogsPage() {
           </div>
           <div>
             <label className="label" htmlFor="audit-gebruiker">Filter op gebruiker</label>
-            <input
-              id="audit-gebruiker"
-              type="text"
-              placeholder="Zoek op gebruikersnaam..."
-              value={usernameFilter}
-              onChange={(e) => setUsernameFilter(e.target.value)}
-              className="input"
-            />
+            <span className="zoekveld">
+              <Icon name="search" />
+              <input
+                id="audit-gebruiker"
+                type="text"
+                placeholder="Zoek op gebruikersnaam..."
+                value={usernameFilter}
+                onChange={(e) => setUsernameFilter(e.target.value)}
+                className="input"
+              />
+            </span>
           </div>
         </div>
       </div>
 
       {logs.length === 0 ? (
-        <div className="leeg">Geen logs gevonden.</div>
+        <div className="leeg"><Icon name="empty" size={32} />Geen logs gevonden.</div>
       ) : (
         <div className="table-container">
           <div className="table-scroll">

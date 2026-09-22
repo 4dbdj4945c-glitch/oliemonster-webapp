@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell, Modal } from '@/app/components/ui';
+import { AppShell, Modal, Icon } from '@/app/components/ui';
 import { ROLE_LABELS } from '@/lib/roles';
 
 interface User {
@@ -264,6 +264,7 @@ export default function AdminPage() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ marginBottom: '16px' }}>
                 <p className="section-label" style={{ margin: 0 }}>Gebruikersbeheer</p>
                 <button type="button" onClick={openAddModal} className="btn btn-primary w-full sm:w-auto">
+                  <Icon name="user-plus" />
                   Nieuwe gebruiker
                 </button>
               </div>
@@ -305,6 +306,7 @@ export default function AdminPage() {
                           <td className="kaart-acties" data-label="Acties">
                             <div className="flex flex-wrap sm:flex-nowrap gap-1.5">
                               <button type="button" onClick={() => openEditModal(user)} className="btn btn-sm">
+                                <Icon name="pencil" size={16} />
                                 Bewerken
                               </button>
                               {user.id !== sessionUser?.userId && (
@@ -314,9 +316,11 @@ export default function AdminPage() {
                                     onClick={() => handleResetPassword(user.id, user.username)}
                                     className="btn btn-sm"
                                   >
+                                    <Icon name="reset" size={16} />
                                     Wachtwoord resetten
                                   </button>
                                   <button type="button" onClick={() => handleDelete(user.id)} className="btn btn-sm btn-danger-soft">
+                                    <Icon name="trash" size={16} />
                                     Verwijderen
                                   </button>
                                 </>

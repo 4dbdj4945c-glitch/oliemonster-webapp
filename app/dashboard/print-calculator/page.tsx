@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AppShell } from '@/app/components/ui';
+import { AppShell, Icon } from '@/app/components/ui';
 
 interface User {
   userId: number;
@@ -247,7 +247,7 @@ export default function PrintCalculatorPage() {
           </div>
 
           <div className="actions">
-            <button className="btn btn-sm" onClick={resetDefaults}>Terug naar standaardwaarden</button>
+            <button className="btn btn-sm" onClick={resetDefaults}><Icon name="reset" size={16} />Terug naar standaardwaarden</button>
           </div>
         </div>
 
