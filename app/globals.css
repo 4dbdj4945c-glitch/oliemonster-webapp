@@ -1633,3 +1633,85 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   .foto-knop-sluiten { right: max(12px, env(safe-area-inset-right)); }
   .foto-knop-download { right: calc(max(12px, env(safe-area-inset-right)) + 52px); }
 }
+
+/* ============ Iconen (zie STIJL.md, "Iconen") ============
+   Eén set via <Icon name=... />: 24-grid, lijn 2, currentColor. Kleur komt van de container.
+   Staat achteraan zodat het de eerdere knop- en badgeregels verfijnt. */
+.icon {
+  flex: none;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+/* Badge met icoon: iets minder ruimte links, zodat icoon en tekst optisch gecentreerd staan */
+.badge:has(> .icon) {
+  padding: 2px 9px 2px 6px;
+}
+
+/* Actief menu-item: grijs vlak met oranje streep links (geen gevuld icoon) */
+.toolbar-menu-item.on {
+  background: var(--grijs-100);
+  border-left: 3px solid var(--oranje);
+  padding-left: 9px;
+}
+
+/* Zoekveld met loep */
+.zoekveld {
+  position: relative;
+  display: block;
+}
+.zoekveld > .icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--grijs-400);
+  pointer-events: none;
+}
+.zoekveld > .input,
+.zoekveld > .glass-input {
+  padding-left: 38px;
+  width: 100%;
+}
+
+/* Statistiektegel met icoon rechtsboven */
+.stat-card-icoon {
+  position: relative;
+}
+.stat-card-icoon > .icon {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: var(--grijs-500);
+}
+
+/* Lege staat: groot icoon boven de tekst */
+.leeg > .icon {
+  display: block;
+  margin: 0 auto 10px;
+  color: var(--grijs-400);
+}
+
+/* Verwijderen als icoonknop is rood, zoals Uitloggen in het menu */
+.icon-btn-danger { color: var(--rood); }
+
+/* Tekst die alleen op de telefoon naast een icoonknop staat (desktop: alleen icoon, met title) */
+.alleen-mobiel { display: none; }
+
+@media (max-width: 640px) {
+  .alleen-mobiel { display: inline; }
+  /* In de tabel-als-kaart worden icoonknoppen gewone knoppen met icoon en tekst */
+  .table-kaarten td.kaart-acties .icon-btn {
+    border: 1px solid var(--grijs-200);
+    background: var(--wit);
+    color: var(--navy);
+    padding: 7px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    gap: 6px;
+    border-radius: var(--radius-md);
+  }
+  .table-kaarten td.kaart-acties .icon-btn-danger {
+    color: var(--rood-tekst);
+  }
+}
