@@ -408,6 +408,7 @@ export default function DashboardPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="input"
+              aria-label="Zoeken"
             />
           </label>
           <div className="knoppenrij flex gap-3">
@@ -437,7 +438,7 @@ export default function DashboardPage() {
             {isAdmin && (
               <button type="button" onClick={openAddModal} className="btn btn-primary">
                 <Icon name="plus" />
-                Nieuw Monster
+                Nieuw monster
               </button>
             )}
           </div>
@@ -451,7 +452,7 @@ export default function DashboardPage() {
       <div className="card" style={{ marginBottom: '16px' }}>
         <div className="filters">
           <div className="filter-veld">
-            <label className="label filter-label"><Icon name="filter" size={16} /> Status:</label>
+            <label className="label filter-label">Status:</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
@@ -510,7 +511,7 @@ export default function DashboardPage() {
           <p className="stat-label">Totaal monsters</p>
         </div>
         <div
-          className="stat-card stat-card-icoon"
+          className="stat-card stat-card-icoon is-genomen"
           onClick={() => setStatusFilter('taken')}
           style={{
             cursor: 'pointer',
@@ -519,14 +520,14 @@ export default function DashboardPage() {
             boxShadow: statusFilter === 'taken' ? '0 0 0 3px var(--groen-light)' : undefined,
           }}
         >
-          <Icon name="status-taken" style={{ color: 'var(--groen-tekst)' }} />
+          <Icon name="status-taken" />
           <p className="stat-value" style={{ color: 'var(--groen-tekst)' }}>
             {samples.filter(s => s.isTaken && !s.isDisabled).length}
           </p>
           <p className="stat-label">Genomen</p>
         </div>
         <div
-          className="stat-card stat-card-icoon"
+          className="stat-card stat-card-icoon is-niet-genomen"
           onClick={() => setStatusFilter('notTaken')}
           style={{
             cursor: 'pointer',
@@ -535,7 +536,7 @@ export default function DashboardPage() {
             boxShadow: statusFilter === 'notTaken' ? '0 0 0 3px var(--rood-light)' : undefined,
           }}
         >
-          <Icon name="status-not-taken" style={{ color: 'var(--rood-tekst)' }} />
+          <Icon name="status-not-taken" />
           <p className="stat-value" style={{ color: 'var(--rood-tekst)' }}>
             {samples.filter(s => !s.isTaken && !s.isDisabled).length}
           </p>
@@ -551,7 +552,7 @@ export default function DashboardPage() {
             boxShadow: statusFilter === 'cancelled' ? '0 0 0 3px var(--grijs-200)' : undefined,
           }}
         >
-          <Icon name="status-cancelled" style={{ color: 'var(--grijs-500)' }} />
+          <Icon name="status-cancelled" />
           <p className="stat-value" style={{ color: 'var(--grijs-500)' }}>
             {samples.filter(s => s.isDisabled).length}
           </p>
@@ -694,7 +695,7 @@ export default function DashboardPage() {
                           onClick={() => openEditModal(sample)}
                           className="icon-btn sm:mr-1"
                           title="Bewerken"
-                          aria-label="Bewerken"
+                          aria-label={`${sample.oNumber} bewerken`}
                         >
                           <Icon name="pencil" size={16} />
                           <span className="alleen-mobiel">Bewerken</span>
@@ -702,9 +703,9 @@ export default function DashboardPage() {
                         <button
                           type="button"
                           onClick={() => handleDelete(sample.id)}
-                          className="icon-btn icon-btn-danger"
+                          className="icon-btn icon-btn-danger icon-btn-verwijder"
                           title="Verwijderen"
-                          aria-label="Verwijderen"
+                          aria-label={`${sample.oNumber} verwijderen`}
                         >
                           <Icon name="trash" size={16} />
                           <span className="alleen-mobiel">Verwijderen</span>

@@ -92,8 +92,8 @@ export default function HelpModal({ isOpen, onClose, userRole }: HelpModalProps)
               <h3 className="section-label">Monsters beheren (admin)</h3>
               <ul>
                 <li><strong>Toevoegen:</strong> klik op &quot;Nieuw monster&quot; om een monster toe te voegen.</li>
-                <li><strong>Bewerken:</strong> klik op &quot;Bewerken&quot; bij een monster om deze aan te passen.</li>
-                <li><strong>Verwijderen:</strong> klik op &quot;Verwijderen&quot; bij een monster om deze te verwijderen.</li>
+                <li><strong>Bewerken:</strong> klik op het potloodje bij een monster om het aan te passen (op de telefoon staat er &quot;Bewerken&quot; bij).</li>
+                <li><strong>Verwijderen:</strong> klik op het prullenbakje bij een monster om het te verwijderen (op de telefoon staat er &quot;Verwijderen&quot; bij).</li>
                 <li><strong>Datum:</strong> het datumveld is alleen beschikbaar wanneer &quot;Monster is genomen&quot; is aangevinkt.</li>
                 <li><strong>O-nummer:</strong> elk o-nummer moet uniek zijn, je krijgt een waarschuwing bij duplicaten.</li>
               </ul>

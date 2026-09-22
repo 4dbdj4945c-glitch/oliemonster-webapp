@@ -26,9 +26,6 @@ interface UltimoTask {
 
 const emptyForm = { jobName: '', taskDescription: '', installation: '' };
 
-
-
-
 export default function UltimoPage() {
   const [user, setUser] = useState<User | null>(null);
   const [tasks, setTasks] = useState<UltimoTask[]>([]);
@@ -277,7 +274,7 @@ export default function UltimoPage() {
                     )}
                   </div>
                   <div className="taak-rechts">
-                    <span className="badge badge-gray" title={`${task.commentsCount} opmerkingen`}><Icon name="comment" size={16} />{task.commentsCount}</span>
+                    <span className="badge badge-gray" title={`${task.commentsCount} ${task.commentsCount === 1 ? 'opmerking' : 'opmerkingen'}`}><Icon name="comment" size={16} />{task.commentsCount}</span>
                     <span className="taak-toggle">
                       <span style={{ display: 'flex', transform: expanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }}><Icon name="chevron-down" size={16} /></span>
                       {expanded ? 'Sluit' : 'Historie'}

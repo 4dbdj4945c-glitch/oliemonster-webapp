@@ -28,10 +28,6 @@ function todayISO() {
 
 const emptyDraft = { date: todayISO(), jobNumber: '', text: '' };
 
-
-
-
-
 // Kaartje voor een opmerking of het invoerformulier: grijze rand, lichtgrijze achtergrond
 const kaartStyle: React.CSSProperties = {
   background: 'var(--grijs-50)',

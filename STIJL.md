@@ -74,13 +74,15 @@ Eén set voor de hele portal, via `<Icon name="..." />` uit `app/components/ui` 
 (monsterfles, hermonstering, beheer, controlerondes, ...) in hetzelfde gewicht.
 
 - **Spec**: 24-grid met 1px veilige rand, lijn 2, ronde uiteinden en hoeken, geen vulling, alleen `currentColor`.
-- **Maten**: 16 (badges, tabelacties), 20 (standaard: knoppen, menu's), 24 (telefoon, navigatie, modulekaarten), 32 (lege staten).
+- **Maten**: 16 (badges, tabelacties, knoppen in de balk), 20 (standaard: knoppen, menu's, modulekaart op de telefoon), 24 (hamburger, modulekaarten op desktop), 32 (lege staten).
 - **Kleur**: via de container. Grijs-700 of grijs-500 op wit, wit op navy. Nooit oranje in een icoon (2,8:1 op wit), nooit twee kleuren.
-- **Actief**: niet met een gevuld icoon, maar via de container: navy vlak met wit icoon, of `.toolbar-menu-item.on` (oranje streep links).
+  Status- en verwijdericonen nemen de functionele kleur van hun badge, tegel of knop over (groen-tekst, rood-tekst, blauw);
+  rood alleen voor Niet genomen en verwijderen. Stattegels: `.stat-card-icoon.is-genomen` / `.is-niet-genomen`, geen inline kleur.
+- **Actief**: niet met een gevuld icoon, maar via de container: navy vlak met wit icoon, of een oranje streep links (`border-left: 3px solid var(--oranje)`). Die klasse bestaat nog niet; maak hem pas als een menu een actieve staat krijgt.
 - **Status**: altijd icoon plus woord. Genomen `status-taken` (groen), Niet genomen `status-not-taken` (rood),
   Gepland `status-planned` (blauw, `badge-info`), Geannuleerd `status-cancelled` (grijs). Rondes: `status-round-open/-busy/-done`.
 - **Tabelacties**: op desktop Hermonstering als knop met tekst, Bewerken en Verwijderen als `.icon-btn` met `title` en
-  `aria-label`; de tekst staat in `<span class="alleen-mobiel">`, zodat de telefoon altijd icoon plus tekst toont.
+  `aria-label` (Verwijderen met `.icon-btn-verwijder`: rood in rust; elders blijft `.icon-btn-danger` grijs met rood bij hover); de tekst staat in `<span class="alleen-mobiel">`, zodat de telefoon altijd icoon plus tekst toont.
 - **Hulpklassen**: `.zoekveld` (loep in een veld), `.stat-card-icoon` (icoon rechtsboven in een stattegel), `.leeg > .icon`.
 - **Niet**: geen getypte "+" of "x" als icoon, geen emoji, geen losse inline `<svg>` in pagina's. Nieuw icoon nodig?
   Eerst in `iconen-voorstel/` tekenen volgens de spec en opnemen in `iconen.json`, dan opnieuw genereren.

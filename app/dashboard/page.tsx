@@ -219,10 +219,6 @@ export default function DashboardPage() {
             grid-column: 1;
             grid-row: 1;
           }
-          .card-icon :global(svg) {
-            width: 20px;
-            height: 20px;
-          }
           .card-title {
             grid-column: 2;
             grid-row: 1;

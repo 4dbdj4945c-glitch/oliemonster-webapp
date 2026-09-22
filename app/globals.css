@@ -1648,13 +1648,6 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   padding: 2px 9px 2px 6px;
 }
 
-/* Actief menu-item: grijs vlak met oranje streep links (geen gevuld icoon) */
-.toolbar-menu-item.on {
-  background: var(--grijs-100);
-  border-left: 3px solid var(--oranje);
-  padding-left: 9px;
-}
-
 /* Zoekveld met loep */
 .zoekveld {
   position: relative;
@@ -1668,8 +1661,7 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   color: var(--grijs-400);
   pointer-events: none;
 }
-.zoekveld > .input,
-.zoekveld > .glass-input {
+.zoekveld > .input {
   padding-left: 38px;
   width: 100%;
 }
@@ -1684,6 +1676,8 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   right: 16px;
   color: var(--grijs-500);
 }
+.stat-card-icoon.is-genomen > .icon { color: var(--groen-tekst); }
+.stat-card-icoon.is-niet-genomen > .icon { color: var(--rood-tekst); }
 
 /* Sluit-kruisje rechts in de kop van Modal */
 .modal-header:has(> .modal-sluit) {
@@ -1693,7 +1687,7 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   gap: 12px;
 }
 .modal-sluit {
-  margin-right: -6px;
+  margin: -10px -6px -10px 0;
 }
 
 /* Tekstlink met icoon */
@@ -1711,14 +1705,21 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   color: var(--grijs-400);
 }
 
-/* Verwijderen als icoonknop is rood, zoals Uitloggen in het menu */
-.icon-btn-danger { color: var(--rood); }
+/* Verwijderen als losse icoonknop in een tabelrij: rood in rust (elders blijft .icon-btn-danger grijs met rood bij hover) */
+.icon-btn-verwijder { color: var(--rood-tekst); }
 
 /* Tekst die alleen op de telefoon naast een icoonknop staat (desktop: alleen icoon, met title) */
 .alleen-mobiel { display: none; }
 
 @media (max-width: 640px) {
   .alleen-mobiel { display: inline; }
+  /* Lege tabel: icoon boven de tekst, ook als de rij een kaart is */
+  .table-kaarten td:has(> .icon-leeg) {
+    flex-direction: column;
+    align-items: center;
+  }
+  /* Modulekaart op het dashboard: icoon 20 in het kleinere vakje */
+  .card-icon > .icon { width: 20px; height: 20px; }
   /* In de tabel-als-kaart worden icoonknoppen gewone knoppen met icoon en tekst */
   .table-kaarten td.kaart-acties .icon-btn {
     border: 1px solid var(--grijs-200);
