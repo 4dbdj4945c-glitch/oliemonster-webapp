@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { apiFetch } from '@/lib/api';
 import { searchPlaces, getStreets, PlaceHit, StreetHit } from '@/lib/pdok';
 import type { MapStreet } from '@/app/components/RouteMap';
-import { AppShell, NavButton, Icons } from '@/app/components/ui';
+import { AppShell, NavButton, Icon } from '@/app/components/ui';
 
 const RouteMap = dynamic(() => import('@/app/components/RouteMap'), {
   ssr: false,
@@ -459,7 +459,7 @@ export default function ControleRondesPage() {
       user={user}
       rightActions={
         view !== 'list' && (
-          <NavButton icon={Icons.Back} onClick={() => { stopGps(); setView('list'); loadRounds(); }}>Rondes</NavButton>
+          <NavButton icon={<Icon name="arrow-left" size={16} />} onClick={() => { stopGps(); setView('list'); loadRounds(); }}>Rondes</NavButton>
         )
       }
     >

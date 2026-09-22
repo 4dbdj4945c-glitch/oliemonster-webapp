@@ -3,7 +3,7 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ROLE_LABELS, isOilViewer2025 } from '@/lib/roles';
-import { Icons } from './NavButton';
+import Icon from './Icon';
 
 /*
   Navy balk bovenaan elke pagina (zie STIJL.md, "Balk bovenaan").
@@ -96,7 +96,7 @@ export default function AppShell({
 
             {toonNavigatie && (
               <button type="button" className="nav-btn" onClick={() => router.push('/dashboard')} aria-label="Terug naar dashboard">
-                {Icons.Home}
+                <Icon name="home" size={16} />
                 <span className="lang">Terug naar dashboard</span>
                 <span className="kort">Dashboard</span>
               </button>
@@ -106,19 +106,19 @@ export default function AppShell({
               <ToolbarMenu
                 label="Beheer"
                 buttonClass="nav-btn"
-                button={<>{Icons.Settings}Beheer{Icons.ChevronDown}</>}
+                button={<><Icon name="admin" size={16} />Beheer<Icon name="chevron-down" size={16} /></>}
               >
-                <MenuItem icon={Icons.Logs} onClick={() => router.push('/dashboard/audit-logs')}>Audit logs</MenuItem>
-                <MenuItem icon={Icons.Columns} onClick={() => router.push('/dashboard/admin?tab=columns')}>Kolommen aanpassen</MenuItem>
-                <MenuItem icon={Icons.Settings} onClick={() => router.push('/dashboard/admin')}>Instellingen</MenuItem>
+                <MenuItem icon={<Icon name="audit-log" />} onClick={() => router.push('/dashboard/audit-logs')}>Audit logs</MenuItem>
+                <MenuItem icon={<Icon name="columns" />} onClick={() => router.push('/dashboard/admin?tab=columns')}>Kolommen aanpassen</MenuItem>
+                <MenuItem icon={<Icon name="settings" />} onClick={() => router.push('/dashboard/admin')}>Instellingen</MenuItem>
                 <span className="toolbar-menu-scheiding" />
-                <MenuItem icon={Icons.Print} onClick={afdrukken}>Afdrukken</MenuItem>
+                <MenuItem icon={<Icon name="printer" />} onClick={afdrukken}>Afdrukken</MenuItem>
               </ToolbarMenu>
             )}
 
             {onHelp && (
               <button type="button" className="nav-btn nav-btn-icoon" onClick={onHelp} aria-label="Help" title="Help">
-                {Icons.Help}
+                <Icon name="help" size={16} />
               </button>
             )}
 
@@ -141,7 +141,7 @@ export default function AppShell({
                   <span>{ROLE_LABELS[user.role] ?? user.role}</span>
                 </div>
                 <span className="toolbar-menu-scheiding" />
-                <MenuItem icon={Icons.Logout} danger onClick={handleLogout}>Uitloggen</MenuItem>
+                <MenuItem icon={<Icon name="logout" />} danger onClick={handleLogout}>Uitloggen</MenuItem>
               </ToolbarMenu>
             </div>
           )}
@@ -153,8 +153,8 @@ export default function AppShell({
               label="Menu"
               buttonClass="nav-btn nav-btn-icoon toolbar-hamburger"
               panelClass="toolbar-mobiel-paneel"
-              button={Icons.Menu}
-              buttonOpen={Icons.Close}
+              button={<Icon name="menu" size={24} />}
+              buttonOpen={<Icon name="close" size={24} />}
             >
               {user && (
                 <div className="toolbar-menu-kop toolbar-mobiel-kop">
@@ -166,22 +166,22 @@ export default function AppShell({
                 </div>
               )}
               {toonNavigatie && (
-                <MenuItem icon={Icons.Home} onClick={() => router.push('/dashboard')}>Terug naar dashboard</MenuItem>
+                <MenuItem icon={<Icon name="home" />} onClick={() => router.push('/dashboard')}>Terug naar dashboard</MenuItem>
               )}
-              {onHelp && <MenuItem icon={Icons.Help} onClick={onHelp}>Help</MenuItem>}
+              {onHelp && <MenuItem icon={<Icon name="help" />} onClick={onHelp}>Help</MenuItem>}
               {isAdmin && (
                 <>
                   <span className="toolbar-menu-label">Beheer</span>
-                  <MenuItem icon={Icons.Logs} onClick={() => router.push('/dashboard/audit-logs')}>Audit logs</MenuItem>
-                  <MenuItem icon={Icons.Columns} onClick={() => router.push('/dashboard/admin?tab=columns')}>Kolommen aanpassen</MenuItem>
-                  <MenuItem icon={Icons.Settings} onClick={() => router.push('/dashboard/admin')}>Instellingen</MenuItem>
-                  <MenuItem icon={Icons.Print} onClick={afdrukken}>Afdrukken</MenuItem>
+                  <MenuItem icon={<Icon name="audit-log" />} onClick={() => router.push('/dashboard/audit-logs')}>Audit logs</MenuItem>
+                  <MenuItem icon={<Icon name="columns" />} onClick={() => router.push('/dashboard/admin?tab=columns')}>Kolommen aanpassen</MenuItem>
+                  <MenuItem icon={<Icon name="settings" />} onClick={() => router.push('/dashboard/admin')}>Instellingen</MenuItem>
+                  <MenuItem icon={<Icon name="printer" />} onClick={afdrukken}>Afdrukken</MenuItem>
                 </>
               )}
               {user && (
                 <>
                   <span className="toolbar-menu-scheiding" />
-                  <MenuItem icon={Icons.Logout} danger onClick={handleLogout}>Uitloggen</MenuItem>
+                  <MenuItem icon={<Icon name="logout" />} danger onClick={handleLogout}>Uitloggen</MenuItem>
                 </>
               )}
             </ToolbarMenu>
