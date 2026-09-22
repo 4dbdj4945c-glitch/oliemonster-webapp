@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isOilViewer2025 } from '@/lib/roles';
-import { AppShell } from '@/app/components/ui';
+import { AppShell, Icon } from '@/app/components/ui';
 
 interface User {
   userId: number;
@@ -124,7 +124,7 @@ export default function DashboardPage() {
           margin-bottom: 32px;
         }
 
-        /* Module-kaart: vlakke witte kaart met accentlijn bovenin */
+        /* Module-kaart: vlakke witte kaart met navy accentlijn bovenin (geen losse modulekleuren) */
         .module-card {
           background: var(--wit);
           border: 1px solid var(--grijs-200);
@@ -149,7 +149,7 @@ export default function DashboardPage() {
           left: 0;
           right: 0;
           height: 3px;
-          background: var(--accent-color);
+          background: var(--navy);
         }
 
         .card-icon {
@@ -160,8 +160,8 @@ export default function DashboardPage() {
           height: 46px;
           margin-bottom: 16px;
           border-radius: var(--radius-md);
-          color: var(--accent-color);
-          background: color-mix(in srgb, var(--accent-color) 10%, transparent);
+          color: var(--navy);
+          background: var(--grijs-100);
         }
 
         .card-title {
@@ -186,12 +186,12 @@ export default function DashboardPage() {
           border-top: 1px solid var(--grijs-200);
         }
 
-        /* Statistiek in de accentkleur van de kaart; .stat-label komt uit globals.css */
+        /* Statistiek in navy; modules herken je aan het icoon, niet aan een kleur. .stat-label komt uit globals.css */
         .stat-value {
           font-size: 24px;
           font-weight: 800;
           letter-spacing: -0.03em;
-          color: var(--accent-color);
+          color: var(--navy);
           line-height: 1.1;
         }
 
@@ -219,9 +219,9 @@ export default function DashboardPage() {
             grid-column: 1;
             grid-row: 1;
           }
-          .card-icon svg {
-            width: 22px;
-            height: 22px;
+          .card-icon :global(svg) {
+            width: 20px;
+            height: 20px;
           }
           .card-title {
             grid-column: 2;
@@ -259,11 +259,10 @@ export default function DashboardPage() {
           <div className="cards-grid">
             <div
               className="module-card"
-              style={{ '--accent-color': '#0F766E' } as React.CSSProperties}
               onClick={() => router.push('/dashboard/controlerondes')}
             >
               <div className="card-accent" />
-              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M9 20l-5.447-2.724A1 1 0 0 1 3 16.382V5.618a1 1 0 0 1 1.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0 0 21 18.382V7.618a1 1 0 0 0-.553-.894L15 4m0 13V4m0 0L9 7"/></svg></span>
+              <span className="card-icon"><Icon name="module-rounds" size={24} /></span>
               <h2 className="card-title">Controlerondes</h2>
               <p className="card-description">Plan en rijd controlerondes langs geselecteerde straten met live route en voortgang</p>
               <div className="card-stats">
@@ -275,11 +274,10 @@ export default function DashboardPage() {
             </div>
             <div
               className="module-card"
-              style={{ '--accent-color': 'var(--geel-tekst)' } as React.CSSProperties}
               onClick={() => router.push('/dashboard/print-calculator')}
             >
               <div className="card-accent" />
-              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg></span>
+              <span className="card-icon"><Icon name="module-print-calc" size={24} /></span>
               <h2 className="card-title">Printkosten calculator</h2>
               <p className="card-description">Kostprijs en adviesverkoopprijs per bedrukt item (UV-printer) berekenen</p>
               <div className="card-stats">
@@ -293,11 +291,10 @@ export default function DashboardPage() {
                 Bron en uitleg: Documents/Claude/email-templates/ (sync-webapp.sh kopieert 'm hierheen). */}
             <div
               className="module-card"
-              style={{ '--accent-color': '#C2410C' } as React.CSSProperties}
               onClick={() => window.open('/email-editor.html', '_blank', 'noopener')}
             >
               <div className="card-accent" />
-              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></span>
+              <span className="card-icon"><Icon name="module-email" size={24} /></span>
               <h2 className="card-title">E-mail opstellen</h2>
               <p className="card-description">Opgemaakte mails in huisstijl samenstellen vanuit sjablonen en plakken in Apple Mail</p>
               <div className="card-stats">
@@ -316,13 +313,12 @@ export default function DashboardPage() {
           <div className="cards-grid">
             <div
               className="module-card"
-              style={{ '--accent-color': 'var(--blue)' } as React.CSSProperties}
               onClick={() => router.push('/dashboard/oliemonsters')}
             >
               <div className="card-accent" />
-              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/></svg></span>
+              <span className="card-icon"><Icon name="oil-sample" size={24} /></span>
               <h2 className="card-title">Oliemonsters 2025</h2>
-              <p className="card-description">Overzicht en beheer van oliemonster analyses 2025</p>
+              <p className="card-description">Overzicht en beheer van oliemonsteranalyses 2025</p>
               <div className="card-stats">
                 <div className="stat-item">
                   <div className="stat-value">{stats.oilSamples2025}</div>
@@ -336,13 +332,12 @@ export default function DashboardPage() {
             </div>
             <div
               className="module-card"
-              style={{ '--accent-color': '#1E40AF' } as React.CSSProperties}
               onClick={() => router.push('/dashboard/oliemonsters2026')}
             >
               <div className="card-accent" />
-              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2"/><path d="M6.453 15h11.094"/><path d="M8.5 2h7"/></svg></span>
+              <span className="card-icon"><Icon name="oil-sample" size={24} /></span>
               <h2 className="card-title">Oliemonsters 2026</h2>
-              <p className="card-description">Overzicht en beheer van oliemonster analyses 2026</p>
+              <p className="card-description">Overzicht en beheer van oliemonsteranalyses 2026</p>
               <div className="card-stats">
                 <div className="stat-item">
                   <div className="stat-value">{stats.oilSamples2026}</div>
@@ -356,11 +351,10 @@ export default function DashboardPage() {
             </div>
             <div
               className="module-card"
-              style={{ '--accent-color': '#4338CA' } as React.CSSProperties}
               onClick={() => router.push('/dashboard/ultimo')}
             >
               <div className="card-accent" />
-              <span className="card-icon"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg></span>
+              <span className="card-icon"><Icon name="module-ultimo" size={24} /></span>
               <h2 className="card-title">Ultimo-opmerkingen</h2>
               <p className="card-description">Opmerkingen per onderhoudstaak (looprouteregel) bijhouden en exact terugvinden</p>
               <div className="card-stats">
