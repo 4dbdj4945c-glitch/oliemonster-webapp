@@ -205,3 +205,95 @@ model UltimoComment {
   @@index([taskId])
   @@index([date])
 }
+
+// ============================================
+// ACQUISITIE
+// ============================================
+// Werkbank voor het binnenhalen van nieuwe vaste klanten: wie benader ik,
+// wanneer, en wat kwam eruit. Een Prospect is een bedrijf dat interessant is;
+// elk contactmoment (mail, LinkedIn, gesprek, offerte) komt als losse regel in
+// de tijdlijn. De velden bedrijfsnaam t/m afstandKm komen uit het vaste
+// kolomformaat van de prospectlijst (acquisitie/data/VELDEN.md), zodat een CSV
+// uit het onderzoek een-op-een geimporteerd kan worden.
+
+enum ProspectStatus {
+  NIEUW        // net binnen uit de lijst, nog niets mee gedaan
+  ONDERZOCHT   // uitgezocht, klaar om te benaderen
+  BENADERD     // mail of LinkedIn verstuurd, wacht op reactie
+  REACTIE      // ze hebben gereageerd
+  GESPREK      // gesprek gehad of gepland
+  OFFERTE      // offerte de deur uit
+  KLANT        // binnen als klant
+  AFGEWEZEN    // gaat niet door
+  LATER        // interessant, maar nu even niet
+}
+
+enum ProspectKanaal {
+  MAIL
+  LINKEDIN
+  TELEFOON
+  BEZOEK
+  OFFERTE
+  OVERIG
+}
+
+model Prospect {
+  id               Int      @id @default(autoincrement())
+  bedrijfsnaam     String
+  segment          String?            // industrie / dienstverlener / overheid
+  plaats           String
+  provincie        String?
+  website          String?
+  telefoon         String?
+  email            String?
+  contactpersoon   String?
+  functie          String?
+  linkedin         String?
+  omvang           String?            // schatting aantal medewerkers, bv "50-100"
+  activiteit       String?            // een zin: wat doen ze
+  aanknopingspunt  String?            // de reden waarom dit bedrijf mij nodig heeft
+  signaal          String?            // recent nieuws, vacature, uitbreiding, met datum
+  bron             String?            // URL waar aanknopingspunt en signaal vandaan komen
+  score            Int?               // 1-5, 5 = beste match
+  scoreReden       String?
+  afstandKm        Float?             // hemelsbreed vanaf Heeze
+
+  status           ProspectStatus @default(NIEUW)
+  kanaal           ProspectKanaal @default(MAIL)  // via welk kanaal je dit bedrijf benadert: MAIL of LINKEDIN, één tegelijk
+  afgemeldOp       DateTime?          // datum waarop ze aangaven geen mail meer te willen (eis uit het e-mailrecht)
+  volgendeActie    String?            // wat is de eerstvolgende stap
+  volgendeActieOp  DateTime?          // wanneer die stap moet gebeuren
+  laatsteContactOp DateTime?          // cache: datum van het laatste contactmoment
+  klantSindsOp     DateTime?          // gezet zodra de status op KLANT komt (voor "nieuwe klanten dit kwartaal")
+  geschatteWaarde  Int?               // in hele euro's
+  notities         String?
+  archief          Boolean  @default(false)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  contactmomenten  ProspectContactmoment[]
+
+  // Voorkomt dubbelen bij het importeren van een prospectlijst
+  @@unique([bedrijfsnaam, plaats])
+  @@index([status])
+  @@index([segment])
+  @@index([volgendeActieOp])
+}
+
+model ProspectContactmoment {
+  id             Int            @id @default(autoincrement())
+  prospectId     Int
+  datum          DateTime                  // wanneer het contact was
+  kanaal         ProspectKanaal @default(MAIL)
+  samenvatting   String                    // wat je gedaan of gestuurd hebt
+  uitkomst       String?                   // wat eruit kwam
+  aangemaaktDoor String?                   // gebruikersnaam
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  prospect       Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+
+  @@index([prospectId])
+  @@index([datum])
+}

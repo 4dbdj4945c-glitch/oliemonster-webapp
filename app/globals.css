@@ -1648,6 +1648,16 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   padding: 2px 9px 2px 6px;
 }
 
+/* Melding met icoon: icoon links, tekst ernaast */
+.alert:has(> .icon) {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.alert > .icon {
+  margin-top: 1px;
+}
+
 /* Zoekveld met loep */
 .zoekveld {
   position: relative;
@@ -1733,5 +1743,355 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   }
   .table-kaarten td.kaart-acties .icon-btn-danger {
     color: var(--rood-tekst);
+  }
+}
+
+/* ============ Acquisitie ============
+   Gedeelde onderdelen van de module Acquisitie: de lijst met openstaande acties,
+   de pijplijn met prospectkaarten, het detailscherm en de tijdlijn met
+   contactmomenten. Staat hier en niet in de pagina, omdat de componenten onder
+   app/components/ geen styled-jsx kunnen gebruiken (zie STIJL.md). */
+
+.acq-sectie {
+  margin-bottom: 22px;
+}
+
+/* Wat moet er vandaag gebeuren */
+.acq-acties {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.acq-actie {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--grijs-50);
+  border: 1px solid var(--grijs-200);
+  border-left: 3px solid var(--oranje);
+  border-radius: var(--radius-md);
+}
+
+.acq-actie-tekst {
+  min-width: 0;
+}
+
+.acq-actie-naam {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.acq-actie-regel {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--grijs-700);
+}
+
+.acq-actie-sub {
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--grijs-500);
+}
+
+.acq-actie-knoppen {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Filters */
+.acq-filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.acq-filters .zoekveld {
+  grid-column: span 2;
+}
+
+/* Pijplijn: per status een groep met kaarten */
+.acq-groep {
+  margin-bottom: 20px;
+}
+
+.acq-groep-kop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--grijs-200);
+}
+
+.acq-groep-kop .section-label {
+  margin: 0;
+}
+
+.acq-groep-waarde {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--grijs-500);
+}
+
+.acq-kaarten {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.acq-kaart {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  background: var(--wit);
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.acq-kaart-open {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.acq-kaart-naam {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.3;
+}
+
+.acq-kaart-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--grijs-500);
+}
+
+.acq-kaart-regel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--grijs-700);
+}
+
+.acq-kaart-regel .icon {
+  flex: none;
+  color: var(--grijs-500);
+}
+
+.acq-kaart-voet {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px solid var(--grijs-200);
+}
+
+.acq-kaart-voet .select {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 36px;
+  padding: 6px 28px 6px 10px;
+  font-size: 13px;
+}
+
+.acq-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--grijs-700);
+}
+
+.acq-score .icon {
+  color: var(--grijs-500);
+}
+
+/* Detailscherm */
+.acq-gegevens {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px 18px;
+}
+
+.acq-gegeven-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--grijs-500);
+}
+
+.acq-gegeven-waarde {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--navy);
+  overflow-wrap: anywhere;
+}
+
+.acq-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.acq-velden {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.acq-velden-breed {
+  grid-column: 1 / -1;
+}
+
+/* Kaart met de tijdlijn: grijze kop bovenin, inhoud eronder */
+.acq-tijdlijn-kaart {
+  padding: 0;
+  overflow: hidden;
+}
+
+.acq-tijdlijn-kaart .card-kop {
+  justify-content: space-between;
+}
+
+.acq-tijdlijn-kaart .card-kop .section-label {
+  margin: 0;
+}
+
+.acq-tijdlijn-romp {
+  padding: 16px;
+}
+
+/* Tijdlijn met contactmomenten */
+.acq-tijdlijn {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.acq-tijdlijn-item {
+  padding-left: 12px;
+  border-left: 3px solid var(--grijs-200);
+}
+
+.acq-tijdlijn-kop {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--grijs-500);
+}
+
+.acq-tijdlijn-tekst {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--navy);
+}
+
+.acq-tijdlijn-uitkomst {
+  margin-top: 3px;
+  font-size: 13px;
+  color: var(--grijs-700);
+}
+
+/* Kanaalkeuze: één tik per kanaal */
+.acq-kanalen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.acq-kanaal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--grijs-700);
+  background: var(--wit);
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.acq-kanaal:hover {
+  border-color: var(--grijs-300);
+}
+
+.acq-kanaal.on {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--wit);
+}
+
+/* Voorbeeld-CSV in het importscherm */
+.acq-voorbeeld {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--grijs-700);
+  background: var(--grijs-50);
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius-md);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .acq-actie {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .acq-actie-knoppen .btn {
+    flex: 1 1 auto;
+  }
+  .acq-filters {
+    grid-template-columns: 1fr;
+  }
+  .acq-filters .zoekveld {
+    grid-column: span 1;
+  }
+  .acq-kaarten {
+    grid-template-columns: 1fr;
+  }
+  .acq-kaart-voet .select {
+    height: 44px;
+    font-size: 16px;
+  }
+  .acq-velden {
+    grid-template-columns: 1fr;
+  }
+  .acq-kanaal {
+    min-height: 44px;
   }
 }

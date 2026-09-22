@@ -22,6 +22,8 @@ export default function DashboardPage() {
     oilSamplesTaken2026: 0,
     controlRounds: 0,
     ultimoTasks: 0,
+    prospects: 0,
+    prospectActies: 0,
   });
   const router = useRouter();
 
@@ -51,11 +53,12 @@ export default function DashboardPage() {
 
   const loadStats = async () => {
     try {
-      const [res2025, res2026, roundsRes, ultimoRes] = await Promise.allSettled([
+      const [res2025, res2026, roundsRes, ultimoRes, prospectsRes] = await Promise.allSettled([
         fetch('/api/samples?year=2025'),
         fetch('/api/samples?year=2026'),
         fetch('/api/control-rounds'),
         fetch('/api/ultimo-tasks'),
+        fetch('/api/prospects'),
       ]);
 
       if (res2025.status === 'fulfilled' && res2025.value.ok) {
@@ -86,6 +89,20 @@ export default function DashboardPage() {
         setStats(prev => ({
           ...prev,
           ultimoTasks: data.length,
+        }));
+      }
+      // Acquisitie: aantal prospects en hoeveel acties er open staan (vandaag of eerder)
+      if (prospectsRes.status === 'fulfilled' && prospectsRes.value.ok) {
+        const data = await prospectsRes.value.json();
+        const vandaag = new Date();
+        vandaag.setHours(23, 59, 59, 999);
+        setStats(prev => ({
+          ...prev,
+          prospects: data.length,
+          prospectActies: data.filter((p: any) =>
+            p.volgendeActieOp && new Date(p.volgendeActieOp) <= vandaag
+            && p.status !== 'KLANT' && p.status !== 'AFGEWEZEN'
+          ).length,
         }));
       }
     } catch (error) {
@@ -265,6 +282,25 @@ export default function DashboardPage() {
                 <div className="stat-item">
                   <div className="stat-value">{stats.controlRounds}</div>
                   <div className="stat-label">Rondes</div>
+                </div>
+              </div>
+            </div>
+            <div
+              className="module-card"
+              onClick={() => router.push('/dashboard/acquisitie')}
+            >
+              <div className="card-accent" />
+              <span className="card-icon"><Icon name="module-acquisitie" size={24} /></span>
+              <h2 className="card-title">Acquisitie</h2>
+              <p className="card-description">Prospects, pijplijn en contactmomenten voor nieuwe vaste klanten</p>
+              <div className="card-stats">
+                <div className="stat-item">
+                  <div className="stat-value">{stats.prospects}</div>
+                  <div className="stat-label">Prospects</div>
+                </div>
+                <div className="stat-item">
+                  <div className="stat-value">{stats.prospectActies}</div>
+                  <div className="stat-label">Open acties</div>
                 </div>
               </div>
             </div>
