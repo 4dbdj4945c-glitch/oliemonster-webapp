@@ -15,6 +15,8 @@
   --oranje: #F97316;
   --oranje-hover: #EA6B0E;
   --oranje-light: #FFF4EC;
+  /* Tekst op een gevuld oranje vlak: navy haalt 6,14:1, wit maar 2,80:1 */
+  --tekst-op-oranje: var(--navy);
   --wit: #FFFFFF;
   --grijs-50: #F8FAFC;
   --grijs-100: #F1F5F9;
@@ -307,7 +309,7 @@ button, input, select, textarea {
 .nav-btn-primary {
   background: var(--oranje);
   border-color: var(--oranje);
-  color: #fff;
+  color: var(--tekst-op-oranje);
   font-weight: 700;
   box-shadow: var(--shadow-oranje);
 }
@@ -475,7 +477,7 @@ button, input, select, textarea {
   height: 32px;
   border-radius: 50%;
   background: var(--oranje);
-  color: #fff;
+  color: var(--tekst-op-oranje);
   font-size: 14px;
   font-weight: 700;
   display: inline-flex;
@@ -651,7 +653,7 @@ input[type="range"] {
 .btn-primary {
   background: var(--oranje);
   border-color: var(--oranje);
-  color: #fff;
+  color: var(--tekst-op-oranje);
   font-weight: 700;
   box-shadow: var(--shadow-oranje);
 }
@@ -792,7 +794,7 @@ input[type="range"] {
   justify-content: center;
   gap: 6px;
   background: var(--oranje);
-  color: #fff;
+  color: var(--tekst-op-oranje);
   border: 1px solid var(--oranje);
   border-radius: var(--radius-md);
   padding: 9px 15px;
@@ -2093,5 +2095,76 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   }
   .acq-kanaal {
     min-height: 44px;
+  }
+}
+
+/* ============ Oliemonsters: tikbare status en foutmeldingen ============
+   De hoofdhandeling in de monsterlijst is een monster op genomen of niet genomen
+   zetten. Dat is één tik op de statuscel, zoals een straat afvinken bij de
+   controlerondes. Staat hier en niet in de pagina, zodat beide jaren (2025 en
+   2026) dezelfde stijl gebruiken. */
+
+.status-knop {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px;
+  margin: -3px;
+  background: none;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.status-knop:hover:not(:disabled) .badge {
+  filter: brightness(0.97);
+  border-color: var(--grijs-300);
+}
+
+.status-knop:disabled {
+  cursor: default;
+}
+
+.status-knop-bezig {
+  opacity: 0.6;
+}
+
+/* Foutmelding boven een lijst: melding links, knop Opnieuw proberen rechts */
+.laadfout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.laadfout-tekst {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.laadfout-tekst .icon {
+  flex: none;
+  margin-top: 1px;
+}
+
+@media (max-width: 640px) {
+  /* Op de telefoon is de status de hoofdknop bovenaan de kaart: volle breedte, 44px */
+  .table-kaarten td.kaart-status .status-knop {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    margin: 0;
+    background: var(--wit);
+    border: 1px solid var(--grijs-200);
+    border-radius: var(--radius-md);
+  }
+  .laadfout .btn {
+    flex: 1 1 auto;
   }
 }

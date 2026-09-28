@@ -17,6 +17,7 @@ en zet geen eigen kleuren, schaduwen of afrondingen in pagina's.
 | `--blue-light` | #EFF4FF | focusring, lichte blauwe vlakken |
 | `--oranje` | #F97316 | primaire knop, actieve tab, vinkjes en schuifjes |
 | `--oranje-hover` | #EA6B0E | hover van oranje |
+| `--tekst-op-oranje` | navy | tekst en iconen op een gevuld oranje vlak (6,14:1; wit haalt maar 2,80:1) |
 | `--grijs-50` | #F8FAFC | kop van kaarten, tabelkop, hover van rijen |
 | `--grijs-100` | #F1F5F9 | achtergrond van de pagina |
 | `--grijs-200` | #E2E8F0 | randen en scheidingslijnen |
@@ -53,7 +54,7 @@ naar deze kleuren. `--accent` is blauw, `--primary` is oranje.
 - **Fotovenster**: `PhotoModal` (`.foto-paneel`, `.foto-beeld`, `.foto-knop`), klein venster op desktop,
   beeldvullend op de telefoon. CSS staat in globals.css.
 - **Kaart**: `.card` (of het oude `.glass-card`), wit met grijze rand. Kop erboven: `.card-kop`.
-- **Knoppen**: `.btn` (wit met rand), `.btn-primary` (oranje, de hoofdactie op een pagina),
+- **Knoppen**: `.btn` (wit met rand), `.btn-primary` (oranje met navy tekst, de hoofdactie op een pagina),
   `.btn-blue` (blauw, secundaire actie), `.btn-secondary`, `.btn-danger`, `.btn-danger-soft`,
   `.btn-ghost`, `.btn-link`, `.btn-sm`, `.btn-lg`, `.btn-block`. Icoonknopje: `.icon-btn`.
 - **Velden**: `.input`, `.select`, `.textarea` (of de oude `.glass-*`), `.label`, `.hint`, `.veld`.
@@ -62,7 +63,10 @@ naar deze kleuren. `--accent` is blauw, `--primary` is oranje.
 - **Lijst met uitklapbare rijen**: `.rij-item > .rij-item-kop + .rij-item-romp`.
 - **Statistieken**: `.stat-card > .stat-value + .stat-label`.
 - **Badges**: `.badge-success|warning|danger|info|gray|navy`.
-- **Meldingen**: `.alert-success|info|warning|danger`.
+- **Meldingen**: `.alert-success|info|warning|danger`. Mislukte fetch: `.alert-danger.laadfout`
+  (met `role="alert"`, `.laadfout-tekst` links en een knop Opnieuw proberen rechts) boven de lijst.
+- **Tikbare status**: `.status-knop` om een statusbadge in een tabelrij, voor de hoofdhandeling van
+  een lijst (op de telefoon een volle knop van 44px bovenaan de kaart).
 - **Modal**: component `Modal` (grijze kopbalk, witte romp, voettekst met knoppen).
 - **Leeg / laden**: `.leeg`, `.laden`, `.laadscherm`.
 - **Inloggen**: `.auth-page > .auth-card > .auth-band + .auth-body (+ .auth-foot)`.
@@ -97,6 +101,7 @@ Eén set voor de hele portal, via `<Icon name="..." />` uit `app/components/ui` 
 - Geen `<style jsx>` in losse componenten onder `app/components/`: daar krijgen de elementen de
   scope-klasse niet mee en werkt de CSS stilletjes niet (zo ging het mis met PhotoModal). Zet die CSS in globals.css.
 - Geen inline kleuren: gebruik tokens (`var(--grijs-500)`) of klassen.
+- Geen witte tekst op een gevuld oranje vlak (2,80:1). Gebruik `--tekst-op-oranje`.
 - Geen em-dashes in teksten. Geen uitroeptekens.
 - Geen `filter: invert()` op het logo: het logo is wit en hoort op navy.
 
