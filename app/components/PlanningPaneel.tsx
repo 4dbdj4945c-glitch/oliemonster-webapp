@@ -11,7 +11,6 @@ import {
   isWerkdag,
   minutenAlsTekst,
   datumAlsTekst,
-  datumAlsInvoer,
 } from '@/lib/planningInstellingen';
 import type { MapStreet } from './RouteMap';
 
