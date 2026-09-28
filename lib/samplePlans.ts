@@ -78,6 +78,20 @@ export async function haalPlanning(analysisYear: number) {
     orderBy: { oNumber: 'asc' },
   });
 
+  // Hoeveel monsters hoorden er oorspronkelijk bij dit object, inclusief de
+  // geannuleerde? Dat is de noemer bij een eigen inschatting op het object:
+  // annuleer je drie van de vier monsters, dan hoort de geplande tijd mee te
+  // zakken. Zonder deze telling zou de deling altijd 1 opleveren.
+  const geteld = await prisma.oilSample.groupBy({
+    by: ['objectId'],
+    where: { analysisYear, objectId: { not: null } },
+    _count: { _all: true },
+  });
+  const noemerPerObject = new Map<number, number>();
+  for (const rij of geteld) {
+    if (rij.objectId !== null) noemerPerObject.set(rij.objectId, rij._count._all);
+  }
+
   const perObject = new Map<number, StopMonster[]>();
   for (const m of monsters) {
     if (m.objectId === null) continue;
@@ -124,7 +138,8 @@ export async function haalPlanning(analysisYear: number) {
         // Niets meer te doen op dit object: dan kost het ook geen tijd.
         werkMinuten = 0;
       } else if (stop.object.estimatedMinutes && stop.object.estimatedMinutes > 0) {
-        const deel = alle.length > 0 ? samples.length / alle.length : 1;
+        const noemer = noemerPerObject.get(stop.objectId) ?? alle.length;
+        const deel = noemer > 0 ? samples.length / noemer : 1;
         werkMinuten = Math.round(stop.object.estimatedMinutes * deel);
       } else {
         werkMinuten = geschatteMinuten(null, samples.length);
@@ -186,6 +201,7 @@ export async function haalPlanning(analysisYear: number) {
   const objectenMetWerk = objecten.map((o) => {
     const alle = perObject.get(o.id) ?? [];
     const open = alle.filter((m) => !geplandeMonsters.has(m.id));
+    const noemer = noemerPerObject.get(o.id) ?? alle.length;
     return {
       id: o.id,
       name: o.name,
@@ -205,7 +221,7 @@ export async function haalPlanning(analysisYear: number) {
         open.length === 0
           ? 0
           : o.estimatedMinutes && o.estimatedMinutes > 0
-          ? Math.round(o.estimatedMinutes * (alle.length > 0 ? open.length / alle.length : 1))
+          ? Math.round(o.estimatedMinutes * (noemer > 0 ? open.length / noemer : 1))
           : geschatteMinuten(null, open.length),
     };
   });
@@ -249,13 +265,20 @@ type StopMetObject = {
 };
 
 /** Werktijd van één stop, met dezelfde regels als in haalPlanning. */
-function werkMinutenVanStop(stop: StopMetObject, alleMonsters: StopMonster[]): number {
+function werkMinutenVanStop(
+  stop: StopMetObject,
+  alleMonsters: StopMonster[],
+  noemer?: number
+): number {
   const ids = leesSampleIds(stop.sampleIds);
   const aantal = ids ? alleMonsters.filter((m) => ids.includes(m.id)).length : alleMonsters.length;
   if (stop.plannedMinutes && stop.plannedMinutes > 0) return stop.plannedMinutes;
   if (aantal === 0) return 0;
   if (stop.object.estimatedMinutes && stop.object.estimatedMinutes > 0) {
-    const deel = alleMonsters.length > 0 ? aantal / alleMonsters.length : 1;
+    // Zelfde noemer als in haalPlanning: alle monsters die er ooit bij hoorden,
+    // inclusief de geannuleerde.
+    const deler = noemer && noemer > 0 ? noemer : alleMonsters.length;
+    const deel = deler > 0 ? aantal / deler : 1;
     return Math.round(stop.object.estimatedMinutes * deel);
   }
   return geschatteMinuten(null, aantal);
@@ -282,7 +305,7 @@ export async function berekenRouteVoorDag(planId: number, houdVolgordeAan: boole
       data: { routeGeometry: null, routeDistance: null, routeDuration: null },
       select: { id: true },
     });
-    return { stops: stops.length, followsRoads: false, zonderCoordinaat: zonderPunt.length };
+    return { stops: stops.length, metPunt: 0, followsRoads: false, zonderCoordinaat: zonderPunt.length };
   }
 
   const punten: LatLng[] = metPunt.map((s) => ({ lat: s.object.lat as number, lng: s.object.lng as number }));
@@ -317,7 +340,12 @@ export async function berekenRouteVoorDag(planId: number, houdVolgordeAan: boole
     select: { id: true },
   });
 
-  return { stops: stops.length, followsRoads: route.followsRoads, zonderCoordinaat: zonderPunt.length };
+  return {
+    stops: stops.length,
+    metPunt: metPunt.length,
+    followsRoads: route.followsRoads,
+    zonderCoordinaat: zonderPunt.length,
+  };
 }
 
 /**
@@ -328,7 +356,7 @@ export async function berekenRouteVoorDag(planId: number, houdVolgordeAan: boole
  * de route opnieuw uitgerekend.
  */
 export async function berekenPlanning(analysisYear: number, herverdeel: boolean) {
-  const plannen = await prisma.samplePlan.findMany({
+  let plannen = await prisma.samplePlan.findMany({
     where: { analysisYear },
     orderBy: { date: 'asc' },
     include: {
@@ -340,13 +368,28 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
   });
 
   if (plannen.length === 0) {
-    return { dagen: 0, verplaatst: 0, nietGeplaatst: 0, overDeWerkdag: 0 };
+    return { dagen: 0, verplaatst: 0, nietGeplaatst: 0, gebleven: 0, opgeruimd: 0, overDeWerkdag: 0, dagenHemelsbreed: 0, zonderCoordinaat: 0 };
   }
 
   const monsters = await prisma.oilSample.findMany({
     where: { analysisYear, objectId: { not: null }, isDisabled: false },
     select: { id: true, oNumber: true, description: true, location: true, isTaken: true, sampleDate: true, objectId: true },
   });
+
+  // Hoeveel monsters hoorden er oorspronkelijk bij dit object, inclusief de
+  // geannuleerde? Dat is de noemer bij een eigen inschatting op het object:
+  // annuleer je drie van de vier monsters, dan hoort de geplande tijd mee te
+  // zakken. Zonder deze telling zou de deling altijd 1 opleveren.
+  const geteld = await prisma.oilSample.groupBy({
+    by: ['objectId'],
+    where: { analysisYear, objectId: { not: null } },
+    _count: { _all: true },
+  });
+  const noemerPerObject = new Map<number, number>();
+  for (const rij of geteld) {
+    if (rij.objectId !== null) noemerPerObject.set(rij.objectId, rij._count._all);
+  }
+
   const perObject = new Map<number, StopMonster[]>();
   for (const m of monsters) {
     if (m.objectId === null) continue;
@@ -355,9 +398,40 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
     perObject.set(m.objectId, lijst);
   }
 
+  // Een object waar niets meer te doen is, bijvoorbeeld omdat alle monsters
+  // geannuleerd zijn, hoort niet op een dag te blijven staan: het telt mee in de
+  // rijroute terwijl je er niet heen hoeft. Weghalen doen we alleen bij een stop
+  // die nog niet gestart of afgevinkt is, anders gooien we geschiedenis weg.
+  let opgeruimd = 0;
+  for (const plan of plannen) {
+    for (const stop of plan.stops) {
+      if (stop.isDone || stop.startedAt || stop.endedAt) continue;
+      const alle = perObject.get(stop.objectId) ?? [];
+      const ids = leesSampleIds(stop.sampleIds);
+      const aantal = ids ? alle.filter((m) => ids.includes(m.id)).length : alle.length;
+      if (aantal > 0) continue;
+      await prisma.samplePlanStop.delete({ where: { id: stop.id } });
+      opgeruimd += 1;
+    }
+  }
+  if (opgeruimd > 0) {
+    plannen = await prisma.samplePlan.findMany({
+      where: { analysisYear },
+      orderBy: { date: 'asc' },
+      include: {
+        stops: {
+          orderBy: { orderIndex: 'asc' },
+          include: { object: { select: { id: true, lat: true, lng: true, estimatedMinutes: true } } },
+        },
+      },
+    });
+  }
+
   const vrijeDagen = plannen.filter((p) => !p.manualOrder);
   let verplaatst = 0;
   let nietGeplaatst = 0;
+  // Objecten die nergens meer bij konden en op hun oude dag blijven staan.
+  let gebleven = 0;
 
   if (herverdeel && vrijeDagen.length > 0) {
     // Alle stops van de vrije dagen op een hoop, in de beste rijvolgorde vanaf Heeze.
@@ -376,60 +450,156 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
     }
     reeks = [...reeks, ...zonderPunt];
 
+    // Plek in de rijvolgorde van alle stops, ook die blijven staan: die bepaalt
+    // straks de volgorde binnen hun eigen dag.
+    const positie = new Map<number, number>();
+    reeks.forEach((stop, i) => positie.set(stop.id, i));
+
+    // Heb jij zelf gekozen welke monsters op welke dag horen (een gesplitst
+    // object), dan verhuist die stop niet: anders zet een klik op de knop je
+    // splitsing ongemerkt terug op één dag. Ze tellen wel mee in de capaciteit
+    // van hun eigen dag.
+    const vastgezet = new Map<number, StopMetObject[]>();
+    for (const stop of losseStops) {
+      if (stop.sampleIds === null) continue;
+      const lijst = vastgezet.get(stop.planId) ?? [];
+      lijst.push(stop);
+      vastgezet.set(stop.planId, lijst);
+    }
+    const teVerdelen = reeks.filter((s) => s.sampleIds === null);
+
     // Vullen tot een marge onder de werkdag: de schatting hier is hemelsbreed,
     // de echte route valt hoger uit. Zonder marge komt elke gevulde dag daarna
     // terug als "te vol" en spreekt de knop zichzelf tegen.
     const grens = Math.round(PLANNING.werkdagMinuten * PLANNING.vulMarge);
 
-    let dagIndex = 0;
-    let dagStops: StopMetObject[] = [];
     const wegschrijven = async (plan: { id: number }, stops: StopMetObject[]) => {
-      for (let i = 0; i < stops.length; i++) {
-        const stop = stops[i];
+      // Binnen de dag in rijvolgorde, zodat een vastgezette stop niet altijd
+      // vooraan belandt.
+      const geordend = [...stops].sort((a, b) => (positie.get(a.id) ?? 0) - (positie.get(b.id) ?? 0));
+      for (let i = 0; i < geordend.length; i++) {
+        const stop = geordend[i];
         if (stop.planId !== plan.id || stop.orderIndex !== i) verplaatst += 1;
         await prisma.samplePlanStop.update({
           where: { id: stop.id },
-          data: { planId: plan.id, orderIndex: i },
+          // Een vastgezette stop krijgt alleen zijn plek in de rij; verhuizen doet hij niet.
+          data: stop.sampleIds !== null ? { orderIndex: i } : { planId: plan.id, orderIndex: i },
           select: { id: true },
         });
       }
     };
 
-    for (let k = 0; k < reeks.length; k++) {
-      const stop = reeks[k];
-      const kandidaat = [...dagStops, stop];
-      const werk = kandidaat.reduce((n, s) => n + werkMinutenVanStop(s, perObject.get(s.objectId) ?? []), 0);
-      const punten = kandidaat
+    // Werktijd plus één rit vanaf Heeze langs alle punten van die dag en terug.
+    const dagMinuten = (stops: StopMetObject[]) => {
+      const werk = stops.reduce((n, s) => n + werkMinutenVanStop(s, perObject.get(s.objectId) ?? [], noemerPerObject.get(s.objectId)), 0);
+      const punten = stops
         .filter((s) => s.object.lat !== null && s.object.lng !== null)
         .map((s) => ({ lat: s.object.lat as number, lng: s.object.lng as number }));
-      const totaal = werk + reisSchattingMinuten(punten);
+      return werk + reisSchattingMinuten(punten);
+    };
 
-      if (totaal <= grens || dagStops.length === 0) {
-        dagStops = kandidaat;
+    // Past deze stop op deze dag? Eén object hoort niet twee keer op dezelfde
+    // dag: dan zet je er twee keer je spullen voor klaar en klopt de telling niet.
+    const past = (stops: StopMetObject[], stop: StopMetObject) => {
+      if (stops.some((s) => s.objectId === stop.objectId)) return false;
+      if (stops.length === 0) return true;
+      return dagMinuten([...stops, stop]) <= grens;
+    };
+
+    let dagIndex = 0;
+    let dagStops: StopMetObject[] = [...(vastgezet.get(vrijeDagen[0].id) ?? [])];
+    // Stops die hier niet kunnen omdat hetzelfde object al op deze dag staat.
+    // De dag is dan niet vol, dus we sluiten hem niet af: dat zou de rijvolgorde
+    // uit elkaar trekken en je een eind laten omrijden. Ze krijgen op de
+    // volgende dag een nieuwe kans.
+    let wachtrij: StopMetObject[] = [];
+    let blijvenStaan = 0;
+
+    const wachtrijProberen = () => {
+      const over: StopMetObject[] = [];
+      for (const w of wachtrij) {
+        if (past(dagStops, w)) dagStops = [...dagStops, w];
+        else over.push(w);
+      }
+      wachtrij = over;
+    };
+
+    for (let k = 0; k < teVerdelen.length; k++) {
+      const stop = teVerdelen[k];
+      if (past(dagStops, stop)) {
+        dagStops = [...dagStops, stop];
         continue;
       }
-      // Is dit de laatste dag, dan blijft de rest daar staan; anders door naar
-      // de volgende dag.
+
+      // Zelfde object op deze dag: doorschuiven, maar de dag gewoon verder vullen.
+      if (dagStops.some((s) => s.objectId === stop.objectId)) {
+        wachtrij.push(stop);
+        continue;
+      }
+
+      // De dag is vol. Geen dag meer over: wat er nog kan gaat op de laatste dag,
+      // de rest blijft staan waar hij stond.
       if (dagIndex + 1 >= vrijeDagen.length) {
-        nietGeplaatst = reeks.length - k;
-        dagStops = [...dagStops, ...reeks.slice(k)];
+        const rest = [...wachtrij, ...teVerdelen.slice(k)];
+        wachtrij = [];
+        for (const r of rest) {
+          if (dagStops.some((s) => s.objectId === r.objectId)) blijvenStaan += 1;
+          else dagStops = [...dagStops, r];
+        }
+        nietGeplaatst = rest.length - blijvenStaan;
         break;
       }
+
       await wegschrijven(vrijeDagen[dagIndex], dagStops);
       dagIndex += 1;
-      dagStops = [stop];
+      dagStops = [...(vastgezet.get(vrijeDagen[dagIndex].id) ?? [])];
+      wachtrijProberen();
+      if (past(dagStops, stop)) dagStops = [...dagStops, stop];
+      else wachtrij.push(stop);
     }
+
+    // Wat er na de laatste stop nog wacht: nog één keer proberen op de dag waar
+    // we zijn, anders blijft het staan waar het stond.
+    for (const w of wachtrij) {
+      if (past(dagStops, w)) dagStops = [...dagStops, w];
+      else blijvenStaan += 1;
+    }
+
     if (dagStops.length > 0) await wegschrijven(vrijeDagen[dagIndex], dagStops);
+
+    // Dagen na de laatst gevulde dag zijn niet langsgekomen. Hun vastgezette
+    // stops blijven staan waar ze staan, maar worden wel doorgenummerd.
+    for (let i = dagIndex + 1; i < vrijeDagen.length; i++) {
+      const vast = vastgezet.get(vrijeDagen[i].id) ?? [];
+      if (vast.length > 0) await wegschrijven(vrijeDagen[i], vast);
+    }
+    gebleven = blijvenStaan;
   }
 
   // Route per dag uitrekenen. Zelf gesleept of net herverdeeld: volgorde aanhouden.
-  let overDeWerkdag = 0;
+  let dagenHemelsbreed = 0;
+  let zonderCoordinaat = 0;
   for (const plan of plannen) {
-    await berekenRouteVoorDag(plan.id, plan.manualOrder || herverdeel);
+    const uitkomst = await berekenRouteVoorDag(plan.id, plan.manualOrder || herverdeel);
+    // Alleen tellen als er iets te routeren viel: een dag zonder object op de
+    // kaart is geen storing van de routedienst.
+    if (uitkomst.metPunt > 0 && !uitkomst.followsRoads) dagenHemelsbreed += 1;
+    zonderCoordinaat += uitkomst.zonderCoordinaat;
   }
 
   const na = await haalPlanning(analysisYear);
-  overDeWerkdag = na.dagen.filter((d) => d.teVol).length;
+  const overDeWerkdag = na.dagen.filter((d) => d.teVol).length;
 
-  return { dagen: plannen.length, verplaatst, nietGeplaatst, overDeWerkdag };
+  return {
+    dagen: plannen.length,
+    verplaatst,
+    nietGeplaatst,
+    gebleven,
+    opgeruimd,
+    overDeWerkdag,
+    // Zonder deze twee zie je niet dat er hemelsbreed gerekend is of dat een
+    // object buiten de route valt.
+    dagenHemelsbreed,
+    zonderCoordinaat,
+  };
 }

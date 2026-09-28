@@ -100,6 +100,51 @@ function monsters(aantal: number): string {
   return `${aantal} ${aantal === 1 ? 'monster' : 'monsters'}`;
 }
 
+/** "1 object" of "3 objecten" */
+function objectenWoord(aantal: number): string {
+  return `${aantal} ${aantal === 1 ? 'object' : 'objecten'}`;
+}
+
+/** "1 dag" of "3 dagen" */
+function dagenWoord(aantal: number): string {
+  return `${aantal} ${aantal === 1 ? 'dag' : 'dagen'}`;
+}
+
+/**
+ * Waar komt de rijtijd van deze dag vandaan? Null als de route gewoon over de weg
+ * is uitgerekend. Drie andere gevallen, allemaal af te leiden uit wat er bewaard
+ * is, dus zonder extra kolom:
+ *  - geen enkel object met coordinaat: er valt niets te routeren
+ *  - geen traject bewaard: de route is nog niet berekend
+ *  - wel een traject, geen rijtijd: de routedienst viel uit en de terugval heeft
+ *    hemelsbreed gerekend, dus afstand en tijd zijn allebei een ondergrens
+ */
+function routeHerkomst(dag: PlanDag): { achtervoegsel: string; titel: string } | null {
+  if (dag.stops.length === 0) return null;
+  const metPunt = dag.stops.filter((s) => s.object.lat !== null && s.object.lng !== null);
+  if (metPunt.length === 0) {
+    return {
+      achtervoegsel: 'geen object op de kaart',
+      titel:
+        'Geen van deze objecten heeft coordinaten, dus er valt geen route te berekenen. Vul ze aan bij Beheer, Objecten.',
+    };
+  }
+  if (dag.routeGeometry === null) {
+    return {
+      achtervoegsel: 'route nog niet berekend',
+      titel: 'Druk op "Route berekenen" om de afstand en de rijtijd van deze dag op te halen.',
+    };
+  }
+  if (dag.routeDuration === null) {
+    return {
+      achtervoegsel: 'hemelsbreed',
+      titel:
+        'De routedienst was niet bereikbaar. Afstand en rijtijd zijn hemelsbreed gerekend en vallen over de weg hoger uit, dus deze dag kan voller zijn dan het totaal laat zien.',
+    };
+  }
+  return null;
+}
+
 function afstandMeter(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const R = 6371000;
   const rad = (d: number) => (d * Math.PI) / 180;
@@ -127,6 +172,9 @@ export default function PlanningPaneel({
   const [dagId, setDagId] = useState<number | null>(null);
 
   const [nieuweDatum, setNieuweDatum] = useState('');
+  // Invoerfouten (datum vergeten, dag bestaat al) horen niet in het laadfoutvak:
+  // daar staat een knop Opnieuw proberen die er niets mee te maken heeft.
+  const [invoerFout, setInvoerFout] = useState('');
   const [bezig, setBezig] = useState(false);
 
   // Object op een dag zetten
@@ -178,7 +226,7 @@ export default function PlanningPaneel({
 
   const nieuweDag = async () => {
     if (!nieuweDatum) {
-      setFoutmelding('Kies eerst een datum.');
+      setInvoerFout('Kies eerst een datum.');
       return;
     }
     setBezig(true);
@@ -189,11 +237,11 @@ export default function PlanningPaneel({
         body: JSON.stringify({ date: nieuweDatum, analysisYear }),
       });
       if (!res.ok) {
-        setFoutmelding(await foutTekst(res, 'De dag kon niet worden toegevoegd.'));
+        setInvoerFout(await foutTekst(res, 'De dag kon niet worden toegevoegd.'));
         return;
       }
       setNieuweDatum('');
-      setFoutmelding('');
+      setInvoerFout('');
       await laadPlanning();
     } catch {
       setFoutmelding(GEEN_VERBINDING);
@@ -249,6 +297,12 @@ export default function PlanningPaneel({
         setFoutmelding(await foutTekst(res, 'Het object kon niet worden ingepland.'));
         return;
       }
+      const uitkomst = await res.json().catch(() => ({}));
+      setMelding(
+        uitkomst?.samengevoegd
+          ? `${kiesObject.name} stond al op die dag; de monsters zijn bij dat bezoek gevoegd.`
+          : ''
+      );
       setKiesObject(null);
       setFoutmelding('');
       await laadPlanning();
@@ -348,11 +402,26 @@ export default function PlanningPaneel({
       }
       const data = await res.json();
       setMelding(
-        `${data.dagen} dagen uitgerekend` +
-          (herverdeel ? `, ${data.verplaatst} objecten verschoven` : '') +
-          (data.nietGeplaatst ? `, ${data.nietGeplaatst} pasten er niet meer bij en staan op de laatste dag` : '') +
-          (data.overDeWerkdag ? `, ${data.overDeWerkdag} dagen komen boven de ${minutenAlsTekst(PLANNING.werkdagMinuten)} uit` : '') +
-          '.'
+        `${dagenWoord(data.dagen)} uitgerekend.` +
+          (herverdeel ? ` ${objectenWoord(data.verplaatst)} verschoven.` : '') +
+          (data.nietGeplaatst
+            ? ` ${objectenWoord(data.nietGeplaatst)} ${data.nietGeplaatst === 1 ? 'paste' : 'pasten'} er niet meer bij en ${data.nietGeplaatst === 1 ? 'staat' : 'staan'} op de laatste dag.`
+            : '') +
+          (data.opgeruimd
+            ? ` ${objectenWoord(data.opgeruimd)} zonder monsters ${data.opgeruimd === 1 ? 'is' : 'zijn'} van de dag gehaald.`
+            : '') +
+          (data.gebleven
+            ? ` ${objectenWoord(data.gebleven)} ${data.gebleven === 1 ? 'kon' : 'konden'} nergens meer bij en ${data.gebleven === 1 ? 'blijft' : 'blijven'} op de oude dag staan; die dag kan daardoor boven de werkdag uitkomen.`
+            : '') +
+          (data.overDeWerkdag
+            ? ` ${dagenWoord(data.overDeWerkdag)} ${data.overDeWerkdag === 1 ? 'komt' : 'komen'} boven de ${minutenAlsTekst(PLANNING.werkdagMinuten)} uit.`
+            : '') +
+          (data.dagenHemelsbreed
+            ? ` ${dagenWoord(data.dagenHemelsbreed)} ${data.dagenHemelsbreed === 1 ? 'kon' : 'konden'} niet bij de routedienst terecht en ${data.dagenHemelsbreed === 1 ? 'staat' : 'staan'} op een hemelsbrede schatting.`
+            : '') +
+          (data.zonderCoordinaat
+            ? ` ${objectenWoord(data.zonderCoordinaat)} ${data.zonderCoordinaat === 1 ? 'heeft' : 'hebben'} nog geen plek op de kaart, ${data.zonderCoordinaat === 1 ? 'die' : 'hun'} rijtijd is niet meegerekend.`
+            : '')
       );
       setFoutmelding('');
       await laadPlanning();
@@ -373,7 +442,7 @@ export default function PlanningPaneel({
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        setFoutmelding(await foutTekst(res, `${stop.object.name} is niet bijgewerkt.`));
+        setFoutmelding(`${stop.object.name} is niet bijgewerkt: ${await foutTekst(res, 'de server gaf geen reden.')}`);
         return;
       }
       setFoutmelding('');
@@ -391,7 +460,7 @@ export default function PlanningPaneel({
         body: JSON.stringify({ isTaken: genomen }),
       });
       if (!res.ok) {
-        setFoutmelding(await foutTekst(res, `${monster.oNumber} is niet bijgewerkt.`));
+        setFoutmelding(`${monster.oNumber} is niet bijgewerkt: ${await foutTekst(res, 'de server gaf geen reden.')}`);
         return;
       }
       setFoutmelding('');
@@ -578,6 +647,11 @@ export default function PlanningPaneel({
                   {nieuweDatum && !isWerkdag(new Date(`${nieuweDatum}T00:00:00`)) && (
                     <p className="hint">Let op: dit is geen werkdag (maandag tot en met vrijdag).</p>
                   )}
+                  {invoerFout && (
+                    <div className="alert alert-danger" role="alert" style={{ marginTop: '10px' }}>
+                      {invoerFout}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -625,7 +699,19 @@ export default function PlanningPaneel({
 
                     <div className="plan-dag-tijden">
                       <span><Icon name="clock" size={16} />{minutenAlsTekst(d.werkMinuten)} werk</span>
-                      <span><Icon name="route" size={16} />{minutenAlsTekst(d.rijMinuten)} rijden{d.routeDistance ? `, ${(d.routeDistance / 1000).toFixed(0)} km` : ''}</span>
+                      {(() => {
+                // Voorbehoud op de hele span: bij een terugval is niet alleen de
+                // rijtijd een schatting, de kilometers ook.
+                const herkomst = routeHerkomst(d);
+                return (
+                  <span title={herkomst?.titel}>
+                    <Icon name="route" size={16} />
+                    {minutenAlsTekst(d.rijMinuten)} rijden
+                    {d.routeDistance ? `, ${(d.routeDistance / 1000).toFixed(0)} km` : ''}
+                    {herkomst && <span className="plan-voorbehoud">({herkomst.achtervoegsel})</span>}
+                  </span>
+                );
+              })()}
                       <span className={d.teVol ? 'plan-totaal-vol' : 'plan-totaal'}>
                         {minutenAlsTekst(d.totaalMinuten)} totaal
                         {d.teVol && ` (over de ${minutenAlsTekst(PLANNING.werkdagMinuten)} heen)`}
@@ -655,6 +741,10 @@ export default function PlanningPaneel({
                                 {monsters(stop.aantalMonsters)}, {minutenAlsTekst(stop.werkMinuten)}
                                 {stop.sampleIds && ', deel van het object'}
                                 {stop.werkelijkeMinuten !== null && `, werkelijk ${minutenAlsTekst(stop.werkelijkeMinuten)}`}
+                                {(stop.object.lat === null || stop.object.lng === null) &&
+                                  ', geen plek op de kaart, rijtijd hierheen niet meegerekend'}
+                                {stop.aantalMonsters === 0 &&
+                                  ', geen monsters meer, je kunt dit object van de dag halen'}
                               </span>
                             </span>
                             {isAdmin && (
@@ -734,10 +824,32 @@ export default function PlanningPaneel({
 
           {gpsFout && <div className="alert alert-danger plan-melding">{gpsFout}</div>}
 
-          <div className="plan-dag-indeling">
-            <div className="plan-kaart">
-              <RouteMap streets={kaartStops} geometry={kaartRoute} userPos={positie} height="100%" />
+          {dag.stops.length === 0 ? (
+            <div className="leeg">
+              <Icon name="empty" size={32} />
+              <p style={{ margin: '0 0 12px' }}>Nog geen objecten op deze dag.</p>
+              <button type="button" className="btn btn-sm" onClick={() => { setWeergave('dagen'); setDagId(null); }}>
+                <Icon name="arrow-left" size={16} />
+                Terug naar de dagen
+              </button>
             </div>
+          ) : (
+          <div className={`plan-dag-indeling${kaartStops.length === 0 ? ' plan-dag-indeling-zonder-kaart' : ''}`}>
+            {/* Geen enkel object met coordinaat: dan is een kaart van heel
+                Nederland alleen maar in de weg, zeker op de telefoon. */}
+            {kaartStops.length > 0 ? (
+              <div className="plan-kaart">
+                <RouteMap streets={kaartStops} geometry={kaartRoute} userPos={positie} height="100%" />
+              </div>
+            ) : (
+              <div className="alert alert-warning plan-melding" role="alert">
+                <Icon name="alert-warning" size={20} />
+                <span>
+                  Geen van de objecten van deze dag staat op de kaart, dus er is geen route te tonen.
+                  Vul de coordinaten aan bij Beheer, Objecten.
+                </span>
+              </div>
+            )}
 
             <div className="plan-stoplijst">
               {dag.stops.map((stop, i) => {
@@ -833,6 +945,7 @@ export default function PlanningPaneel({
               })}
             </div>
           </div>
+          )}
 
           {/* Vaste balk onderaan op de telefoon, zoals bij de controlerondes */}
           <div className="plan-mobiel-balk">
@@ -947,12 +1060,13 @@ export default function PlanningPaneel({
 function PlanningTijd({ dagen, onTerug }: { dagen: PlanDag[]; onTerug: () => void }) {
   // Per object optellen over alle dagen, zodat een object dat over twee dagen
   // verdeeld is ook als één regel te lezen is.
-  const perObject = new Map<number, { naam: string; type: string | null; gepland: number; geplandGemeten: number; werkelijk: number; monsters: number; metTijd: number }>();
+  const perObject = new Map<number, { naam: string; type: string | null; gepland: number; geplandGemeten: number; werkelijk: number; monsters: number; metTijd: number; bezoeken: number }>();
   for (const d of dagen) {
     for (const s of d.stops) {
-      const r = perObject.get(s.objectId) ?? { naam: s.object.name, type: s.object.objectType, gepland: 0, geplandGemeten: 0, werkelijk: 0, monsters: 0, metTijd: 0 };
+      const r = perObject.get(s.objectId) ?? { naam: s.object.name, type: s.object.objectType, gepland: 0, geplandGemeten: 0, werkelijk: 0, monsters: 0, metTijd: 0, bezoeken: 0 };
       r.gepland += s.werkMinuten;
       r.monsters += s.aantalMonsters;
+      r.bezoeken += 1;
       if (s.werkelijkeMinuten !== null) {
         r.werkelijk += s.werkelijkeMinuten;
         // Alleen de inschatting van de gemeten bezoeken, anders vergelijk je bij
@@ -1016,7 +1130,13 @@ function PlanningTijd({ dagen, onTerug }: { dagen: PlanDag[]; onTerug: () => voi
                       </td>
                       <td data-label="Monsters">{r.monsters}</td>
                       <td data-label="Geschat">{minutenAlsTekst(r.gepland)}</td>
-                      <td data-label="Werkelijk">{r.metTijd > 0 ? minutenAlsTekst(r.werkelijk) : 'nog niet gemeten'}</td>
+                      <td data-label="Werkelijk">
+                        {r.metTijd === 0
+                          ? 'nog niet gemeten'
+                          : r.metTijd < r.bezoeken
+                          ? `${minutenAlsTekst(r.werkelijk)} over ${r.metTijd} van de ${r.bezoeken} bezoeken`
+                          : minutenAlsTekst(r.werkelijk)}
+                      </td>
                       <td data-label="Verschil">
                         {verschil === null ? (
                           '-'

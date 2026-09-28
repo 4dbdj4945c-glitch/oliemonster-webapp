@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import type { Map as LeafletMap, Marker, LeafletMouseEvent } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 interface ObjectMapProps {
@@ -26,9 +27,9 @@ const START: [number, number] = [51.3835, 5.5601];
  */
 export default function ObjectMap({ lat, lng, onChange, height = 320 }: ObjectMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
-  const LRef = useRef<any>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const markerRef = useRef<Marker | null>(null);
+  const LRef = useRef<typeof import('leaflet') | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
@@ -48,7 +49,7 @@ export default function ObjectMap({ lat, lng, onChange, height = 320 }: ObjectMa
         maxZoom: 19,
         attribution: '© OpenStreetMap',
       }).addTo(map);
-      map.on('click', (e: any) => onChangeRef.current(e.latlng.lat, e.latlng.lng));
+      map.on('click', (e: LeafletMouseEvent) => onChangeRef.current(e.latlng.lat, e.latlng.lng));
       mapRef.current = map;
       tekenSpeld();
     })();
@@ -87,8 +88,8 @@ export default function ObjectMap({ lat, lng, onChange, height = 320 }: ObjectMa
         }),
       }).addTo(map);
       markerRef.current.on('dragend', () => {
-        const p = markerRef.current.getLatLng();
-        onChangeRef.current(p.lat, p.lng);
+        const p = markerRef.current?.getLatLng();
+        if (p) onChangeRef.current(p.lat, p.lng);
       });
     } else {
       markerRef.current.setLatLng([lat, lng]);

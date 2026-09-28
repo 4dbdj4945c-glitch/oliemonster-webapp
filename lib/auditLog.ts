@@ -12,7 +12,7 @@ export async function createAuditLog({
   userId?: number;
   username: string;
   action: string;
-  details?: any;
+  details?: unknown;
   request?: NextRequest;
   success?: boolean;
 }) {

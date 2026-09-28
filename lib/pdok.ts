@@ -130,12 +130,12 @@ export async function searchAddresses(query: string): Promise<AddressHit[]> {
   const res = await fetch(url);
   if (!res.ok) throw new Error('PDOK adres-zoekopdracht mislukt');
   const data = await res.json();
-  const docs: any[] = data?.response?.docs ?? [];
+  const docs: Array<{ weergavenaam?: string; centroide_ll?: string }> = data?.response?.docs ?? [];
   const hits: AddressHit[] = [];
   const gezien = new Set<string>();
   for (const d of docs) {
     const punt = parsePoint(d.centroide_ll);
-    const label: string = d.weergavenaam;
+    const label = d.weergavenaam;
     if (!punt || !label || gezien.has(label)) continue;
     gezien.add(label);
     hits.push({ label, lat: punt.lat, lng: punt.lng });

@@ -85,6 +85,9 @@ export default function ObjectenPage() {
   const [adresOpen, setAdresOpen] = useState(false);
   const [adresBezig, setAdresBezig] = useState(false);
   const [adresIndex, setAdresIndex] = useState(0);
+  // Ligt PDOK plat, dan moet je dat zien. Anders typ je een adres en gebeurt er
+  // niets, zonder dat je weet of het adres niet bestaat of de dienst eruit ligt.
+  const [adresFout, setAdresFout] = useState('');
   const adresGekozen = useRef(false);
 
   // Objecten uit de locaties halen
@@ -147,8 +150,12 @@ export default function ObjectenPage() {
         setAdresHits(hits);
         setAdresIndex(0);
         setAdresOpen(true);
+        setAdresFout(hits.length === 0 ? 'Geen adres gevonden. Probeer een straat met plaatsnaam.' : '');
       } catch {
         setAdresHits([]);
+        setAdresFout(
+          'De adressendienst (PDOK) reageert niet. Probeer het zo nog eens, of zet de speld met een tik op de kaart.'
+        );
       } finally {
         setAdresBezig(false);
       }
@@ -176,6 +183,7 @@ export default function ObjectenPage() {
 
   const kiesAdres = (hit: AddressHit) => {
     adresGekozen.current = true;
+    setAdresFout('');
     setAdresZoek(hit.label);
     setAdresHits([]);
     setAdresOpen(false);
@@ -188,6 +196,7 @@ export default function ObjectenPage() {
     setFormulier({ ...leegFormulier });
     setAdresZoek('');
     setAdresHits([]);
+    setAdresFout('');
     setFormulierFout('');
     setToonModal(true);
   };
@@ -207,6 +216,7 @@ export default function ObjectenPage() {
     });
     setAdresZoek(object.address || '');
     setAdresHits([]);
+    setAdresFout('');
     setFormulierFout('');
     setToonModal(true);
   };
@@ -346,6 +356,7 @@ export default function ObjectenPage() {
         .objecten-filter :global(.label) { margin: 0; }
         .objecten-filter :global(.select) { width: auto; }
         .objecten-adres { display: block; }
+        .objecten-adres-fout { color: var(--rood-tekst); font-weight: 600; }
         .objecten-coord { display: block; font-size: 12px; color: var(--grijs-500); }
         .objecten-formulier {
           display: grid;
@@ -656,9 +667,13 @@ export default function ObjectenPage() {
                   ))}
                 </ul>
               </div>
-              <p className="hint">
-                {adresBezig ? 'Zoeken...' : 'Kies een adres en versleep daarna de speld naar de plek waar je echt moet zijn.'}
-              </p>
+              {adresFout ? (
+                <p className="hint objecten-adres-fout" role="alert">{adresFout}</p>
+              ) : (
+                <p className="hint">
+                  {adresBezig ? 'Zoeken...' : 'Kies een adres en versleep daarna de speld naar de plek waar je echt moet zijn.'}
+                </p>
+              )}
             </div>
 
             <div className="veld objecten-veld-breed">
@@ -735,9 +750,13 @@ export default function ObjectenPage() {
           <>
             <p className="section-label">Voorbeeld</p>
             <p>
-              {voorbeeld.nieuweObjecten} nieuwe objecten, {voorbeeld.bestaandeObjecten} bestaan al,
-              {' '}{voorbeeld.teKoppelenMonsters} monsters worden gekoppeld
-              {voorbeeld.monstersZonderLocatie > 0 && `, ${voorbeeld.monstersZonderLocatie} monsters hebben geen locatie en blijven los`}.
+              {voorbeeld.nieuweObjecten === 1 ? '1 nieuw object' : `${voorbeeld.nieuweObjecten} nieuwe objecten`},
+              {' '}{voorbeeld.bestaandeObjecten} {voorbeeld.bestaandeObjecten === 1 ? 'bestaat' : 'bestaan'} al,
+              {' '}{voorbeeld.teKoppelenMonsters} {voorbeeld.teKoppelenMonsters === 1 ? 'monster wordt' : 'monsters worden'} gekoppeld
+              {voorbeeld.monstersZonderLocatie > 0 &&
+                `, ${voorbeeld.monstersZonderLocatie} ${
+                  voorbeeld.monstersZonderLocatie === 1 ? 'monster heeft' : 'monsters hebben'
+                } geen locatie en blijft los`}.
             </p>
             {voorbeeld.voorbeeld.length === 0 ? (
               <div className="leeg">

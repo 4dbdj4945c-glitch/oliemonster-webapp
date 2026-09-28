@@ -1383,7 +1383,7 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   }
   .table-kaarten td.kaart-acties .btn,
   .table-kaarten td.kaart-acties .btn-link {
-    min-height: 40px;
+    min-height: 44px;
   }
   .table-kaarten td.kaart-leeg {
     display: none;
@@ -1466,8 +1466,8 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
     font-size: 14px;
   }
   .icon-btn {
-    min-width: 40px;
-    min-height: 40px;
+    min-width: 44px;
+    min-height: 44px;
     justify-content: center;
   }
   /* Rij met knoppen: volle breedte, netjes onder elkaar als ze niet passen */
@@ -2349,6 +2349,13 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   color: var(--grijs-500);
 }
 
+/* Voorbehoud achter een getal, bijvoorbeeld "(hemelsbreed)" */
+.plan-voorbehoud {
+  margin-left: 4px;
+  color: var(--geel-tekst);
+  font-weight: 600;
+}
+
 .plan-vrijgeven {
   margin-top: 4px;
   font-size: 12px;
@@ -2473,6 +2480,11 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
 
 .plan-kaart {
   height: 440px;
+}
+
+/* Geen kaart te tonen: dan hoeft de indeling ook niet in twee kolommen */
+.plan-dag-indeling-zonder-kaart {
+  grid-template-columns: 1fr;
 }
 
 .plan-kaart-laden {
@@ -2624,6 +2636,16 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   .plan-balk {
     flex-direction: column;
     align-items: stretch;
+  }
+  /* Knoppen in de planning en in een foutmelding zijn btn-sm (38px), maar het
+     zijn hier de hoofdknoppen. STIJL.md zegt minimaal 44px op de telefoon. */
+  .plan-knoppen .btn,
+  .plan-veldknoppen .btn,
+  .plan-object .btn,
+  .plan-dag-knoppen .btn,
+  .plan .leeg .btn,
+  .laadfout .btn {
+    min-height: 44px;
   }
   /* Drie knoppen naast elkaar in een stoprij: 44px en wat lucht ertussen */
   .plan-stop-knoppen {

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
-import { schrijfSampleIds } from '@/lib/samplePlans';
+import { schrijfSampleIds, leesSampleIds } from '@/lib/samplePlans';
 
 /**
  * POST - Zet een object op een dag (alleen admin).
@@ -51,6 +51,41 @@ export async function POST(
 
     const sampleIds = schrijfSampleIds(body.sampleIds);
     const minuten = parseInt(String(body.plannedMinutes ?? ''));
+
+    // Staat dit object al op deze dag, dan voegen we de monsters samen in plaats
+    // van een tweede stop te maken: je gaat er één keer heen.
+    const bestaande = await prisma.samplePlanStop.findFirst({
+      where: { planId, objectId },
+      select: { id: true, sampleIds: true, isDone: true, startedAt: true, endedAt: true },
+    });
+    if (bestaande) {
+      // Maar niet in een bezoek dat al gelopen heeft: dan hang je monsters onder
+      // een afgeronde meting en lijken ze in het veld al gedaan.
+      if (bestaande.isDone || bestaande.startedAt || bestaande.endedAt) {
+        return NextResponse.json(
+          {
+            error: `${object.name} staat al op deze dag en dat bezoek is al gestart of afgerond. Zet deze monsters op een andere dag.`,
+          },
+          { status: 400 }
+        );
+      }
+      const oud = leesSampleIds(bestaande.sampleIds);
+      const nieuw = leesSampleIds(sampleIds);
+      // Eén van beide "alles" betekent alles; verder samenvoegen zonder dubbelen.
+      const samen = oud === null || nieuw === null ? null : JSON.stringify([...new Set([...oud, ...nieuw])]);
+      const bijgewerkt = await prisma.samplePlanStop.update({
+        where: { id: bestaande.id },
+        data: { sampleIds: samen },
+      });
+      await createAuditLog({
+        userId: session.userId,
+        username: session.username || 'unknown',
+        action: AuditActions.UPDATE_PLAN_STOP,
+        details: { planId, stopId: bestaande.id, object: object.name, samengevoegd: true },
+        request,
+      });
+      return NextResponse.json({ ...bijgewerkt, samengevoegd: true });
+    }
 
     // Achteraan in de volgorde van die dag.
     const laatste = await prisma.samplePlanStop.findFirst({

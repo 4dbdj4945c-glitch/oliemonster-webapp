@@ -83,6 +83,8 @@ export default function DashboardPage() {
   const [annuleerInPdf, setAnnuleerInPdf] = useState(true);
   const [annuleerBezig, setAnnuleerBezig] = useState(false);
   const [annuleerFout, setAnnuleerFout] = useState('');
+  // Bevestiging na een actie, bijvoorbeeld hoeveel monsters er geannuleerd zijn
+  const [melding, setMelding] = useState('');
 
   const router = useRouter();
 
@@ -405,7 +407,9 @@ export default function DashboardPage() {
       });
       if (!response.ok) {
         setSamples((prev) => prev.map((s) => (s.id === sample.id ? sample : s)));
-        setFoutmelding(await foutTekst(response, `${sample.oNumber} is niet bijgewerkt.`));
+        setFoutmelding(
+          `${sample.oNumber} is niet bijgewerkt: ${await foutTekst(response, 'de server gaf geen reden.')}`
+        );
         return;
       }
       setFoutmelding('');
@@ -467,6 +471,14 @@ export default function DashboardPage() {
         setAnnuleerFout(await foutTekst(response, 'Het annuleren is niet gelukt.'));
         return;
       }
+      // De bulkactie zegt hoeveel monsters er geannuleerd zijn, of dat er niets
+      // openstond. Zonder die melding lijkt er niets te gebeuren.
+      const uitkomst = await response.json().catch(() => ({}));
+      setMelding(
+        annuleerBulk
+          ? uitkomst?.melding || 'De monsters zijn bijgewerkt.'
+          : `${annuleerDoel?.oNumber ?? 'Het monster'} is geannuleerd.`
+      );
       sluitAnnuleren();
       await loadSamples();
     } catch (error) {
@@ -602,6 +614,11 @@ export default function DashboardPage() {
 
       {/* Ophalen of bijwerken mislukt */}
       {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={herlaad} />}
+      {melding && (
+        <div className="alert alert-success" style={{ marginBottom: '16px' }} role="status">
+          {melding}
+        </div>
+      )}
 
       {/* Tabbladen: de lijst of de planning van dit jaar */}
       {magPlannen && (
@@ -709,7 +726,7 @@ export default function DashboardPage() {
           )}
 
           {isAdmin && objectenBeschikbaar && objectFilter !== 'all' && objectFilter !== 'geen' && (
-            <div className="filter-veld">
+            <div className="filter-veld filter-veld-breed">
               <button type="button" className="btn btn-sm" onClick={openBulkAnnuleren}>
                 <Icon name="status-cancelled" size={16} />
                 Alle monsters van dit object annuleren
@@ -1313,6 +1330,15 @@ export default function DashboardPage() {
         .filter-veld {
           min-width: 0;
         }
+        /* Knop over de volle breedte van het filterraster: op de telefoon past
+           hij niet in een kolom van de helft. */
+        .filter-veld-breed {
+          grid-column: 1 / -1;
+        }
+        .filter-veld-breed :global(.btn) {
+          width: 100%;
+          min-height: 44px;
+        }
         .filter-label {
           margin: 0 0 5px;
         }
@@ -1336,6 +1362,10 @@ export default function DashboardPage() {
           }
           .filter-label-mobiel {
             display: none;
+          }
+          .filter-veld-breed :global(.btn) {
+            width: auto;
+            min-height: 0;
           }
           .filter-select {
             width: auto;
