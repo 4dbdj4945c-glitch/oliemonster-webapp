@@ -43,6 +43,20 @@ interface Voorbeeldregel {
   bestaatAl: boolean;
 }
 
+interface Kunstwerkregel {
+  naam: string;
+  regio: string;
+  objectType: string;
+  notitie: string | null;
+  bestaatAl: boolean;
+}
+
+interface KunstwerkVoorbeeld {
+  nieuw: number;
+  bestaandeObjecten: number;
+  voorbeeld: Kunstwerkregel[];
+}
+
 interface Voorbeeld {
   analysisYear: number;
   nieuweObjecten: number;
@@ -97,6 +111,20 @@ export default function ObjectenPage() {
   const [overnemenBezig, setOvernemenBezig] = useState(false);
   const [overnemenFout, setOvernemenFout] = useState('');
   const [overnemenKlaar, setOvernemenKlaar] = useState('');
+
+  // Vaste kunstwerkenlijst aanmaken
+  const [toonKunstwerken, setToonKunstwerken] = useState(false);
+  const [kunstwerken, setKunstwerken] = useState<KunstwerkVoorbeeld | null>(null);
+  const [kunstwerkenBezig, setKunstwerkenBezig] = useState(false);
+  const [kunstwerkenFout, setKunstwerkenFout] = useState('');
+  const [kunstwerkenKlaar, setKunstwerkenKlaar] = useState('');
+
+  // Objecten samenvoegen
+  const [samenvoegen, setSamenvoegen] = useState<SampleObject | null>(null);
+  const [samenvoegDoel, setSamenvoegDoel] = useState('');
+  const [samenvoegBezig, setSamenvoegBezig] = useState(false);
+  const [samenvoegFout, setSamenvoegFout] = useState('');
+  const [samenvoegKlaar, setSamenvoegKlaar] = useState('');
 
   const isAdmin = user?.role === 'admin';
 
@@ -261,8 +289,16 @@ export default function ObjectenPage() {
   };
 
   const verwijder = async (object: SampleObject) => {
+    if (object.aantalMonsters > 0) {
+      setFoutmelding(
+        `Aan "${object.name}" hangen nog ${object.aantalMonsters} ${
+          object.aantalMonsters === 1 ? 'monster' : 'monsters'
+        }. Voeg dit object eerst samen met het goede kunstwerk.`
+      );
+      return;
+    }
     if (!confirm(
-      `Object "${object.name}" verwijderen?\n\nDe ${object.aantalMonsters} gekoppelde monsters blijven bestaan, ze raken alleen hun koppeling kwijt. Staat dit object op een dag in de planning, dan verdwijnt het daar wel van.`
+      `Object "${object.name}" verwijderen?\n\nEr hangen geen monsters aan. Staat dit object op een dag in de planning, dan verdwijnt het daar wel van.`
     )) return;
     try {
       const res = await fetch(`/api/sample-objects/${object.id}`, { method: 'DELETE' });
@@ -274,6 +310,102 @@ export default function ObjectenPage() {
       await laadObjecten();
     } catch {
       setFoutmelding(GEEN_VERBINDING);
+    }
+  };
+
+  // ---- De vaste kunstwerkenlijst ----
+  const openKunstwerken = async () => {
+    setToonKunstwerken(true);
+    setKunstwerken(null);
+    setKunstwerkenFout('');
+    setKunstwerkenKlaar('');
+    await haalKunstwerken();
+  };
+
+  const haalKunstwerken = async () => {
+    setKunstwerkenBezig(true);
+    try {
+      const res = await fetch('/api/sample-objects/kunstwerken', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        setKunstwerkenFout(await foutTekst(res, 'Het voorbeeld kon niet worden opgehaald.'));
+        return;
+      }
+      setKunstwerken(await res.json());
+      setKunstwerkenFout('');
+    } catch {
+      setKunstwerkenFout(GEEN_VERBINDING);
+    } finally {
+      setKunstwerkenBezig(false);
+    }
+  };
+
+  const maakKunstwerken = async () => {
+    setKunstwerkenBezig(true);
+    try {
+      const res = await fetch('/api/sample-objects/kunstwerken', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uitvoeren: true }),
+      });
+      if (!res.ok) {
+        setKunstwerkenFout(await foutTekst(res, 'De kunstwerken konden niet worden aangemaakt.'));
+        return;
+      }
+      const data = await res.json();
+      setKunstwerkenKlaar(
+        `${data.aangemaakt} ${data.aangemaakt === 1 ? 'kunstwerk' : 'kunstwerken'} aangemaakt, ${data.overgeslagen} bestonden al.`
+      );
+      await haalKunstwerken();
+      await laadObjecten();
+    } catch {
+      setKunstwerkenFout(GEEN_VERBINDING);
+    } finally {
+      setKunstwerkenBezig(false);
+    }
+  };
+
+  // ---- Objecten samenvoegen ----
+  const openSamenvoegen = (object: SampleObject) => {
+    setSamenvoegen(object);
+    setSamenvoegDoel('');
+    setSamenvoegFout('');
+    setSamenvoegKlaar('');
+  };
+
+  const voerSamenvoegenUit = async () => {
+    if (!samenvoegen) return;
+    if (!samenvoegDoel) {
+      setSamenvoegFout('Kies het kunstwerk waar alles naartoe moet.');
+      return;
+    }
+    setSamenvoegBezig(true);
+    try {
+      const res = await fetch(`/api/sample-objects/${samenvoegen.id}/samenvoegen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ doelId: parseInt(samenvoegDoel) }),
+      });
+      if (!res.ok) {
+        setSamenvoegFout(await foutTekst(res, 'De objecten konden niet worden samengevoegd.'));
+        return;
+      }
+      const data = await res.json();
+      const doel = objecten.find((o) => o.id === parseInt(samenvoegDoel))?.name ?? 'het andere object';
+      setSamenvoegen(null);
+      setSamenvoegKlaar(
+        `${data.monsters} ${data.monsters === 1 ? 'monster' : 'monsters'} verhuisd naar ${doel}, ${
+          data.stopsVerhuisd + data.stopsSamengevoegd
+        } uit de planning bijgewerkt.`
+      );
+      await laadObjecten();
+    } catch {
+      setSamenvoegFout(GEEN_VERBINDING);
+    } finally {
+      setSamenvoegBezig(false);
     }
   };
 
@@ -414,6 +546,14 @@ export default function ObjectenPage() {
         </div>
         {isAdmin && (
           <div className="knoppenrij objecten-knoppen">
+            <button type="button" className="btn" onClick={openKunstwerken}>
+              <Icon name="structure" size={16} />
+              Kunstwerkenlijst
+            </button>
+            <button type="button" className="btn" onClick={() => router.push('/dashboard/objecten/koppelen')}>
+              <Icon name="tag" size={16} />
+              Locaties koppelen
+            </button>
             <button type="button" className="btn" onClick={() => openOvernemen(jaar)}>
               <Icon name="copy-year" size={16} />
               Uit locaties {jaar}
@@ -427,6 +567,9 @@ export default function ObjectenPage() {
       </div>
 
       {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={laadObjecten} />}
+      {samenvoegKlaar && (
+        <div className="alert alert-success" style={{ marginBottom: '16px' }}>{samenvoegKlaar}</div>
+      )}
 
       <div className="card" style={{ marginBottom: '16px' }}>
         <div className="objecten-filter">
@@ -455,9 +598,9 @@ export default function ObjectenPage() {
                 <Icon name="plus" size={16} />
                 Nieuw object
               </button>
-              <button type="button" className="btn btn-sm" onClick={() => openOvernemen(jaar)}>
-                <Icon name="copy-year" size={16} />
-                Aanmaken uit de locaties van {jaar}
+              <button type="button" className="btn btn-sm" onClick={openKunstwerken}>
+                <Icon name="structure" size={16} />
+                Kunstwerkenlijst aanmaken
               </button>
             </div>
           )}
@@ -523,6 +666,16 @@ export default function ObjectenPage() {
                         >
                           <Icon name="pencil" size={16} />
                           <span className="alleen-mobiel">Bewerken</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-btn sm:mr-1"
+                          onClick={() => openSamenvoegen(object)}
+                          title="Samenvoegen met een ander object"
+                          aria-label={`${object.name} samenvoegen met een ander object`}
+                        >
+                          <Icon name="copy" size={16} />
+                          <span className="alleen-mobiel">Samenvoegen</span>
                         </button>
                         <button
                           type="button"
@@ -705,6 +858,128 @@ export default function ObjectenPage() {
         </div>
 
         {formulierFout && <div className="alert alert-danger" style={{ marginTop: '12px' }}>{formulierFout}</div>}
+      </Modal>
+
+      {/* De vaste kunstwerkenlijst aanmaken */}
+      <Modal
+        open={toonKunstwerken}
+        onClose={() => setToonKunstwerken(false)}
+        title="Kunstwerkenlijst aanmaken"
+        size="lg"
+        footer={
+          <>
+            <button type="button" className="btn" onClick={() => setToonKunstwerken(false)}>Sluiten</button>
+            {kunstwerken && kunstwerken.nieuw > 0 && (
+              <button type="button" className="btn btn-primary" onClick={maakKunstwerken} disabled={kunstwerkenBezig}>
+                {kunstwerkenBezig ? 'Bezig...' : `Aanmaken (${kunstwerken.nieuw})`}
+              </button>
+            )}
+          </>
+        }
+      >
+        <p style={{ marginTop: 0 }}>
+          Dit zet de kunstwerken uit de Mourik-offerte klaar als objecten, met regio en type.
+          Een object is het kunstwerk zelf: Sluis Belfeld en Stuw Belfeld zijn dus twee objecten,
+          ook al staan ze op dezelfde plaats. Wat op een monster in het veld locatie staat is het
+          onderdeel daarop, bijvoorbeeld Belfeld Westsluis. Bestaat een kunstwerk met dezelfde naam
+          al, dan blijft het zoals het is. Hieronder zie je eerst wat er gaat gebeuren.
+        </p>
+
+        {kunstwerkenFout && <div className="alert alert-danger" style={{ marginBottom: '12px' }}>{kunstwerkenFout}</div>}
+        {kunstwerkenKlaar && <div className="alert alert-success" style={{ marginBottom: '12px' }}>{kunstwerkenKlaar}</div>}
+        {kunstwerkenBezig && !kunstwerken && <p className="laden">Voorbeeld ophalen...</p>}
+
+        {kunstwerken && (
+          <>
+            <p className="section-label">Voorbeeld</p>
+            <p>
+              {kunstwerken.nieuw === 1 ? '1 nieuw kunstwerk' : `${kunstwerken.nieuw} nieuwe kunstwerken`},
+              {' '}{kunstwerken.bestaandeObjecten} {kunstwerken.bestaandeObjecten === 1 ? 'bestaat' : 'bestaan'} al.
+            </p>
+            <div className="table-container">
+              <div className="table-scroll">
+                <table className="table table-kaarten">
+                  <thead>
+                    <tr>
+                      <th>Kunstwerk</th>
+                      <th>Type</th>
+                      <th>Regio</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {kunstwerken.voorbeeld.map((regel) => (
+                      <tr key={regel.naam}>
+                        <td data-label="Kunstwerk" className="kaart-kop font-medium">
+                          {regel.naam}
+                          {regel.notitie && <span className="objecten-coord">{regel.notitie}</span>}
+                        </td>
+                        <td data-label="Type">
+                          <span className="badge badge-gray">
+                            <Icon name={objectTypeIcoon(regel.objectType)} size={16} />
+                            {objectTypeLabel(regel.objectType)}
+                          </span>
+                        </td>
+                        <td data-label="Regio">{regel.regio}</td>
+                        <td data-label="Status" className="kaart-status">
+                          <span className={`badge ${regel.bestaatAl ? 'badge-info' : 'badge-success'}`}>
+                            <Icon name={regel.bestaatAl ? 'status-planned' : 'plus'} size={16} />
+                            {regel.bestaatAl ? 'Bestaat al' : 'Nieuw'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      {/* Object samenvoegen met een ander object */}
+      <Modal
+        open={samenvoegen !== null}
+        onClose={() => setSamenvoegen(null)}
+        title={samenvoegen ? `${samenvoegen.name} samenvoegen` : 'Samenvoegen'}
+        footer={
+          <>
+            <button type="button" className="btn" onClick={() => setSamenvoegen(null)}>Annuleren</button>
+            <button type="button" className="btn btn-primary" onClick={voerSamenvoegenUit} disabled={samenvoegBezig}>
+              {samenvoegBezig ? 'Bezig...' : 'Samenvoegen'}
+            </button>
+          </>
+        }
+      >
+        <p style={{ marginTop: 0 }}>
+          Alle monsters en geplande stops van <strong>{samenvoegen?.name}</strong> gaan naar het
+          kunstwerk dat je hieronder kiest. Daarna verdwijnt {samenvoegen?.name}. Handig om een
+          verkeerd aangemaakt object op te ruimen. Dit kun je niet terugdraaien.
+        </p>
+
+        <div className="veld">
+          <label className="label" htmlFor="samenvoeg-doel">Alles naartoe</label>
+          <select
+            id="samenvoeg-doel"
+            className="select"
+            value={samenvoegDoel}
+            onChange={(e) => setSamenvoegDoel(e.target.value)}
+          >
+            <option value="">Kies een kunstwerk</option>
+            {objecten
+              .filter((o) => o.id !== samenvoegen?.id)
+              .map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name} ({objectTypeLabel(o.objectType)})
+                </option>
+              ))}
+          </select>
+          <p className="hint">
+            Let op: een sluis en een stuw op dezelfde plaats zijn twee kunstwerken. Voeg die niet samen.
+          </p>
+        </div>
+
+        {samenvoegFout && <div className="alert alert-danger" style={{ marginTop: '12px' }}>{samenvoegFout}</div>}
       </Modal>
 
       {/* Objecten aanmaken uit de bestaande locaties */}

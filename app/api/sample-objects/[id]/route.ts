@@ -61,8 +61,10 @@ export async function PUT(
   }
 }
 
-// DELETE - Object verwijderen (alleen admin). De monsters blijven bestaan, hun
-// koppeling valt weg (objectId wordt null) en het tekstveld locatie blijft staan.
+// DELETE - Object verwijderen (alleen admin). Dat mag alleen als er geen monsters
+// meer aan hangen: anders raak je zonder het te zien de koppeling van die
+// monsters kwijt. Hangen er nog monsters aan, voeg het object dan eerst samen
+// met het goede kunstwerk.
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -87,17 +89,27 @@ export async function DELETE(
     }
 
     const aantal = await prisma.oilSample.count({ where: { objectId } });
+    if (aantal > 0) {
+      return NextResponse.json(
+        {
+          error: `Aan "${object.name}" hangen nog ${aantal} ${
+            aantal === 1 ? 'monster' : 'monsters'
+          }. Voeg dit object eerst samen met het goede kunstwerk, of koppel de monsters om.`,
+        },
+        { status: 400 }
+      );
+    }
     await prisma.sampleObject.delete({ where: { id: objectId } });
 
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.DELETE_SAMPLE_OBJECT,
-      details: { id: objectId, naam: object.name, losgekoppeldeMonsters: aantal },
+      details: { id: objectId, naam: object.name },
       request,
     });
 
-    return NextResponse.json({ success: true, losgekoppeldeMonsters: aantal });
+    return NextResponse.json({ success: true });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij verwijderen van object');
   }

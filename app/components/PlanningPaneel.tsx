@@ -95,6 +95,33 @@ interface PlanDag {
 // Afstand (meter) waarbinnen GPS je op een object plaatst; zelfde straal als de controlerondes.
 const GPS_STRAAL = 70;
 
+/**
+ * De monsters van een object gegroepeerd per locatietekst. Het object is het
+ * kunstwerk (Sluis Belfeld), de locatie is het onderdeel daarop (Belfeld
+ * Westsluis). In het veld wil je de monsterpunten per onderdeel bij elkaar zien.
+ */
+function perLocatie(lijst: PlanMonster[]): { locatie: string; monsters: PlanMonster[] }[] {
+  const groepen: { locatie: string; monsters: PlanMonster[] }[] = [];
+  for (const m of lijst) {
+    const locatie = (m.location || '').trim();
+    const bestaand = groepen.find((g) => g.locatie.toLowerCase() === locatie.toLowerCase());
+    if (bestaand) bestaand.monsters.push(m);
+    else groepen.push({ locatie, monsters: [m] });
+  }
+  return groepen;
+}
+
+/** Een kopje boven de monsterpunten heeft alleen zin als het iets toevoegt. */
+function toonLocatieKoppen(
+  groepen: { locatie: string }[],
+  objectNaam: string
+): boolean {
+  if (groepen.length > 1) return true;
+  if (groepen.length === 0) return false;
+  const enige = groepen[0].locatie;
+  return enige !== '' && enige.toLowerCase() !== objectNaam.toLowerCase();
+}
+
 /** "1 monster" of "3 monsters" */
 function monsters(aantal: number): string {
   return `${aantal} ${aantal === 1 ? 'monster' : 'monsters'}`;
@@ -912,34 +939,53 @@ export default function PlanningPaneel({
                       </div>
                     )}
 
-                    {/* De monsterpunten binnen dit object, in o-nummervolgorde */}
-                    <ul className="plan-monsters">
-                      {stop.samples.length === 0 ? (
-                        <li className="plan-leeg-regel">Geen openstaande monsters op dit object.</li>
-                      ) : (
-                        stop.samples.map((m) => (
-                          <li key={m.id} className={`plan-monster${m.isTaken ? ' plan-monster-genomen' : ''}`}>
-                            <button
-                              type="button"
-                              className="plan-monster-knop"
-                              onClick={() => isAdmin && zetMonster(m, !m.isTaken)}
-                              disabled={!isAdmin}
-                              aria-pressed={m.isTaken}
-                              title={m.isTaken ? `${m.oNumber} op niet genomen zetten` : `${m.oNumber} op genomen zetten`}
-                            >
-                              <span className={`badge ${m.isTaken ? 'badge-success' : 'badge-danger'}`}>
-                                <Icon name={m.isTaken ? 'status-taken' : 'status-not-taken'} size={16} />
-                                {m.isTaken ? 'Genomen' : 'Nog doen'}
-                              </span>
-                              <span className="plan-monster-tekst">
-                                <strong>{m.oNumber}</strong>
-                                <span className="plan-monster-sub">{m.description}</span>
-                              </span>
-                            </button>
-                          </li>
-                        ))
-                      )}
-                    </ul>
+                    {/* De monsterpunten binnen dit object, gegroepeerd per locatie */}
+                    {(() => {
+                      const groepen = perLocatie(stop.samples);
+                      const koppen = toonLocatieKoppen(groepen, stop.object.name);
+                      return (
+                        <ul className="plan-monsters">
+                          {stop.samples.length === 0 ? (
+                            <li className="plan-leeg-regel">Geen openstaande monsters op dit object.</li>
+                          ) : (
+                            groepen.map((groep) => (
+                              <li key={groep.locatie || '(zonder locatie)'} className="plan-locatiegroep">
+                                {koppen && (
+                                  <p className="plan-locatie-kop">
+                                    <Icon name="map-pin" size={16} />
+                                    {groep.locatie || 'Zonder locatie'}
+                                    <span className="plan-locatie-aantal">{monsters(groep.monsters.length)}</span>
+                                  </p>
+                                )}
+                                <ul className="plan-locatie-monsters">
+                                  {groep.monsters.map((m) => (
+                                    <li key={m.id} className={`plan-monster${m.isTaken ? ' plan-monster-genomen' : ''}`}>
+                                      <button
+                                        type="button"
+                                        className="plan-monster-knop"
+                                        onClick={() => isAdmin && zetMonster(m, !m.isTaken)}
+                                        disabled={!isAdmin}
+                                        aria-pressed={m.isTaken}
+                                        title={m.isTaken ? `${m.oNumber} op niet genomen zetten` : `${m.oNumber} op genomen zetten`}
+                                      >
+                                        <span className={`badge ${m.isTaken ? 'badge-success' : 'badge-danger'}`}>
+                                          <Icon name={m.isTaken ? 'status-taken' : 'status-not-taken'} size={16} />
+                                          {m.isTaken ? 'Genomen' : 'Nog doen'}
+                                        </span>
+                                        <span className="plan-monster-tekst">
+                                          <strong>{m.oNumber}</strong>
+                                          <span className="plan-monster-sub">{m.description}</span>
+                                        </span>
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </li>
+                            ))
+                          )}
+                        </ul>
+                      );
+                    })()}
                   </div>
                 );
               })}

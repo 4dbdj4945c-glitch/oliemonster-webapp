@@ -113,3 +113,130 @@ function getal(waarde: unknown): number | null {
   const n = typeof waarde === 'number' ? waarde : parseFloat(String(waarde).replace(',', '.'));
   return Number.isNaN(n) ? null : n;
 }
+
+/* ============================================================
+   DE VASTE KUNSTWERKENLIJST
+   ============================================================
+   Een object is het kunstwerk zelf: Sluis Belfeld. Wat op een monster in het
+   veld `location` staat is het onderdeel daarop, bijvoorbeeld "Belfeld
+   Westsluis". Een sluis en een stuw op dezelfde plaats zijn dus twee objecten,
+   nooit een.
+
+   Deze lijst komt uit de offerte voor Mourik (19 objecten). Stuw Grave staat er
+   als twintigste bij: die is nog niet zeker, dat staat in zijn notitie. */
+
+export interface Kunstwerk {
+  naam: string;
+  regio: string;
+  type: string;
+  notitie?: string;
+}
+
+export const KUNSTWERKEN: Kunstwerk[] = [
+  { naam: 'Sint Servaasbrug', regio: 'Maastricht', type: 'brug' },
+  { naam: 'Stuw Borgharen', regio: 'Maastricht', type: 'stuw' },
+  { naam: 'Sluis Bosscherveld', regio: 'Maastricht', type: 'sluis' },
+
+  { naam: 'Sluis Born', regio: 'Midden-Limburg', type: 'sluis' },
+  { naam: 'Sluis Maasbracht', regio: 'Midden-Limburg', type: 'sluis' },
+  { naam: 'Sluis Heel', regio: 'Midden-Limburg', type: 'sluis' },
+  { naam: 'Sluis Linne', regio: 'Midden-Limburg', type: 'sluis' },
+  { naam: 'Stuw Linne', regio: 'Midden-Limburg', type: 'stuw' },
+  { naam: 'Sluis Roermond', regio: 'Midden-Limburg', type: 'sluis' },
+  { naam: 'Stuw Roermond', regio: 'Midden-Limburg', type: 'stuw' },
+
+  { naam: 'Sluis Belfeld', regio: 'Noord-Limburg', type: 'sluis' },
+  { naam: 'Stuw Belfeld', regio: 'Noord-Limburg', type: 'stuw' },
+  { naam: 'Sluis Sambeek', regio: 'Noord-Limburg', type: 'sluis' },
+  { naam: 'Stuw Sambeek', regio: 'Noord-Limburg', type: 'stuw' },
+
+  { naam: 'Sluis Grave', regio: 'Brabant / Gelderland', type: 'sluis' },
+  { naam: 'Sluis Lith', regio: 'Brabant / Gelderland', type: 'sluis' },
+  { naam: 'Stuw Lith', regio: 'Brabant / Gelderland', type: 'stuw' },
+  { naam: 'Sluis Sint Andries', regio: 'Brabant / Gelderland', type: 'sluis' },
+  { naam: 'Wilhelminasluis', regio: 'Brabant / Gelderland', type: 'sluis' },
+
+  {
+    naam: 'Stuw Grave',
+    regio: 'Brabant / Gelderland',
+    type: 'stuw',
+    notitie: 'Nog niet zeker of dit kunstwerk in de opdracht zit. Nagaan bij Mourik.',
+  },
+];
+
+/* ============================================================
+   LOCATIETEKST AAN EEN KUNSTWERK KNOPEN
+   ============================================================ */
+
+// De woorden waaraan je het soort kunstwerk herkent. Sluis en stuw mogen nooit
+// door elkaar lopen, dus als de tekst niet zegt welke van de twee het is, doen
+// we geen voorstel en kiest Roel zelf.
+const TYPE_WOORDEN = ['sluis', 'stuw', 'brug', 'gemaal'] as const;
+
+/** "Sluis Belfeld" wordt "belfeld"; "Wilhelminasluis" blijft heel. */
+export function plaatsDeel(naam: string): string {
+  const woorden = naam.toLowerCase().trim().split(/\s+/);
+  if (woorden.length > 1 && (TYPE_WOORDEN as readonly string[]).includes(woorden[0])) {
+    return woorden.slice(1).join(' ');
+  }
+  return woorden.join(' ');
+}
+
+export interface KunstwerkObject {
+  id: number;
+  name: string;
+  objectType: string | null;
+}
+
+export interface KunstwerkVoorstel {
+  objectId: number | null;
+  reden: string;
+}
+
+/**
+ * Raadt bij welk kunstwerk een locatietekst hoort. `tekst` is de locatie plus de
+ * omschrijvingen van de monsters op die locatie. Bij de minste twijfel komt er
+ * geen voorstel terug, maar een reden waarom Roel zelf moet kiezen.
+ */
+export function raadKunstwerk(tekst: string, objecten: KunstwerkObject[]): KunstwerkVoorstel {
+  const t = tekst.toLowerCase();
+
+  // Stap 1: welke kunstwerken hebben een naam die in de tekst voorkomt.
+  const kandidaten = objecten.filter((o) => {
+    const plaats = plaatsDeel(o.name);
+    return plaats.length >= 4 && t.includes(plaats);
+  });
+  if (kandidaten.length === 0) {
+    return { objectId: null, reden: 'Geen kunstwerk met deze naam gevonden, kies zelf.' };
+  }
+
+  // Stap 2: zegt de tekst welk soort kunstwerk het is? Dan moet het type kloppen.
+  const woordenInTekst = TYPE_WOORDEN.filter((w) => t.includes(w));
+  if (woordenInTekst.length > 0) {
+    const passend = kandidaten.filter((o) => o.objectType && woordenInTekst.includes(o.objectType as typeof TYPE_WOORDEN[number]));
+    if (passend.length === 1) {
+      return { objectId: passend[0].id, reden: '' };
+    }
+    if (passend.length === 0) {
+      return {
+        objectId: null,
+        reden: 'De naam past, maar het soort kunstwerk niet. Kies zelf.',
+      };
+    }
+    return {
+      objectId: null,
+      reden: 'Er passen meerdere kunstwerken bij deze tekst, kies zelf.',
+    };
+  }
+
+  // Stap 3: geen soortwoord in de tekst. Alleen een voorstel als er precies een
+  // kandidaat is en die geen sluis of stuw is, want die twee gooien we nooit
+  // automatisch samen.
+  if (kandidaten.length === 1 && !['sluis', 'stuw'].includes(kandidaten[0].objectType ?? '')) {
+    return { objectId: kandidaten[0].id, reden: '' };
+  }
+  return {
+    objectId: null,
+    reden: 'Er staat niet in de tekst of dit de sluis of de stuw is. Kies zelf.',
+  };
+}

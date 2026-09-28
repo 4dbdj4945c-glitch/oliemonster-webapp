@@ -2544,6 +2544,54 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   padding-top: 8px;
 }
 
+/* Monsterpunten per locatie: het object is het kunstwerk, de locatie het
+   onderdeel daarop. Het kopje staat boven de monsterpunten van dat onderdeel. */
+.plan-locatiegroep {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plan-locatiegroep + .plan-locatiegroep {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--grijs-200);
+}
+
+.plan-locatie-kop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 0 0 2px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.plan-locatie-kop .icon {
+  color: var(--grijs-500);
+}
+
+.plan-locatie-aantal {
+  font-weight: 600;
+  color: var(--grijs-500);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.plan-locatie-monsters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .plan-monster-knop {
   display: flex;
   align-items: center;
@@ -2673,6 +2721,12 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   }
   .plan-monsters {
     gap: 4px;
+  }
+  .plan-locatie-monsters {
+    gap: 4px;
+  }
+  .plan-locatie-kop {
+    font-size: 13px;
   }
   .plan-mobiel-balk {
     display: flex;
