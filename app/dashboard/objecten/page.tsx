@@ -325,6 +325,7 @@ export default function ObjectenPage() {
         .objecten-filter { display: flex; align-items: center; gap: 12px; }
         .objecten-filter :global(.label) { margin: 0; }
         .objecten-filter :global(.select) { width: auto; }
+        .objecten-adres { display: block; }
         .objecten-coord { display: block; font-size: 12px; color: var(--grijs-500); }
         .objecten-formulier {
           display: grid;
@@ -455,14 +456,16 @@ export default function ObjectenPage() {
                     </td>
                     <td data-label="Regio">{object.region || '-'}</td>
                     <td data-label="Adres">
-                      {object.address || '-'}
-                      {object.lat !== null && object.lng !== null && (
-                        <span className="objecten-coord">
-                          {object.lat.toFixed(5)}, {object.lng.toFixed(5)}
-                        </span>
-                      )}
+                      <span className="objecten-adres">
+                        {object.address || '-'}
+                        {object.lat !== null && object.lng !== null && (
+                          <span className="objecten-coord">
+                            {object.lat.toFixed(5)}, {object.lng.toFixed(5)}
+                          </span>
+                        )}
+                      </span>
                     </td>
-                    <td data-label={`Monsters ${jaar}`} style={{ whiteSpace: 'nowrap' }}>
+                    <td data-label={`Monsters ${jaar}`}>
                       {object.aantalMonsters === 0 ? (
                         '-'
                       ) : (
