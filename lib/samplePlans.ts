@@ -97,9 +97,14 @@ export async function haalPlanning(analysisYear: number) {
   const geplandeMonsters = new Set<number>();
   for (const plan of plannen) {
     for (const stop of plan.stops) {
+      const vanObject = perObject.get(stop.objectId) ?? [];
       const ids = leesSampleIds(stop.sampleIds);
-      if (ids) ids.forEach((id) => geplandeMonsters.add(id));
-      else (perObject.get(stop.objectId) ?? []).forEach((m) => geplandeMonsters.add(m.id));
+      // Alleen monsters die nu echt bij dit object horen. Is een monster
+      // intussen naar een ander object verhuisd, dan blijft het oude id in de
+      // stop staan; zonder deze controle zou dat monster nergens meer als
+      // "nog in te plannen" opduiken en stil wegvallen.
+      if (ids) vanObject.filter((m) => ids.includes(m.id)).forEach((m) => geplandeMonsters.add(m.id));
+      else vanObject.forEach((m) => geplandeMonsters.add(m.id));
     }
   }
 
@@ -115,6 +120,9 @@ export async function haalPlanning(analysisYear: number) {
       let werkMinuten: number;
       if (stop.plannedMinutes && stop.plannedMinutes > 0) {
         werkMinuten = stop.plannedMinutes;
+      } else if (samples.length === 0) {
+        // Niets meer te doen op dit object: dan kost het ook geen tijd.
+        werkMinuten = 0;
       } else if (stop.object.estimatedMinutes && stop.object.estimatedMinutes > 0) {
         const deel = alle.length > 0 ? samples.length / alle.length : 1;
         werkMinuten = Math.round(stop.object.estimatedMinutes * deel);
@@ -191,7 +199,14 @@ export async function haalPlanning(analysisYear: number) {
       aantalGenomen: alle.filter((m) => m.isTaken).length,
       aantalOngepland: open.length,
       ongeplandeMonsters: open,
-      werkMinuten: geschatteMinuten(o.estimatedMinutes, alle.length),
+      // Tijd voor wat er nog open staat, met dezelfde regels als een stop:
+      // een eigen inschatting op het object telt naar rato mee.
+      werkMinuten:
+        open.length === 0
+          ? 0
+          : o.estimatedMinutes && o.estimatedMinutes > 0
+          ? Math.round(o.estimatedMinutes * (alle.length > 0 ? open.length / alle.length : 1))
+          : geschatteMinuten(null, open.length),
     };
   });
 
@@ -238,6 +253,7 @@ function werkMinutenVanStop(stop: StopMetObject, alleMonsters: StopMonster[]): n
   const ids = leesSampleIds(stop.sampleIds);
   const aantal = ids ? alleMonsters.filter((m) => ids.includes(m.id)).length : alleMonsters.length;
   if (stop.plannedMinutes && stop.plannedMinutes > 0) return stop.plannedMinutes;
+  if (aantal === 0) return 0;
   if (stop.object.estimatedMinutes && stop.object.estimatedMinutes > 0) {
     const deel = alleMonsters.length > 0 ? aantal / alleMonsters.length : 1;
     return Math.round(stop.object.estimatedMinutes * deel);
@@ -354,13 +370,20 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
       const punten: LatLng[] = metPunt.map((s) => ({ lat: s.object.lat as number, lng: s.object.lng as number }));
       // Alleen de volgorde is hier nodig, de route per dag komt zo.
       const route = await optimizePointRoute(punten, PLANNING.thuis);
-      reeks = [...metPunt].sort((a, b) => route.order[metPunt.indexOf(a)] - route.order[metPunt.indexOf(b)]);
+      reeks = metPunt.map((stop, i) => ({ stop, pos: route.order[i] }))
+        .sort((a, b) => a.pos - b.pos)
+        .map((r) => r.stop);
     }
     reeks = [...reeks, ...zonderPunt];
 
+    // Vullen tot een marge onder de werkdag: de schatting hier is hemelsbreed,
+    // de echte route valt hoger uit. Zonder marge komt elke gevulde dag daarna
+    // terug als "te vol" en spreekt de knop zichzelf tegen.
+    const grens = Math.round(PLANNING.werkdagMinuten * PLANNING.vulMarge);
+
     let dagIndex = 0;
     let dagStops: StopMetObject[] = [];
-    const leegMaken = async (plan: { id: number }, stops: StopMetObject[]) => {
+    const wegschrijven = async (plan: { id: number }, stops: StopMetObject[]) => {
       for (let i = 0; i < stops.length; i++) {
         const stop = stops[i];
         if (stop.planId !== plan.id || stop.orderIndex !== i) verplaatst += 1;
@@ -372,7 +395,8 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
       }
     };
 
-    for (const stop of reeks) {
+    for (let k = 0; k < reeks.length; k++) {
+      const stop = reeks[k];
       const kandidaat = [...dagStops, stop];
       const werk = kandidaat.reduce((n, s) => n + werkMinutenVanStop(s, perObject.get(s.objectId) ?? []), 0);
       const punten = kandidaat
@@ -380,25 +404,22 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
         .map((s) => ({ lat: s.object.lat as number, lng: s.object.lng as number }));
       const totaal = werk + reisSchattingMinuten(punten);
 
-      const past = totaal <= PLANNING.werkdagMinuten || dagStops.length === 0;
-      if (past) {
+      if (totaal <= grens || dagStops.length === 0) {
         dagStops = kandidaat;
         continue;
       }
-      // Dag vol: wegschrijven en naar de volgende dag.
-      await leegMaken(vrijeDagen[dagIndex], dagStops);
-      dagIndex += 1;
-      if (dagIndex >= vrijeDagen.length) {
-        // Geen dagen meer over: de rest blijft op de laatste dag staan.
-        dagIndex = vrijeDagen.length - 1;
-        const rest = reeks.slice(reeks.indexOf(stop));
-        nietGeplaatst = rest.length;
-        dagStops = [...dagStops, ...rest];
+      // Is dit de laatste dag, dan blijft de rest daar staan; anders door naar
+      // de volgende dag.
+      if (dagIndex + 1 >= vrijeDagen.length) {
+        nietGeplaatst = reeks.length - k;
+        dagStops = [...dagStops, ...reeks.slice(k)];
         break;
       }
+      await wegschrijven(vrijeDagen[dagIndex], dagStops);
+      dagIndex += 1;
       dagStops = [stop];
     }
-    if (dagStops.length > 0) await leegMaken(vrijeDagen[dagIndex], dagStops);
+    if (dagStops.length > 0) await wegschrijven(vrijeDagen[dagIndex], dagStops);
   }
 
   // Route per dag uitrekenen. Zelf gesleept of net herverdeeld: volgorde aanhouden.

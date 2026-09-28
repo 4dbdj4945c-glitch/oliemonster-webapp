@@ -208,6 +208,9 @@ export interface PointRoute {
 }
 
 const OSRM_MAX_POINTS = 40;
+// Korter dan bij de controlerondes: de planning doet één aanroep per dag achter
+// elkaar, dus 20 dagen x 15 seconden zou tegen de tijdslimiet van Vercel lopen.
+const OSRM_PUNT_TIMEOUT_MS = 8000;
 
 /** Rijvolgorde van punten vanaf het vertrekpunt, dichtstbijzijnde eerst. */
 function orderPoints(points: LatLng[], start: LatLng): number[] {
@@ -276,7 +279,7 @@ export async function optimizePointRoute(
       `?overview=full&geometries=geojson`;
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), OSRM_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), OSRM_PUNT_TIMEOUT_MS);
     const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timer);
 

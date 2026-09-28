@@ -10,6 +10,12 @@ export const PLANNING = {
   opstartMinuten: 30,
   /** Lengte van een werkdag in minuten, inclusief reizen (offerte: 8 uur) */
   werkdagMinuten: 8 * 60,
+  /**
+   * Tot hoe vol een dag bij het verdelen gevuld wordt. Het verdelen schat de
+   * reistijd hemelsbreed; de echte route (OSRM) valt hier bijna altijd hoger
+   * uit. Zonder marge komt elke net gevulde dag daarna terug als "te vol".
+   */
+  vulMarge: 0.9,
   /** Dagen waarop gewerkt wordt: 1 = maandag, 5 = vrijdag (zondag = 0) */
   werkdagen: [1, 2, 3, 4, 5],
   /** Vertrek- en eindpunt van elke dag: de werkplek in Heeze */
@@ -36,8 +42,10 @@ export function geschatteMinuten(
   geschatOpObject: number | null | undefined,
   aantalMonsters: number
 ): number {
-  if (geschatOpObject && geschatOpObject > 0) return geschatOpObject;
+  // Geen monsters meer (alles genomen of geannuleerd) is geen werk, ook niet als
+  // er een inschatting op het object staat.
   if (aantalMonsters <= 0) return 0;
+  if (geschatOpObject && geschatOpObject > 0) return geschatOpObject;
   return PLANNING.opstartMinuten + aantalMonsters * PLANNING.minutenPerMonster;
 }
 

@@ -11,6 +11,10 @@ import { berekenPlanning } from '@/lib/samplePlans';
  * alleen de route opnieuw opgehaald. Valt de routedienst uit, dan blijft de
  * planning werken met rechte lijnen (zoals bij de controlerondes).
  */
+// De route van elke dag wordt apart bij OSRM opgehaald; met twintig dagen duurt
+// dat langer dan de standaardlimiet van tien seconden op Vercel.
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   const session = await haalSessie();
   const fout = toegangsFout(session, true);
