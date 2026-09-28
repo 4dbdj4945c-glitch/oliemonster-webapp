@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Icon from './ui/Icon';
+import LaadFout from './LaadFout';
+import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 
 export interface SampleAttempt {
   id: number;
@@ -39,6 +41,7 @@ export default function SampleAttemptsPanel({
   });
   const [uploadingPhotoId, setUploadingPhotoId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const [foutmelding, setFoutmelding] = useState('');
 
   useEffect(() => {
     load();
@@ -48,12 +51,14 @@ export default function SampleAttemptsPanel({
     setLoading(true);
     try {
       const res = await fetch(`/api/samples/${sampleId}/attempts`);
-      if (res.ok) {
-        const data = await res.json();
-        setAttempts(data);
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, 'De monsternames konden niet worden opgehaald.'));
+        return;
       }
+      setAttempts(await res.json());
+      setFoutmelding('');
     } catch (e) {
-      console.error('Error loading attempts', e);
+      setFoutmelding(GEEN_VERBINDING);
     } finally {
       setLoading(false);
     }
@@ -216,9 +221,11 @@ export default function SampleAttemptsPanel({
         )}
       </div>
 
+      {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={load} bezig={loading} />}
+
       {loading ? (
         <p className="laden" style={{ padding: '8px 0' }}>Laden...</p>
-      ) : attempts.length === 0 ? (
+      ) : foutmelding ? null : attempts.length === 0 ? (
         <p className="text-secondary" style={{ fontSize: '13px', fontStyle: 'italic', margin: 0 }}>
           Geen monsternames.
         </p>

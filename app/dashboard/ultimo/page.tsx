@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import UltimoCommentsPanel from '@/app/components/UltimoCommentsPanel';
+import LaadFout from '@/app/components/LaadFout';
+import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 
 interface User {
   userId: number;
@@ -38,6 +40,7 @@ export default function UltimoPage() {
   const [form, setForm] = useState({ ...emptyForm });
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [foutmelding, setFoutmelding] = useState('');
 
   const router = useRouter();
   const isAdmin = user?.role === 'admin';
@@ -71,9 +74,14 @@ export default function UltimoPage() {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       const res = await fetch(`/api/ultimo-tasks?${params.toString()}`);
-      if (res.ok) setTasks(await res.json());
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, 'De taken konden niet worden opgehaald.'));
+        return;
+      }
+      setTasks(await res.json());
+      setFoutmelding('');
     } catch (e) {
-      console.error('Error loading tasks', e);
+      setFoutmelding(GEEN_VERBINDING);
     } finally {
       setLoading(false);
     }
@@ -212,6 +220,8 @@ export default function UltimoPage() {
       <p className="page-subtitle">
         Houd per onderhoudstaak (looprouteregel) bij welke opmerking je wanneer in Ultimo plaatste, en kopieer &apos;m de volgende keer exact opnieuw.
       </p>
+
+      {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={loadTasks} />}
 
       {/* Zoekbalk + nieuwe taak */}
       <datalist id="dl-jobname">{jobNames.map((v) => <option key={v} value={v} />)}</datalist>

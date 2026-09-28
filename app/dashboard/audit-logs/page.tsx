@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import LaadFout from '@/app/components/LaadFout';
+import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { AppShell, Icon } from '@/app/components/ui';
 
 interface User {
@@ -29,6 +31,7 @@ export default function AuditLogsPage() {
   const [loading, setLoading] = useState(true);
   const [actionFilter, setActionFilter] = useState('');
   const [usernameFilter, setUsernameFilter] = useState('');
+  const [foutmelding, setFoutmelding] = useState('');
   const router = useRouter();
 
   useEffect(() => { checkAuth(); }, []);
@@ -59,10 +62,14 @@ export default function AuditLogsPage() {
       params.set('limit', '100');
 
       const response = await fetch(`/api/audit-logs?${params}`);
-      const data = await response.json();
-      if (response.ok) setLogs(data);
+      if (!response.ok) {
+        setFoutmelding(await foutTekst(response, 'De logs konden niet worden opgehaald.'));
+        return;
+      }
+      setLogs(await response.json());
+      setFoutmelding('');
     } catch (error) {
-      console.error('Error loading logs:', error);
+      setFoutmelding(GEEN_VERBINDING);
     } finally {
       setLoading(false);
     }
@@ -89,6 +96,8 @@ export default function AuditLogsPage() {
     >
       <h1 className="page-title">Audit Logs</h1>
       <p className="page-subtitle">Inzicht in acties en wijzigingen.</p>
+
+      {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={loadLogs} />}
 
       <div className="card" style={{ marginBottom: '16px' }}>
         <p className="section-label">Filters</p>

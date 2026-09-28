@@ -6,6 +6,8 @@ import PhotoModal from '@/app/components/PhotoModal';
 import HelpModal from '@/app/components/HelpModal';
 import Tooltip from '@/app/components/Tooltip';
 import SampleAttemptsPanel from '@/app/components/SampleAttemptsPanel';
+import LaadFout from '@/app/components/LaadFout';
+import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { AppShell, Icon } from '@/app/components/ui';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
 import { isOilViewer2025 } from '@/lib/roles';
@@ -46,6 +48,9 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'taken' | 'notTaken' | 'cancelled'>('all');
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  // Melding boven de lijst als ophalen of bijwerken mislukt. Zonder deze melding
+  // is "kon niet laden" niet te onderscheiden van "er zijn geen monsters".
+  const [foutmelding, setFoutmelding] = useState('');
   const router = useRouter();
 
   // Form state
@@ -75,13 +80,16 @@ export default function DashboardPage() {
   const loadSettings = async () => {
     try {
       const response = await fetch('/api/settings');
-      const data = await response.json();
-
-      if (response.ok) {
-        if (data.columns) setVisibleColumns(data.columns);
+      if (!response.ok) {
+        setFoutmelding(
+          await foutTekst(response, 'De kolominstellingen konden niet worden opgehaald, je ziet de standaardkolommen.')
+        );
+        return;
       }
+      const data = await response.json();
+      if (data.columns) setVisibleColumns(data.columns);
     } catch (error) {
-      console.error('Error loading settings:', error);
+      setFoutmelding(GEEN_VERBINDING);
     }
   };
 
@@ -112,16 +120,24 @@ export default function DashboardPage() {
       const params = new URLSearchParams({ year: '2025' });
       if (search) params.set('search', search);
       const response = await fetch(`/api/samples?${params.toString()}`);
-      const data = await response.json();
-
-      if (response.ok) {
-        setSamples(data);
+      if (!response.ok) {
+        setFoutmelding(await foutTekst(response, 'De monsters konden niet worden opgehaald.'));
+        return;
       }
+      setSamples(await response.json());
+      setFoutmelding('');
     } catch (error) {
-      console.error('Error loading samples:', error);
+      setFoutmelding(GEEN_VERBINDING);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Knop "Opnieuw proberen" in de foutmelding: alles opnieuw ophalen.
+  const herlaad = () => {
+    setFoutmelding('');
+    loadSettings();
+    loadSamples();
   };
 
   const getFilteredSamples = () => {
@@ -272,11 +288,13 @@ export default function DashboardPage() {
         method: 'DELETE',
       });
 
-      if (response.ok) {
-        loadSamples();
+      if (!response.ok) {
+        setFoutmelding(await foutTekst(response, 'Het monster kon niet worden verwijderd.'));
+        return;
       }
+      loadSamples();
     } catch (error) {
-      alert('Fout bij verwijderen van monster');
+      setFoutmelding(GEEN_VERBINDING);
     }
   };
 
@@ -359,6 +377,9 @@ export default function DashboardPage() {
       onHelp={() => setShowHelpModal(true)}
       onPrint={handleGeneratePdf}
     >
+      {/* Ophalen of bijwerken mislukt */}
+      {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={herlaad} />}
+
       {/* Zoeken en toevoegen */}
       <div className="card" style={{ marginBottom: '16px' }}>
         <div className="flex flex-col sm:flex-row gap-3">

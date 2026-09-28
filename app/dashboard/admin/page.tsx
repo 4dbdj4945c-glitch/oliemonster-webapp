@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
+import LaadFout from '@/app/components/LaadFout';
+import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { ROLE_LABELS } from '@/lib/roles';
 
 interface User {
@@ -39,6 +41,7 @@ export default function AdminPage() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [saveMessage, setSaveMessage] = useState('');
+  const [foutmelding, setFoutmelding] = useState('');
   const router = useRouter();
 
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
@@ -86,10 +89,14 @@ export default function AdminPage() {
   const loadUsers = async () => {
     try {
       const response = await fetch('/api/users');
-      const data = await response.json();
-      if (response.ok) setUsers(data);
+      if (!response.ok) {
+        setFoutmelding(await foutTekst(response, 'De gebruikers konden niet worden opgehaald.'));
+        return;
+      }
+      setUsers(await response.json());
+      setFoutmelding('');
     } catch (error) {
-      console.error('Error loading users:', error);
+      setFoutmelding(GEEN_VERBINDING);
     } finally {
       setLoading(false);
     }
@@ -98,11 +105,24 @@ export default function AdminPage() {
   const loadSettings = async () => {
     try {
       const response = await fetch('/api/settings');
+      if (!response.ok) {
+        setFoutmelding(
+          await foutTekst(response, 'De kolominstellingen konden niet worden opgehaald, je ziet de standaardkolommen.')
+        );
+        return;
+      }
       const data = await response.json();
-      if (response.ok && data.columns) setSelectedColumns(data.columns);
+      if (data.columns) setSelectedColumns(data.columns);
     } catch (error) {
-      console.error('Error loading settings:', error);
+      setFoutmelding(GEEN_VERBINDING);
     }
+  };
+
+  // Knop "Opnieuw proberen" in de foutmelding.
+  const herlaad = () => {
+    setFoutmelding('');
+    loadUsers();
+    loadSettings();
   };
 
   const saveSettings = async (key: string, value: any) => {
@@ -112,12 +132,15 @@ export default function AdminPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key, value }),
       });
-      if (response.ok) {
-        setSaveMessage('Instellingen opgeslagen.');
-        setTimeout(() => setSaveMessage(''), 3000);
+      if (!response.ok) {
+        setFoutmelding(await foutTekst(response, 'De instellingen konden niet worden opgeslagen.'));
+        return;
       }
+      setFoutmelding('');
+      setSaveMessage('Instellingen opgeslagen.');
+      setTimeout(() => setSaveMessage(''), 3000);
     } catch (error) {
-      console.error('Error saving settings:', error);
+      setFoutmelding(GEEN_VERBINDING);
     }
   };
 
@@ -241,6 +264,8 @@ export default function AdminPage() {
     >
       <h1 className="page-title">Instellingen</h1>
       <p className="page-subtitle">Gebruikers en kolomweergave.</p>
+
+      {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={herlaad} />}
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="tabs">

@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { isOilViewer2025 } from '@/lib/roles';
 import { actieStaatOpen, eindeVanVandaag } from '@/lib/prospects';
+import LaadFout from '@/app/components/LaadFout';
+import { GEEN_VERBINDING } from '@/lib/foutmelding';
 import { AppShell, Icon } from '@/app/components/ui';
 
 interface User {
@@ -26,6 +28,9 @@ export default function DashboardPage() {
     prospects: 0,
     prospectActies: 0,
   });
+  // Welke tellingen niet geladen zijn. Zonder deze melding staat er gewoon nul
+  // in de tegels en lijkt het alsof er niets te doen is.
+  const [foutmelding, setFoutmelding] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -53,6 +58,7 @@ export default function DashboardPage() {
   };
 
   const loadStats = async () => {
+    const mislukt: string[] = [];
     try {
       const [res2025, res2026, roundsRes, ultimoRes, prospectsRes] = await Promise.allSettled([
         fetch('/api/samples?year=2025'),
@@ -62,6 +68,7 @@ export default function DashboardPage() {
         fetch('/api/prospects'),
       ]);
 
+      if (!(res2025.status === 'fulfilled' && res2025.value.ok)) mislukt.push('Oliemonsters 2025');
       if (res2025.status === 'fulfilled' && res2025.value.ok) {
         const data = await res2025.value.json();
         setStats(prev => ({
@@ -70,6 +77,7 @@ export default function DashboardPage() {
           oilSamplesTaken2025: data.filter((s: any) => s.isTaken && !s.isDisabled).length,
         }));
       }
+      if (!(res2026.status === 'fulfilled' && res2026.value.ok)) mislukt.push('Oliemonsters 2026');
       if (res2026.status === 'fulfilled' && res2026.value.ok) {
         const data = await res2026.value.json();
         setStats(prev => ({
@@ -78,6 +86,7 @@ export default function DashboardPage() {
           oilSamplesTaken2026: data.filter((s: any) => s.isTaken && !s.isDisabled).length,
         }));
       }
+      if (!(roundsRes.status === 'fulfilled' && roundsRes.value.ok)) mislukt.push('Controlerondes');
       if (roundsRes.status === 'fulfilled' && roundsRes.value.ok) {
         const data = await roundsRes.value.json();
         setStats(prev => ({
@@ -85,6 +94,7 @@ export default function DashboardPage() {
           controlRounds: data.length,
         }));
       }
+      if (!(ultimoRes.status === 'fulfilled' && ultimoRes.value.ok)) mislukt.push('Ultimo-opmerkingen');
       if (ultimoRes.status === 'fulfilled' && ultimoRes.value.ok) {
         const data = await ultimoRes.value.json();
         setStats(prev => ({
@@ -93,6 +103,7 @@ export default function DashboardPage() {
         }));
       }
       // Acquisitie: aantal prospects en hoeveel acties er open staan (vandaag of eerder)
+      if (!(prospectsRes.status === 'fulfilled' && prospectsRes.value.ok)) mislukt.push('Acquisitie');
       if (prospectsRes.status === 'fulfilled' && prospectsRes.value.ok) {
         const data = await prospectsRes.value.json();
         const grens = eindeVanVandaag();
@@ -102,8 +113,13 @@ export default function DashboardPage() {
           prospectActies: data.filter((p: any) => actieStaatOpen(p, grens)).length,
         }));
       }
+      setFoutmelding(
+        mislukt.length === 0
+          ? ''
+          : `Deze tellingen konden niet worden opgehaald: ${mislukt.join(', ')}. De getallen hieronder zijn dus niet volledig.`
+      );
     } catch (error) {
-      console.error('Error loading stats:', error);
+      setFoutmelding(GEEN_VERBINDING);
     }
   };
 
@@ -261,6 +277,8 @@ export default function DashboardPage() {
         <div>
           <h1 className="page-title">Welkom, {user?.username}</h1>
           <p className="page-subtitle">Selecteer een module om verder te gaan.</p>
+
+          {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={loadStats} />}
 
           {/* Sectie It's Done Services: eigen modules */}
           <div className="sectie-kop">

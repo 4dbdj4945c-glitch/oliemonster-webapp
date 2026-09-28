@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Icon from './ui/Icon';
+import LaadFout from './LaadFout';
+import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 
 export interface UltimoComment {
   id: number;
@@ -48,6 +50,7 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
   const [editDraft, setEditDraft] = useState({ date: '', jobNumber: '', text: '' });
 
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [foutmelding, setFoutmelding] = useState('');
 
   useEffect(() => {
     load();
@@ -58,9 +61,14 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
     setLoading(true);
     try {
       const res = await fetch(`/api/ultimo-tasks/${taskId}/comments`);
-      if (res.ok) setComments(await res.json());
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, 'De opmerkingen konden niet worden opgehaald.'));
+        return;
+      }
+      setComments(await res.json());
+      setFoutmelding('');
     } catch (e) {
-      console.error('Error loading comments', e);
+      setFoutmelding(GEEN_VERBINDING);
     } finally {
       setLoading(false);
     }
@@ -250,9 +258,11 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
         </div>
       )}
 
+      {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={load} bezig={loading} />}
+
       {loading ? (
         <p className="laden" style={{ padding: '8px 0' }}>Laden...</p>
-      ) : comments.length === 0 ? (
+      ) : foutmelding ? null : comments.length === 0 ? (
         <p style={{ fontSize: '13px', color: 'var(--grijs-500)', margin: 0 }}>Geen opmerkingen.</p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '8px' }}>

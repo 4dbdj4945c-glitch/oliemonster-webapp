@@ -7,6 +7,8 @@ import { apiFetch } from '@/lib/api';
 import { searchPlaces, getStreets, PlaceHit, StreetHit } from '@/lib/pdok';
 import type { MapStreet } from '@/app/components/RouteMap';
 import { AppShell, NavButton, Icon } from '@/app/components/ui';
+import LaadFout from '@/app/components/LaadFout';
+import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 
 const RouteMap = dynamic(() => import('@/app/components/RouteMap'), {
   ssr: false,
@@ -84,6 +86,9 @@ export default function ControleRondesPage() {
 
   // Lijst
   const [rounds, setRounds] = useState<RoundListItem[]>([]);
+  // Melding als ophalen of opslaan mislukt. Belangrijk bij het afvinken: zonder
+  // deze melding werd een straat groen terwijl de server er niets van wist.
+  const [foutmelding, setFoutmelding] = useState('');
 
   // Nieuwe ronde – wizard
   const [wizardStep, setWizardStep] = useState<'place' | 'streets'>('place');
@@ -139,9 +144,14 @@ export default function ControleRondesPage() {
   const loadRounds = async () => {
     try {
       const res = await apiFetch('/api/control-rounds');
-      if (res.ok) setRounds(await res.json());
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, 'De rondes konden niet worden opgehaald.'));
+        return;
+      }
+      setRounds(await res.json());
+      setFoutmelding('');
     } catch (e) {
-      console.error(e);
+      setFoutmelding(GEEN_VERBINDING);
     }
   };
 
@@ -304,38 +314,73 @@ export default function ControleRondesPage() {
   const openRoundById = async (id: number) => {
     try {
       const res = await apiFetch(`/api/control-rounds/${id}`);
-      if (res.ok) openDetail(await res.json());
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, 'De ronde kon niet worden geopend.'));
+        return;
+      }
+      openDetail(await res.json());
+      setFoutmelding('');
     } catch (e) {
-      console.error(e);
+      setFoutmelding(GEEN_VERBINDING);
     }
+  };
+
+  // Knop "Opnieuw proberen" in de foutmelding: opnieuw ophalen wat bij dit scherm hoort.
+  const herlaad = () => {
+    setFoutmelding('');
+    const d = detailRef.current;
+    if (view === 'detail' && d) openRoundById(d.id);
+    else loadRounds();
   };
 
   const deleteRound = async (id: number, name: string) => {
     if (!confirm(`Ronde "${name}" verwijderen?`)) return;
     try {
       const res = await apiFetch(`/api/control-rounds/${id}`, { method: 'DELETE' });
-      if (res.ok) loadRounds();
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, 'De ronde kon niet worden verwijderd.'));
+        return;
+      }
+      loadRounds();
     } catch (e) {
-      console.error(e);
+      setFoutmelding(GEEN_VERBINDING);
     }
   };
 
   const setStreetDone = useCallback(async (streetId: number, next: boolean) => {
     const d = detailRef.current;
     if (!d) return;
-    // Optimistisch bijwerken
-    setDetail((prev) =>
-      prev
-        ? { ...prev, streets: prev.streets.map((s) => (s.id === streetId ? { ...s, isDone: next } : s)) }
-        : prev
-    );
+    const straat = d.streets.find((s) => s.id === streetId);
+    const vorige = straat?.isDone ?? !next;
+    // Optimistisch bijwerken; mislukt de PATCH, dan zetten we het terug en melden we het.
+    const zet = (waarde: boolean) =>
+      setDetail((prev) =>
+        prev
+          ? { ...prev, streets: prev.streets.map((s) => (s.id === streetId ? { ...s, isDone: waarde } : s)) }
+          : prev
+      );
+    zet(next);
     try {
-      await apiFetch(`/api/control-rounds/${d.id}/streets/${streetId}`, {
+      const res = await apiFetch(`/api/control-rounds/${d.id}/streets/${streetId}`, {
         method: 'PATCH',
         body: JSON.stringify({ isDone: next }),
       });
+      if (!res.ok) {
+        zet(vorige);
+        setFoutmelding(
+          await foutTekst(
+            res,
+            `${straat?.street ?? 'De straat'} is niet opgeslagen en staat weer op ${vorige ? 'gereden' : 'nog te rijden'}.`
+          )
+        );
+        return;
+      }
+      setFoutmelding('');
     } catch (e) {
-      console.error(e);
+      zet(vorige);
+      setFoutmelding(
+        `${straat?.street ?? 'De straat'} is niet opgeslagen: geen verbinding met de server. Probeer het opnieuw zodra je weer bereik hebt.`
+      );
     }
   }, []);
 
@@ -345,9 +390,14 @@ export default function ControleRondesPage() {
     if (!confirm('Voortgang van deze ronde resetten?')) return;
     try {
       const res = await apiFetch(`/api/control-rounds/${d.id}/reset`, { method: 'POST' });
-      if (res.ok) setDetail(await res.json());
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, 'De voortgang kon niet worden gereset.'));
+        return;
+      }
+      setDetail(await res.json());
+      setFoutmelding('');
     } catch (e) {
-      console.error(e);
+      setFoutmelding(GEEN_VERBINDING);
     }
   };
 
@@ -566,6 +616,9 @@ export default function ControleRondesPage() {
           .mobiel-balk .btn { flex: 0 1 auto; min-height: 50px; padding-left: 18px; padding-right: 18px; }
         }
       `}</style>
+
+      {/* Ophalen of opslaan mislukt */}
+      {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={herlaad} />}
 
       {/* ============ LIJST ============ */}
       {view === 'list' && (
