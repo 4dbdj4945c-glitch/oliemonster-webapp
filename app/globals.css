@@ -2216,3 +2216,465 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
     flex: 1 1 auto;
   }
 }
+
+/* ============ Planning oliemonsters ============
+   De tab Planning binnen Oliemonsters: objecten die nog ingepland moeten worden,
+   de dagen met hun objecten in rijvolgorde, en het dagscherm voor in het veld.
+   Staat hier omdat PlanningPaneel een los component is (zie STIJL.md). */
+
+.plan-melding {
+  margin-bottom: 16px;
+}
+
+.plan-balk {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.plan-totalen {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--grijs-700);
+}
+
+.plan-totalen strong {
+  color: var(--navy);
+  font-size: 15px;
+}
+
+.plan-knoppen {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.plan-kolommen {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+/* Objecten die nog een dag nodig hebben */
+.plan-objecten {
+  padding: 0;
+  overflow: hidden;
+}
+
+.plan-objecten-lijst {
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.plan-object {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.plan-object-tekst {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.plan-object-naam {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.plan-object-sub {
+  font-size: 12px;
+  color: var(--grijs-500);
+}
+
+/* De dagen */
+.plan-dagen {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.plan-datumrij {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.plan-datumrij .input {
+  width: auto;
+  flex: 1 1 180px;
+}
+
+/* Dag die over de werkdag heen gaat: oranje streep links */
+.plan-dag-vol {
+  border-left: 4px solid var(--oranje);
+}
+
+.plan-dag-kop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.plan-dag-datum {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.plan-dag-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--grijs-500);
+}
+
+.plan-dag-knoppen {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.plan-dag-tijden {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 10px 0 12px;
+  font-size: 13px;
+  color: var(--grijs-700);
+}
+
+.plan-dag-tijden span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.plan-totaal {
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.plan-totaal-vol {
+  font-weight: 700;
+  color: var(--geel-tekst);
+}
+
+.plan-stops {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.plan-stop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--grijs-50);
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius-md);
+}
+
+.plan-nummer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--blue-light);
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plan-nummer-klaar {
+  background: var(--groen-light);
+  color: var(--groen-tekst);
+}
+
+.plan-stop-tekst {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plan-stop-naam {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy);
+  overflow-wrap: anywhere;
+}
+
+.plan-stop-sub {
+  font-size: 12px;
+  color: var(--grijs-500);
+}
+
+.plan-stop-knoppen {
+  display: flex;
+  gap: 2px;
+  flex: none;
+}
+
+/* Chevron naar boven: hetzelfde icoon, een halve slag gedraaid */
+.plan-omhoog {
+  transform: rotate(180deg);
+}
+
+.plan-leeg-regel {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--grijs-500);
+}
+
+/* Dagscherm */
+.plan-dag-indeling {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.plan-kaart {
+  height: 440px;
+}
+
+.plan-kaart-laden {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--wit);
+  border: 1px solid var(--grijs-200);
+  border-radius: 12px;
+}
+
+.plan-stoplijst {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.plan-veldstop-klaar {
+  border-left: 4px solid var(--groen);
+}
+
+.plan-veldstop-volgende {
+  box-shadow: inset 4px 0 0 var(--blue), var(--shadow-sm);
+}
+
+.plan-veldstop-kop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.plan-volgende-label {
+  flex: none;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.plan-veldknoppen {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.plan-monsters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid var(--grijs-200);
+  padding-top: 8px;
+}
+
+.plan-monster-knop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 8px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-monster-knop:hover:not(:disabled) {
+  background: var(--grijs-50);
+}
+
+.plan-monster-knop:disabled {
+  cursor: default;
+}
+
+.plan-monster-tekst {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.plan-monster-tekst strong {
+  font-size: 14px;
+  color: var(--navy);
+}
+
+.plan-monster-sub {
+  font-size: 12px;
+  color: var(--grijs-500);
+  overflow-wrap: anywhere;
+}
+
+/* Monsters kiezen bij het inplannen */
+.plan-keuze {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  font-size: 14px;
+  color: var(--navy);
+  cursor: pointer;
+}
+
+.plan-keuzelijst {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius-md);
+}
+
+.plan-keuzelijst li {
+  padding: 0 10px;
+  border-top: 1px solid var(--grijs-200);
+}
+
+.plan-keuzelijst li:first-child {
+  border-top: none;
+}
+
+/* Vaste balk onderaan tijdens de dag: alleen op de telefoon */
+.plan-mobiel-balk {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .plan-kolommen,
+  .plan-dag-indeling {
+    grid-template-columns: 1fr;
+  }
+  .plan-objecten-lijst {
+    max-height: 40vh;
+  }
+  .plan-kaart {
+    height: min(45vh, 360px);
+  }
+}
+
+@media (max-width: 640px) {
+  .plan-balk {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .plan-knoppen .btn {
+    flex: 1 1 auto;
+  }
+  .plan-datumrij .input {
+    flex: 1 1 100%;
+  }
+  .plan-stop {
+    min-height: 52px;
+    padding: 10px;
+  }
+  .plan-monster-knop {
+    min-height: 48px;
+  }
+  .plan-monsters {
+    gap: 4px;
+  }
+  .plan-mobiel-balk {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    margin: 16px -16px -32px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+    background: var(--wit);
+    border-top: 1px solid var(--grijs-200);
+    box-shadow: 0 -4px 12px rgba(12, 27, 51, 0.06);
+  }
+  .plan-mobiel-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .plan-mobiel-teller {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--navy);
+    line-height: 1.1;
+  }
+  .plan-mobiel-volgende {
+    font-size: 12px;
+    color: var(--grijs-500);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .plan-mobiel-balk .btn {
+    flex: 0 1 auto;
+    min-height: 50px;
+  }
+  /* De GPS-knop bovenaan zit op de telefoon in de vaste onderbalk */
+  .plan-knoppen .plan-gps {
+    display: none;
+  }
+}

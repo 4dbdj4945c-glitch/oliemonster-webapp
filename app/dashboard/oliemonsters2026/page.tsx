@@ -10,6 +10,7 @@ import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { objectTypeIcoon, objectTypeLabel } from '@/lib/sampleObjects';
 import { ANNULEER_REDENEN } from '@/lib/cancelReasons';
+import PlanningPaneel from '@/app/components/PlanningPaneel';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
 
@@ -71,6 +72,8 @@ export default function DashboardPage() {
   const [objecten, setObjecten] = useState<SampleObject[]>([]);
   const [objectenBeschikbaar, setObjectenBeschikbaar] = useState(false);
   const [objectFilter, setObjectFilter] = useState<string>('all');
+  // Tabbladen binnen deze module: de lijst met monsters of de planning
+  const [tab, setTab] = useState<'lijst' | 'planning'>('lijst');
   // Annuleren met reden (los monster of alle monsters van een object)
   const [annuleerDoel, setAnnuleerDoel] = useState<OilSample | null>(null);
   const [annuleerBulk, setAnnuleerBulk] = useState(false);
@@ -603,6 +606,8 @@ export default function DashboardPage() {
   const filterActief = statusFilter !== 'all' || objectFilter !== 'all' || search.trim() !== '';
   // Kolommen: de zichtbare kolommen plus Foto, plus Acties voor een admin.
   const kolomAantal = visibleColumns.length + 1 + (objectenBeschikbaar ? 1 : 0) + (isAdmin ? 1 : 0);
+  // De planning is niets voor de beperkte kijker; die komt op deze pagina sowieso niet.
+  const magPlannen = objectenBeschikbaar;
   const objectNaamVanFilter =
     objecten.find((o) => String(o.id) === objectFilter)?.name ?? 'dit object';
   const aantalGenomen = samples.filter((s) => s.isTaken && !s.isDisabled).length;
@@ -636,6 +641,25 @@ export default function DashboardPage() {
       {/* Ophalen of bijwerken mislukt */}
       {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={herlaad} />}
 
+      {/* Tabbladen: de lijst of de planning van dit jaar */}
+      {magPlannen && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '16px' }}>
+          <div className="tabs">
+            <button type="button" className={tab === 'lijst' ? 'on' : ''} onClick={() => setTab('lijst')}>
+              Lijst
+            </button>
+            <button type="button" className={tab === 'planning' ? 'on' : ''} onClick={() => setTab('planning')}>
+              Planning
+            </button>
+          </div>
+        </div>
+      )}
+
+      {tab === 'planning' && magPlannen && (
+        <PlanningPaneel analysisYear={2026} isAdmin={isAdmin} />
+      )}
+
+      {tab === 'lijst' && (<>
       {/* Zoeken en toevoegen */}
       <div className="card" style={{ marginBottom: '16px' }}>
         <div className="flex flex-col sm:flex-row gap-3">
@@ -1058,6 +1082,8 @@ export default function DashboardPage() {
           </table>
         </div>
       </div>
+
+      </>)}
 
       {/* Toevoegen / bewerken */}
       {showAddModal && (
