@@ -460,6 +460,21 @@ export default function DashboardPage() {
     }
   };
 
+  // Wat er nu echt in de tabel staat: gefilterd en gesorteerd. De lege staat moet
+  // hierop kijken, niet op de volledige lijst, anders krijg je een tabelkop met
+  // niets eronder zodra een filter geen treffers heeft.
+  const zichtbareSamples = getSortedSamples();
+  const filterActief = statusFilter !== 'all' || search.trim() !== '';
+  // Kolommen: de zichtbare kolommen plus Foto, plus Acties voor een admin.
+  const kolomAantal = visibleColumns.length + 1 + (isAdmin ? 1 : 0);
+  const aantalGenomen = samples.filter((s) => s.isTaken && !s.isDisabled).length;
+  const aantalGeannuleerd = samples.filter((s) => s.isDisabled).length;
+
+  const wisFilter = () => {
+    setStatusFilter('all');
+    setSearch('');
+  };
+
   return (
     <AppShell
       title="Oliemonsters 2026"
@@ -468,6 +483,15 @@ export default function DashboardPage() {
       onHelp={() => setShowHelpModal(true)}
       onPrint={handleGeneratePdf}
     >
+      <h1 className="page-title">Oliemonsters 2026</h1>
+      <p className="page-subtitle">
+        {samples.length === 0
+          ? 'Nog geen monsters in dit jaar.'
+          : `${aantalGenomen} van de ${samples.length} monsters genomen${
+              aantalGeannuleerd ? `, ${aantalGeannuleerd} geannuleerd` : ''
+            }.`}
+      </p>
+
       {/* Ophalen of bijwerken mislukt */}
       {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={herlaad} />}
 
@@ -652,15 +676,45 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {samples.length === 0 ? (
-                <tr>
-                  <td colSpan={isAdmin ? 7 : 6} style={{ textAlign: 'center', justifyContent: 'center', padding: '32px', color: 'var(--grijs-500)' }}>
-                    <Icon name="empty" size={32} className="icon-leeg" />
-                    Geen monsters gevonden
-                  </td>
-                </tr>
+              {zichtbareSamples.length === 0 ? (
+                // Geen rijen: fout, filter zonder treffers of echt nog niets. Bij een
+                // fout staat de melding al boven de lijst, dan hier geen tekst.
+                foutmelding ? null : (
+                  <tr>
+                    <td colSpan={kolomAantal} className="td-leeg">
+                      <div className="leeg leeg-in-tabel">
+                        <Icon name="empty" size={32} />
+                        {filterActief ? (
+                          <>
+                            <p style={{ margin: '0 0 12px' }}>Geen monsters die aan dit filter voldoen.</p>
+                            <button type="button" className="btn btn-sm" onClick={wisFilter}>
+                              <Icon name="clear-selection" size={16} />
+                              Filter wissen
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <p style={{ margin: '0 0 12px' }}>Nog geen monsters voor 2026.</p>
+                            {isAdmin && (
+                              <div className="knoppenrij" style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                                <button type="button" className="btn btn-primary btn-sm" onClick={openAddModal}>
+                                  <Icon name="plus" size={16} />
+                                  Nieuw monster
+                                </button>
+                                <button type="button" className="btn btn-sm" onClick={handleCopyFrom2025} disabled={copying}>
+                                  <Icon name="copy-year" size={16} />
+                                  {copying ? 'Bezig...' : 'Overnemen uit 2025'}
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                )
               ) : (
-                getSortedSamples().map((sample) => (
+                zichtbareSamples.map((sample) => (
                   <tr key={sample.id} style={{ opacity: sample.isDisabled ? 0.6 : 1 }}>
                     {visibleColumns.includes('status') && (
                       <td data-label="Status" className="kaart-status" style={{ whiteSpace: 'nowrap' }}>
@@ -813,9 +867,11 @@ export default function DashboardPage() {
             <div className="modal-body">
               <form id="sample-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div>
-                  <label className="label">O-nummer</label>
+                  <label className="label" htmlFor="veld-onummer">O-nummer</label>
                   <input
+                    id="veld-onummer"
                     type="text"
+                    aria-describedby={oNumberWarning ? 'veld-onummer-fout' : undefined}
                     value={formData.oNumber}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -828,17 +884,18 @@ export default function DashboardPage() {
                     required
                   />
                   {oNumberWarning && (
-                    <p style={{ color: 'var(--rood)', fontSize: '13px', marginTop: '4px', fontWeight: 600 }}>
+                    <p id="veld-onummer-fout" role="alert" style={{ color: 'var(--rood)', fontSize: '13px', marginTop: '4px', fontWeight: 600 }}>
                       {oNumberWarning}
                     </p>
                   )}
                 </div>
 
                 <div>
-                  <label className="label">
+                  <label className="label" htmlFor="veld-datum">
                     Datum afname {!formData.isTaken && '(optioneel, alleen voor genomen monsters)'}
                   </label>
                   <input
+                    id="veld-datum"
                     type="date"
                     value={formData.sampleDate}
                     onChange={(e) => setFormData({ ...formData, sampleDate: e.target.value })}
@@ -849,8 +906,9 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <label className="label">Locatie</label>
+                  <label className="label" htmlFor="veld-locatie">Locatie</label>
                   <input
+                    id="veld-locatie"
                     type="text"
                     value={formData.location}
                     onChange={(e) => setFormData({ ...formData, location: e.target.value })}
@@ -860,8 +918,9 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <label className="label">Omschrijving</label>
+                  <label className="label" htmlFor="veld-omschrijving">Omschrijving</label>
                   <textarea
+                    id="veld-omschrijving"
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     className="textarea"
@@ -871,8 +930,9 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <label className="label">Type olie (optioneel)</label>
+                  <label className="label" htmlFor="veld-olietype">Type olie (optioneel)</label>
                   <input
+                    id="veld-olietype"
                     type="text"
                     value={formData.oilType}
                     onChange={(e) => setFormData({ ...formData, oilType: e.target.value })}
@@ -882,8 +942,9 @@ export default function DashboardPage() {
                 </div>
 
                 <div>
-                  <label className="label">Opmerkingen (optioneel)</label>
+                  <label className="label" htmlFor="veld-opmerkingen">Opmerkingen (optioneel)</label>
                   <textarea
+                    id="veld-opmerkingen"
                     value={formData.remarks}
                     onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                     className="textarea"

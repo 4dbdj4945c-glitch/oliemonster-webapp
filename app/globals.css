@@ -2138,6 +2138,18 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   opacity: 0.6;
 }
 
+/* Lege staat binnen een tabel: dezelfde opmaak als .leeg, maar zonder eigen rand,
+   want de tabel heeft er al een. De cel vult de volle breedte van de tabel. */
+.td-leeg {
+  padding: 0;
+}
+
+.leeg-in-tabel {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
 /* Foutmelding boven een lijst: melding links, knop Opnieuw proberen rechts */
 .laadfout {
   display: flex;
@@ -2161,6 +2173,13 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
 }
 
 @media (max-width: 640px) {
+  /* Lege staat als de tabel een kaartenlijst is: gewoon een blok over de volle breedte */
+  .table-kaarten td.td-leeg {
+    display: block;
+    padding: 0;
+    text-align: center;
+  }
+
   /* Op de telefoon is de status de hoofdknop bovenaan de kaart: volle breedte, 44px */
   .table-kaarten td.kaart-status .status-cel {
     width: 100%;
