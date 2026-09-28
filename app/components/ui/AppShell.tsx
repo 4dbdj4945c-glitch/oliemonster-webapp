@@ -108,6 +108,7 @@ export default function AppShell({
                 buttonClass="nav-btn"
                 button={<><Icon name="admin" size={16} />Beheer<Icon name="chevron-down" size={16} /></>}
               >
+                <MenuItem icon={<Icon name="map-pin" />} onClick={() => router.push('/dashboard/objecten')}>Objecten</MenuItem>
                 <MenuItem icon={<Icon name="audit-log" />} onClick={() => router.push('/dashboard/audit-logs')}>Audit logs</MenuItem>
                 <MenuItem icon={<Icon name="columns" />} onClick={() => router.push('/dashboard/admin?tab=columns')}>Kolommen aanpassen</MenuItem>
                 <MenuItem icon={<Icon name="settings" />} onClick={() => router.push('/dashboard/admin')}>Instellingen</MenuItem>
@@ -172,6 +173,7 @@ export default function AppShell({
               {isAdmin && (
                 <>
                   <span className="toolbar-menu-label">Beheer</span>
+                  <MenuItem icon={<Icon name="map-pin" />} onClick={() => router.push('/dashboard/objecten')}>Objecten</MenuItem>
                   <MenuItem icon={<Icon name="audit-log" />} onClick={() => router.push('/dashboard/audit-logs')}>Audit logs</MenuItem>
                   <MenuItem icon={<Icon name="columns" />} onClick={() => router.push('/dashboard/admin?tab=columns')}>Kolommen aanpassen</MenuItem>
                   <MenuItem icon={<Icon name="settings" />} onClick={() => router.push('/dashboard/admin')}>Instellingen</MenuItem>

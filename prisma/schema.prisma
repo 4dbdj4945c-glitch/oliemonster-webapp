@@ -31,13 +31,47 @@ model OilSample {
   isTaken      Boolean           // of er een geldig genomen monster is (true = groen, false = rood)
   isDisabled   Boolean  @default(false)  // monster is geannuleerd/niet nodig (grijze status)
   photoUrl     String?           // cache: foto van de meest recente poging
+  objectId     Int?              // object waar dit monster bij hoort (planning); location blijft bestaan
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   attempts     SampleAttempt[]
+  object       SampleObject? @relation(fields: [objectId], references: [id], onDelete: SetNull)
 
   @@unique([oNumber, analysisYear])
   @@index([analysisYear])
+  @@index([objectId])
+}
+
+// ============================================
+// PLANNING: OBJECTEN
+// ============================================
+// Een object is de plek waar je monsters neemt: een sluis, stuw, gemaal of ander
+// kunstwerk. Objecten zijn jaaroverstijgend, want dezelfde sluis komt in 2025 en
+// 2026 terug. Het adres komt uit de PDOK-adreszoeker; de speld mag daarna
+// verschoven worden naar de plek waar je echt moet zijn (bijvoorbeeld het
+// sluishoofd in plaats van het bezoekadres). `estimatedMinutes` is de geschatte
+// tijd die je op dit object kwijt bent, inclusief opstarten.
+//
+// Het vrije tekstveld `location` op OilSample blijft naast `objectId` bestaan,
+// zodat oude gegevens en de PDF blijven werken.
+
+model SampleObject {
+  id               Int      @id @default(autoincrement())
+  name             String   @unique   // bijv. "Sluis Grave"
+  region           String?            // bijv. "Maas" of "Zuid-Willemsvaart"
+  objectType       String?            // sluis, stuw, brug, gemaal, ... (zie lib/sampleObjects.ts)
+  address          String?            // adres zoals gevonden via PDOK
+  lat              Float?             // speld op de kaart, mag verschoven worden
+  lng              Float?
+  estimatedMinutes Int?               // geschatte werktijd op locatie, in minuten
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  samples          OilSample[]
+
+  @@index([region])
 }
 
 // Per OilSample kunnen er meerdere monsternames (pogingen) zijn.

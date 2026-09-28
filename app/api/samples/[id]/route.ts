@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
+import { SAMPLE_BASIS_SELECT } from '@/lib/planningApi';
 
 // PUT - Update sample (alleen admin)
 export async function PUT(
@@ -30,7 +31,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { oNumber, sampleDate, location, description, oilType, remarks, isTaken } = body;
+    const { oNumber, sampleDate, location, description, oilType, remarks, isTaken, objectId } = body;
 
     // Datum is alleen verplicht als monster genomen is
     if (!oNumber || !location || !description || isTaken === undefined) {
@@ -77,7 +78,10 @@ export async function PUT(
         oilType: oilType || null,
         remarks: remarks || null,
         isTaken,
+        // Alleen meesturen als de pagina een object koos, zie de POST-route.
+        ...(objectId === undefined ? {} : { objectId: objectId === null || objectId === '' ? null : parseInt(String(objectId)) }),
       },
+      select: SAMPLE_BASIS_SELECT,
     });
 
     await createAuditLog({
@@ -126,6 +130,7 @@ export async function DELETE(
     // Haal sample op voor logging
     const sample = await prisma.oilSample.findUnique({
       where: { id: parseInt(id) },
+      select: { oNumber: true, location: true },
     });
 
     await prisma.oilSample.delete({

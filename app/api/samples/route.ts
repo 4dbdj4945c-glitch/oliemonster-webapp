@@ -5,6 +5,7 @@ import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { isOilViewer2025 } from '@/lib/roles';
+import { tabelOntbreekt, SAMPLE_BASIS_SELECT } from '@/lib/planningApi';
 
 // GET - Lijst van alle samples (met optionele zoekfunctie en analysisYear-filter)
 export async function GET(request: NextRequest) {
@@ -39,15 +40,28 @@ export async function GET(request: NextRequest) {
         }
       : yearFilter;
 
-    const samples = await prisma.oilSample.findMany({
-      where: whereClause,
-      orderBy: { sampleDate: 'desc' },
-      include: {
-        _count: {
-          select: { attempts: true },
+    // Met het object erbij. Zolang ./db-push-planning.sh nog niet gedraaid is,
+    // bestaan objectId en de annuleervelden niet in de database; dan halen we
+    // alleen de oude velden op, zodat de lijst gewoon blijft werken.
+    let samples;
+    try {
+      samples = await prisma.oilSample.findMany({
+        where: whereClause,
+        orderBy: { sampleDate: 'desc' },
+        include: {
+          _count: { select: { attempts: true } },
+          object: { select: { id: true, name: true, objectType: true } },
         },
-      },
-    });
+      });
+    } catch (error) {
+      if (!tabelOntbreekt(error)) throw error;
+      const oud = await prisma.oilSample.findMany({
+        where: whereClause,
+        orderBy: { sampleDate: 'desc' },
+        select: { ...SAMPLE_BASIS_SELECT, _count: { select: { attempts: true } } },
+      });
+      samples = oud.map((s) => ({ ...s, objectId: null, object: null }));
+    }
 
     // Exposeer attemptsCount als top-level veld voor de UI.
     const response = samples.map(({ _count, ...rest }) => ({
@@ -77,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { oNumber, sampleDate, location, description, oilType, remarks, isTaken, analysisYear } = body;
+    const { oNumber, sampleDate, location, description, oilType, remarks, isTaken, analysisYear, objectId } = body;
 
     if (!oNumber || !location || !description || isTaken === undefined) {
       return NextResponse.json(
@@ -110,7 +124,11 @@ export async function POST(request: NextRequest) {
         oilType: oilType || null,
         remarks: remarks || null,
         isTaken,
+        // Alleen meesturen als de pagina een object koos; anders raken we de
+        // kolom niet aan en werkt dit ook zolang db push nog niet gedraaid is.
+        ...(objectId === undefined ? {} : { objectId: objectId === null || objectId === '' ? null : parseInt(String(objectId)) }),
       },
+      select: SAMPLE_BASIS_SELECT,
     });
 
     await createAuditLog({

@@ -108,6 +108,41 @@ export async function searchPlaces(query: string): Promise<PlaceHit[]> {
   return hits;
 }
 
+export interface AddressHit {
+  label: string; // volledige weergavenaam, bijv. "Sluisweg 1, 5361 HK Grave"
+  lat: number;
+  lng: number;
+}
+
+/**
+ * Zoek een adres, weg of plaats en geef er een coördinaat bij. Gebruikt voor het
+ * vastleggen van een object: je zoekt het bezoekadres en versleept daarna de
+ * speld naar de plek waar je echt moet zijn.
+ */
+export async function searchAddresses(query: string): Promise<AddressHit[]> {
+  const q = query.trim();
+  if (q.length < 3) return [];
+  const url =
+    `${BASE}?q=${encodeURIComponent(q)}` +
+    `&fq=${encodeURIComponent('type:(adres OR weg OR woonplaats)')}` +
+    `&fl=${encodeURIComponent('weergavenaam,centroide_ll')}` +
+    `&rows=8`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('PDOK adres-zoekopdracht mislukt');
+  const data = await res.json();
+  const docs: any[] = data?.response?.docs ?? [];
+  const hits: AddressHit[] = [];
+  const gezien = new Set<string>();
+  for (const d of docs) {
+    const punt = parsePoint(d.centroide_ll);
+    const label: string = d.weergavenaam;
+    if (!punt || !label || gezien.has(label)) continue;
+    gezien.add(label);
+    hits.push({ label, lat: punt.lat, lng: punt.lng });
+  }
+  return hits;
+}
+
 /**
  * Haal alle straten binnen een woonplaats op, met representatieve coördinaat.
  * De PDOK-endpoint geeft maximaal 100 records per aanroep, dus pagineren we

@@ -8,6 +8,7 @@ import Tooltip from '@/app/components/Tooltip';
 import SampleAttemptsPanel from '@/app/components/SampleAttemptsPanel';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
+import { objectTypeIcoon, objectTypeLabel } from '@/lib/sampleObjects';
 import { AppShell, Icon } from '@/app/components/ui';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
 import { isOilViewer2025 } from '@/lib/roles';
@@ -31,6 +32,14 @@ interface OilSample {
   isDisabled?: boolean;
   photoUrl?: string;
   attemptsCount?: number;
+  objectId?: number | null;
+  object?: { id: number; name: string; objectType?: string | null } | null;
+}
+
+interface SampleObject {
+  id: number;
+  name: string;
+  objectType: string | null;
 }
 
 export default function DashboardPage() {
@@ -53,6 +62,11 @@ export default function DashboardPage() {
   const [foutmelding, setFoutmelding] = useState('');
   // Welk monster staat nu in de wacht bij het aantikken van de status
   const [statusBezig, setStatusBezig] = useState<number | null>(null);
+  // Objecten (planningsmodule). Zolang ./db-push-planning.sh nog niet gedraaid is
+  // bestaan ze niet; dan blijven de kolom en het filter gewoon weg.
+  const [objecten, setObjecten] = useState<SampleObject[]>([]);
+  const [objectenBeschikbaar, setObjectenBeschikbaar] = useState(false);
+  const [objectFilter, setObjectFilter] = useState<string>('all');
   const router = useRouter();
 
   // Form state
@@ -64,6 +78,7 @@ export default function DashboardPage() {
     oilType: '',
     remarks: '',
     isTaken: false,
+    objectId: '',
   });
   const [formError, setFormError] = useState('');
   const [oNumberWarning, setONumberWarning] = useState('');
@@ -72,6 +87,11 @@ export default function DashboardPage() {
     checkAuth();
     loadSettings();
   }, []);
+
+  useEffect(() => {
+    if (user) loadObjecten();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   useEffect(() => {
     if (user) {
@@ -135,19 +155,41 @@ export default function DashboardPage() {
     }
   };
 
+  const loadObjecten = async () => {
+    try {
+      const response = await fetch('/api/sample-objects?year=2025');
+      if (!response.ok) {
+        // 503 betekent: de tabellen staan er nog niet. Dan laten we de kolom en
+        // het filter weg in plaats van een melding te tonen.
+        setObjectenBeschikbaar(false);
+        if (response.status !== 503) {
+          setFoutmelding(await foutTekst(response, 'De objecten konden niet worden opgehaald.'));
+        }
+        return;
+      }
+      setObjecten(await response.json());
+      setObjectenBeschikbaar(true);
+    } catch (error) {
+      setObjectenBeschikbaar(false);
+    }
+  };
+
   // Knop "Opnieuw proberen" in de foutmelding: alles opnieuw ophalen.
   const herlaad = () => {
     setFoutmelding('');
     loadSettings();
+    loadObjecten();
     loadSamples();
   };
 
   const getFilteredSamples = () => {
-    if (statusFilter === 'all') return samples;
-    if (statusFilter === 'taken') return samples.filter(s => s.isTaken && !s.isDisabled);
-    if (statusFilter === 'notTaken') return samples.filter(s => !s.isTaken && !s.isDisabled);
-    if (statusFilter === 'cancelled') return samples.filter(s => s.isDisabled);
-    return samples;
+    let lijst = samples;
+    if (statusFilter === 'taken') lijst = lijst.filter(s => s.isTaken && !s.isDisabled);
+    else if (statusFilter === 'notTaken') lijst = lijst.filter(s => !s.isTaken && !s.isDisabled);
+    else if (statusFilter === 'cancelled') lijst = lijst.filter(s => s.isDisabled);
+    if (objectFilter === 'geen') lijst = lijst.filter(s => !s.objectId);
+    else if (objectFilter !== 'all') lijst = lijst.filter(s => String(s.objectId ?? '') === objectFilter);
+    return lijst;
   };
 
   const getSortedSamples = () => {
@@ -198,6 +240,7 @@ export default function DashboardPage() {
       oilType: '',
       remarks: '',
       isTaken: false,
+      objectId: '',
     });
     setFormError('');
     setONumberWarning('');
@@ -243,6 +286,7 @@ export default function DashboardPage() {
       oilType: sample.oilType || '',
       remarks: sample.remarks || '',
       isTaken: sample.isTaken,
+      objectId: sample.objectId ? String(sample.objectId) : '',
     });
     setEditingSample(sample);
     setShowAddModal(true);
@@ -262,7 +306,13 @@ export default function DashboardPage() {
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, analysisYear: 2025 }),
+        // objectId alleen meesturen als de objecten bestaan, anders raakt de
+        // server een kolom aan die er nog niet is.
+        body: JSON.stringify({
+          ...formData,
+          objectId: objectenBeschikbaar ? (formData.objectId === '' ? null : parseInt(formData.objectId)) : undefined,
+          analysisYear: 2025,
+        }),
       });
 
       const data = await response.json();
@@ -426,14 +476,15 @@ export default function DashboardPage() {
   // hierop kijken, niet op de volledige lijst, anders krijg je een tabelkop met
   // niets eronder zodra een filter geen treffers heeft.
   const zichtbareSamples = getSortedSamples();
-  const filterActief = statusFilter !== 'all' || search.trim() !== '';
+  const filterActief = statusFilter !== 'all' || objectFilter !== 'all' || search.trim() !== '';
   // Kolommen: de zichtbare kolommen plus Foto, plus Acties voor een admin.
-  const kolomAantal = visibleColumns.length + 1 + (isAdmin ? 1 : 0);
+  const kolomAantal = visibleColumns.length + 1 + (objectenBeschikbaar ? 1 : 0) + (isAdmin ? 1 : 0);
   const aantalGenomen = samples.filter((s) => s.isTaken && !s.isDisabled).length;
   const aantalGeannuleerd = samples.filter((s) => s.isDisabled).length;
 
   const wisFilter = () => {
     setStatusFilter('all');
+    setObjectFilter('all');
     setSearch('');
   };
 
@@ -514,6 +565,24 @@ export default function DashboardPage() {
               <option value="cancelled">Geannuleerd</option>
             </select>
           </div>
+
+          {objectenBeschikbaar && (
+            <div className="filter-veld">
+              <label className="label filter-label" htmlFor="filter-object">Object:</label>
+              <select
+                id="filter-object"
+                value={objectFilter}
+                onChange={(e) => setObjectFilter(e.target.value)}
+                className="select filter-select"
+              >
+                <option value="all">Alle objecten</option>
+                <option value="geen">Zonder object</option>
+                {objecten.map((o) => (
+                  <option key={o.id} value={String(o.id)}>{o.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="filter-veld">
             <label className="label filter-label">Sorteren op:</label>
@@ -619,6 +688,7 @@ export default function DashboardPage() {
                 {visibleColumns.includes('status') && (<th>Status</th>)}
                 {visibleColumns.includes('oNumber') && (<th>O-nummer</th>)}
                 {visibleColumns.includes('sampleDate') && (<th>Datum</th>)}
+                {objectenBeschikbaar && (<th>Object</th>)}
                 {visibleColumns.includes('location') && (<th>Locatie</th>)}
                 {visibleColumns.includes('description') && (<th>Omschrijving</th>)}
                 {visibleColumns.includes('oilType') && (<th>Type olie</th>)}
@@ -708,6 +778,18 @@ export default function DashboardPage() {
                     {visibleColumns.includes('sampleDate') && (
                       <td data-label="Datum" style={{ whiteSpace: 'nowrap' }}>
                         {sample.isTaken && sample.sampleDate ? new Date(sample.sampleDate).toLocaleDateString('nl-NL') : '-'}
+                      </td>
+                    )}
+                    {objectenBeschikbaar && (
+                      <td data-label="Object">
+                        {sample.object ? (
+                          <span className="badge badge-gray" title={objectTypeLabel(sample.object.objectType)}>
+                            <Icon name={objectTypeIcoon(sample.object.objectType)} size={16} />
+                            {sample.object.name}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
                       </td>
                     )}
                     {visibleColumns.includes('location') && (
@@ -850,6 +932,23 @@ export default function DashboardPage() {
                     required={formData.isTaken}
                   />
                 </div>
+
+                {objectenBeschikbaar && (
+                  <div>
+                    <label className="label" htmlFor="veld-object">Object</label>
+                    <select
+                      id="veld-object"
+                      value={formData.objectId}
+                      onChange={(e) => setFormData({ ...formData, objectId: e.target.value })}
+                      className="select"
+                    >
+                      <option value="">Geen object</option>
+                      {objecten.map((o) => (
+                        <option key={o.id} value={String(o.id)}>{o.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="label" htmlFor="veld-locatie">Locatie</label>

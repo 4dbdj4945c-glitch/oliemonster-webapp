@@ -25,6 +25,7 @@ export async function syncLatestAttemptToSample(oilSampleId: number) {
         remarks: null,
         isTaken: false,
       },
+      select: { id: true },
     });
     return;
   }
@@ -37,5 +38,6 @@ export async function syncLatestAttemptToSample(oilSampleId: number) {
       remarks: latest.remarks,
       isTaken: latest.isTaken,
     },
+    select: { id: true },
   });
 }
