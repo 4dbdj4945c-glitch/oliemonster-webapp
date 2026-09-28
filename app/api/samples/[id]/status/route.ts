@@ -4,7 +4,6 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { syncLatestAttemptToSample } from '@/lib/sampleAttempts';
 import { isOilViewer2025 } from '@/lib/roles';
 
 /**
@@ -15,9 +14,15 @@ import { isOilViewer2025 } from '@/lib/roles';
  * vandaag, tenzij er al een datum meegestuurd wordt.
  *
  * De velden op OilSample zijn een spiegel van de meest recente poging
- * (SampleAttempt). Bestaat die poging, dan werken we die bij en laten we de
- * bestaande synchronisatie het monster bijwerken; anders zetten we het monster
- * zelf. Zo blijft de status kloppen zodra er een hermonstering bijkomt.
+ * (SampleAttempt). Bestaat die poging, dan zetten we de status op allebei, zodat
+ * hij blijft kloppen zodra er een hermonstering bijkomt.
+ *
+ * Bewust géén syncLatestAttemptToSample: die spiegelt ook remarks en photoUrl
+ * terug, en het bewerkvenster schrijft de opmerking op het monster zelf. Eén tik
+ * op de status zou die opmerking dan stilletjes wissen. Deze route raakt alleen
+ * de status en de datum aan. De datum van een bestaande poging blijft staan als
+ * je op "niet genomen" zet, anders ben je een afnamedatum kwijt die je niet
+ * terugkrijgt; de lijst toont de datum toch alleen bij een genomen monster.
  */
 export async function PATCH(
   request: NextRequest,
@@ -52,7 +57,7 @@ export async function PATCH(
 
     const sample = await prisma.oilSample.findUnique({
       where: { id: sampleId },
-      select: { id: true, oNumber: true, isTaken: true, isDisabled: true, analysisYear: true },
+      select: { id: true, oNumber: true, isTaken: true, isDisabled: true, analysisYear: true, sampleDate: true },
     });
     if (!sample) {
       return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
@@ -64,19 +69,22 @@ export async function PATCH(
       );
     }
 
-    // Datum: meegestuurd, anders vandaag. Bij "niet genomen" gaat de datum eruit,
-    // net zoals in het bewerkvenster.
-    let sampleDate: Date | null = null;
-    if (isTaken) {
-      const gekozen = typeof body.sampleDate === 'string' && body.sampleDate ? new Date(body.sampleDate) : new Date();
-      sampleDate = Number.isNaN(gekozen.getTime()) ? new Date() : gekozen;
-    }
-
     const laatste = await prisma.sampleAttempt.findFirst({
       where: { oilSampleId: sampleId },
       orderBy: [{ sampleDate: 'desc' }, { createdAt: 'desc' }],
-      select: { id: true },
+      select: { id: true, sampleDate: true },
     });
+
+    // Datum bij "genomen": de meegestuurde datum, anders de datum die er al
+    // stond, anders vandaag. Bij "niet genomen" blijft de datum staan.
+    const bestaandeDatum = laatste ? laatste.sampleDate : sample.sampleDate;
+    let sampleDate: Date | null = bestaandeDatum;
+    if (isTaken) {
+      const gekozen =
+        typeof body.sampleDate === 'string' && body.sampleDate ? new Date(body.sampleDate) : null;
+      sampleDate =
+        gekozen && !Number.isNaN(gekozen.getTime()) ? gekozen : bestaandeDatum ?? new Date();
+    }
 
     if (laatste) {
       await prisma.sampleAttempt.update({
@@ -84,14 +92,12 @@ export async function PATCH(
         data: { isTaken, sampleDate },
         select: { id: true },
       });
-      await syncLatestAttemptToSample(sampleId);
-    } else {
-      await prisma.oilSample.update({
-        where: { id: sampleId },
-        data: { isTaken, sampleDate },
-        select: { id: true },
-      });
     }
+    await prisma.oilSample.update({
+      where: { id: sampleId },
+      data: { isTaken, sampleDate },
+      select: { id: true },
+    });
 
     await createAuditLog({
       userId: session.userId,
@@ -103,6 +109,8 @@ export async function PATCH(
         analysisYear: sample.analysisYear,
         van: sample.isTaken ? 'genomen' : 'niet genomen',
         naar: isTaken ? 'genomen' : 'niet genomen',
+        vorigeDatum: bestaandeDatum,
+        nieuweDatum: sampleDate,
       },
       request,
     });
