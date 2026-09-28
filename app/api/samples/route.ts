@@ -115,6 +115,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Object: leeg betekent geen object; onzin geeft een nette melding, geen 500.
+    let gelezenObjectId: number | null = null;
+    if (objectId !== undefined && objectId !== null && objectId !== '') {
+      gelezenObjectId = parseInt(String(objectId));
+      if (Number.isNaN(gelezenObjectId)) {
+        return NextResponse.json({ error: 'Onbekend object' }, { status: 400 });
+      }
+    }
+
     // O-nummers zijn uniek per analyse-jaar (2025 en 2026 mogen hetzelfde nummer hebben)
     const jaar = analysisYear ?? 2025;
     const existing = await prisma.oilSample.findFirst({ where: { oNumber, analysisYear: jaar } });
@@ -134,7 +143,7 @@ export async function POST(request: NextRequest) {
         isTaken,
         // Alleen meesturen als de pagina een object koos; anders raken we de
         // kolom niet aan en werkt dit ook zolang db push nog niet gedraaid is.
-        ...(objectId === undefined ? {} : { objectId: objectId === null || objectId === '' ? null : parseInt(String(objectId)) }),
+        ...(objectId === undefined ? {} : { objectId: gelezenObjectId }),
       },
       select: SAMPLE_BASIS_SELECT,
     });

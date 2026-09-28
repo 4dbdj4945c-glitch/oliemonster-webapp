@@ -144,6 +144,10 @@ export default function PlanningPaneel({
   const [gpsFout, setGpsFout] = useState('');
   const watchId = useRef<number | null>(null);
   const dagRef = useRef<PlanDag | null>(null);
+  // Welke stops de GPS al gestart heeft. watchPosition komt ongeveer elke
+  // seconde terug; zonder deze lijst stuurt hij bij elke tik opnieuw "start" en
+  // schuift de starttijd op, precies de meting waar het om gaat.
+  const gestart = useRef<Set<number>>(new Set());
 
   const dag = dagen.find((d) => d.id === dagId) ?? null;
   dagRef.current = dag;
@@ -231,8 +235,14 @@ export default function PlanningPaneel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           objectId: kiesObject.id,
-          // Alles meenemen laten we leeg: dan schuift een later monster vanzelf mee.
-          sampleIds: kiesAlles ? null : kiesMonsters,
+          // Staat er al een deel van dit object op een andere dag, dan sturen we
+          // de ids expliciet mee. "Leeg" betekent namelijk alle monsters van het
+          // object, en dan zouden ze op twee dagen tegelijk staan.
+          sampleIds: kiesAlles
+            ? kiesObject.aantalOngepland < kiesObject.aantalMonsters
+              ? kiesObject.ongeplandeMonsters.map((m) => m.id)
+              : null
+            : kiesMonsters,
         }),
       });
       if (!res.ok) {
@@ -271,6 +281,26 @@ export default function PlanningPaneel({
       });
       if (!res.ok) {
         setFoutmelding(await foutTekst(res, 'De volgorde kon niet worden opgeslagen.'));
+        return;
+      }
+      setFoutmelding('');
+      await laadPlanning();
+    } catch {
+      setFoutmelding(GEEN_VERBINDING);
+    }
+  };
+
+  // Een dag waarvan jij de volgorde hebt gezet doet niet meer mee met de
+  // automatische berekening. Hiermee geef je hem weer vrij.
+  const geefVolgordeVrij = async (d: PlanDag) => {
+    try {
+      const res = await fetch(`/api/sample-plans/${d.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manualOrder: false }),
+      });
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, 'De volgorde kon niet worden vrijgegeven.'));
         return;
       }
       setFoutmelding('');
@@ -393,11 +423,15 @@ export default function PlanningPaneel({
         // begint de tijd vanzelf te lopen. Afvinken doe je zelf, want jij weet
         // wanneer je klaar bent.
         const huidig = dagRef.current;
-        if (!huidig) return;
+        if (!huidig || !isAdmin) return;
         for (const stop of huidig.stops) {
-          if (stop.isDone || stop.startedAt || stop.object.lat === null || stop.object.lng === null) continue;
+          if (stop.isDone || stop.startedAt || gestart.current.has(stop.id)) continue;
+          if (stop.object.lat === null || stop.object.lng === null) continue;
           const d = afstandMeter(latitude, longitude, stop.object.lat, stop.object.lng);
-          if (d <= GPS_STRAAL) stopActie(huidig, stop, { actie: 'start' });
+          if (d <= GPS_STRAAL) {
+            gestart.current.add(stop.id);
+            stopActie(huidig, stop, { actie: 'start' });
+          }
         }
       },
       (err) => {
@@ -563,6 +597,12 @@ export default function PlanningPaneel({
                           {' '}{monsters(d.stops.reduce((n, s) => n + s.aantalMonsters, 0))}
                           {d.manualOrder && ', volgorde met de hand gezet'}
                         </div>
+                        {isAdmin && d.manualOrder && (
+                          <button type="button" className="btn-link plan-vrijgeven" onClick={() => geefVolgordeVrij(d)}>
+                            <Icon name="reset" size={16} />
+                            Volgorde vrijgeven
+                          </button>
+                        )}
                       </div>
                       <div className="knoppenrij plan-dag-knoppen">
                         <button type="button" className="btn btn-sm" onClick={() => { setDagId(d.id); setWeergave('dag'); }}>
@@ -678,15 +718,17 @@ export default function PlanningPaneel({
                 <Icon name="arrow-left" size={16} />
                 Terug naar de dagen
               </button>
-              <button
-                type="button"
-                className={`btn btn-sm plan-gps ${gpsAan ? 'btn-success' : 'btn-primary'}`}
-                onClick={() => (gpsAan ? stopGps() : startGps())}
-                aria-pressed={gpsAan}
-              >
-                <Icon name="gps-live" size={16} />
-                {gpsAan ? 'GPS aan, stop' : 'Start GPS'}
-              </button>
+              {isAdmin && (
+                <button
+                  type="button"
+                  className={`btn btn-sm plan-gps ${gpsAan ? 'btn-success' : 'btn-primary'}`}
+                  onClick={() => (gpsAan ? stopGps() : startGps())}
+                  aria-pressed={gpsAan}
+                >
+                  <Icon name="gps-live" size={16} />
+                  {gpsAan ? 'GPS aan, stop' : 'Start GPS'}
+                </button>
+              )}
             </div>
           </div>
 
@@ -741,6 +783,20 @@ export default function PlanningPaneel({
                           <Icon name={stop.isDone ? 'reset' : 'check'} size={16} />
                           {stop.isDone ? 'Toch niet klaar' : 'Object klaar'}
                         </button>
+                        {stop.startedAt && (
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            onClick={() => {
+                              gestart.current.delete(stop.id);
+                              stopActie(dag, stop, { actie: 'wis-tijden' });
+                            }}
+                            title="Gemeten tijd weggooien en opnieuw beginnen"
+                          >
+                            <Icon name="reset" size={16} />
+                            Tijden wissen
+                          </button>
+                        )}
                       </div>
                     )}
 
@@ -784,19 +840,21 @@ export default function PlanningPaneel({
               <span className="plan-mobiel-teller">{klaarOpDag}/{dag.stops.length}</span>
               <span className="plan-mobiel-volgende">
                 {volgendeStop
-                  ? `Volgende: ${volgendeStop.orderIndex + 1}. ${volgendeStop.object.name}`
+                  ? `Volgende: ${dag.stops.indexOf(volgendeStop) + 1}. ${volgendeStop.object.name}`
                   : dag.stops.length > 0 ? 'Alle objecten klaar' : 'Geen objecten'}
               </span>
             </div>
-            <button
-              type="button"
-              className={`btn btn-lg ${gpsAan ? 'btn-success' : 'btn-primary'}`}
-              onClick={() => (gpsAan ? stopGps() : startGps())}
-              aria-pressed={gpsAan}
-            >
-              <Icon name="gps-live" size={16} />
-              {gpsAan ? 'Stop' : 'Start GPS'}
-            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                className={`btn btn-lg ${gpsAan ? 'btn-success' : 'btn-primary'}`}
+                onClick={() => (gpsAan ? stopGps() : startGps())}
+                aria-pressed={gpsAan}
+              >
+                <Icon name="gps-live" size={16} />
+                {gpsAan ? 'Stop' : 'Start GPS'}
+              </button>
+            )}
           </div>
         </>
       )}
@@ -889,13 +947,19 @@ export default function PlanningPaneel({
 function PlanningTijd({ dagen, onTerug }: { dagen: PlanDag[]; onTerug: () => void }) {
   // Per object optellen over alle dagen, zodat een object dat over twee dagen
   // verdeeld is ook als één regel te lezen is.
-  const perObject = new Map<number, { naam: string; type: string | null; gepland: number; werkelijk: number; monsters: number; metTijd: number }>();
+  const perObject = new Map<number, { naam: string; type: string | null; gepland: number; geplandGemeten: number; werkelijk: number; monsters: number; metTijd: number }>();
   for (const d of dagen) {
     for (const s of d.stops) {
-      const r = perObject.get(s.objectId) ?? { naam: s.object.name, type: s.object.objectType, gepland: 0, werkelijk: 0, monsters: 0, metTijd: 0 };
+      const r = perObject.get(s.objectId) ?? { naam: s.object.name, type: s.object.objectType, gepland: 0, geplandGemeten: 0, werkelijk: 0, monsters: 0, metTijd: 0 };
       r.gepland += s.werkMinuten;
       r.monsters += s.aantalMonsters;
-      if (s.werkelijkeMinuten !== null) { r.werkelijk += s.werkelijkeMinuten; r.metTijd += 1; }
+      if (s.werkelijkeMinuten !== null) {
+        r.werkelijk += s.werkelijkeMinuten;
+        // Alleen de inschatting van de gemeten bezoeken, anders vergelijk je bij
+        // een object over twee dagen een halve meting met een hele inschatting.
+        r.geplandGemeten += s.werkMinuten;
+        r.metTijd += 1;
+      }
       perObject.set(s.objectId, r);
     }
   }
@@ -905,7 +969,7 @@ function PlanningTijd({ dagen, onTerug }: { dagen: PlanDag[]; onTerug: () => voi
   const gemetenRegels = regels.filter((r) => r.metTijd > 0);
   // Alleen de gemeten objecten met elkaar vergelijken, anders zet je de
   // werkelijke tijd van twee objecten naast de inschatting van alle drie.
-  const geplandVanGemeten = gemetenRegels.reduce((n, r) => n + r.gepland, 0);
+  const geplandVanGemeten = gemetenRegels.reduce((n, r) => n + r.geplandGemeten, 0);
   const verschilGemeten = totaalWerkelijk - geplandVanGemeten;
 
   return (
@@ -944,7 +1008,7 @@ function PlanningTijd({ dagen, onTerug }: { dagen: PlanDag[]; onTerug: () => voi
               </thead>
               <tbody>
                 {regels.map((r) => {
-                  const verschil = r.metTijd > 0 ? r.werkelijk - r.gepland : null;
+                  const verschil = r.metTijd > 0 ? r.werkelijk - r.geplandGemeten : null;
                   return (
                     <tr key={r.naam}>
                       <td data-label="Object" className="kaart-kop font-medium">

@@ -644,11 +644,23 @@ export default function DashboardPage() {
       {/* Tabbladen: de lijst of de planning van dit jaar */}
       {magPlannen && (
         <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '16px' }}>
-          <div className="tabs">
-            <button type="button" className={tab === 'lijst' ? 'on' : ''} onClick={() => setTab('lijst')}>
+          <div className="tabs" role="tablist">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'lijst'}
+              className={tab === 'lijst' ? 'on' : ''}
+              onClick={() => setTab('lijst')}
+            >
               Lijst
             </button>
-            <button type="button" className={tab === 'planning' ? 'on' : ''} onClick={() => setTab('planning')}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'planning'}
+              className={tab === 'planning' ? 'on' : ''}
+              onClick={() => setTab('planning')}
+            >
               Planning
             </button>
           </div>
@@ -659,7 +671,7 @@ export default function DashboardPage() {
         <PlanningPaneel analysisYear={2026} isAdmin={isAdmin} />
       )}
 
-      {tab === 'lijst' && (<>
+      {(tab !== 'planning' || !magPlannen) && (<>
       {/* Zoeken en toevoegen */}
       <div className="card" style={{ marginBottom: '16px' }}>
         <div className="flex flex-col sm:flex-row gap-3">

@@ -84,6 +84,7 @@ export default function ObjectenPage() {
   const [adresHits, setAdresHits] = useState<AddressHit[]>([]);
   const [adresOpen, setAdresOpen] = useState(false);
   const [adresBezig, setAdresBezig] = useState(false);
+  const [adresIndex, setAdresIndex] = useState(0);
   const adresGekozen = useRef(false);
 
   // Objecten uit de locaties halen
@@ -144,6 +145,7 @@ export default function ObjectenPage() {
       try {
         const hits = await searchAddresses(q);
         setAdresHits(hits);
+        setAdresIndex(0);
         setAdresOpen(true);
       } catch {
         setAdresHits([]);
@@ -153,6 +155,24 @@ export default function ObjectenPage() {
     }, 300);
     return () => clearTimeout(t);
   }, [adresZoek, toonModal]);
+
+  // Pijltjes, Enter en Escape in de adreslijst, zodat het ook zonder muis werkt.
+  const adresToetsen = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (adresHits.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setAdresOpen(true);
+      setAdresIndex((i) => Math.min(i + 1, adresHits.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setAdresIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === 'Enter' && adresOpen) {
+      e.preventDefault();
+      kiesAdres(adresHits[adresIndex] ?? adresHits[0]);
+    } else if (e.key === 'Escape') {
+      setAdresOpen(false);
+    }
+  };
 
   const kiesAdres = (hit: AddressHit) => {
     adresGekozen.current = true;
@@ -232,7 +252,7 @@ export default function ObjectenPage() {
 
   const verwijder = async (object: SampleObject) => {
     if (!confirm(
-      `Object "${object.name}" verwijderen?\n\nDe ${object.aantalMonsters} gekoppelde monsters blijven bestaan, ze raken alleen hun koppeling kwijt.`
+      `Object "${object.name}" verwijderen?\n\nDe ${object.aantalMonsters} gekoppelde monsters blijven bestaan, ze raken alleen hun koppeling kwijt. Staat dit object op een dag in de planning, dan verdwijnt het daar wel van.`
     )) return;
     try {
       const res = await fetch(`/api/sample-objects/${object.id}`, { method: 'DELETE' });
@@ -346,12 +366,14 @@ export default function ObjectenPage() {
           background: var(--wit); box-shadow: var(--shadow-lg);
           max-height: 240px; overflow-y: auto;
         }
+        .objecten-hits li { border-top: 1px solid var(--grijs-200); }
+        .objecten-hits li:first-child { border-top: none; }
         .objecten-hit {
-          display: flex; align-items: center; min-height: 44px; padding: 8px 14px;
-          cursor: pointer; font-size: 14px; border-top: 1px solid var(--grijs-200); color: var(--navy);
+          display: flex; align-items: center; width: 100%; min-height: 44px; padding: 8px 14px;
+          cursor: pointer; font-size: 14px; color: var(--navy); text-align: left;
+          background: none; border: none; font-family: inherit;
         }
-        .objecten-hit:first-child { border-top: none; }
-        .objecten-hit:hover { background: var(--blue-light); }
+        .objecten-hit:hover, .objecten-hit-actief { background: var(--blue-light); }
         .objecten-kaart :global(.hint) { margin-top: 6px; }
         .objecten-kaart-laden {
           height: 300px; display: flex; align-items: center; justify-content: center;
@@ -411,12 +433,12 @@ export default function ObjectenPage() {
       </div>
 
       {objecten.length === 0 ? (
+        // Bij een laadfout staat de melding er al boven, dan hier geen tekst.
+        foutmelding ? null : (
         <div className="leeg">
           <Icon name="empty" size={32} />
-          <p style={{ margin: '0 0 12px' }}>
-            {foutmelding ? 'De objecten konden niet worden opgehaald.' : 'Nog geen objecten.'}
-          </p>
-          {isAdmin && !foutmelding && (
+          <p style={{ margin: '0 0 12px' }}>Nog geen objecten.</p>
+          {isAdmin && (
             <div className="knoppenrij" style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button type="button" className="btn btn-primary btn-sm" onClick={openNieuw}>
                 <Icon name="plus" size={16} />
@@ -429,6 +451,7 @@ export default function ObjectenPage() {
             </div>
           )}
         </div>
+        )
       ) : (
         <div className="table-container">
           <div className="table-scroll">
@@ -599,27 +622,39 @@ export default function ObjectenPage() {
                   className="input"
                   role="combobox"
                   aria-expanded={adresOpen && adresHits.length > 0}
+                  aria-controls="object-adres-lijst"
                   aria-autocomplete="list"
+                  aria-activedescendant={
+                    adresOpen && adresHits.length > 0 ? `object-adres-hit-${adresIndex}` : undefined
+                  }
                   autoComplete="off"
                   value={adresZoek}
                   onChange={(e) => { setAdresZoek(e.target.value); setAdresOpen(true); }}
                   onFocus={() => { if (adresHits.length > 0) setAdresOpen(true); }}
                   onBlur={() => setTimeout(() => setAdresOpen(false), 150)}
+                  onKeyDown={adresToetsen}
                   placeholder="Typ een adres of plaats, bijv. Sluisweg Grave"
                 />
-                {adresOpen && adresHits.length > 0 && (
-                  <ul className="objecten-hits">
-                    {adresHits.map((hit) => (
-                      <li
-                        key={hit.label}
-                        className="objecten-hit"
+                <ul
+                  id="object-adres-lijst"
+                  className="objecten-hits"
+                  role="listbox"
+                  hidden={!(adresOpen && adresHits.length > 0)}
+                >
+                  {adresHits.map((hit, i) => (
+                    <li key={hit.label} role="option" aria-selected={i === adresIndex}>
+                      <button
+                        type="button"
+                        id={`object-adres-hit-${i}`}
+                        className={`objecten-hit${i === adresIndex ? ' objecten-hit-actief' : ''}`}
+                        onMouseEnter={() => setAdresIndex(i)}
                         onMouseDown={(e) => { e.preventDefault(); kiesAdres(hit); }}
                       >
                         {hit.label}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
               </div>
               <p className="hint">
                 {adresBezig ? 'Zoeken...' : 'Kies een adres en versleep daarna de speld naar de plek waar je echt moet zijn.'}

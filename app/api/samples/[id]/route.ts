@@ -48,6 +48,15 @@ export async function PUT(
       );
     }
 
+    // Object: leeg betekent geen object; onzin geeft een nette melding, geen 500.
+    let gelezenObjectId: number | null = null;
+    if (objectId !== undefined && objectId !== null && objectId !== '') {
+      gelezenObjectId = parseInt(String(objectId));
+      if (Number.isNaN(gelezenObjectId)) {
+        return NextResponse.json({ error: 'Onbekend object' }, { status: 400 });
+      }
+    }
+
     // Check of een ander sample in hetzelfde analyse-jaar al dit o-nummer heeft
     const huidig = await prisma.oilSample.findUnique({ where: { id: parseInt(id) }, select: { analysisYear: true } });
     if (!huidig) {
@@ -79,7 +88,7 @@ export async function PUT(
         remarks: remarks || null,
         isTaken,
         // Alleen meesturen als de pagina een object koos, zie de POST-route.
-        ...(objectId === undefined ? {} : { objectId: objectId === null || objectId === '' ? null : parseInt(String(objectId)) }),
+        ...(objectId === undefined ? {} : { objectId: gelezenObjectId }),
       },
       select: SAMPLE_BASIS_SELECT,
     });

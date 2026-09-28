@@ -118,6 +118,20 @@ export async function DELETE(
 
     await prisma.samplePlanStop.delete({ where: { id: sId } });
 
+    // Opnieuw doornummeren, anders blijven er gaten in de volgorde zitten.
+    const over = await prisma.samplePlanStop.findMany({
+      where: { planId },
+      orderBy: { orderIndex: 'asc' },
+      select: { id: true },
+    });
+    for (let i = 0; i < over.length; i++) {
+      await prisma.samplePlanStop.update({
+        where: { id: over[i].id },
+        data: { orderIndex: i },
+        select: { id: true },
+      });
+    }
+
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',

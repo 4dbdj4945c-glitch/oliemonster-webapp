@@ -48,6 +48,11 @@ export async function PUT(
       const tekst = typeof body.notes === 'string' ? body.notes.trim() : '';
       data.notes = tekst === '' ? null : tekst;
     }
+    // Volgorde weer vrijgeven, zodat de dag weer meedoet met "Volgorde en
+    // verdeling berekenen".
+    if (typeof body.manualOrder === 'boolean') {
+      data.manualOrder = body.manualOrder;
+    }
 
     const plan = await prisma.samplePlan.update({ where: { id: planId }, data: data as never });
 

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
+import { tabelOntbreekt } from '@/lib/planningApi';
 
 // POST - Neem de te nemen monsters van een vorig analyse-jaar over naar een nieuw jaar (alleen admin).
 // Body: { fromYear: 2025, toYear: 2026 }
@@ -28,11 +29,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ongeldig bron- of doeljaar' }, { status: 400 });
     }
 
-    const bron = await prisma.oilSample.findMany({
-      where: { analysisYear: fromYear },
-      select: { oNumber: true, location: true, description: true, oilType: true },
-      orderBy: { oNumber: 'asc' },
-    });
+    // Objecten zijn jaaroverstijgend: dezelfde sluis komt elk jaar terug. Neem de
+    // koppeling dus mee, anders staat de planning van het nieuwe jaar leeg.
+    // Zolang ./db-push-planning.sh nog niet gedraaid is bestaat de kolom niet;
+    // dan halen we alleen de oude velden op.
+    let bron: { oNumber: string; location: string; description: string; oilType: string | null; objectId?: number | null }[];
+    try {
+      bron = await prisma.oilSample.findMany({
+        where: { analysisYear: fromYear },
+        select: { oNumber: true, location: true, description: true, oilType: true, objectId: true },
+        orderBy: { oNumber: 'asc' },
+      });
+    } catch (error) {
+      if (!tabelOntbreekt(error)) throw error;
+      bron = await prisma.oilSample.findMany({
+        where: { analysisYear: fromYear },
+        select: { oNumber: true, location: true, description: true, oilType: true },
+        orderBy: { oNumber: 'asc' },
+      });
+    }
 
     const bestaand = await prisma.oilSample.findMany({
       where: { analysisYear: toYear },
@@ -52,6 +67,7 @@ export async function POST(request: NextRequest) {
           oilType: s.oilType,
           isTaken: false,
           isDisabled: false,
+          ...(s.objectId === undefined ? {} : { objectId: s.objectId }),
         })),
       });
     }

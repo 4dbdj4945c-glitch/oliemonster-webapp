@@ -41,6 +41,14 @@ export async function PATCH(
     if (!sample) {
       return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
     }
+    // Niet twee keer annuleren: anders overschrijf je wie het wanneer en waarom
+    // deed, en dat is precies wat we wilden vastleggen.
+    if (sample.isDisabled) {
+      return NextResponse.json(
+        { error: 'Dit monster is al geannuleerd. Draai de annulering eerst terug als je de reden wilt wijzigen.' },
+        { status: 400 }
+      );
+    }
 
     const bijgewerkt = await prisma.oilSample.update({
       where: { id: sampleId },

@@ -2349,6 +2349,11 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   color: var(--grijs-500);
 }
 
+.plan-vrijgeven {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
 .plan-dag-knoppen {
   display: flex;
   gap: 6px;
@@ -2619,6 +2624,17 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   .plan-balk {
     flex-direction: column;
     align-items: stretch;
+  }
+  /* Drie knoppen naast elkaar in een stoprij: 44px en wat lucht ertussen */
+  .plan-stop-knoppen {
+    gap: 6px;
+  }
+  .plan-stop-knoppen .icon-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .plan-keuze {
+    min-height: 44px;
   }
   .plan-knoppen .btn {
     flex: 1 1 auto;
