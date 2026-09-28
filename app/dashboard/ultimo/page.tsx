@@ -253,7 +253,7 @@ export default function UltimoPage() {
 
       {loading ? (
         <p className="laden">Laden...</p>
-      ) : tasks.length === 0 ? (
+      ) : tasks.length === 0 && foutmelding ? null : tasks.length === 0 ? (
         <div className="leeg">
           <Icon name="empty" size={32} />
           {search

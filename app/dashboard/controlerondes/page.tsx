@@ -632,7 +632,10 @@ export default function ControleRondesPage() {
           </div>
 
           {rounds.length === 0 ? (
-            <div className="leeg"><Icon name="empty" size={32} />Nog geen rondes. Maak er een aan om te beginnen.</div>
+            // Bij een laadfout geen "nog geen rondes" tonen: de melding staat er al boven.
+            foutmelding ? null : (
+              <div className="leeg"><Icon name="empty" size={32} />Nog geen rondes. Maak er een aan om te beginnen.</div>
+            )
           ) : (
             <div className="rounds-grid">
               {rounds.map((r) => {

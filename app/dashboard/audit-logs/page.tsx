@@ -142,7 +142,10 @@ export default function AuditLogsPage() {
       </div>
 
       {logs.length === 0 ? (
-        <div className="leeg"><Icon name="empty" size={32} />Geen logs gevonden.</div>
+        // Bij een laadfout geen "geen logs gevonden" tonen: de melding staat er al boven.
+        foutmelding ? null : (
+          <div className="leeg"><Icon name="empty" size={32} />Geen logs gevonden.</div>
+        )
       ) : (
         <div className="table-container">
           <div className="table-scroll">
@@ -191,9 +194,11 @@ export default function AuditLogsPage() {
         </div>
       )}
 
-      <p className="text-secondary" style={{ marginTop: '12px', fontSize: '13px' }}>
-        Toont de laatste {logs.length} logs.
-      </p>
+      {!(foutmelding && logs.length === 0) && (
+        <p className="text-secondary" style={{ marginTop: '12px', fontSize: '13px' }}>
+          Toont de laatste {logs.length} logs.
+        </p>
+      )}
     </AppShell>
   );
 }
