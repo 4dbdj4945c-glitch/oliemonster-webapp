@@ -26,32 +26,42 @@ export async function GET(request: NextRequest) {
       orderBy: [{ name: 'asc' }],
     });
 
+    // We halen de monsters van alle jaren op: het jaarfilter bepaalt de tellingen
+    // in de lijst, en `aantalAlleJaren` laat zien hoeveel monsters er meeverhuizen
+    // als je dit object samenvoegt. Dat gaat namelijk over alle jaren.
     const monsters = await prisma.oilSample.findMany({
-      where: {
-        objectId: { not: null },
-        ...(jaar && !Number.isNaN(jaar) ? { analysisYear: jaar } : {}),
-      },
-      select: { objectId: true, isTaken: true, isDisabled: true },
+      where: { objectId: { not: null } },
+      select: { objectId: true, isTaken: true, isDisabled: true, analysisYear: true },
     });
+    const gekozenJaar = jaar && !Number.isNaN(jaar) ? jaar : null;
 
-    const tellingen = new Map<number, { totaal: number; genomen: number; geannuleerd: number }>();
+    const tellingen = new Map<
+      number,
+      { totaal: number; genomen: number; geannuleerd: number; alleJaren: number }
+    >();
     for (const m of monsters) {
       if (m.objectId === null) continue;
-      const t = tellingen.get(m.objectId) ?? { totaal: 0, genomen: 0, geannuleerd: 0 };
-      t.totaal += 1;
-      if (m.isDisabled) t.geannuleerd += 1;
-      else if (m.isTaken) t.genomen += 1;
+      const t =
+        tellingen.get(m.objectId) ?? { totaal: 0, genomen: 0, geannuleerd: 0, alleJaren: 0 };
+      t.alleJaren += 1;
+      if (gekozenJaar === null || m.analysisYear === gekozenJaar) {
+        t.totaal += 1;
+        if (m.isDisabled) t.geannuleerd += 1;
+        else if (m.isTaken) t.genomen += 1;
+      }
       tellingen.set(m.objectId, t);
     }
 
     return NextResponse.json(
       objecten.map((o) => {
-        const t = tellingen.get(o.id) ?? { totaal: 0, genomen: 0, geannuleerd: 0 };
+        const t =
+          tellingen.get(o.id) ?? { totaal: 0, genomen: 0, geannuleerd: 0, alleJaren: 0 };
         return {
           ...o,
           aantalMonsters: t.totaal,
           aantalGenomen: t.genomen,
           aantalGeannuleerd: t.geannuleerd,
+          aantalAlleJaren: t.alleJaren,
         };
       })
     );

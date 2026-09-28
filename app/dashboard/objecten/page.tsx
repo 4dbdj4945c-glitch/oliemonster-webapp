@@ -7,7 +7,16 @@ import { AppShell, Modal, Icon } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { searchAddresses, AddressHit } from '@/lib/pdok';
-import { OBJECT_TYPES, objectTypeLabel, objectTypeIcoon, tijdInUren } from '@/lib/sampleObjects';
+import {
+  OBJECT_TYPES,
+  objectTypeLabel,
+  objectTypeIcoon,
+  tijdInUren,
+  KUNSTWERKEN,
+  isKunstwerkNaam,
+  raadKunstwerk,
+  sorteerOpOfferte,
+} from '@/lib/sampleObjects';
 
 const ObjectMap = dynamic(() => import('@/app/components/ObjectMap'), {
   ssr: false,
@@ -34,13 +43,8 @@ interface SampleObject {
   aantalMonsters: number;
   aantalGenomen: number;
   aantalGeannuleerd: number;
-}
-
-interface Voorbeeldregel {
-  naam: string;
-  objectType: string;
-  aantalMonsters: number;
-  bestaatAl: boolean;
+  // Monsters over alle jaren heen: dat is wat er meeverhuist bij samenvoegen.
+  aantalAlleJaren: number;
 }
 
 interface Kunstwerkregel {
@@ -55,15 +59,6 @@ interface KunstwerkVoorbeeld {
   nieuw: number;
   bestaandeObjecten: number;
   voorbeeld: Kunstwerkregel[];
-}
-
-interface Voorbeeld {
-  analysisYear: number;
-  nieuweObjecten: number;
-  bestaandeObjecten: number;
-  teKoppelenMonsters: number;
-  monstersZonderLocatie: number;
-  voorbeeld: Voorbeeldregel[];
 }
 
 const leegFormulier = {
@@ -104,13 +99,10 @@ export default function ObjectenPage() {
   const [adresFout, setAdresFout] = useState('');
   const adresGekozen = useRef(false);
 
-  // Objecten uit de locaties halen
-  const [toonOvernemen, setToonOvernemen] = useState(false);
-  const [voorbeeld, setVoorbeeld] = useState<Voorbeeld | null>(null);
-  const [overnemenJaar, setOvernemenJaar] = useState(2026);
-  const [overnemenBezig, setOvernemenBezig] = useState(false);
-  const [overnemenFout, setOvernemenFout] = useState('');
-  const [overnemenKlaar, setOvernemenKlaar] = useState('');
+  // Opschonen: alle objecten met een voorstel in een keer samenvoegen
+  const [toonOpschonen, setToonOpschonen] = useState(false);
+  const [opschoonBezig, setOpschoonBezig] = useState(false);
+  const [opschoonFout, setOpschoonFout] = useState('');
 
   // Vaste kunstwerkenlijst aanmaken
   const [toonKunstwerken, setToonKunstwerken] = useState(false);
@@ -127,6 +119,27 @@ export default function ObjectenPage() {
   const [samenvoegKlaar, setSamenvoegKlaar] = useState('');
 
   const isAdmin = user?.role === 'admin';
+
+  /* Wat hoort er in de lijst en wat niet. Een object is het kunstwerk zelf (Sluis
+     Belfeld); staat de naam niet in de vaste kunstwerkenlijst, dan is het een
+     onderdeel uit de oude locatie-import (Belfeld Westsluis) en moet het opgaan in
+     een kunstwerk. Het voorstel volgt dezelfde voorzichtige regel als het
+     koppelscherm: de naam moet passen en het soortwoord moet kloppen, een sluis en
+     een stuw gooien we nooit automatisch samen. */
+  const gesorteerd = sorteerOpOfferte(objecten);
+  const kunstwerkObjecten = objecten.filter((o) => isKunstwerkNaam(o.name));
+  const nietKunstwerken = gesorteerd.filter((o) => !isKunstwerkNaam(o.name));
+  const voorstellen = new Map<number, { objectId: number | null; reden: string }>(
+    nietKunstwerken.map((o) => [o.id, raadKunstwerk(o.name, kunstwerkObjecten)])
+  );
+  const metVoorstel = nietKunstwerken.filter((o) => voorstellen.get(o.id)?.objectId);
+  const zonderVoorstel = nietKunstwerken.filter((o) => !voorstellen.get(o.id)?.objectId);
+  const verhuizendeMonsters = metVoorstel.reduce((n, o) => n + o.aantalAlleJaren, 0);
+  const ontbrekend = KUNSTWERKEN.filter(
+    (k) => !objecten.some((o) => o.name.toLowerCase() === k.naam.toLowerCase())
+  );
+  const naamVan = (id: number | null) =>
+    objecten.find((o) => o.id === id)?.name ?? 'het kunstwerk';
 
   useEffect(() => {
     (async () => {
@@ -369,9 +382,9 @@ export default function ObjectenPage() {
   };
 
   // ---- Objecten samenvoegen ----
-  const openSamenvoegen = (object: SampleObject) => {
+  const openSamenvoegen = (object: SampleObject, voorstelId?: number | null) => {
     setSamenvoegen(object);
-    setSamenvoegDoel('');
+    setSamenvoegDoel(voorstelId ? String(voorstelId) : '');
     setSamenvoegFout('');
     setSamenvoegKlaar('');
   };
@@ -409,60 +422,47 @@ export default function ObjectenPage() {
     }
   };
 
-  // ---- Objecten uit de bestaande locaties ----
-  const openOvernemen = async (gekozenJaar: number) => {
-    setOvernemenJaar(gekozenJaar);
-    setToonOvernemen(true);
-    setVoorbeeld(null);
-    setOvernemenFout('');
-    setOvernemenKlaar('');
-    await haalVoorbeeld(gekozenJaar);
-  };
+  // ---- Alles met een voorstel samenvoegen ----
+  // Per object roepen we dezelfde route aan als de knop Samenvoegen in de regel,
+  // dus elke samenvoeging komt apart in het auditlogboek te staan.
+  const voerOpschonenUit = async () => {
+    setOpschoonBezig(true);
+    setOpschoonFout('');
+    let objectenWeg = 0;
+    let monstersVerhuisd = 0;
+    let verbindingWeg = false;
+    const mislukt: string[] = [];
 
-  const haalVoorbeeld = async (gekozenJaar: number) => {
-    setOvernemenBezig(true);
-    try {
-      const res = await fetch('/api/sample-objects/from-locations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ analysisYear: gekozenJaar }),
-      });
-      if (!res.ok) {
-        setOvernemenFout(await foutTekst(res, 'Het voorbeeld kon niet worden opgehaald.'));
-        return;
+    for (const object of metVoorstel) {
+      const doelId = voorstellen.get(object.id)?.objectId;
+      if (!doelId) continue;
+      try {
+        const res = await fetch(`/api/sample-objects/${object.id}/samenvoegen`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ doelId }),
+        });
+        if (!res.ok) { mislukt.push(object.name); continue; }
+        const data = await res.json();
+        objectenWeg += 1;
+        monstersVerhuisd += data.monsters ?? 0;
+      } catch {
+        verbindingWeg = true;
+        break;
       }
-      setVoorbeeld(await res.json());
-      setOvernemenFout('');
-    } catch {
-      setOvernemenFout(GEEN_VERBINDING);
-    } finally {
-      setOvernemenBezig(false);
     }
-  };
 
-  const voerOvernemenUit = async () => {
-    setOvernemenBezig(true);
-    try {
-      const res = await fetch('/api/sample-objects/from-locations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ analysisYear: overnemenJaar, uitvoeren: true }),
-      });
-      if (!res.ok) {
-        setOvernemenFout(await foutTekst(res, 'De objecten konden niet worden aangemaakt.'));
-        return;
-      }
-      const data = await res.json();
-      setOvernemenKlaar(
-        `${data.aangemaakt} objecten aangemaakt en ${data.gekoppeld} monsters gekoppeld.`
+    setOpschoonBezig(false);
+    if (verbindingWeg) setOpschoonFout(GEEN_VERBINDING);
+    else setToonOpschonen(false);
+    if (objectenWeg > 0 || mislukt.length > 0) {
+      setSamenvoegKlaar(
+        `${objectenWeg} ${objectenWeg === 1 ? 'object' : 'objecten'} samengevoegd, ` +
+        `${monstersVerhuisd} ${monstersVerhuisd === 1 ? 'monster' : 'monsters'} verhuisd naar de kunstwerken.` +
+        (mislukt.length > 0 ? ` Niet gelukt: ${mislukt.join(', ')}.` : '')
       );
-      setVoorbeeld(null);
-      await laadObjecten();
-    } catch {
-      setOvernemenFout(GEEN_VERBINDING);
-    } finally {
-      setOvernemenBezig(false);
     }
+    await laadObjecten();
   };
 
   if (loading) {
@@ -490,6 +490,9 @@ export default function ObjectenPage() {
         .objecten-adres { display: block; }
         .objecten-adres-fout { color: var(--rood-tekst); font-weight: 600; }
         .objecten-coord { display: block; font-size: 12px; color: var(--grijs-500); }
+        .objecten-naam { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+        .objecten-voorstel { font-size: 12px; font-weight: 400; color: var(--grijs-500); }
+        .objecten-opschonen :global(.section-label) { margin-top: 0; }
         .objecten-formulier {
           display: grid;
           grid-template-columns: minmax(0, 1fr) minmax(0, 320px);
@@ -554,10 +557,6 @@ export default function ObjectenPage() {
               <Icon name="tag" size={16} />
               Locaties koppelen
             </button>
-            <button type="button" className="btn" onClick={() => openOvernemen(jaar)}>
-              <Icon name="copy-year" size={16} />
-              Uit locaties {jaar}
-            </button>
             <button type="button" className="btn btn-primary" onClick={openNieuw}>
               <Icon name="plus" size={16} />
               Nieuw object
@@ -584,7 +583,43 @@ export default function ObjectenPage() {
             <option value={2025}>Analysejaar 2025</option>
           </select>
         </div>
+        {!foutmelding && (
+          <p className="hint" style={{ marginBottom: 0 }}>
+            {kunstwerkObjecten.length} van de {KUNSTWERKEN.length} kunstwerken aangemaakt.
+            {ontbrekend.length > 0 && ` Nog niet aangemaakt: ${ontbrekend.map((k) => k.naam).join(', ')}.`}
+          </p>
+        )}
       </div>
+
+      {nietKunstwerken.length > 0 && (
+        <div className="card objecten-opschonen" style={{ marginBottom: '16px' }}>
+          <p className="section-label">Opschonen</p>
+          <p style={{ marginTop: 0 }}>
+            {nietKunstwerken.length === 1
+              ? 'Er staat 1 object in de lijst dat niet'
+              : `Er staan ${nietKunstwerken.length} objecten in de lijst die niet`}{' '}
+            in de vaste kunstwerkenlijst {nietKunstwerken.length === 1 ? 'staat' : 'staan'}. Dat zijn
+            onderdelen uit de oude locatie-import, bijvoorbeeld Belfeld Westsluis. Voeg ze samen met
+            het kunstwerk waar ze op zitten, dan is de lijst weer gelijk aan de offerte.
+          </p>
+          <p style={{ margin: '0 0 12px' }}>
+            {metVoorstel.length} {metVoorstel.length === 1 ? 'heeft' : 'hebben'} een voorstel,
+            {' '}bij {zonderVoorstel.length} moet je zelf kiezen.
+          </p>
+          {isAdmin && metVoorstel.length > 0 && (
+            <div className="knoppenrij">
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => { setOpschoonFout(''); setToonOpschonen(true); }}
+              >
+                <Icon name="copy" size={16} />
+                Alles met een voorstel samenvoegen ({metVoorstel.length})
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {objecten.length === 0 ? (
         // Bij een laadfout staat de melding er al boven, dan hier geen tekst.
@@ -622,9 +657,31 @@ export default function ObjectenPage() {
                 </tr>
               </thead>
               <tbody>
-                {objecten.map((object) => (
+                {gesorteerd.map((object) => (
                   <tr key={object.id}>
-                    <td data-label="Object" className="kaart-kop font-medium">{object.name}</td>
+                    <td data-label="Object" className="kaart-kop font-medium">
+                      <span className="objecten-naam">
+                        {object.name}
+                        {!isKunstwerkNaam(object.name) && (
+                          <>
+                            <span className="badge badge-warning">
+                              <Icon name="alert-warning" size={16} />
+                              Geen kunstwerk
+                            </span>
+                            <span className="objecten-voorstel">
+                              {object.aantalAlleJaren === 0
+                                ? 'Geen monsters gekoppeld'
+                                : `${object.aantalAlleJaren} ${
+                                    object.aantalAlleJaren === 1 ? 'monster' : 'monsters'
+                                  } gekoppeld, alle jaren`}
+                              {voorstellen.get(object.id)?.objectId
+                                ? `, gaat op in ${naamVan(voorstellen.get(object.id)!.objectId)}`
+                                : `. ${voorstellen.get(object.id)?.reden ?? ''}`}
+                            </span>
+                          </>
+                        )}
+                      </span>
+                    </td>
                     <td data-label="Type">
                       <span className="badge badge-gray">
                         <Icon name={objectTypeIcoon(object.objectType)} size={16} />
@@ -670,7 +727,7 @@ export default function ObjectenPage() {
                         <button
                           type="button"
                           className="icon-btn sm:mr-1"
-                          onClick={() => openSamenvoegen(object)}
+                          onClick={() => openSamenvoegen(object, voorstellen.get(object.id)?.objectId)}
                           title="Samenvoegen met een ander object"
                           aria-label={`${object.name} samenvoegen met een ander object`}
                         >
@@ -982,101 +1039,93 @@ export default function ObjectenPage() {
         {samenvoegFout && <div className="alert alert-danger" style={{ marginTop: '12px' }}>{samenvoegFout}</div>}
       </Modal>
 
-      {/* Objecten aanmaken uit de bestaande locaties */}
+      {/* Alles met een voorstel samenvoegen, met een voorbeeld vooraf */}
       <Modal
-        open={toonOvernemen}
-        onClose={() => setToonOvernemen(false)}
-        title={`Objecten uit de locaties van ${overnemenJaar}`}
+        open={toonOpschonen}
+        onClose={() => setToonOpschonen(false)}
+        title="Alles met een voorstel samenvoegen"
         size="lg"
         footer={
           <>
-            <button type="button" className="btn" onClick={() => setToonOvernemen(false)}>Sluiten</button>
-            {voorbeeld && voorbeeld.teKoppelenMonsters > 0 && (
-              <button type="button" className="btn btn-primary" onClick={voerOvernemenUit} disabled={overnemenBezig}>
-                {overnemenBezig ? 'Bezig...' : `Aanmaken en koppelen (${voorbeeld.nieuweObjecten})`}
-              </button>
-            )}
+            <button type="button" className="btn" onClick={() => setToonOpschonen(false)}>Annuleren</button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={voerOpschonenUit}
+              disabled={opschoonBezig || metVoorstel.length === 0}
+            >
+              {opschoonBezig ? 'Bezig...' : `Samenvoegen (${metVoorstel.length})`}
+            </button>
           </>
         }
       >
         <p style={{ marginTop: 0 }}>
-          Dit maakt objecten aan uit de locatieteksten van de monsters en koppelt die monsters eraan.
-          Monsters die al aan een object hangen blijven met rust. Hieronder zie je eerst wat er gaat gebeuren.
+          Hieronder zie je eerst wat er gaat gebeuren.{' '}
+          {metVoorstel.length} {metVoorstel.length === 1 ? 'object verdwijnt' : 'objecten verdwijnen'},
+          {' '}{verhuizendeMonsters} {verhuizendeMonsters === 1 ? 'monster verhuist' : 'monsters verhuizen'} naar
+          het kunstwerk ernaast, samen met de geplande stops. Dit kun je niet terugdraaien.
         </p>
 
-        <div className="veld" style={{ maxWidth: '260px' }}>
-          <label className="label" htmlFor="overnemen-jaar">Analysejaar</label>
-          <select
-            id="overnemen-jaar"
-            className="select"
-            value={overnemenJaar}
-            onChange={(e) => { const j = parseInt(e.target.value); setOvernemenJaar(j); haalVoorbeeld(j); }}
-          >
-            <option value={2026}>2026</option>
-            <option value={2025}>2025</option>
-          </select>
+        {opschoonFout && <div className="alert alert-danger" style={{ marginBottom: '12px' }}>{opschoonFout}</div>}
+
+        <p className="section-label">Gaat samen</p>
+        <div className="table-container">
+          <div className="table-scroll">
+            <table className="table table-kaarten">
+              <thead>
+                <tr>
+                  <th>Object</th>
+                  <th>Monsters</th>
+                  <th>Gaat op in</th>
+                </tr>
+              </thead>
+              <tbody>
+                {metVoorstel.map((object) => (
+                  <tr key={object.id}>
+                    <td data-label="Object" className="kaart-kop font-medium">{object.name}</td>
+                    <td data-label="Monsters">{object.aantalAlleJaren}</td>
+                    <td data-label="Gaat op in">
+                      <span className="badge badge-info">
+                        <Icon name="structure" size={16} />
+                        {naamVan(voorstellen.get(object.id)!.objectId)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {overnemenFout && <div className="alert alert-danger" style={{ marginBottom: '12px' }}>{overnemenFout}</div>}
-        {overnemenKlaar && <div className="alert alert-success" style={{ marginBottom: '12px' }}>{overnemenKlaar}</div>}
-        {overnemenBezig && !voorbeeld && <p className="laden">Voorbeeld ophalen...</p>}
-
-        {voorbeeld && (
+        {zonderVoorstel.length > 0 && (
           <>
-            <p className="section-label">Voorbeeld</p>
-            <p>
-              {voorbeeld.nieuweObjecten === 1 ? '1 nieuw object' : `${voorbeeld.nieuweObjecten} nieuwe objecten`},
-              {' '}{voorbeeld.bestaandeObjecten} {voorbeeld.bestaandeObjecten === 1 ? 'bestaat' : 'bestaan'} al,
-              {' '}{voorbeeld.teKoppelenMonsters} {voorbeeld.teKoppelenMonsters === 1 ? 'monster wordt' : 'monsters worden'} gekoppeld
-              {voorbeeld.monstersZonderLocatie > 0 &&
-                `, ${voorbeeld.monstersZonderLocatie} ${
-                  voorbeeld.monstersZonderLocatie === 1 ? 'monster heeft' : 'monsters hebben'
-                } geen locatie en blijft los`}.
-            </p>
-            {voorbeeld.voorbeeld.length === 0 ? (
-              <div className="leeg">
-                <Icon name="empty" size={32} />
-                Er zijn geen losse monsters met een locatie in {overnemenJaar}.
-              </div>
-            ) : (
-              <div className="table-container">
-                <div className="table-scroll">
-                  <table className="table table-kaarten">
-                    <thead>
-                      <tr>
-                        <th>Naam</th>
-                        <th>Type</th>
-                        <th>Monsters</th>
-                        <th>Status</th>
+            <p className="section-label">Blijven staan, kies zelf</p>
+            <div className="table-container">
+              <div className="table-scroll">
+                <table className="table table-kaarten">
+                  <thead>
+                    <tr>
+                      <th>Object</th>
+                      <th>Monsters</th>
+                      <th>Waarom</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {zonderVoorstel.map((object) => (
+                      <tr key={object.id}>
+                        <td data-label="Object" className="kaart-kop font-medium">{object.name}</td>
+                        <td data-label="Monsters">{object.aantalAlleJaren}</td>
+                        <td data-label="Waarom">{voorstellen.get(object.id)?.reden}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {voorbeeld.voorbeeld.map((regel) => (
-                        <tr key={regel.naam}>
-                          <td data-label="Naam" className="kaart-kop font-medium">{regel.naam}</td>
-                          <td data-label="Type">
-                            <span className="badge badge-gray">
-                              <Icon name={objectTypeIcoon(regel.objectType)} size={16} />
-                              {objectTypeLabel(regel.objectType)}
-                            </span>
-                          </td>
-                          <td data-label="Monsters">{regel.aantalMonsters}</td>
-                          <td data-label="Status" className="kaart-status">
-                            <span className={`badge ${regel.bestaatAl ? 'badge-info' : 'badge-success'}`}>
-                              <Icon name={regel.bestaatAl ? 'status-planned' : 'plus'} size={16} />
-                              {regel.bestaatAl ? 'Bestaat al' : 'Nieuw'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            )}
+            </div>
           </>
         )}
       </Modal>
+
     </AppShell>
   );
 }

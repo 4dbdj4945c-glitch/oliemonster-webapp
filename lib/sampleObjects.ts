@@ -47,22 +47,6 @@ export function tijdInUren(minuten?: number | null): string {
   return `${uren} uur ${rest}`;
 }
 
-/**
- * Raadt het objecttype uit een locatietekst, zodat objecten die uit de bestaande
- * locaties worden aangemaakt meteen het juiste icoon hebben. Bij twijfel: overig.
- */
-export function raadObjectType(locatie: string): string {
-  const t = locatie.toLowerCase();
-  if (t.includes('sluis')) return 'sluis';
-  if (t.includes('stuw')) return 'stuw';
-  if (t.includes('gemaal')) return 'gemaal';
-  if (t.includes('brug')) return 'brug';
-  if (t.includes('pomp')) return 'pomp';
-  if (t.includes('cilinder')) return 'cilinder';
-  if (t.includes('afsluiter')) return 'afsluiter';
-  return 'overig';
-}
-
 /** Leest en controleert de velden van een object uit de request-body. */
 export function leesObject(
   body: Record<string, unknown>,
@@ -163,6 +147,43 @@ export const KUNSTWERKEN: Kunstwerk[] = [
     notitie: 'Nog niet zeker of dit kunstwerk in de opdracht zit. Nagaan bij Mourik.',
   },
 ];
+
+/** De regio's in de volgorde van de offerte. */
+export const REGIO_VOLGORDE = [
+  'Maastricht',
+  'Midden-Limburg',
+  'Noord-Limburg',
+  'Brabant / Gelderland',
+] as const;
+
+/** Staat dit object in de vaste kunstwerkenlijst? Hoofdletterongevoelig. */
+export function isKunstwerkNaam(naam: string): boolean {
+  const n = naam.trim().toLowerCase();
+  return KUNSTWERKEN.some((k) => k.naam.toLowerCase() === n);
+}
+
+/**
+ * Sorteersleutel voor de regio: eerst de regio's van de offerte in die volgorde,
+ * daarna een eigen regio, en helemaal onderaan de objecten zonder regio. Die
+ * laatste groep zijn meestal de resten van de oude locatie-import.
+ */
+export function regioIndex(regio?: string | null): number {
+  const r = (regio || '').trim();
+  if (!r) return 99;
+  const i = (REGIO_VOLGORDE as readonly string[]).indexOf(r);
+  return i === -1 ? 90 : i;
+}
+
+/** Objecten op regio (offertevolgorde) en daarbinnen op naam. */
+export function sorteerOpOfferte<T extends { name: string; region: string | null }>(lijst: T[]): T[] {
+  return [...lijst].sort((a, b) => {
+    const verschil = regioIndex(a.region) - regioIndex(b.region);
+    if (verschil !== 0) return verschil;
+    const regio = (a.region || '').localeCompare(b.region || '', 'nl');
+    if (regio !== 0) return regio;
+    return a.name.localeCompare(b.name, 'nl');
+  });
+}
 
 /* ============================================================
    LOCATIETEKST AAN EEN KUNSTWERK KNOPEN
