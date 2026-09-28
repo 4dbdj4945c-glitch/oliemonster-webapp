@@ -50,6 +50,8 @@ export default function DashboardPage() {
   // Melding boven de lijst als ophalen of bijwerken mislukt. Zonder deze melding
   // is "kon niet laden" niet te onderscheiden van "er zijn geen monsters".
   const [foutmelding, setFoutmelding] = useState('');
+  // Welk monster staat nu in de wacht bij het aantikken van de status
+  const [statusBezig, setStatusBezig] = useState<number | null>(null);
   const [copying, setCopying] = useState(false);
   const [copyMessage, setCopyMessage] = useState('');
   const router = useRouter();
@@ -302,6 +304,57 @@ export default function DashboardPage() {
       loadSamples();
     } catch (error) {
       setFoutmelding(GEEN_VERBINDING);
+    }
+  };
+
+  // Statusbadge: altijd icoon plus woord (zie STIJL.md).
+  const statusBadge = (sample: OilSample) => (
+    <span
+      className={`badge ${
+        sample.isDisabled ? 'badge-gray' : sample.isTaken ? 'badge-success' : 'badge-danger'
+      }`}
+      title={sample.isDisabled ? sample.remarks || 'Monster geannuleerd' : undefined}
+    >
+      <Icon name={sample.isDisabled ? 'status-cancelled' : sample.isTaken ? 'status-taken' : 'status-not-taken'} size={16} />
+      {sample.isDisabled ? 'Geannuleerd' : sample.isTaken ? 'Genomen' : 'Niet genomen'}
+    </span>
+  );
+
+  // Eén tik op de status: meteen omzetten in het scherm, en terugdraaien met een
+  // melding als de server het niet aanneemt.
+  const toggleStatus = async (sample: OilSample) => {
+    if (sample.isDisabled || statusBezig !== null) return;
+    const naarGenomen = !sample.isTaken;
+    const vandaag = new Date().toISOString().split('T')[0];
+    const datum = sample.sampleDate ? sample.sampleDate.split('T')[0] : vandaag;
+
+    setStatusBezig(sample.id);
+    setSamples((prev) =>
+      prev.map((s) =>
+        s.id === sample.id
+          ? { ...s, isTaken: naarGenomen, sampleDate: naarGenomen ? `${datum}T00:00:00.000Z` : null }
+          : s
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/samples/${sample.id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isTaken: naarGenomen, sampleDate: naarGenomen ? datum : null }),
+      });
+      if (!response.ok) {
+        setSamples((prev) => prev.map((s) => (s.id === sample.id ? sample : s)));
+        setFoutmelding(await foutTekst(response, `${sample.oNumber} is niet bijgewerkt.`));
+        return;
+      }
+      setFoutmelding('');
+      await loadSamples();
+    } catch (error) {
+      setSamples((prev) => prev.map((s) => (s.id === sample.id ? sample : s)));
+      setFoutmelding(`${sample.oNumber} is niet opgeslagen: geen verbinding met de server.`);
+    } finally {
+      setStatusBezig(null);
     }
   };
 
@@ -611,20 +664,26 @@ export default function DashboardPage() {
                   <tr key={sample.id} style={{ opacity: sample.isDisabled ? 0.6 : 1 }}>
                     {visibleColumns.includes('status') && (
                       <td data-label="Status" className="kaart-status" style={{ whiteSpace: 'nowrap' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                          <span
-                            className={`badge ${
-                              sample.isDisabled
-                                ? 'badge-gray'
-                                : sample.isTaken
-                                ? 'badge-success'
-                                : 'badge-danger'
-                            }`}
-                            title={sample.isDisabled ? sample.remarks || 'Monster geannuleerd' : ''}
-                          >
-                            <Icon name={sample.isDisabled ? 'status-cancelled' : sample.isTaken ? 'status-taken' : 'status-not-taken'} size={16} />
-                            {sample.isDisabled ? 'Geannuleerd' : sample.isTaken ? 'Genomen' : 'Niet genomen'}
-                          </span>
+                        <span className="status-cel">
+                          {/* Hoofdhandeling: één tik zet het monster op genomen of niet genomen */}
+                          {isAdmin && !sample.isDisabled ? (
+                            <button
+                              type="button"
+                              className={`status-knop${statusBezig === sample.id ? ' status-knop-bezig' : ''}`}
+                              onClick={() => toggleStatus(sample)}
+                              disabled={statusBezig === sample.id}
+                              aria-pressed={sample.isTaken}
+                              title={
+                                sample.isTaken
+                                  ? `${sample.oNumber} op niet genomen zetten`
+                                  : `${sample.oNumber} op genomen zetten, met de datum van vandaag`
+                              }
+                            >
+                              {statusBadge(sample)}
+                            </button>
+                          ) : (
+                            statusBadge(sample)
+                          )}
                           {(sample.attemptsCount ?? 0) > 1 && (
                             <span
                               className="badge badge-navy"

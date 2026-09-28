@@ -2104,6 +2104,13 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
    controlerondes. Staat hier en niet in de pagina, zodat beide jaren (2025 en
    2026) dezelfde stijl gebruiken. */
 
+.status-cel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .status-knop {
   display: inline-flex;
   align-items: center;
@@ -2155,6 +2162,9 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
 
 @media (max-width: 640px) {
   /* Op de telefoon is de status de hoofdknop bovenaan de kaart: volle breedte, 44px */
+  .table-kaarten td.kaart-status .status-cel {
+    width: 100%;
+  }
   .table-kaarten td.kaart-status .status-knop {
     width: 100%;
     min-height: 44px;
