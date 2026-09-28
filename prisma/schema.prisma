@@ -77,8 +77,64 @@ model SampleObject {
   updatedAt        DateTime @updatedAt
 
   samples          OilSample[]
+  stops            SamplePlanStop[]
 
   @@index([region])
+}
+
+// ============================================
+// PLANNING: DAGEN EN STOPS
+// ============================================
+// Een SamplePlan is een dag waarop je op pad gaat. De objecten die je die dag
+// bezoekt staan als SamplePlanStop in de gekozen volgorde. De route over de weg
+// (OSRM) wordt per dag bewaard: het traject, de afstand en, nieuw ten opzichte
+// van de controlerondes, ook de rijtijd. Bij storing van die dienst valt de
+// planning terug op rechte lijnen en blijft hij gewoon werken.
+
+model SamplePlan {
+  id            Int      @id @default(autoincrement())
+  date          DateTime            // de dag zelf (zonder tijd)
+  analysisYear  Int                 // 2025, 2026, ...
+  notes         String?
+  routeGeometry String?             // cache: rij-traject als GeoJSON-coords [[lng,lat],...]
+  routeDistance Float?              // cache: afstand in meters
+  routeDuration Float?              // cache: rijtijd in seconden
+  manualOrder   Boolean  @default(false)  // volgorde met de hand gezet; niet meer automatisch herschikken
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  stops         SamplePlanStop[]
+
+  @@unique([date, analysisYear])
+  @@index([analysisYear])
+}
+
+// Een object op een dag. `sampleIds` is een JSON-lijst met de monsters die je dat
+// bezoek meeneemt; leeg betekent: alle openstaande monsters van dit object. Zo kun
+// je een object met veel monsters over twee dagen splitsen en weet je in het veld
+// welke monsters bij welke dag horen. start- en eindtijd vullen zich in het
+// dagscherm, zodat de werkelijke tijd naast je inschatting komt te staan.
+
+model SamplePlanStop {
+  id             Int      @id @default(autoincrement())
+  planId         Int
+  objectId       Int
+  sampleIds      String?            // JSON: [12, 13, 14]; null of leeg = alles wat openstaat
+  orderIndex     Int      @default(0)
+  plannedMinutes Int?               // inschatting voor dit bezoek; leeg = die van het object
+  isDone         Boolean  @default(false)
+  doneAt         DateTime?
+  startedAt      DateTime?
+  endedAt        DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  plan           SamplePlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  object         SampleObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
+
+  @@index([planId])
+  @@index([objectId])
+  @@index([orderIndex])
 }
 
 // Per OilSample kunnen er meerdere monsternames (pogingen) zijn.
