@@ -9,7 +9,8 @@ import SampleAttemptsPanel from '@/app/components/SampleAttemptsPanel';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { objectTypeIcoon, objectTypeLabel } from '@/lib/sampleObjects';
-import { AppShell, Icon } from '@/app/components/ui';
+import { ANNULEER_REDENEN } from '@/lib/cancelReasons';
+import { AppShell, Modal, Icon } from '@/app/components/ui';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
 import { isOilViewer2025 } from '@/lib/roles';
 
@@ -34,6 +35,10 @@ interface OilSample {
   attemptsCount?: number;
   objectId?: number | null;
   object?: { id: number; name: string; objectType?: string | null } | null;
+  cancelReason?: string | null;
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+  cancelReasonInPdf?: boolean;
 }
 
 interface SampleObject {
@@ -67,6 +72,15 @@ export default function DashboardPage() {
   const [objecten, setObjecten] = useState<SampleObject[]>([]);
   const [objectenBeschikbaar, setObjectenBeschikbaar] = useState(false);
   const [objectFilter, setObjectFilter] = useState<string>('all');
+  // Annuleren met reden (los monster of alle monsters van een object)
+  const [annuleerDoel, setAnnuleerDoel] = useState<OilSample | null>(null);
+  const [annuleerBulk, setAnnuleerBulk] = useState(false);
+  const [annuleerReden, setAnnuleerReden] = useState(ANNULEER_REDENEN[0].waarde);
+  const [annuleerToelichting, setAnnuleerToelichting] = useState('');
+  const [annuleerInPdf, setAnnuleerInPdf] = useState(true);
+  const [annuleerBezig, setAnnuleerBezig] = useState(false);
+  const [annuleerFout, setAnnuleerFout] = useState('');
+
   const router = useRouter();
 
   // Form state
@@ -356,7 +370,7 @@ export default function DashboardPage() {
       className={`badge ${
         sample.isDisabled ? 'badge-gray' : sample.isTaken ? 'badge-success' : 'badge-danger'
       }`}
-      title={sample.isDisabled ? sample.remarks || 'Monster geannuleerd' : undefined}
+      title={sample.isDisabled ? sample.cancelReason || 'Monster geannuleerd' : undefined}
     >
       <Icon name={sample.isDisabled ? 'status-cancelled' : sample.isTaken ? 'status-taken' : 'status-not-taken'} size={16} />
       {sample.isDisabled ? 'Geannuleerd' : sample.isTaken ? 'Genomen' : 'Niet genomen'}
@@ -398,6 +412,78 @@ export default function DashboardPage() {
       setFoutmelding(`${sample.oNumber} is niet opgeslagen: geen verbinding met de server.`);
     } finally {
       setStatusBezig(null);
+    }
+  };
+
+  // ---- Annuleren ----
+  const openAnnuleren = (sample: OilSample) => {
+    setAnnuleerDoel(sample);
+    setAnnuleerBulk(false);
+    setAnnuleerReden(ANNULEER_REDENEN[0].waarde);
+    setAnnuleerToelichting('');
+    setAnnuleerInPdf(true);
+    setAnnuleerFout('');
+  };
+
+  const openBulkAnnuleren = () => {
+    setAnnuleerDoel(null);
+    setAnnuleerBulk(true);
+    setAnnuleerReden(ANNULEER_REDENEN[0].waarde);
+    setAnnuleerToelichting('');
+    setAnnuleerInPdf(true);
+    setAnnuleerFout('');
+  };
+
+  const sluitAnnuleren = () => {
+    setAnnuleerDoel(null);
+    setAnnuleerBulk(false);
+    setAnnuleerFout('');
+  };
+
+  const bevestigAnnuleren = async () => {
+    setAnnuleerBezig(true);
+    setAnnuleerFout('');
+    try {
+      const body = {
+        reason: annuleerReden,
+        toelichting: annuleerToelichting,
+        cancelReasonInPdf: annuleerInPdf,
+      };
+      const response = annuleerBulk
+        ? await fetch('/api/samples/cancel-bulk', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...body, objectId: parseInt(objectFilter), analysisYear: 2025 }),
+          })
+        : await fetch(`/api/samples/${annuleerDoel!.id}/cancel`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+      if (!response.ok) {
+        setAnnuleerFout(await foutTekst(response, 'Het annuleren is niet gelukt.'));
+        return;
+      }
+      sluitAnnuleren();
+      await loadSamples();
+    } catch (error) {
+      setAnnuleerFout(GEEN_VERBINDING);
+    } finally {
+      setAnnuleerBezig(false);
+    }
+  };
+
+  const draaiAnnuleringTerug = async (sample: OilSample) => {
+    try {
+      const response = await fetch(`/api/samples/${sample.id}/uncancel`, { method: 'PATCH' });
+      if (!response.ok) {
+        setFoutmelding(await foutTekst(response, `De annulering van ${sample.oNumber} is niet teruggedraaid.`));
+        return;
+      }
+      setFoutmelding('');
+      await loadSamples();
+    } catch (error) {
+      setFoutmelding(GEEN_VERBINDING);
     }
   };
 
@@ -479,6 +565,8 @@ export default function DashboardPage() {
   const filterActief = statusFilter !== 'all' || objectFilter !== 'all' || search.trim() !== '';
   // Kolommen: de zichtbare kolommen plus Foto, plus Acties voor een admin.
   const kolomAantal = visibleColumns.length + 1 + (objectenBeschikbaar ? 1 : 0) + (isAdmin ? 1 : 0);
+  const objectNaamVanFilter =
+    objecten.find((o) => String(o.id) === objectFilter)?.name ?? 'dit object';
   const aantalGenomen = samples.filter((s) => s.isTaken && !s.isDisabled).length;
   const aantalGeannuleerd = samples.filter((s) => s.isDisabled).length;
 
@@ -581,6 +669,15 @@ export default function DashboardPage() {
                   <option key={o.id} value={String(o.id)}>{o.name}</option>
                 ))}
               </select>
+            </div>
+          )}
+
+          {isAdmin && objectenBeschikbaar && objectFilter !== 'all' && objectFilter !== 'geen' && (
+            <div className="filter-veld">
+              <button type="button" className="btn btn-sm" onClick={openBulkAnnuleren}>
+                <Icon name="status-cancelled" size={16} />
+                Alle monsters van dit object annuleren
+              </button>
             </div>
           )}
 
@@ -754,6 +851,9 @@ export default function DashboardPage() {
                           ) : (
                             statusBadge(sample)
                           )}
+                          {sample.isDisabled && sample.cancelReason && (
+                            <span className="annuleer-reden">{sample.cancelReason}</span>
+                          )}
                           {(sample.attemptsCount ?? 0) > 1 && (
                             <span
                               className="badge badge-navy"
@@ -843,6 +943,27 @@ export default function DashboardPage() {
                     </td>
                     {isAdmin && (
                       <td data-label="Acties" className="kaart-acties" style={{ whiteSpace: 'nowrap' }}>
+                        {sample.isDisabled ? (
+                          <button
+                            type="button"
+                            onClick={() => draaiAnnuleringTerug(sample)}
+                            className="btn btn-sm sm:mr-2.5"
+                            title="Annulering terugdraaien"
+                          >
+                            <Icon name="reset" size={16} />
+                            Terugdraaien
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openAnnuleren(sample)}
+                            className="btn btn-sm sm:mr-2.5"
+                            title="Monster annuleren met een reden"
+                          >
+                            <Icon name="status-cancelled" size={16} />
+                            Annuleren
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => handleAddAttempt(sample)}
@@ -1060,6 +1181,72 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+
+      {/* Annuleren met reden */}
+      <Modal
+        open={annuleerDoel !== null || annuleerBulk}
+        onClose={sluitAnnuleren}
+        title={
+          annuleerBulk
+            ? `Alle monsters van ${objectNaamVanFilter} annuleren`
+            : `${annuleerDoel?.oNumber ?? ''} annuleren`
+        }
+        footer={
+          <>
+            <button type="button" className="btn" onClick={sluitAnnuleren}>Terug</button>
+            <button type="button" className="btn btn-danger" onClick={bevestigAnnuleren} disabled={annuleerBezig}>
+              <Icon name="status-cancelled" size={16} />
+              {annuleerBezig ? 'Bezig...' : 'Annuleren bevestigen'}
+            </button>
+          </>
+        }
+      >
+        <p style={{ marginTop: 0, marginBottom: '14px' }}>
+          {annuleerBulk
+            ? `Alle nog niet genomen monsters van ${objectNaamVanFilter} krijgen deze reden. Al genomen monsters blijven staan.`
+            : 'Het monster blijft in de lijst staan, telt niet mee in de planning en je kunt dit terugdraaien.'}
+        </p>
+
+        <div className="veld">
+          <label className="label" htmlFor="annuleer-reden">Reden</label>
+          <select
+            id="annuleer-reden"
+            className="select"
+            value={annuleerReden}
+            onChange={(e) => setAnnuleerReden(e.target.value)}
+          >
+            {ANNULEER_REDENEN.map((r) => (
+              <option key={r.waarde} value={r.waarde}>{r.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="veld">
+          <label className="label" htmlFor="annuleer-toelichting">
+            Toelichting {ANNULEER_REDENEN.find((r) => r.waarde === annuleerReden)?.toelichtingNodig ? '' : '(optioneel)'}
+          </label>
+          <textarea
+            id="annuleer-toelichting"
+            className="textarea"
+            rows={2}
+            value={annuleerToelichting}
+            onChange={(e) => setAnnuleerToelichting(e.target.value)}
+          />
+        </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--navy)' }}>
+          <input
+            type="checkbox"
+            checked={annuleerInPdf}
+            onChange={(e) => setAnnuleerInPdf(e.target.checked)}
+            style={{ width: '18px', height: '18px' }}
+          />
+          Reden ook in de PDF voor de klant
+        </label>
+
+        {annuleerFout && <div className="alert alert-danger" style={{ marginTop: '12px' }}>{annuleerFout}</div>}
+      </Modal>
 
       {/* Foto */}
       {selectedPhoto && (

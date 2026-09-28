@@ -32,6 +32,13 @@ model OilSample {
   isDisabled   Boolean  @default(false)  // monster is geannuleerd/niet nodig (grijze status)
   photoUrl     String?           // cache: foto van de meest recente poging
   objectId     Int?              // object waar dit monster bij hoort (planning); location blijft bestaan
+  // Annuleren met reden. Deze velden blijven buiten de synchronisatie met de
+  // pogingen (lib/sampleAttempts.ts), anders worden ze overschreven zodra er
+  // een hermonstering bijkomt. Vroeger stond de reden in `remarks` en verdween hij daar stilletjes.
+  cancelReason      String?          // reden uit de vaste lijst, of de toelichting bij "anders"
+  cancelledAt       DateTime?        // wanneer geannuleerd
+  cancelledBy       String?          // gebruikersnaam
+  cancelReasonInPdf Boolean @default(true)  // reden meenemen in de PDF voor de klant
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

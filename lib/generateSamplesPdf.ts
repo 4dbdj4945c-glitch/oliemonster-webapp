@@ -11,6 +11,9 @@ export interface PdfSample {
   remarks?: string | null;
   isTaken: boolean;
   isDisabled?: boolean;
+  /** Reden van annulering; komt onder de status te staan als het mag van cancelReasonInPdf */
+  cancelReason?: string | null;
+  cancelReasonInPdf?: boolean;
 }
 
 // Huisstijl It's Done Services / IDS Portal
@@ -28,7 +31,13 @@ function formatDate(value: string | null): string {
 }
 
 function statusLabel(s: PdfSample): string {
-  if (s.isDisabled) return 'Geannuleerd';
+  if (s.isDisabled) {
+    // De reden erbij, tenzij die voor intern gebruik is.
+    if (s.cancelReasonInPdf !== false && s.cancelReason) {
+      return `Geannuleerd\n${s.cancelReason}`;
+    }
+    return 'Geannuleerd';
+  }
   return s.isTaken ? 'Genomen' : 'Niet genomen';
 }
 
@@ -147,7 +156,7 @@ export async function generateSamplesPdf(samples: PdfSample[], year: number): Pr
     },
     alternateRowStyles: { fillColor: [244, 246, 248] },
     columnStyles: {
-      0: { cellWidth: 28 },
+      0: { cellWidth: 34 },
       1: { cellWidth: 28, fontStyle: 'bold' },
       2: { cellWidth: 28 },
       3: { cellWidth: 55 },

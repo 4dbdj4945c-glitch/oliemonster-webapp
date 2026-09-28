@@ -2158,6 +2158,17 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   background: transparent;
 }
 
+/* Reden van een annulering, onder de statusbadge in de rij */
+.annuleer-reden {
+  display: block;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--grijs-700);
+  white-space: normal;
+  text-align: left;
+}
+
 /* Foutmelding boven een lijst: melding links, knop Opnieuw proberen rechts */
 .laadfout {
   display: flex;

@@ -60,7 +60,15 @@ export async function GET(request: NextRequest) {
         orderBy: { sampleDate: 'desc' },
         select: { ...SAMPLE_BASIS_SELECT, _count: { select: { attempts: true } } },
       });
-      samples = oud.map((s) => ({ ...s, objectId: null, object: null }));
+      samples = oud.map((s) => ({
+        ...s,
+        objectId: null,
+        object: null,
+        cancelReason: null,
+        cancelledAt: null,
+        cancelledBy: null,
+        cancelReasonInPdf: true,
+      }));
     }
 
     // Exposeer attemptsCount als top-level veld voor de UI.
