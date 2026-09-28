@@ -172,7 +172,7 @@ export default function PrintCalculatorPage() {
           position: absolute;
           right: 11px;
           font-size: 12px;
-          color: var(--grijs-400);
+          color: var(--grijs-500);
           pointer-events: none;
         }
         .actions { display: flex; justify-content: flex-end; margin-top: 8px; }
@@ -253,15 +253,15 @@ export default function PrintCalculatorPage() {
 
         {/* ---- Resultaat ---- */}
         <div className="results">
-          <div className="stat-card stat-hoofd">
-            <div className="stat-value" style={{ color: 'var(--oranje)', fontSize: '36px' }}>{eur(kostprijsStuk)}</div>
+          <div className="stat-card stat-hoofd stat-accent">
+            <div className="stat-value" style={{ fontSize: '36px' }}>{eur(kostprijsStuk)}</div>
             <div className="stat-label">Kostprijs per stuk</div>
             <div className="stat-sub">bij {batch} stuks per plaat &middot; {eur(totaalBatch)} per plaat</div>
           </div>
 
           <div className="stats">
-            <div className="stat-card">
-              <div className="stat-value" style={{ color: 'var(--oranje)' }}>{eur(verkoopStuk)}</div>
+            <div className="stat-card stat-accent">
+              <div className="stat-value">{eur(verkoopStuk)}</div>
               <div className="stat-label">Adviesverkoop</div>
             </div>
             <div className="stat-card">

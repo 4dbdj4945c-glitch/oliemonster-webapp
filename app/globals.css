@@ -28,6 +28,8 @@
   --groen: #16A34A;
   --groen-light: #ECFDF3;
   --groen-tekst: #15803D;
+  /* Tekst op een gevuld groen vlak: wit op --groen haalt 3,30:1, op --groen-diep 5,02:1 */
+  --groen-diep: #15803D;
   --rood: #DC2626;
   --rood-light: #FEF2F2;
   --rood-tekst: #B91C1C;
@@ -555,7 +557,7 @@ button, input, select, textarea {
 .glass-textarea::placeholder,
 .input::placeholder,
 .textarea::placeholder {
-  color: var(--grijs-400);
+  color: var(--grijs-500);
 }
 
 .glass-input:focus,
@@ -706,14 +708,14 @@ input[type="range"] {
 }
 
 .btn-success {
-  background: var(--groen);
-  border-color: var(--groen);
+  background: var(--groen-diep);
+  border-color: var(--groen-diep);
   color: #fff;
 }
 
 .btn-success:hover:not(:disabled) {
-  background: #15803D;
-  border-color: #15803D;
+  background: #166534;
+  border-color: #166534;
 }
 
 .btn-ghost {
@@ -855,7 +857,7 @@ input[type="range"] {
 
 .page-subtitle {
   font-size: 14px;
-  color: var(--grijs-500);
+  color: var(--grijs-700);
   margin: 0 0 28px 0;
   line-height: 1.6;
 }
@@ -885,7 +887,7 @@ input[type="range"] {
 
 .text-tertiary,
 .glass-text-tertiary {
-  color: var(--grijs-400);
+  color: var(--grijs-500);
 }
 
 .leeg {
@@ -970,7 +972,7 @@ input[type="range"] {
 
 .badge-gray {
   background: var(--grijs-100);
-  color: var(--grijs-500);
+  color: var(--grijs-700);
   border-color: var(--grijs-200);
 }
 
@@ -1670,12 +1672,18 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   left: 12px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--grijs-400);
+  color: var(--grijs-500);
   pointer-events: none;
 }
 .zoekveld > .input {
   padding-left: 38px;
   width: 100%;
+}
+
+/* Statistiektegel met een oranje streep links: het getal blijft navy (oranje tekst
+   op wit haalt maar 2,80:1), het accent zit in het vlak. */
+.stat-accent {
+  border-left: 4px solid var(--oranje);
 }
 
 /* Statistiektegel met icoon rechtsboven */
@@ -1714,7 +1722,7 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
 .icon-leeg {
   display: block;
   margin: 0 auto 10px;
-  color: var(--grijs-400);
+  color: var(--grijs-500);
 }
 
 /* Verwijderen als losse icoonknop in een tabelrij: rood in rust (elders blijft .icon-btn-danger grijs met rood bij hover) */

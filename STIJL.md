@@ -25,9 +25,35 @@ en zet geen eigen kleuren, schaduwen of afrondingen in pagina's.
 | `--grijs-500` | #64748B | labels, secundaire tekst |
 | `--grijs-700` | #334155 | lopende tekst in lange stukken |
 | `--groen` / `--rood` | #16A34A / #DC2626 | status, gevaar |
+| `--groen-diep` | #15803D | gevulde groene knop (wit erop haalt 5,02:1, op `--groen` maar 3,30:1) |
 
 Oude tokennamen (`--accent`, `--text-secondary`, `--danger`, ...) bestaan nog en wijzen
 naar deze kleuren. `--accent` is blauw, `--primary` is oranje.
+
+## Contrast
+
+De regel: lopende tekst, labels, badges en getallen minimaal 4,5:1, iconen en grote
+koppen minimaal 3:1. Oranje blijft het accent, maar draagt geen tekst: zet er navy op,
+of gebruik oranje als streep of vlak naast navy tekst (`.stat-accent`).
+
+Doorgerekend op 28 september 2026, alle combinaties uit `globals.css`:
+
+| Combinatie | Ratio |
+|---|---|
+| navy op wit, op `--grijs-50`, op `--grijs-100` | 17,21 / 16,45 / 15,71:1 |
+| navy op `--oranje` (`.btn-primary`, avatar) | 6,14:1 |
+| navy op `--oranje-hover` | 5,42:1 |
+| wit op `--blue` / `--rood` / `--groen-diep` / navy | 6,70 / 4,83 / 5,02 / 17,21:1 |
+| `--grijs-500` op wit en op `--grijs-50` (labels, hints, placeholders, iconen) | 4,76 / 4,55:1 |
+| `--grijs-700` op `--grijs-100` (`.page-subtitle`, `.badge-gray`) | 9,45:1 |
+| `--blue` op wit / `--blue-light` | 6,70 / 6,08:1 |
+| `--groen-tekst` op `--groen-light`, `--rood-tekst` op `--rood-light` | 4,76 / 5,91:1 |
+| `--geel-tekst` op `--oranje-light`, paars op paars-light | 4,64 / 6,33:1 |
+
+Wat niet haalt en bewust zo blijft: de randen `--grijs-200` (1,23:1) en `--grijs-300`
+(1,48:1). Die halen de 3:1 van WCAG 1.4.11 niet. Ze donkerder maken raakt elke kaart,
+tabelregel en veld in de portal, dus dat is een eigen besluit en geen los foutje.
+`--grijs-400` is daarom alleen nog een randkleur, niet voor tekst of iconen.
 
 ## Vorm
 
