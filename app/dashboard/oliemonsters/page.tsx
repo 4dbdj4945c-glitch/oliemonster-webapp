@@ -447,7 +447,9 @@ export default function DashboardPage() {
     >
       <h1 className="page-title">Oliemonsters 2025</h1>
       <p className="page-subtitle">
-        {samples.length === 0
+        {foutmelding && samples.length === 0
+          ? 'De lijst kon niet worden opgehaald.'
+          : samples.length === 0
           ? 'Nog geen monsters in dit jaar.'
           : `${aantalGenomen} van de ${samples.length} monsters genomen${
               aantalGeannuleerd ? `, ${aantalGeannuleerd} geannuleerd` : ''
