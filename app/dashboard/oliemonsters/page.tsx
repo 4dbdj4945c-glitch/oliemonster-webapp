@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import PhotoModal from '@/app/components/PhotoModal';
+import PhotoModal, { type FotoInVenster } from '@/app/components/PhotoModal';
+import MonsterNemenModal, { type NeemDoel } from '@/app/components/MonsterNemenModal';
+import OnbereikbaarModal, { type OnbereikbaarDoel } from '@/app/components/OnbereikbaarModal';
 import HelpModal from '@/app/components/HelpModal';
 import Tooltip from '@/app/components/Tooltip';
 import SampleAttemptsPanel from '@/app/components/SampleAttemptsPanel';
@@ -10,6 +12,15 @@ import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { objectTypeIcoon, objectTypeLabel } from '@/lib/sampleObjects';
 import { ANNULEER_REDENEN } from '@/lib/cancelReasons';
+import { FOTO_SOORTEN, type FotoSoort } from '@/lib/samplePhotos';
+import {
+  sampleStatus,
+  telStatussen,
+  STATUS_BADGE,
+  STATUS_ICOON,
+  STATUS_LABELS,
+  type SampleStatus,
+} from '@/lib/sampleStatus';
 import PlanningPaneel from '@/app/components/PlanningPaneel';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
@@ -42,6 +53,15 @@ interface OilSample {
   cancelledAt?: string | null;
   cancelledBy?: string | null;
   cancelReasonInPdf?: boolean;
+  /** Foto van het onderdeel waar het monster vandaan komt; photoUrl is het potje */
+  partPhotoUrl?: string | null;
+  /** Niet bereikbaar: blijft openstaan en telt mee in de planning */
+  isUnreachable?: boolean;
+  unreachableReason?: string | null;
+  unreachableNote?: string | null;
+  unreachablePhotoUrl?: string | null;
+  unreachableAt?: string | null;
+  unreachableBy?: string | null;
 }
 
 interface SampleObject {
@@ -58,11 +78,14 @@ export default function DashboardPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingSample, setEditingSample] = useState<OilSample | null>(null);
   const [visibleColumns, setVisibleColumns] = useState<string[]>(['status', 'oNumber', 'sampleDate', 'location', 'description', 'oilType']);
-  const [selectedPhoto, setSelectedPhoto] = useState<{ url: string; oNumber: string } | null>(null);
-  const [uploadingPhoto, setUploadingPhoto] = useState<number | null>(null);
+  // Het fotovenster kan meer dan één foto tonen: het onderdeel, het potje en het
+  // bewijs van Niet bereikbaar.
+  const [selectedPhoto, setSelectedPhoto] = useState<{ fotos: FotoInVenster[]; oNumber: string; start: number } | null>(null);
+  // Welke foto staat nu te uploaden: "monsterId-soort", want er zijn er twee per monster.
+  const [uploadingPhoto, setUploadingPhoto] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'oNumber' | 'sampleDate' | 'location' | 'newest'>('newest');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'taken' | 'notTaken' | 'cancelled'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | SampleStatus>('all');
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [generatingPdf, setGeneratingPdf] = useState(false);
   // Melding boven de lijst als ophalen of bijwerken mislukt. Zonder deze melding
@@ -87,6 +110,11 @@ export default function DashboardPage() {
   const [annuleerFout, setAnnuleerFout] = useState('');
   // Bevestiging na een actie, bijvoorbeeld hoeveel monsters er geannuleerd zijn
   const [melding, setMelding] = useState('');
+  // Monster nemen: het volledige invulscherm in één keer (datum, type olie,
+  // opmerking, beide foto's en de knop Niet bereikbaar).
+  const [neemDoel, setNeemDoel] = useState<NeemDoel | null>(null);
+  // Niet bereikbaar: de reden van een monster dat al onbereikbaar was aanpassen.
+  const [onbereikbaarDoel, setOnbereikbaarDoel] = useState<OnbereikbaarDoel | null>(null);
 
   const router = useRouter();
 
@@ -212,9 +240,7 @@ export default function DashboardPage() {
 
   const getFilteredSamples = () => {
     let lijst = samples;
-    if (statusFilter === 'taken') lijst = lijst.filter(s => s.isTaken && !s.isDisabled);
-    else if (statusFilter === 'notTaken') lijst = lijst.filter(s => !s.isTaken && !s.isDisabled);
-    else if (statusFilter === 'cancelled') lijst = lijst.filter(s => s.isDisabled);
+    if (statusFilter !== 'all') lijst = lijst.filter((s) => sampleStatus(s) === statusFilter);
     if (objectFilter === 'geen') lijst = lijst.filter(s => !s.objectId);
     else if (objectFilter !== 'all') lijst = lijst.filter(s => String(s.objectId ?? '') === objectFilter);
     return lijst;
@@ -378,18 +404,42 @@ export default function DashboardPage() {
     }
   };
 
-  // Statusbadge: altijd icoon plus woord (zie STIJL.md).
-  const statusBadge = (sample: OilSample) => (
-    <span
-      className={`badge ${
-        sample.isDisabled ? 'badge-gray' : sample.isTaken ? 'badge-success' : 'badge-danger'
-      }`}
-      title={sample.isDisabled ? sample.cancelReason || 'Monster geannuleerd' : undefined}
-    >
-      <Icon name={sample.isDisabled ? 'status-cancelled' : sample.isTaken ? 'status-taken' : 'status-not-taken'} size={16} />
-      {sample.isDisabled ? 'Geannuleerd' : sample.isTaken ? 'Genomen' : 'Niet genomen'}
-    </span>
-  );
+  // Statusbadge: altijd icoon plus woord (zie STIJL.md). Vier statussen, uit
+  // lib/sampleStatus.ts, zodat de lijst, de tellingen en de PDF hetzelfde zeggen.
+  const statusBadge = (sample: OilSample) => {
+    const status = sampleStatus(sample);
+    const uitleg =
+      status === 'geannuleerd'
+        ? sample.cancelReason || 'Monster geannuleerd'
+        : status === 'niet-bereikbaar'
+        ? sample.unreachableReason || 'De locatie was niet te bereiken'
+        : undefined;
+    return (
+      <span className={`badge ${STATUS_BADGE[status]}`} title={uitleg}>
+        <Icon name={STATUS_ICOON[status]} size={16} />
+        {STATUS_LABELS[status]}
+      </span>
+    );
+  };
+
+  // Alle foto's van een monster, in vaste volgorde: eerst het onderdeel, dan het
+  // potje, en als laatste het bewijs dat de locatie niet te bereiken was.
+  const fotosVan = (sample: OilSample): FotoInVenster[] => {
+    const lijst: FotoInVenster[] = [];
+    if (sample.partPhotoUrl) lijst.push({ url: sample.partPhotoUrl, label: 'Foto onderdeel' });
+    if (sample.photoUrl) lijst.push({ url: sample.photoUrl, label: 'Foto potje' });
+    if (sample.unreachablePhotoUrl) {
+      lijst.push({ url: sample.unreachablePhotoUrl, label: 'Foto niet bereikbaar' });
+    }
+    return lijst;
+  };
+
+  // Opent het fotovenster op de aangetikte foto; de andere staan er als tab naast.
+  const openFoto = (sample: OilSample, url: string) => {
+    const fotos = fotosVan(sample);
+    const start = fotos.findIndex((f) => f.url === url);
+    setSelectedPhoto({ fotos, oNumber: sample.oNumber, start: start < 0 ? 0 : start });
+  };
 
   // Eén tik op de status: meteen omzetten in het scherm, en terugdraaien met een
   // melding als de server het niet aanneemt.
@@ -533,27 +583,57 @@ export default function DashboardPage() {
     }
   };
 
-  const handlePhotoUpload = async (sampleId: number, file: File) => {
-    setUploadingPhoto(sampleId);
+  // Een monster heeft twee foto's, dus de soort gaat mee: "onderdeel" of "potje".
+  const handlePhotoUpload = async (sampleId: number, file: File, soort: FotoSoort) => {
+    setUploadingPhoto(`${sampleId}-${soort}`);
     try {
       const formData = new FormData();
       formData.append('photo', file);
+      formData.append('soort', soort);
 
       const response = await fetch(`/api/samples/${sampleId}/photo`, {
         method: 'POST',
         body: formData,
       });
 
-      if (response.ok) {
-        loadSamples();
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Fout bij uploaden van foto');
+      if (!response.ok) {
+        setFoutmelding(await foutTekst(response, 'De foto kon niet worden opgeslagen.'));
+        return;
       }
+      setFoutmelding('');
+      loadSamples();
     } catch (error) {
-      alert('Fout bij uploaden van foto');
+      setFoutmelding(GEEN_VERBINDING);
     } finally {
       setUploadingPhoto(null);
+    }
+  };
+
+  // ---- Monster nemen en Niet bereikbaar ----
+
+  // Na het opslaan: melding tonen, venster sluiten en de lijst verversen.
+  const naVeldwerk = async (tekst: string) => {
+    setNeemDoel(null);
+    setOnbereikbaarDoel(null);
+    setMelding(tekst);
+    await loadSamples();
+  };
+
+  // Draait Niet bereikbaar terug: het monster is weer gewoon niet genomen.
+  const weerBereikbaar = async (sample: OilSample) => {
+    try {
+      const response = await fetch(`/api/samples/${sample.id}/unreachable`, { method: 'DELETE' });
+      if (!response.ok) {
+        setFoutmelding(
+          await foutTekst(response, `${sample.oNumber} staat nog steeds als niet bereikbaar.`)
+        );
+        return;
+      }
+      setFoutmelding('');
+      setMelding(`${sample.oNumber} staat weer op niet genomen.`);
+      await loadSamples();
+    } catch (error) {
+      setFoutmelding(GEEN_VERBINDING);
     }
   };
 
@@ -593,8 +673,8 @@ export default function DashboardPage() {
   const magPlannen = objectenBeschikbaar && !isAlleenLezen(user?.role);
   const objectNaamVanFilter =
     objecten.find((o) => String(o.id) === objectFilter)?.name ?? 'dit object';
-  const aantalGenomen = samples.filter((s) => s.isTaken && !s.isDisabled).length;
-  const aantalGeannuleerd = samples.filter((s) => s.isDisabled).length;
+  // Alle vier de statussen in één keer geteld (lib/sampleStatus.ts).
+  const totalen = telStatussen(samples);
 
   const wisFilter = () => {
     setStatusFilter('all');
@@ -616,9 +696,9 @@ export default function DashboardPage() {
           ? 'De lijst kon niet worden opgehaald.'
           : samples.length === 0
           ? 'Nog geen monsters in dit jaar.'
-          : `${aantalGenomen} van de ${samples.length} monsters genomen${
-              aantalGeannuleerd ? `, ${aantalGeannuleerd} geannuleerd` : ''
-            }.`}
+          : `${totalen.genomen} van de ${samples.length} monsters genomen${
+              totalen['niet-bereikbaar'] ? `, ${totalen['niet-bereikbaar']} niet bereikbaar` : ''
+            }${totalen.geannuleerd ? `, ${totalen.geannuleerd} geannuleerd` : ''}.`}
       </p>
 
       {/* Ophalen of bijwerken mislukt */}
@@ -706,13 +786,14 @@ export default function DashboardPage() {
             <label className="label filter-label">Status:</label>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as any)}
+              onChange={(e) => setStatusFilter(e.target.value as 'all' | SampleStatus)}
               className="select filter-select"
             >
               <option value="all">Alle monsters</option>
-              <option value="taken">Genomen</option>
-              <option value="notTaken">Niet genomen</option>
-              <option value="cancelled">Geannuleerd</option>
+              <option value="genomen">Genomen</option>
+              <option value="niet-genomen">Niet genomen</option>
+              <option value="niet-bereikbaar">Niet bereikbaar</option>
+              <option value="geannuleerd">Geannuleerd</option>
             </select>
           </div>
 
@@ -773,8 +854,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Statistieken */}
-      <div className="stats-grid mb-6">
+      {/* Statistieken: totaal plus de vier statussen. Een tik erop filtert. */}
+      <div className="stats-grid stats-grid-vijf mb-6">
         <div
           className="stat-card stat-card-icoon"
           onClick={() => setStatusFilter('all')}
@@ -790,50 +871,58 @@ export default function DashboardPage() {
         </div>
         <div
           className="stat-card stat-card-icoon is-genomen"
-          onClick={() => setStatusFilter('taken')}
+          onClick={() => setStatusFilter('genomen')}
           style={{
             cursor: 'pointer',
             borderLeft: '4px solid var(--groen)',
-            borderColor: statusFilter === 'taken' ? 'var(--groen)' : undefined,
-            boxShadow: statusFilter === 'taken' ? '0 0 0 3px var(--groen-light)' : undefined,
+            borderColor: statusFilter === 'genomen' ? 'var(--groen)' : undefined,
+            boxShadow: statusFilter === 'genomen' ? '0 0 0 3px var(--groen-light)' : undefined,
           }}
         >
           <Icon name="status-taken" />
-          <p className="stat-value" style={{ color: 'var(--groen-tekst)' }}>
-            {samples.filter(s => s.isTaken && !s.isDisabled).length}
-          </p>
+          <p className="stat-value" style={{ color: 'var(--groen-tekst)' }}>{totalen.genomen}</p>
           <p className="stat-label">Genomen</p>
         </div>
         <div
           className="stat-card stat-card-icoon is-niet-genomen"
-          onClick={() => setStatusFilter('notTaken')}
+          onClick={() => setStatusFilter('niet-genomen')}
           style={{
             cursor: 'pointer',
             borderLeft: '4px solid var(--rood)',
-            borderColor: statusFilter === 'notTaken' ? 'var(--rood)' : undefined,
-            boxShadow: statusFilter === 'notTaken' ? '0 0 0 3px var(--rood-light)' : undefined,
+            borderColor: statusFilter === 'niet-genomen' ? 'var(--rood)' : undefined,
+            boxShadow: statusFilter === 'niet-genomen' ? '0 0 0 3px var(--rood-light)' : undefined,
           }}
         >
           <Icon name="status-not-taken" />
-          <p className="stat-value" style={{ color: 'var(--rood-tekst)' }}>
-            {samples.filter(s => !s.isTaken && !s.isDisabled).length}
-          </p>
+          <p className="stat-value" style={{ color: 'var(--rood-tekst)' }}>{totalen['niet-genomen']}</p>
           <p className="stat-label">Niet genomen</p>
         </div>
         <div
           className="stat-card stat-card-icoon"
-          onClick={() => setStatusFilter('cancelled')}
+          onClick={() => setStatusFilter('niet-bereikbaar')}
+          style={{
+            cursor: 'pointer',
+            borderLeft: '4px solid var(--oranje)',
+            borderColor: statusFilter === 'niet-bereikbaar' ? 'var(--oranje)' : undefined,
+            boxShadow: statusFilter === 'niet-bereikbaar' ? '0 0 0 3px var(--oranje-light)' : undefined,
+          }}
+        >
+          <Icon name="alert-warning" />
+          <p className="stat-value" style={{ color: 'var(--geel-tekst)' }}>{totalen['niet-bereikbaar']}</p>
+          <p className="stat-label">Niet bereikbaar</p>
+        </div>
+        <div
+          className="stat-card stat-card-icoon"
+          onClick={() => setStatusFilter('geannuleerd')}
           style={{
             cursor: 'pointer',
             borderLeft: '4px solid var(--grijs-400)',
-            borderColor: statusFilter === 'cancelled' ? 'var(--grijs-400)' : undefined,
-            boxShadow: statusFilter === 'cancelled' ? '0 0 0 3px var(--grijs-200)' : undefined,
+            borderColor: statusFilter === 'geannuleerd' ? 'var(--grijs-400)' : undefined,
+            boxShadow: statusFilter === 'geannuleerd' ? '0 0 0 3px var(--grijs-200)' : undefined,
           }}
         >
           <Icon name="status-cancelled" />
-          <p className="stat-value" style={{ color: 'var(--grijs-500)' }}>
-            {samples.filter(s => s.isDisabled).length}
-          </p>
+          <p className="stat-value" style={{ color: 'var(--grijs-500)' }}>{totalen.geannuleerd}</p>
           <p className="stat-label">Geannuleerd</p>
         </div>
       </div>
@@ -916,6 +1005,16 @@ export default function DashboardPage() {
                           {sample.isDisabled && sample.cancelReason && (
                             <span className="annuleer-reden">{sample.cancelReason}</span>
                           )}
+                          {!sample.isDisabled && !sample.isTaken && sample.isUnreachable && (
+                            <>
+                              {sample.unreachableReason && (
+                                <span className="onbereikbaar-reden">{sample.unreachableReason}</span>
+                              )}
+                              {sample.unreachableNote && (
+                                <span className="onbereikbaar-omschrijving">{sample.unreachableNote}</span>
+                              )}
+                            </>
+                          )}
                           {(sample.attemptsCount ?? 0) > 1 && (
                             <span
                               className="badge badge-navy"
@@ -974,37 +1073,102 @@ export default function DashboardPage() {
                         {sample.remarks || '-'}
                       </td>
                     )}
-                    <td data-label="Foto" style={{ whiteSpace: 'nowrap' }}>
-                      {sample.photoUrl ? (
-                        <button
-                          type="button"
-                          onClick={() => setSelectedPhoto({ url: sample.photoUrl!, oNumber: sample.oNumber })}
-                          className="btn-link"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}
-                        >
-                          <Icon name="camera" size={16} />
-                          Bekijk foto
-                        </button>
-                      ) : isAdmin ? (
-                        <label className="btn-link" style={{ color: 'var(--grijs-500)' }}>
-                          {uploadingPhoto === sample.id ? 'Uploaden...' : <><Icon name="image-upload" size={16} />Upload foto</>}
-                          <input
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            disabled={uploadingPhoto === sample.id}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handlePhotoUpload(sample.id, file);
-                            }}
-                          />
-                        </label>
-                      ) : (
-                        <span className="text-tertiary">Geen foto</span>
-                      )}
+                    <td data-label="Foto">
+                      {/* Twee foto's per monster: het onderdeel en het potje. Plus,
+                          als het er is, het bewijs dat de locatie niet te bereiken was. */}
+                      <span className="foto-cel">
+                        {FOTO_SOORTEN.map((soort) => {
+                          const url = soort.veld === 'photoUrl' ? sample.photoUrl : sample.partPhotoUrl;
+                          const bezig = uploadingPhoto === `${sample.id}-${soort.soort}`;
+                          if (url) {
+                            return (
+                              <button
+                                key={soort.soort}
+                                type="button"
+                                onClick={() => openFoto(sample, url)}
+                                className="btn-link"
+                                title={`${soort.label} van ${sample.oNumber} bekijken`}
+                              >
+                                <Icon name={soort.icoon} size={16} />
+                                {soort.label}
+                              </button>
+                            );
+                          }
+                          if (!isAdmin) {
+                            return (
+                              <span key={soort.soort} className="text-tertiary" style={{ fontSize: '13px' }}>
+                                Geen {soort.label.toLowerCase()}
+                              </span>
+                            );
+                          }
+                          return (
+                            <label key={soort.soort} className="btn-link" style={{ color: 'var(--grijs-500)' }}>
+                              {bezig ? 'Uploaden...' : <><Icon name="image-upload" size={16} />{soort.knop}</>}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                disabled={bezig}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handlePhotoUpload(sample.id, file, soort.soort);
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                          );
+                        })}
+                        {sample.unreachablePhotoUrl && (
+                          <button
+                            type="button"
+                            onClick={() => openFoto(sample, sample.unreachablePhotoUrl!)}
+                            className="btn-link"
+                            title={`Foto van de situatie bij ${sample.oNumber}`}
+                          >
+                            <Icon name="alert-warning" size={16} />
+                            Foto niet bereikbaar
+                          </button>
+                        )}
+                      </span>
                     </td>
                     {isAdmin && (
                       <td data-label="Acties" className="kaart-acties" style={{ whiteSpace: 'nowrap' }}>
+                        {/* Monster nemen: het volledige invulscherm in één keer.
+                            Alleen zolang het monster nog open staat. */}
+                        {!sample.isDisabled && !sample.isTaken && (
+                          <button
+                            type="button"
+                            onClick={() => setNeemDoel(sample)}
+                            className="btn btn-primary btn-sm sm:mr-2.5"
+                            title={`${sample.oNumber} nemen: datum, type olie, opmerking en beide foto's in één keer`}
+                          >
+                            <Icon name="oil-sample" size={16} />
+                            Monster nemen
+                          </button>
+                        )}
+                        {/* Al als niet bereikbaar vastgelegd: reden bijstellen of terugdraaien */}
+                        {!sample.isDisabled && !sample.isTaken && sample.isUnreachable && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setOnbereikbaarDoel(sample)}
+                              className="btn btn-sm sm:mr-2.5"
+                              title="Reden of omschrijving van Niet bereikbaar aanpassen"
+                            >
+                              <Icon name="pencil" size={16} />
+                              Reden aanpassen
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => weerBereikbaar(sample)}
+                              className="btn btn-sm sm:mr-2.5"
+                              title="Niet bereikbaar terugdraaien; het monster staat dan weer op niet genomen"
+                            >
+                              <Icon name="reset" size={16} />
+                              Weer bereikbaar
+                            </button>
+                          </>
+                        )}
                         {sample.isDisabled ? (
                           <button
                             type="button"
@@ -1215,7 +1379,7 @@ export default function DashboardPage() {
                     sampleId={editingSample.id}
                     oNumber={editingSample.oNumber}
                     isAdmin={isAdmin}
-                    onPhotoClick={(url, label) => setSelectedPhoto({ url, oNumber: label })}
+                    onPhotoClick={(url, label) => setSelectedPhoto({ fotos: [{ url, label }], oNumber: label, start: 0 })}
                     onChange={() => loadSamples()}
                   />
                 </div>
@@ -1312,10 +1476,25 @@ export default function DashboardPage() {
         {annuleerFout && <div className="alert alert-danger" style={{ marginTop: '12px' }}>{annuleerFout}</div>}
       </Modal>
 
+      {/* Monster nemen: alles in één scherm, met de knop Niet bereikbaar erin */}
+      <MonsterNemenModal
+        doel={neemDoel}
+        onClose={() => setNeemDoel(null)}
+        onKlaar={naVeldwerk}
+      />
+
+      {/* Niet bereikbaar: reden en omschrijving van een openstaand monster */}
+      <OnbereikbaarModal
+        doel={onbereikbaarDoel}
+        onClose={() => setOnbereikbaarDoel(null)}
+        onKlaar={naVeldwerk}
+      />
+
       {/* Foto */}
       {selectedPhoto && (
         <PhotoModal
-          photoUrl={selectedPhoto.url}
+          fotos={selectedPhoto.fotos}
+          startIndex={selectedPhoto.start}
           onClose={() => setSelectedPhoto(null)}
           sampleNumber={selectedPhoto.oNumber}
         />

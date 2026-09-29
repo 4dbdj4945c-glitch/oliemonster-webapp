@@ -1565,6 +1565,12 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
     grid-template-columns: repeat(4, 1fr);
     gap: 16px;
   }
+
+  /* Vijf tegels op een rij: het totaal plus de vier statussen van een monster
+     (genomen, niet genomen, niet bereikbaar, geannuleerd). */
+  .stats-grid-vijf {
+    grid-template-columns: repeat(5, 1fr);
+  }
 }
 
 /* ============ Fotovenster (PhotoModal) ============
@@ -1611,6 +1617,35 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
 .foto-knop-sluiten { right: 12px; }
 .foto-knop-download { right: 56px; }
 
+/* Wisselen tussen de twee foto's van een monster: het onderdeel en het potje.
+   Staat boven de foto, binnen het paneel, links van de knoppen. */
+.foto-keuze {
+  display: flex;
+  gap: 6px;
+  padding: 10px 100px 10px 12px;
+  border-bottom: 1px solid var(--grijs-200);
+  background: var(--grijs-50);
+}
+
+.foto-keuze button {
+  min-height: 34px;
+  padding: 0 12px;
+  background: var(--wit);
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius-md);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--grijs-500);
+  cursor: pointer;
+}
+
+.foto-keuze button.on {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: var(--wit);
+}
+
 /* Telefoon: foto op volle breedte, knoppen van 44px binnen het veilige gebied (notch en homebalk). */
 @media (max-width: 640px) {
   .foto-backdrop { align-items: center; padding: 0; }
@@ -1628,6 +1663,22 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
     padding-bottom: env(safe-area-inset-bottom);
   }
   .foto-onderschrift { display: none; }
+  /* Op de telefoon staat de keuze onderin, als knoppen van 44px binnen het
+     veilige gebied: daar kun je met handschoenen aan bij. */
+  .foto-keuze {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    border-bottom: none;
+    border-top: 1px solid var(--grijs-200);
+  }
+  .foto-keuze button {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
   .foto-knop {
     top: max(12px, env(safe-area-inset-top));
     width: 44px;
@@ -2768,5 +2819,184 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   /* De GPS-knop bovenaan zit op de telefoon in de vaste onderbalk */
   .plan-knoppen .plan-gps {
     display: none;
+  }
+}
+
+/* ============ Monster nemen en Niet bereikbaar ============
+   Het formulier achter de knop Monster nemen en het formulier Niet bereikbaar.
+   Die worden op een telefoon gebruikt, met werkhandschoenen aan: grote velden,
+   grote knoppen en de foto's als twee flinke tikvlakken. Staat hier omdat het
+   losse componenten zijn (zie STIJL.md). */
+
+.veldwerk {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.veldwerk .veld {
+  margin: 0;
+}
+
+.veldwerk .input,
+.veldwerk .select,
+.veldwerk .textarea {
+  min-height: 52px;
+  font-size: 16px;
+}
+
+.veldwerk .textarea {
+  min-height: 84px;
+}
+
+.veldwerk .btn {
+  min-height: 52px;
+}
+
+/* Waar je staat: locatie en omschrijving boven het formulier */
+.veldwerk-kop {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  background: var(--grijs-50);
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius-md);
+}
+
+.veldwerk-kop strong {
+  font-size: 15px;
+  color: var(--navy);
+}
+
+.veldwerk-kop span {
+  font-size: 13px;
+  color: var(--grijs-500);
+  overflow-wrap: anywhere;
+}
+
+/* De twee foto's naast elkaar: het onderdeel en het potje */
+.veldwerk-fotos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Eén tikvlak om een foto te maken of te kiezen */
+.foto-kiezer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.foto-kiezer-vlak {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 112px;
+  padding: 12px;
+  background: var(--grijs-50);
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: center;
+}
+
+.foto-kiezer-vlak:hover {
+  background: var(--wit);
+  border-color: var(--grijs-300);
+}
+
+.foto-kiezer-vlak .icon {
+  color: var(--grijs-500);
+}
+
+.foto-kiezer-vlak input[type='file'] {
+  display: none;
+}
+
+.foto-kiezer-gevuld > .foto-kiezer-vlak {
+  border-color: var(--groen);
+  background: var(--groen-light);
+}
+
+.foto-kiezer-tekst {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.foto-kiezer-naam {
+  font-size: 12px;
+  color: var(--grijs-500);
+  overflow-wrap: anywhere;
+}
+
+.foto-kiezer-beeld {
+  display: block;
+  width: 100%;
+  max-height: 128px;
+  object-fit: cover;
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius-md);
+}
+
+/* Reden en omschrijving van Niet bereikbaar, onder de statusbadge in de rij.
+   Zelfde opmaak als de reden van een annulering. */
+.onbereikbaar-reden {
+  display: block;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--geel-tekst);
+  font-weight: 600;
+  white-space: normal;
+  text-align: left;
+}
+
+.onbereikbaar-omschrijving {
+  display: block;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--grijs-700);
+  white-space: normal;
+  text-align: left;
+}
+
+/* De twee foto's in een tabelrij, onder elkaar met hun eigen naam */
+.foto-cel {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+@media (max-width: 640px) {
+  .veldwerk .input,
+  .veldwerk .select,
+  .veldwerk .textarea {
+    min-height: 56px;
+    font-size: 17px;
+  }
+  .veldwerk .textarea {
+    min-height: 96px;
+  }
+  .veldwerk .btn {
+    min-height: 56px;
+  }
+  /* Onder elkaar: met handschoenen aan is één groot vlak per foto prettiger
+     dan twee halve naast elkaar. */
+  .veldwerk-fotos {
+    grid-template-columns: 1fr;
+  }
+  .foto-kiezer-vlak {
+    min-height: 104px;
+  }
+  .foto-cel .btn-link {
+    min-height: 44px;
   }
 }
