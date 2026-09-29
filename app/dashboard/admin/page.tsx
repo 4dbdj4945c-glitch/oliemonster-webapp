@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
-import { ROLE_LABELS } from '@/lib/roles';
+import { ROLE_ALLEEN_LEZEN, ROLE_ADMIN, ROLE_USER, ROLE_LABELS } from '@/lib/roles';
 
 interface User {
   id: number;
   username: string;
   role: string;
+  /** Alleen bij de rol alleen lezen: het analysejaar dat deze gebruiker mag zien. */
+  viewYear?: number | null;
   createdAt: string;
 }
 
@@ -51,7 +53,9 @@ export default function AdminPage() {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    role: 'user',
+    role: ROLE_USER as string,
+    // Leeg betekent alle jaren; alleen van belang bij de rol alleen lezen.
+    viewYear: '',
   });
   const [formError, setFormError] = useState('');
 
@@ -157,7 +161,7 @@ export default function AdminPage() {
   };
 
   const resetForm = () => {
-    setFormData({ username: '', password: '', role: 'user' });
+    setFormData({ username: '', password: '', role: ROLE_USER, viewYear: '' });
     setFormError('');
     setEditingUser(null);
   };
@@ -168,7 +172,12 @@ export default function AdminPage() {
   };
 
   const openEditModal = (user: User) => {
-    setFormData({ username: user.username, password: '', role: user.role });
+    setFormData({
+      username: user.username,
+      password: '',
+      role: user.role,
+      viewYear: user.viewYear ? String(user.viewYear) : '',
+    });
     setEditingUser(user);
     setShowUserModal(true);
   };
@@ -181,9 +190,11 @@ export default function AdminPage() {
       const url = editingUser ? `/api/users/${editingUser.id}` : '/api/users';
       const method = editingUser ? 'PUT' : 'POST';
 
-      const body: any = {
+      const body: Record<string, unknown> = {
         username: formData.username,
         role: formData.role,
+        // Leeg = alle jaren. De route maakt het veld leeg bij een andere rol.
+        viewYear: formData.role === ROLE_ALLEEN_LEZEN ? formData.viewYear : '',
       };
 
       if (editingUser && formData.password) {
@@ -249,10 +260,14 @@ export default function AdminPage() {
   }
 
   const rolBadgeClass = (role: string) => {
-    if (role === 'admin') return 'badge badge-info';
-    if (role === 'viewer_oil2025') return 'badge badge-warning';
+    if (role === ROLE_ADMIN) return 'badge badge-info';
+    if (role === ROLE_ALLEEN_LEZEN) return 'badge badge-warning';
     return 'badge badge-gray';
   };
+
+  /** Wat een kijker mag zien: één jaar, of alle jaren als het veld leeg is. */
+  const kijkjaarTekst = (user: User) =>
+    user.viewYear ? `Alleen ${user.viewYear}` : 'Alle jaren';
 
   const sluitModal = () => { setShowUserModal(false); resetForm(); };
 
@@ -324,6 +339,11 @@ export default function AdminPage() {
                             <span className={rolBadgeClass(user.role)}>
                               {ROLE_LABELS[user.role] ?? user.role}
                             </span>
+                            {user.role === ROLE_ALLEEN_LEZEN && (
+                              <span className="hint" style={{ display: 'block', marginTop: '4px' }}>
+                                {kijkjaarTekst(user)}
+                              </span>
+                            )}
                           </td>
                           <td className="text-secondary sm:whitespace-nowrap" data-label="Aangemaakt">
                             {new Date(user.createdAt).toLocaleDateString('nl-NL')}
@@ -467,16 +487,38 @@ export default function AdminPage() {
               onChange={(e) => setFormData({ ...formData, role: e.target.value })}
               required
             >
-              <option value="user">Gebruiker</option>
-              <option value="admin">Admin</option>
-              <option value="viewer_oil2025">Kijker, Oliemonsters 2025</option>
+              <option value={ROLE_USER}>{ROLE_LABELS[ROLE_USER]}</option>
+              <option value={ROLE_ADMIN}>{ROLE_LABELS[ROLE_ADMIN]}</option>
+              <option value={ROLE_ALLEEN_LEZEN}>{ROLE_LABELS[ROLE_ALLEEN_LEZEN]}</option>
             </select>
-            {formData.role === 'viewer_oil2025' && (
+            {formData.role === ROLE_ALLEEN_LEZEN && (
               <p className="hint">
-                Alleen-lezen toegang tot uitsluitend de module Oliemonsters 2025 (incl. foto&apos;s bekijken). Geen andere modules, geen wijzigingen.
+                Mag uitsluitend de oliemonsters bekijken: de lijst, de foto&apos;s, de
+                geannuleerde monsters en de monsters die niet bereikbaar waren. Geen
+                wijzigingen, geen PDF, geen andere module en geen beheerpagina.
               </p>
             )}
           </div>
+
+          {formData.role === ROLE_ALLEEN_LEZEN && (
+            <div className="veld">
+              <label className="label" htmlFor="admin-viewyear">Analysejaar dat deze gebruiker mag zien</label>
+              <input
+                id="admin-viewyear"
+                type="number"
+                inputMode="numeric"
+                className="input"
+                placeholder="Leeg laten voor alle jaren"
+                min={2000}
+                max={2100}
+                value={formData.viewYear}
+                onChange={(e) => setFormData({ ...formData, viewYear: e.target.value })}
+              />
+              <p className="hint">
+                Bijvoorbeeld 2025. Laat het leeg als deze gebruiker alle jaren mag zien.
+              </p>
+            </div>
+          )}
 
           {formError && (
             <div className="alert alert-danger">

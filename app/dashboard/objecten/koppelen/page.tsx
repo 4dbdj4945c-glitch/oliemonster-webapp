@@ -6,6 +6,7 @@ import { AppShell, Icon } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { objectTypeIcoon, objectTypeLabel } from '@/lib/sampleObjects';
+import { isAlleenLezen, kijkersPagina } from '@/lib/roles';
 
 /*
   Locaties koppelen. Het veld locatie op een monster is het onderdeel op het
@@ -60,7 +61,7 @@ export default function KoppelenPage() {
         if (!data.isLoggedIn) { router.push('/login'); return; }
         if (data.requiresPasswordChange) { router.push('/set-password'); return; }
         // De beperkte kijker mag alleen Oliemonsters 2025 zien.
-        if (data.role === 'viewer_oil2025') { router.replace('/dashboard/oliemonsters'); return; }
+        if (isAlleenLezen(data.role)) { router.replace(kijkersPagina(data.viewYear)); return; }
         setUser(data);
       } catch {
         router.push('/login');

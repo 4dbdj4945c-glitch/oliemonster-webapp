@@ -13,12 +13,14 @@ import { ANNULEER_REDENEN } from '@/lib/cancelReasons';
 import PlanningPaneel from '@/app/components/PlanningPaneel';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
-import { isAlleenLezen } from '@/lib/roles';
+import { isAlleenLezen, kijkersPagina, magJaarZien } from '@/lib/roles';
 
 interface User {
   userId: number;
   username: string;
   role: string;
+  /** Alleen bij de rol alleen lezen: het analysejaar dat deze gebruiker mag zien. */
+  viewYear?: number | null;
   isLoggedIn: boolean;
 }
 
@@ -147,6 +149,13 @@ export default function DashboardPage() {
       // Redirect naar set-password als wachtwoord moet worden ingesteld
       if (data.requiresPasswordChange) {
         router.push('/set-password');
+        return;
+      }
+
+      // Een kijker met een ander kijkjaar hoort hier niet; stuur hem naar zijn
+      // eigen jaar. De API weigert dat jaar ook serverside.
+      if (!magJaarZien(data.role, data.viewYear, 2025)) {
+        router.replace(kijkersPagina(data.viewYear));
         return;
       }
 

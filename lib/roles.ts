@@ -68,3 +68,27 @@ export function paginaVoorKijkjaar(jaar: number): string | null {
   if (jaar === 2026) return '/dashboard/oliemonsters2026';
   return null;
 }
+
+/**
+ * Waar hoort een kijker heen die hier niets te zoeken heeft? Naar de pagina van
+ * zijn eigen kijkjaar. Mag hij alle jaren zien, dan naar het dashboard: dat toont
+ * hem alleen de oliemonstermodule.
+ */
+export function kijkersPagina(viewYear?: number | null): string {
+  if (viewYear === null || viewYear === undefined) return '/dashboard';
+  return paginaVoorKijkjaar(viewYear) ?? '/dashboard';
+}
+
+/**
+ * Mag deze gebruiker de monsters van dit analysejaar zien? Alleen de rol alleen
+ * lezen is beperkt, en dan alleen als er een kijkjaar is ingesteld.
+ */
+export function magJaarZien(
+  role: string | null | undefined,
+  viewYear: number | null | undefined,
+  jaar: number
+): boolean {
+  if (!isAlleenLezen(role)) return true;
+  if (viewYear === null || viewYear === undefined) return true;
+  return viewYear === jaar;
+}

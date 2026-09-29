@@ -18,6 +18,8 @@ import Icon from './Icon';
 export interface ShellUser {
   username: string;
   role: string;
+  /** Alleen bij de rol alleen lezen: het analysejaar dat deze gebruiker mag zien. */
+  viewYear?: number | null;
 }
 
 interface AppShellProps {
@@ -56,15 +58,19 @@ export default function AppShell({
     let actief = true;
     fetch('/api/auth/session')
       .then((r) => r.json())
-      .then((d) => { if (actief && d?.isLoggedIn) setFetchedUser({ username: d.username, role: d.role }); })
+      .then((d) => { if (actief && d?.isLoggedIn) setFetchedUser({ username: d.username, role: d.role, viewYear: d.viewYear ?? null }); })
       .catch(() => {});
     return () => { actief = false; };
   }, [userProp]);
 
   const isAdmin = user?.role === 'admin';
   const opDashboard = pathname === '/dashboard';
-  // De beperkte kijker heeft geen dashboard; navigatieknoppen hebben voor hem geen zin.
-  const toonNavigatie = !opDashboard && !isAlleenLezen(user?.role);
+  // Een kijker met een vast kijkjaar ziet maar één pagina; die heeft niets aan
+  // navigatie. Mag hij alle jaren zien, dan heeft hij het dashboard wel nodig:
+  // daar staan de jaren waar hij uit kan kiezen.
+  const kijkerMetEenJaar =
+    isAlleenLezen(user?.role) && user?.viewYear !== null && user?.viewYear !== undefined;
+  const toonNavigatie = !opDashboard && !kijkerMetEenJaar;
 
   const handleLogout = async () => {
     try {

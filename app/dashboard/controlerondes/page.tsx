@@ -9,6 +9,7 @@ import type { MapStreet } from '@/app/components/RouteMap';
 import { AppShell, NavButton, Icon } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
+import { isAlleenLezen, kijkersPagina } from '@/lib/roles';
 
 const RouteMap = dynamic(() => import('@/app/components/RouteMap'), {
   ssr: false,
@@ -127,7 +128,7 @@ export default function ControleRondesPage() {
         const data = await res.json();
         if (!data.isLoggedIn) { router.push('/login'); return; }
         if (data.requiresPasswordChange) { router.push('/set-password'); return; }
-        if (data.role === 'viewer_oil2025') { router.replace('/dashboard/oliemonsters'); return; }
+        if (isAlleenLezen(data.role)) { router.replace(kijkersPagina(data.viewYear)); return; }
         setUser(data);
       } catch {
         router.push('/login');

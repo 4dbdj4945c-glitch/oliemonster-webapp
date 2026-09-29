@@ -6,6 +6,7 @@ import { AppShell, Modal, Icon } from '@/app/components/ui';
 import UltimoCommentsPanel from '@/app/components/UltimoCommentsPanel';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
+import { isAlleenLezen, kijkersPagina } from '@/lib/roles';
 
 interface User {
   userId: number;
@@ -62,7 +63,7 @@ export default function UltimoPage() {
       const data = await res.json();
       if (!data.isLoggedIn) { router.push('/login'); return; }
       if (data.requiresPasswordChange) { router.push('/set-password'); return; }
-      if (data.role === 'viewer_oil2025') { router.replace('/dashboard/oliemonsters'); return; }
+      if (isAlleenLezen(data.role)) { router.replace(kijkersPagina(data.viewYear)); return; }
       setUser(data);
     } catch {
       router.push('/login');

@@ -17,6 +17,7 @@ import {
   raadKunstwerk,
   sorteerOpOfferte,
 } from '@/lib/sampleObjects';
+import { isAlleenLezen, kijkersPagina } from '@/lib/roles';
 
 const ObjectMap = dynamic(() => import('@/app/components/ObjectMap'), {
   ssr: false,
@@ -149,7 +150,7 @@ export default function ObjectenPage() {
         if (!data.isLoggedIn) { router.push('/login'); return; }
         if (data.requiresPasswordChange) { router.push('/set-password'); return; }
         // De beperkte kijker mag alleen Oliemonsters 2025 zien.
-        if (data.role === 'viewer_oil2025') { router.replace('/dashboard/oliemonsters'); return; }
+        if (isAlleenLezen(data.role)) { router.replace(kijkersPagina(data.viewYear)); return; }
         setUser(data);
       } catch {
         router.push('/login');

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { isAlleenLezen } from '@/lib/roles';
+import { isAlleenLezen, paginaVoorKijkjaar } from '@/lib/roles';
 import { actieStaatOpen, eindeVanVandaag } from '@/lib/prospects';
 import LaadFout from '@/app/components/LaadFout';
 import { GEEN_VERBINDING } from '@/lib/foutmelding';
@@ -12,6 +12,8 @@ interface User {
   userId: number;
   username: string;
   role: string;
+  /** Alleen bij de rol alleen lezen: het analysejaar dat deze gebruiker mag zien. */
+  viewYear?: number | null;
   isLoggedIn: boolean;
 }
 
@@ -47,8 +49,15 @@ export default function DashboardPage() {
       const data = await response.json();
       if (!data.isLoggedIn) { router.push('/login'); return; }
       if (data.requiresPasswordChange) { router.push('/set-password'); return; }
-      // Beperkte kijker: alleen Oliemonsters 2025, stuur direct daarheen.
-      if (isAlleenLezen(data.role)) { router.replace('/dashboard/oliemonsters'); return; }
+      // Kijker met een vast kijkjaar: stuur direct naar dat jaar. Mag hij alle
+      // jaren zien, dan blijft hij hier, maar ziet hij alleen de oliemonsters.
+      if (isAlleenLezen(data.role)) {
+        const pagina =
+          data.viewYear === null || data.viewYear === undefined
+            ? null
+            : paginaVoorKijkjaar(data.viewYear);
+        if (pagina) { router.replace(pagina); return; }
+      }
       setUser(data);
     } catch {
       router.push('/login');
@@ -59,13 +68,18 @@ export default function DashboardPage() {
 
   const loadStats = async () => {
     const mislukt: string[] = [];
+    // Een kijker mag de andere modules niet ophalen; die routes geven hem een
+    // 403. Die tellingen vragen we dus niet op, anders komt er een foutmelding
+    // over iets wat hij niet hoort te zien.
+    const alleenMonsters = isAlleenLezen(user?.role);
+    const nietOphalen = Promise.resolve({ ok: false, overgeslagen: true }) as unknown as Promise<Response>;
     try {
       const [res2025, res2026, roundsRes, ultimoRes, prospectsRes] = await Promise.allSettled([
         fetch('/api/samples?year=2025'),
         fetch('/api/samples?year=2026'),
-        fetch('/api/control-rounds'),
-        fetch('/api/ultimo-tasks'),
-        fetch('/api/prospects'),
+        alleenMonsters ? nietOphalen : fetch('/api/control-rounds'),
+        alleenMonsters ? nietOphalen : fetch('/api/ultimo-tasks'),
+        alleenMonsters ? nietOphalen : fetch('/api/prospects'),
       ]);
 
       if (!(res2025.status === 'fulfilled' && res2025.value.ok)) mislukt.push('Oliemonsters 2025');
@@ -86,7 +100,7 @@ export default function DashboardPage() {
           oilSamplesTaken2026: data.filter((s: any) => s.isTaken && !s.isDisabled).length,
         }));
       }
-      if (!(roundsRes.status === 'fulfilled' && roundsRes.value.ok)) mislukt.push('Controlerondes');
+      if (!alleenMonsters && !(roundsRes.status === 'fulfilled' && roundsRes.value.ok)) mislukt.push('Controlerondes');
       if (roundsRes.status === 'fulfilled' && roundsRes.value.ok) {
         const data = await roundsRes.value.json();
         setStats(prev => ({
@@ -94,7 +108,7 @@ export default function DashboardPage() {
           controlRounds: data.length,
         }));
       }
-      if (!(ultimoRes.status === 'fulfilled' && ultimoRes.value.ok)) mislukt.push('Ultimo-opmerkingen');
+      if (!alleenMonsters && !(ultimoRes.status === 'fulfilled' && ultimoRes.value.ok)) mislukt.push('Ultimo-opmerkingen');
       if (ultimoRes.status === 'fulfilled' && ultimoRes.value.ok) {
         const data = await ultimoRes.value.json();
         setStats(prev => ({
@@ -103,7 +117,7 @@ export default function DashboardPage() {
         }));
       }
       // Acquisitie: aantal prospects en hoeveel acties er open staan (vandaag of eerder)
-      if (!(prospectsRes.status === 'fulfilled' && prospectsRes.value.ok)) mislukt.push('Acquisitie');
+      if (!alleenMonsters && !(prospectsRes.status === 'fulfilled' && prospectsRes.value.ok)) mislukt.push('Acquisitie');
       if (prospectsRes.status === 'fulfilled' && prospectsRes.value.ok) {
         const data = await prospectsRes.value.json();
         const grens = eindeVanVandaag();
@@ -130,6 +144,17 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  // Een kijker ziet alleen de oliemonstermodule: geen eigen modules van It's Done
+  // Services en geen Ultimo. De API's weigeren hem daar ook.
+  const alleenLezen = isAlleenLezen(user?.role);
+  // Een kijkjaar waarvoor nog geen modulepagina bestaat. Dan is er niets te
+  // kiezen en zegt de melding wat er aan de hand is.
+  const kijkjaarZonderPagina =
+    alleenLezen &&
+    user?.viewYear !== null &&
+    user?.viewYear !== undefined &&
+    paginaVoorKijkjaar(user.viewYear) === null;
 
   return (
     <>
@@ -276,11 +301,16 @@ export default function DashboardPage() {
         {/* Content */}
         <div>
           <h1 className="page-title">Welkom, {user?.username}</h1>
-          <p className="page-subtitle">Selecteer een module om verder te gaan.</p>
+          <p className="page-subtitle">
+            {alleenLezen
+              ? 'Kies het jaar waarvan je de oliemonsters wilt bekijken.'
+              : 'Selecteer een module om verder te gaan.'}
+          </p>
 
           {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={loadStats} />}
 
-          {/* Sectie It's Done Services: eigen modules */}
+          {/* Sectie It's Done Services: eigen modules. Niets voor een kijker. */}
+          {!alleenLezen && (<>
           <div className="sectie-kop">
             <img src="/logo-navy.png" alt="It's Done Services" className="sectie-logo sectie-logo-ids" />
           </div>
@@ -353,7 +383,18 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          </>)}
+
+          {kijkjaarZonderPagina && (
+            <div className="alert alert-info" role="status">
+              <Icon name="alert-info" />
+              Je mag de oliemonsters van {user?.viewYear} bekijken, maar daar is nog
+              geen pagina voor. Vraag de beheerder om het juiste jaar in te stellen.
+            </div>
+          )}
+
           {/* Sectie Mourik: modules voor de opdrachtgever */}
+          {!kijkjaarZonderPagina && (<>
           <div className="sectie-kop">
             <img src="/mourik_logo.png" alt="Mourik" className="sectie-logo sectie-logo-mourik" />
           </div>
@@ -396,6 +437,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+            {!alleenLezen && (
             <div
               className="module-card"
               onClick={() => router.push('/dashboard/ultimo')}
@@ -411,7 +453,9 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
+            )}
           </div>
+          </>)}
         </div>
       </AppShell>
     </>

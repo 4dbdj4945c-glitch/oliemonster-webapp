@@ -13,11 +13,14 @@ import { ANNULEER_REDENEN } from '@/lib/cancelReasons';
 import PlanningPaneel from '@/app/components/PlanningPaneel';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
+import { isAlleenLezen, kijkersPagina, magJaarZien } from '@/lib/roles';
 
 interface User {
   userId: number;
   username: string;
   role: string;
+  /** Alleen bij de rol alleen lezen: het analysejaar dat deze gebruiker mag zien. */
+  viewYear?: number | null;
   isLoggedIn: boolean;
 }
 
@@ -151,9 +154,10 @@ export default function DashboardPage() {
         return;
       }
 
-      // Beperkte kijker mag 2026 niet zien; stuur naar 2025.
-      if (data.role === 'viewer_oil2025') {
-        router.replace('/dashboard/oliemonsters');
+      // Een kijker met een ander kijkjaar hoort hier niet; stuur hem naar zijn
+      // eigen jaar. De API weigert dat jaar ook serverside.
+      if (!magJaarZien(data.role, data.viewYear, 2026)) {
+        router.replace(kijkersPagina(data.viewYear));
         return;
       }
 
@@ -618,8 +622,8 @@ export default function DashboardPage() {
   const filterActief = statusFilter !== 'all' || objectFilter !== 'all' || search.trim() !== '';
   // Kolommen: de zichtbare kolommen plus Foto, plus Acties voor een admin.
   const kolomAantal = visibleColumns.length + 1 + (objectenBeschikbaar ? 1 : 0) + (isAdmin ? 1 : 0);
-  // De planning is niets voor de beperkte kijker; die komt op deze pagina sowieso niet.
-  const magPlannen = objectenBeschikbaar;
+  // De planning krijgt een kijker niet te zien; de API weigert hem ook.
+  const magPlannen = objectenBeschikbaar && !isAlleenLezen(user?.role);
   const objectNaamVanFilter =
     objecten.find((o) => String(o.id) === objectFilter)?.name ?? 'dit object';
   const aantalGenomen = samples.filter((s) => s.isTaken && !s.isDisabled).length;
@@ -704,16 +708,19 @@ export default function DashboardPage() {
             />
           </label>
           <div className="knoppenrij flex gap-3">
-            <button
-              type="button"
-              onClick={handleGeneratePdf}
-              disabled={generatingPdf}
-              className="btn"
-              title="Download een PDF met alle oliemonsters van 2026 en de datum waarop ze zijn genomen"
-            >
-              <Icon name="file-pdf" />
-              {generatingPdf ? 'Bezig...' : 'PDF genereren'}
-            </button>
+            {/* Een kijker mag geen PDF genereren */}
+            {!isAlleenLezen(user?.role) && (
+              <button
+                type="button"
+                onClick={handleGeneratePdf}
+                disabled={generatingPdf}
+                className="btn"
+                title="Download een PDF met alle oliemonsters van 2026 en de datum waarop ze zijn genomen"
+              >
+                <Icon name="file-pdf" />
+                {generatingPdf ? 'Bezig...' : 'PDF genereren'}
+              </button>
+            )}
             {/* Alleen zolang 2026 nog leeg is; daarna is overnemen niet meer nodig */}
             {isAdmin && samples.length === 0 && !search && (
               <button
