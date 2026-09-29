@@ -60,7 +60,7 @@ export default function DashboardPage() {
         setStats(prev => ({
           ...prev,
           oilSamples2025: data.length,
-          oilSamplesTaken2025: data.filter((s: any) => s.isTaken && !s.isDisabled).length,
+          oilSamplesTaken2025: data.filter((s: { isTaken: boolean; isDisabled?: boolean }) => s.isTaken && !s.isDisabled).length,
         }));
       }
       if (!(res2026.status === 'fulfilled' && res2026.value.ok)) mislukt.push('Oliemonsters 2026');
@@ -69,7 +69,7 @@ export default function DashboardPage() {
         setStats(prev => ({
           ...prev,
           oilSamples2026: data.length,
-          oilSamplesTaken2026: data.filter((s: any) => s.isTaken && !s.isDisabled).length,
+          oilSamplesTaken2026: data.filter((s: { isTaken: boolean; isDisabled?: boolean }) => s.isTaken && !s.isDisabled).length,
         }));
       }
       if (!alleenMonsters && !(roundsRes.status === 'fulfilled' && roundsRes.value.ok)) mislukt.push('Controlerondes');
@@ -96,7 +96,7 @@ export default function DashboardPage() {
         setStats(prev => ({
           ...prev,
           prospects: data.length,
-          prospectActies: data.filter((p: any) => actieStaatOpen(p, grens)).length,
+          prospectActies: data.filter((p: Parameters<typeof actieStaatOpen>[0]) => actieStaatOpen(p, grens)).length,
         }));
       }
       setMislukteModules(mislukt);
@@ -112,7 +112,10 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
+    // Tellingen ophalen bij het openen; de state verandert pas na de fetch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (user) loadStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   /** Toon de tellingen alleen als ze echt geladen zijn. */

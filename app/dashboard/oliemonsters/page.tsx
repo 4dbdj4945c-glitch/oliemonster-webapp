@@ -869,7 +869,7 @@ export default function DashboardPage() {
             <label className="label filter-label">Sorteren op:</label>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
               className="select filter-select"
             >
               <option value="newest">Laatst toegevoegd</option>

@@ -16,6 +16,8 @@ export default function LoginPage() {
   useEffect(() => {
     const savedUsername = localStorage.getItem('rememberedUsername');
     if (savedUsername) {
+      // localStorage bestaat pas in de browser, dus na het laden invullen.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setUsername(savedUsername);
       setRememberMe(true);
     }

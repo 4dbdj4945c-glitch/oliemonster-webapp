@@ -10,7 +10,7 @@ export const GET = withAuth({ rol: 'alleen_lezen', module: 'oliemonsters' }, asy
     const settings = await prisma.settings.findMany();
     
     // Convert naar object format
-    const settingsObj: Record<string, any> = {};
+    const settingsObj: Record<string, unknown> = {};
     settings.forEach(setting => {
       try {
         settingsObj[setting.key] = JSON.parse(setting.value);

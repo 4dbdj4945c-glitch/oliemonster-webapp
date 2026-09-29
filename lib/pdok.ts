@@ -96,16 +96,25 @@ export async function searchPlaces(query: string): Promise<PlaceHit[]> {
   const res = await fetch(url);
   if (!res.ok) throw new Error('PDOK plaats-zoekopdracht mislukt');
   const data = await res.json();
-  const docs: any[] = data?.response?.docs ?? [];
+  const docs: PdokDoc[] = data?.response?.docs ?? [];
   const seen = new Set<string>();
   const hits: PlaceHit[] = [];
   for (const d of docs) {
-    const name: string = d.woonplaatsnaam || d.weergavenaam;
+    const name = d.woonplaatsnaam || d.weergavenaam;
     if (!name || seen.has(name)) continue;
     seen.add(name);
     hits.push({ name, label: d.weergavenaam || name });
   }
   return hits;
+}
+
+/** Een document uit het antwoord van de PDOK Locatieserver (alleen de velden die we lezen). */
+interface PdokDoc {
+  weergavenaam?: string;
+  woonplaatsnaam?: string;
+  straatnaam?: string;
+  geometrie_ll?: string;
+  centroide_ll?: string;
 }
 
 export interface AddressHit {
@@ -180,11 +189,11 @@ export async function getStreets(place: string): Promise<StreetHit[]> {
 
     const data = await res.json();
     numFound = data?.response?.numFound ?? 0;
-    const docs: any[] = data?.response?.docs ?? [];
+    const docs: PdokDoc[] = data?.response?.docs ?? [];
     if (docs.length === 0) break;
 
     for (const d of docs) {
-      const street: string = d.straatnaam;
+      const street = d.straatnaam;
       if (!street) continue;
       const lines = parseLines(d.geometrie_ll);
       if (lines.length) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/toegang';
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 
 export const GET = withAuth({ rol: 'admin', module: 'beheer', adminMelding: 'Alleen admins kunnen audit logs bekijken' }, async (request: NextRequest) => {
@@ -9,7 +10,7 @@ export const GET = withAuth({ rol: 'admin', module: 'beheer', adminMelding: 'All
     const username = searchParams.get('username');
     const limit = parseInt(searchParams.get('limit') || '100');
 
-    const where: any = {};
+    const where: Prisma.AuditLogWhereInput = {};
     if (action) where.action = action;
     if (username) where.username = { contains: username, mode: 'insensitive' };
 

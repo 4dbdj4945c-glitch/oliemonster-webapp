@@ -128,7 +128,7 @@ export default function AdminPage() {
     loadSettings();
   };
 
-  const saveSettings = async (key: string, value: any) => {
+  const saveSettings = async (key: string, value: unknown) => {
     try {
       const response = await fetch('/api/settings', {
         method: 'POST',

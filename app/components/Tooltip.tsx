@@ -14,6 +14,7 @@ export default function Tooltip({ text, children }: TooltipProps) {
   useEffect(() => {
     if (isVisible) {
       // Start animation immediately
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsAnimating(true);
     } else {
       // Delay removing from DOM until fade out completes

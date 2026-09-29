@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Losse tijdelijke scripts in de projectmap (niet in git).
+    "*-tmp.cjs",
   ]),
 ]);
 

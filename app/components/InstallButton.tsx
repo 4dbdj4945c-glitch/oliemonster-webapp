@@ -4,8 +4,14 @@ import { useState, useEffect } from 'react';
 import Modal from '@/app/components/ui/Modal';
 import Icon from '@/app/components/ui/Icon';
 
+/** Het installatievoorstel van Chrome en Edge (nog geen standaardtype in TypeScript). */
+interface InstallVoorstel extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+}
+
 export default function InstallButton() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [deferredPrompt, setDeferredPrompt] = useState<InstallVoorstel | null>(null);
   const [showInstructions, setShowInstructions] = useState(false);
   const [platform, setPlatform] = useState<'ios' | 'macos' | 'windows' | 'android' | 'other'>('other');
 
@@ -17,15 +23,17 @@ export default function InstallButton() {
     const isWindows = /Win32|Win64|Windows|WinCE/.test(ua);
     const isAndroid = /Android/.test(ua);
 
+    // Het platform is pas in de browser bekend; op de server is het 'other'.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isIOS) setPlatform('ios');
     else if (isMac) setPlatform('macos');
     else if (isWindows) setPlatform('windows');
     else if (isAndroid) setPlatform('android');
 
     // Listen for PWA install prompt (Chrome/Edge on desktop/Android)
-    const handler = (e: any) => {
+    const handler = (e: Event) => {
       e.preventDefault();
-      setDeferredPrompt(e);
+      setDeferredPrompt(e as InstallVoorstel);
     };
 
     window.addEventListener('beforeinstallprompt', handler);

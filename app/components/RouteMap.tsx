@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import 'leaflet/dist/leaflet.css';
+import type * as Leaflet from 'leaflet';
 
 export interface MapStreet {
   id: number;
@@ -42,10 +43,10 @@ export default function RouteMap({
   fitKey,
 }: RouteMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<any>(null);
-  const overlayRef = useRef<any>(null);
-  const userLayerRef = useRef<any>(null);
-  const LRef = useRef<any>(null);
+  const mapRef = useRef<Leaflet.Map | null>(null);
+  const overlayRef = useRef<Leaflet.LayerGroup | null>(null);
+  const userLayerRef = useRef<Leaflet.LayerGroup | null>(null);
+  const LRef = useRef<typeof Leaflet | null>(null);
   const fittedRef = useRef(false);
   const onToggleRef = useRef(onToggle);
   onToggleRef.current = onToggle;
