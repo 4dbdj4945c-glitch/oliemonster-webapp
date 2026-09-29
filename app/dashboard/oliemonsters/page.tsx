@@ -104,6 +104,14 @@ export default function DashboardPage() {
   // bestaan ze niet; dan blijven de kolom en het filter gewoon weg.
   const [objecten, setObjecten] = useState<SampleObject[]>([]);
   const [objectenBeschikbaar, setObjectenBeschikbaar] = useState(false);
+  // Pas true als de monsterlijst echt geladen is. Zolang dat niet zo is (fout,
+  // offline) tonen we alleen de foutmelding: geen tegels met 0, geen lege
+  // tabel en geen knoppen die iets aanmaken of overnemen.
+  const [lijstGeladen, setLijstGeladen] = useState(false);
+  // De planning bestaat, tenzij de server zegt dat de tabellen ontbreken (503).
+  // Een storing of geen verbinding laat het tabblad staan; de planning toont
+  // dan zelf zijn foutmelding.
+  const [planningBestaat, setPlanningBestaat] = useState(true);
   const [objectFilter, setObjectFilter] = useState<string>('all');
   // Tabbladen binnen deze module: de lijst met monsters, de planning of (admin)
   // de prullenbak met verwijderde monsters
@@ -217,6 +225,7 @@ export default function DashboardPage() {
         return;
       }
       setSamples(await response.json());
+      setLijstGeladen(true);
       setFoutmelding('');
     } catch (error) {
       setFoutmelding(GEEN_VERBINDING);
@@ -232,6 +241,7 @@ export default function DashboardPage() {
         // 503 betekent: de tabellen staan er nog niet. Dan laten we de kolom en
         // het filter weg in plaats van een melding te tonen.
         setObjectenBeschikbaar(false);
+        if (response.status === 503) setPlanningBestaat(false);
         if (response.status !== 503) {
           setFoutmelding(await foutTekst(response, 'De objecten konden niet worden opgehaald.'));
         }
@@ -707,7 +717,7 @@ export default function DashboardPage() {
   // Kolommen: de zichtbare kolommen plus Foto, plus Acties voor een admin.
   const kolomAantal = visibleColumns.length + 1 + (objectenBeschikbaar ? 1 : 0) + (isAdmin ? 1 : 0);
   // De beperkte kijker krijgt de planning niet te zien; de API weigert hem ook.
-  const magPlannen = objectenBeschikbaar && !isAlleenLezen(user?.role);
+  const magPlannen = planningBestaat && !isAlleenLezen(user?.role);
   const toonLijst =
     tab === 'lijst' || (tab === 'planning' && !magPlannen) || (tab === 'prullenbak' && !isAdmin);
   const objectNaamVanFilter =
@@ -731,7 +741,7 @@ export default function DashboardPage() {
     >
       <h1 className="page-title">Oliemonsters 2025</h1>
       <p className="page-subtitle">
-        {foutmelding && samples.length === 0
+        {!lijstGeladen && foutmelding
           ? 'De lijst kon niet worden opgehaald.'
           : samples.length === 0
           ? 'Nog geen monsters in dit jaar.'
@@ -801,7 +811,7 @@ export default function DashboardPage() {
         />
       )}
 
-      {toonLijst && (<>
+      {toonLijst && lijstGeladen && (<>
       {/* Zoeken en toevoegen */}
       <div className="card" style={{ marginBottom: '16px' }}>
         <div className="flex flex-col sm:flex-row gap-3">
