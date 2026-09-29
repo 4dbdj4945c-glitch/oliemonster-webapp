@@ -1,78 +1,31 @@
-import { prisma } from '../lib/prisma';
-import bcrypt from 'bcryptjs';
+// Vult de LOKALE ontwikkeldatabase met nepdata: twee analysejaren oliemonsters,
+// objecten, een planning en de gebruikers admin, gebruiker, kijker (alleen
+// lezen, 2025) en nieuw (nog geen wachtwoord). Wist eerst alles.
+//
+// Draaien: npm run seed. Weigert alles wat niet op deze computer staat.
+
+import { PrismaClient } from '@prisma/client';
+import { magLokaalWissen, NEP_GEBRUIKERS, vulMetNepdata } from './nepdata';
 
 async function main() {
-  // Maak een standaard admin gebruiker
-  const hashedPassword = await bcrypt.hash('admin123', 10);
-  
-  const admin = await prisma.user.upsert({
-    where: { username: 'admin' },
-    update: {},
-    create: {
-      username: 'admin',
-      password: hashedPassword,
-      role: 'admin',
-    },
-  });
-
-  console.log('✓ Admin gebruiker aangemaakt:', admin.username);
-
-  // Optioneel: voeg een voorbeeld gebruiker toe
-  const hashedUserPassword = await bcrypt.hash('user123', 10);
-  
-  const user = await prisma.user.upsert({
-    where: { username: 'gebruiker' },
-    update: {},
-    create: {
-      username: 'gebruiker',
-      password: hashedUserPassword,
-      role: 'user',
-    },
-  });
-
-  console.log('✓ Voorbeeld gebruiker aangemaakt:', user.username);
-
-  // Voeg voorbeeld oliemonsters toe
-  const samples = [
-    {
-      oNumber: 'O-001',
-      sampleDate: new Date('2025-01-15'),
-      location: 'Locatie A - Machine 1',
-      description: 'Hydraulische olie hoofdcilinder',
-      isTaken: true,
-    },
-    {
-      oNumber: 'O-002',
-      sampleDate: new Date('2025-01-20'),
-      location: 'Locatie B - Machine 2',
-      description: 'Motorolie dieselmotor',
-      isTaken: false,
-    },
-    {
-      oNumber: 'O-003',
-      sampleDate: new Date('2025-01-25'),
-      location: 'Locatie A - Machine 3',
-      description: 'Smeervet lagers',
-      isTaken: true,
-    },
-  ];
-
-  for (const sample of samples) {
-    await prisma.oilSample.upsert({
-      where: { oNumber_analysisYear: { oNumber: sample.oNumber, analysisYear: 2025 } },
-      update: {},
-      create: sample,
-    });
+  const url = process.env.DATABASE_URL;
+  if (!magLokaalWissen(url)) {
+    console.error('Gestopt: DATABASE_URL wijst niet naar een database op deze computer. De seed wist alles en draait alleen lokaal.');
+    process.exit(1);
   }
-
-  console.log('✓ Voorbeeld oliemonsters aangemaakt');
+  const prisma = new PrismaClient();
+  try {
+    const r = await vulMetNepdata(prisma);
+    console.log(`Klaar: ${r.monsters[2025].length} monsters in 2025, ${r.monsters[2026].length} in 2026, ${r.objecten.length} objecten.`);
+    for (const g of Object.values(NEP_GEBRUIKERS)) {
+      console.log(`  ${g.username.padEnd(10)} ${g.wachtwoord ?? '(nog geen wachtwoord)'}  rol ${g.role}${g.viewYear ? `, jaar ${g.viewYear}` : ''}`);
+    }
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
