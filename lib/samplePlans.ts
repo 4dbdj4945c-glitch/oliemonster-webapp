@@ -16,7 +16,17 @@ export interface StopMonster {
   location: string;
   isTaken: boolean;
   sampleDate: Date | null;
+  /** Voor het dagscherm en Monster nemen: wat er al staat, zodat opslaan niets wist. */
+  oilType: string | null;
+  remarks: string | null;
+  photoUrl: string | null;
+  partPhotoUrl: string | null;
+  isUnreachable: boolean;
+  unreachableReason: string | null;
 }
+
+/** De kern van een monster, genoeg voor de tijdsberekening. */
+type MonsterKern = Pick<StopMonster, 'id' | 'oNumber' | 'description' | 'location' | 'isTaken' | 'sampleDate'>;
 
 /** Leest de JSON-lijst met monster-ids van een stop. Leeg of stuk = null. */
 export function leesSampleIds(waarde: string | null): number[] | null {
@@ -75,6 +85,12 @@ export async function haalPlanning(analysisYear: number) {
       isTaken: true,
       sampleDate: true,
       objectId: true,
+      oilType: true,
+      remarks: true,
+      photoUrl: true,
+      partPhotoUrl: true,
+      isUnreachable: true,
+      unreachableReason: true,
     },
     orderBy: { oNumber: 'asc' },
   });
@@ -104,6 +120,12 @@ export async function haalPlanning(analysisYear: number) {
       location: m.location,
       isTaken: m.isTaken,
       sampleDate: m.sampleDate,
+      oilType: m.oilType,
+      remarks: m.remarks,
+      photoUrl: m.photoUrl,
+      partPhotoUrl: m.partPhotoUrl,
+      isUnreachable: m.isUnreachable,
+      unreachableReason: m.unreachableReason,
     });
     perObject.set(m.objectId, lijst);
   }
@@ -198,7 +220,10 @@ export async function haalPlanning(analysisYear: number) {
     };
   });
 
-  const objecten = await prisma.sampleObject.findMany({ orderBy: { name: 'asc' } });
+  const objecten = await prisma.sampleObject.findMany({
+    orderBy: { name: 'asc' },
+    include: { klant: { select: { naam: true } } },
+  });
   const objectenMetWerk = objecten.map((o) => {
     const alle = perObject.get(o.id) ?? [];
     const open = alle.filter((m) => !geplandeMonsters.has(m.id));
@@ -212,6 +237,8 @@ export async function haalPlanning(analysisYear: number) {
       lat: o.lat,
       lng: o.lng,
       estimatedMinutes: o.estimatedMinutes,
+      // Voor de voortgang per opdracht op Vandaag
+      klantNaam: o.klant?.naam ?? null,
       aantalMonsters: alle.length,
       aantalGenomen: alle.filter((m) => m.isTaken).length,
       aantalOngepland: open.length,
@@ -268,7 +295,7 @@ type StopMetObject = {
 /** Werktijd van één stop, met dezelfde regels als in haalPlanning. */
 function werkMinutenVanStop(
   stop: StopMetObject,
-  alleMonsters: StopMonster[],
+  alleMonsters: MonsterKern[],
   noemer?: number
 ): number {
   const ids = leesSampleIds(stop.sampleIds);
@@ -391,7 +418,7 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
     if (rij.objectId !== null) noemerPerObject.set(rij.objectId, rij._count._all);
   }
 
-  const perObject = new Map<number, StopMonster[]>();
+  const perObject = new Map<number, MonsterKern[]>();
   for (const m of monsters) {
     if (m.objectId === null) continue;
     const lijst = perObject.get(m.objectId) ?? [];

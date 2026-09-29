@@ -1,0 +1,570 @@
+'use client';
+
+/*
+  Het dagscherm van een monsterdag: het veldscherm (zie ontwerp-veld en STIJL.md,
+  "Veldscherm"). Gemaakt voor de telefoon, met handschoenen aan, in de zon:
+
+  - bovenaan een eigen navy kop met terug naar de planning en waar je bent
+  - een melding als er geen verbinding is
+  - de voortgang van de dag
+  - één grote kaart: het monster dat nu aan de beurt is
+  - grote knoppen (60 px) voor Niet bereikbaar, Navigeer, Object klaar en GPS
+  - de andere monsters op deze stop en de stops van de rest van de dag
+  - onderaan, in duimbereik, de enige oranje knop: Monster nemen
+
+  Op desktop staan de kaart en de route er rechts naast. De GPS start de tijd op
+  een object vanzelf zodra je binnen 70 meter komt; afvinken doe je zelf.
+  Een gebruiker (alleen kijken) ziet de dag, maar geen knoppen die iets wijzigen.
+*/
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useGebruiker } from '@/app/components/GebruikerProvider';
+import GeenVerbinding from '@/app/components/GeenVerbinding';
+import LaadFout from '@/app/components/LaadFout';
+import MonsterNemenModal, { type NeemDoel } from '@/app/components/MonsterNemenModal';
+import OnbereikbaarModal, { type OnbereikbaarDoel } from '@/app/components/OnbereikbaarModal';
+import { AppShell, Icon, Laden } from '@/app/components/ui';
+import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
+import { objectTypeIcoon } from '@/lib/sampleObjects';
+import { datumAlsTekst, minutenAlsTekst } from '@/lib/planningInstellingen';
+import { kaartenLink, korteDatum } from '@/lib/vandaag';
+import type { MapStreet } from '@/app/components/RouteMap';
+import type { PlanDag, PlanMonster, PlanStop } from './types';
+
+const RouteMap = dynamic(() => import('@/app/components/RouteMap'), {
+  ssr: false,
+  loading: () => <div className="laden plan-kaart-laden">Kaart laden...</div>,
+});
+
+// Afstand (meter) waarbinnen GPS je op een object plaatst; zelfde straal als de controlerondes.
+const GPS_STRAAL = 70;
+
+function afstandMeter(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371000;
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const dLat = rad(bLat - aLat);
+  const dLng = rad(bLng - aLng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+function monsters(aantal: number): string {
+  return `${aantal} ${aantal === 1 ? 'monster' : 'monsters'}`;
+}
+
+/** Het monster dat op deze stop nu aan de beurt is: eerst een open monster dat bereikbaar is. */
+function volgendMonster(stop: PlanStop | null): PlanMonster | null {
+  if (!stop) return null;
+  const open = stop.samples.filter((m) => !m.isTaken);
+  return open.find((m) => !m.isUnreachable) ?? open[0] ?? null;
+}
+
+function StatusBadge({ m }: { m: PlanMonster }) {
+  if (m.isTaken) {
+    return (
+      <span className="badge badge-success">
+        <Icon name="status-taken" size={16} />
+        Genomen
+      </span>
+    );
+  }
+  if (m.isUnreachable) {
+    return (
+      <span className="badge badge-warning">
+        <Icon name="alert-warning" size={16} />
+        Niet bereikbaar
+      </span>
+    );
+  }
+  return (
+    <span className="badge badge-danger">
+      <Icon name="status-not-taken" size={16} />
+      Niet genomen
+    </span>
+  );
+}
+
+export default function Dagscherm({ dagId }: { dagId: number }) {
+  const user = useGebruiker();
+  const router = useRouter();
+  const isAdmin = user.role === 'admin';
+
+  const [dag, setDag] = useState<PlanDag | null>(null);
+  const [laden, setLaden] = useState(true);
+  const [foutmelding, setFoutmelding] = useState('');
+  const [melding, setMelding] = useState('');
+  // Zelf gekozen stop en monster; zonder keuze de eerste stop die nog niet klaar is.
+  const [gekozenStop, setGekozenStop] = useState<number | null>(null);
+  const [gekozenMonster, setGekozenMonster] = useState<number | null>(null);
+  const [neemDoel, setNeemDoel] = useState<NeemDoel | null>(null);
+  const [onbereikbaarDoel, setOnbereikbaarDoel] = useState<OnbereikbaarDoel | null>(null);
+
+  const [gpsAan, setGpsAan] = useState(false);
+  const [positie, setPositie] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsFout, setGpsFout] = useState('');
+  const watchId = useRef<number | null>(null);
+  const dagRef = useRef<PlanDag | null>(null);
+  // Welke stops de GPS al gestart heeft; watchPosition komt elke seconde terug.
+  const gestart = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    dagRef.current = dag;
+  }, [dag]);
+
+  const laadDag = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/sample-plans/${dagId}`);
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, 'Deze dag kon niet worden opgehaald.'));
+        return;
+      }
+      setDag(await res.json());
+      setFoutmelding('');
+    } catch {
+      setFoutmelding(GEEN_VERBINDING);
+    } finally {
+      setLaden(false);
+    }
+  }, [dagId]);
+
+  useEffect(() => {
+    laadDag();
+  }, [laadDag]);
+
+  const stopActie = useCallback(
+    async (stop: PlanStop, body: Record<string, unknown>) => {
+      try {
+        const res = await fetch(`/api/sample-plans/${dagId}/stops/${stop.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          setFoutmelding(`${stop.object.name} is niet bijgewerkt: ${await foutTekst(res, 'de server gaf geen reden.')}`);
+          return;
+        }
+        setFoutmelding('');
+        await laadDag();
+      } catch {
+        setFoutmelding(`${stop.object.name} is niet opgeslagen: geen verbinding met de server.`);
+      }
+    },
+    [dagId, laadDag]
+  );
+
+  const stopGps = useCallback(() => {
+    if (watchId.current !== null && typeof navigator !== 'undefined') {
+      navigator.geolocation.clearWatch(watchId.current);
+      watchId.current = null;
+    }
+    setGpsAan(false);
+  }, []);
+
+  const startGps = () => {
+    setGpsFout('');
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGpsFout('Deze telefoon of browser ondersteunt geen locatie.');
+      return;
+    }
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setPositie({ lat: latitude, lng: longitude });
+        const huidig = dagRef.current;
+        if (!huidig || !isAdmin) return;
+        for (const stop of huidig.stops) {
+          if (stop.isDone || stop.startedAt || gestart.current.has(stop.id)) continue;
+          if (stop.object.lat === null || stop.object.lng === null) continue;
+          if (afstandMeter(latitude, longitude, stop.object.lat, stop.object.lng) <= GPS_STRAAL) {
+            gestart.current.add(stop.id);
+            stopActie(stop, { actie: 'start' });
+          }
+        }
+      },
+      (err) => {
+        setGpsFout(err.code === 1 ? 'Locatietoegang geweigerd.' : 'Locatie niet beschikbaar.');
+        stopGps();
+      },
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
+    );
+    watchId.current = id;
+    setGpsAan(true);
+  };
+
+  useEffect(() => () => stopGps(), [stopGps]);
+
+  const verwijderDag = async (d: PlanDag) => {
+    const gemeten = d.stops.filter((st) => st.startedAt || st.endedAt || st.isDone).length;
+    const tekst =
+      `Dag ${datumAlsTekst(d.date)} verwijderen?\n\n` +
+      (d.stops.length > 0
+        ? `Daarmee gaan ${d.stops.length} ${d.stops.length === 1 ? 'object' : 'objecten'} van deze dag weg, met hun volgorde en de route` +
+          (gemeten > 0 ? `, en de afgevinkte bezoeken en gemeten tijden (${gemeten})` : '') +
+          '. Dat komt niet terug.\n\n'
+        : '') +
+      'De monsters zelf blijven bestaan en staan daarna weer bij de ongeplande objecten.';
+    if (!confirm(tekst)) return;
+    try {
+      const res = await fetch(`/api/sample-plans/${d.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, 'De dag kon niet worden verwijderd.'));
+        return;
+      }
+      router.push(`/dashboard/planning?jaar=${d.analysisYear}`);
+    } catch {
+      setFoutmelding(GEEN_VERBINDING);
+    }
+  };
+
+  const naVeldwerk = async (tekst: string) => {
+    setNeemDoel(null);
+    setOnbereikbaarDoel(null);
+    setGekozenMonster(null);
+    setMelding(tekst);
+    await laadDag();
+  };
+
+  const terugHref = dag ? `/dashboard/planning?jaar=${dag.analysisYear}` : '/dashboard/planning';
+
+  /* ---------- Afgeleide waarden ---------- */
+
+  const stops = dag?.stops ?? [];
+  const volgendeStop = stops.find((s) => !s.isDone) ?? null;
+  const stop = stops.find((s) => s.id === gekozenStop) ?? volgendeStop ?? stops[stops.length - 1] ?? null;
+  const stopNummer = stop ? stops.indexOf(stop) + 1 : 0;
+  const monster =
+    (stop && stop.samples.find((m) => m.id === gekozenMonster && !m.isTaken)) ?? volgendMonster(stop);
+  const totaal = stops.reduce((n, s) => n + s.aantalMonsters, 0);
+  const genomen = stops.reduce((n, s) => n + s.aantalGenomen, 0);
+  const loopt = !!stop?.startedAt && !stop?.endedAt;
+  const navigeer = stop ? kaartenLink(stop.object) : null;
+  const overigOpStop = stop ? stop.samples.filter((m) => m.id !== monster?.id) : [];
+
+  const kaartStops: MapStreet[] = stops
+    .filter((s) => s.object.lat !== null && s.object.lng !== null)
+    .map((s) => ({
+      id: s.id,
+      street: s.object.name,
+      lat: s.object.lat as number,
+      lng: s.object.lng as number,
+      isDone: s.isDone,
+      orderIndex: s.orderIndex,
+    }));
+  const kaartRoute: number[][] | null = (() => {
+    if (!dag?.routeGeometry) return null;
+    try {
+      return JSON.parse(dag.routeGeometry);
+    } catch {
+      return null;
+    }
+  })();
+
+  const neem = (m: PlanMonster) =>
+    setNeemDoel({
+      id: m.id,
+      oNumber: m.oNumber,
+      location: m.location,
+      description: m.description,
+      oilType: m.oilType ?? null,
+      remarks: m.remarks ?? null,
+      photoUrl: m.photoUrl ?? null,
+      partPhotoUrl: m.partPhotoUrl ?? null,
+    });
+
+  const kop = (
+    <header className="veld-kop">
+      <Link href={terugHref} className="veld-terug" aria-label="Terug naar de planning">
+        <Icon name="arrow-left" size={24} />
+      </Link>
+      <div className="veld-kop-tekst">
+        <h1>{stop ? stop.object.name : 'Monsterdag'}</h1>
+        <p>
+          {stop && `stop ${stopNummer} van ${stops.length}, `}
+          monsterdag {dag ? korteDatum(dag.date) : ''}
+        </p>
+      </div>
+    </header>
+  );
+
+  return (
+    <AppShell title="Dagscherm" wide veld user={user}>
+      <div className="veld">
+        {kop}
+        <GeenVerbinding />
+
+        {laden ? (
+          <Laden label="Dag laden" regels={3} />
+        ) : foutmelding && !dag ? (
+          <LaadFout melding={foutmelding} onOpnieuw={laadDag} />
+        ) : dag ? (
+          <div className={`veld-indeling${kaartStops.length === 0 ? ' veld-indeling-smal' : ''}`}>
+            <div className="veld-kolom">
+              {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={laadDag} />}
+              {melding && (
+                <div className="alert alert-success" role="status">
+                  {melding}
+                </div>
+              )}
+              {gpsFout && <div className="alert alert-danger" role="alert">{gpsFout}</div>}
+
+              <div className="veld-voortgang">
+                <div className="veld-voortgang-tekst">
+                  <span>Vandaag</span>
+                  <span>
+                    <strong>{genomen}</strong> van {totaal} genomen
+                  </span>
+                </div>
+                <div className="voortgang-balk" role="img" aria-label={`${genomen} van ${totaal} monsters genomen`}>
+                  <i className="voortgang-genomen" style={{ width: `${totaal ? (genomen / totaal) * 100 : 0}%` }} />
+                </div>
+              </div>
+
+              {stops.length === 0 ? (
+                <div className="leeg">
+                  <Icon name="empty" size={32} />
+                  <p style={{ margin: '0 0 12px' }}>Nog geen objecten op deze dag.</p>
+                  <Link href={terugHref} className="btn">
+                    <Icon name="arrow-left" size={16} />
+                    Naar de planning
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  {/* De grote kaart: wat nu aan de beurt is */}
+                  {monster ? (
+                    <section className="veld-kaart" aria-label="Aan de beurt">
+                      <span className="veld-kaart-label">
+                        <Icon name="map-pin" size={16} />
+                        {monster.isUnreachable ? 'Nog open, eerder niet bereikbaar' : 'Volgende'}
+                      </span>
+                      <p className="veld-onummer">{monster.oNumber}</p>
+                      <p className="veld-omschrijving">{monster.description || 'Geen omschrijving'}</p>
+                      <dl className="veld-gegevens">
+                        <dt>Plek</dt>
+                        <dd>{monster.location || stop?.object.name}</dd>
+                        <dt>Olie</dt>
+                        <dd>{monster.oilType || 'Niet ingevuld'}</dd>
+                        {monster.isUnreachable && monster.unreachableReason && (
+                          <>
+                            <dt>Vorige keer</dt>
+                            <dd>Niet bereikbaar: {monster.unreachableReason}</dd>
+                          </>
+                        )}
+                      </dl>
+                    </section>
+                  ) : (
+                    <section className="veld-kaart veld-kaart-klaar" aria-label="Deze stop">
+                      <span className="veld-kaart-label">
+                        <Icon name="status-taken" size={16} />
+                        {stop?.isDone ? 'Object klaar' : 'Alles genomen'}
+                      </span>
+                      <p className="veld-omschrijving">
+                        {stop?.isDone
+                          ? `${stop.object.name} is afgevinkt.`
+                          : `Alle monsters op ${stop?.object.name} zijn genomen. Vink het object af en ga door naar de volgende stop.`}
+                      </p>
+                    </section>
+                  )}
+
+                  {/* Grote knoppen, twee naast elkaar */}
+                  <div className="veld-knoppen">
+                    {isAdmin && monster && (
+                      <button
+                        type="button"
+                        className="btn veld-knop"
+                        onClick={() => setOnbereikbaarDoel({ id: monster.id, oNumber: monster.oNumber })}
+                      >
+                        <Icon name="alert-warning" size={24} />
+                        Niet bereikbaar
+                      </button>
+                    )}
+                    {navigeer && (
+                      <a className="btn veld-knop" href={navigeer} target="_blank" rel="noopener">
+                        <Icon name="route" size={24} />
+                        Navigeer
+                      </a>
+                    )}
+                    {isAdmin && stop && (
+                      <button
+                        type="button"
+                        className={`btn veld-knop${!monster && !stop.isDone ? ' btn-primary' : ''}`}
+                        onClick={() => stopActie(stop, { isDone: !stop.isDone })}
+                        aria-pressed={stop.isDone}
+                      >
+                        <Icon name={stop.isDone ? 'reset' : 'check'} size={24} />
+                        {stop.isDone ? 'Toch niet klaar' : 'Object klaar'}
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        className={`btn veld-knop${gpsAan ? ' veld-knop-aan' : ''}`}
+                        onClick={() => (gpsAan ? stopGps() : startGps())}
+                        aria-pressed={gpsAan}
+                      >
+                        <Icon name="gps-live" size={24} />
+                        {gpsAan ? 'GPS aan, stop' : 'Start GPS'}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* De andere monsters op deze stop */}
+                  {overigOpStop.length > 0 && (
+                    <section className="veld-sectie">
+                      <h2 className="sectiekop">Op deze stop</h2>
+                      <ul className="veld-lijst">
+                        {overigOpStop.map((m) => (
+                          <li key={m.id}>
+                            <button
+                              type="button"
+                              className="veld-lijst-regel"
+                              onClick={() => !m.isTaken && setGekozenMonster(m.id)}
+                              disabled={m.isTaken}
+                              title={m.isTaken ? `${m.oNumber} is genomen` : `${m.oNumber} als volgende kiezen`}
+                            >
+                              <span className="veld-lijst-tekst">
+                                <strong>{m.oNumber}</strong>
+                                <span>{[m.description, m.location].filter(Boolean).join(', ')}</span>
+                              </span>
+                              <StatusBadge m={m} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  )}
+
+                  {/* Tijd op dit object: automatisch met GPS, of met de hand */}
+                  {isAdmin && stop && (
+                    <div className="veld-tijd">
+                      <span>
+                        <Icon name="clock" size={16} />
+                        {minutenAlsTekst(stop.werkMinuten)} gepland
+                        {stop.werkelijkeMinuten !== null && `, werkelijk ${minutenAlsTekst(stop.werkelijkeMinuten)}`}
+                        {loopt && ', tijd loopt'}
+                      </span>
+                      <span className="veld-tijd-knoppen">
+                        {!stop.startedAt || stop.endedAt ? (
+                          <button type="button" className="btn btn-sm" onClick={() => stopActie(stop, { actie: 'start' })}>
+                            {stop.endedAt ? 'Opnieuw starten' : 'Tijd starten'}
+                          </button>
+                        ) : (
+                          <button type="button" className="btn btn-sm" onClick={() => stopActie(stop, { actie: 'stop' })}>
+                            Tijd stoppen
+                          </button>
+                        )}
+                        {stop.startedAt && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            onClick={() => {
+                              gestart.current.delete(stop.id);
+                              stopActie(stop, { actie: 'wis-tijden' });
+                            }}
+                          >
+                            Tijden wissen
+                          </button>
+                        )}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* De hele dag */}
+                  <section className="veld-sectie">
+                    <h2 className="sectiekop">De stops van vandaag</h2>
+                    <ol className="veld-lijst">
+                      {stops.map((s, i) => (
+                        <li key={s.id}>
+                          <button
+                            type="button"
+                            className={`veld-lijst-regel${s.id === stop?.id ? ' on' : ''}`}
+                            onClick={() => {
+                              setGekozenStop(s.id);
+                              setGekozenMonster(null);
+                            }}
+                            aria-current={s.id === stop?.id ? 'step' : undefined}
+                          >
+                            <span className={`plan-nummer${s.isDone ? ' plan-nummer-klaar' : ''}`}>{i + 1}</span>
+                            <span className="veld-lijst-tekst">
+                              <strong>
+                                <Icon name={objectTypeIcoon(s.object.objectType)} size={16} /> {s.object.name}
+                              </strong>
+                              <span>
+                                {s.aantalGenomen} van {monsters(s.aantalMonsters)} genomen, {minutenAlsTekst(s.werkMinuten)}
+                              </span>
+                            </span>
+                            {s.isDone ? (
+                              <span className="badge badge-success">Klaar</span>
+                            ) : s.id === volgendeStop?.id ? (
+                              <span className="badge badge-info">Volgende</span>
+                            ) : null}
+                          </button>
+                        </li>
+                      ))}
+                    </ol>
+                  </section>
+                </>
+              )}
+
+              {/* Dag verwijderen: helemaal onderaan en ingeklapt, in het veld wil je dat niet zien */}
+              {isAdmin && (
+                <details className="veld-beheer">
+                  <summary>Dag beheren</summary>
+                  <section className="gevarenzone plan-dag-verwijderen">
+                    <p className="gevarenzone-kop">
+                      <Icon name="trash" size={16} />
+                      Dag verwijderen
+                    </p>
+                    <p className="gevarenzone-tekst">
+                      Haalt {datumAlsTekst(dag.date)} uit de planning, met de volgorde, de route en de gemeten tijden van
+                      deze dag. De monsters blijven bestaan en komen weer bij de ongeplande objecten.
+                    </p>
+                    <button type="button" className="btn btn-sm btn-danger-soft" onClick={() => verwijderDag(dag)}>
+                      <Icon name="trash" size={16} />
+                      Dag verwijderen...
+                    </button>
+                  </section>
+                </details>
+              )}
+            </div>
+
+            {kaartStops.length > 0 && (
+              <div className="veld-kaartvak">
+                <RouteMap streets={kaartStops} geometry={kaartRoute} userPos={positie} height="100%" />
+              </div>
+            )}
+          </div>
+        ) : null}
+
+        {/* De hoofdactie, onderaan in duimbereik */}
+        {isAdmin && monster && (
+          <div className="veld-actiebalk">
+            <button type="button" className="btn btn-primary veld-hoofdknop" onClick={() => neem(monster)}>
+              <Icon name="camera" size={24} />
+              Monster nemen
+            </button>
+            <p>
+              {monster.oNumber}: datum, olie en twee foto&apos;s
+            </p>
+          </div>
+        )}
+      </div>
+
+      <MonsterNemenModal
+        key={`dag-nemen-${neemDoel?.id ?? 'geen'}`}
+        doel={neemDoel}
+        onClose={() => setNeemDoel(null)}
+        onKlaar={naVeldwerk}
+      />
+      <OnbereikbaarModal
+        key={`dag-onbereikbaar-${onbereikbaarDoel?.id ?? 'geen'}`}
+        doel={onbereikbaarDoel}
+        onClose={() => setOnbereikbaarDoel(null)}
+        onKlaar={naVeldwerk}
+      />
+    </AppShell>
+  );
+}

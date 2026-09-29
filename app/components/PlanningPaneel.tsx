@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import Icon from './ui/Icon';
 import LaadFout from './LaadFout';
 import OngedaanMelding, { type OngedaanInhoud } from './OngedaanMelding';
-import MonsterNemenModal, { type NeemDoel } from './MonsterNemenModal';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { objectTypeIcoon } from '@/lib/sampleObjects';
 import {
@@ -14,115 +13,17 @@ import {
   minutenAlsTekst,
   datumAlsTekst,
 } from '@/lib/planningInstellingen';
-import type { MapStreet } from './RouteMap';
-
-const RouteMap = dynamic(() => import('./RouteMap'), {
-  ssr: false,
-  loading: () => <div className="laden plan-kaart-laden">Kaart laden...</div>,
-});
 
 /*
-  Planning van de oliemonsters, als tab binnen Oliemonsters. Eén component voor
-  beide analysejaren. Stijl staat in globals.css (.plan-*); losse componenten
+  Planning van de oliemonsters: de pagina Planning en de tab binnen
+  Oliemonsters. Eén component voor elk analysejaar. Het dagscherm van een dag
+  is een eigen pagina (/dashboard/planning/dag/[id], planning/Dagscherm.tsx). Stijl staat in globals.css (.plan-*); losse componenten
   kunnen geen styled-jsx gebruiken, zie STIJL.md.
 */
 
-export interface PlanMonster {
-  id: number;
-  oNumber: string;
-  description: string;
-  location: string;
-  isTaken: boolean;
-  sampleDate: string | null;
-}
+import type { PlanDag, PlanMonster, PlanObject, PlanStop } from './planning/types';
 
-interface PlanObject {
-  id: number;
-  name: string;
-  objectType: string | null;
-  region: string | null;
-  address: string | null;
-  lat: number | null;
-  lng: number | null;
-  estimatedMinutes: number | null;
-  aantalMonsters: number;
-  aantalGenomen: number;
-  aantalOngepland: number;
-  ongeplandeMonsters: PlanMonster[];
-  werkMinuten: number;
-}
-
-interface PlanStop {
-  id: number;
-  objectId: number;
-  object: {
-    id: number;
-    name: string;
-    objectType: string | null;
-    lat: number | null;
-    lng: number | null;
-    address: string | null;
-    estimatedMinutes: number | null;
-  };
-  sampleIds: number[] | null;
-  orderIndex: number;
-  plannedMinutes: number | null;
-  isDone: boolean;
-  doneAt: string | null;
-  startedAt: string | null;
-  endedAt: string | null;
-  samples: PlanMonster[];
-  aantalMonsters: number;
-  aantalGenomen: number;
-  werkMinuten: number;
-  werkelijkeMinuten: number | null;
-}
-
-interface PlanDag {
-  id: number;
-  date: string;
-  analysisYear: number;
-  notes: string | null;
-  routeGeometry: string | null;
-  routeDistance: number | null;
-  routeDuration: number | null;
-  manualOrder: boolean;
-  stops: PlanStop[];
-  werkMinuten: number;
-  rijMinuten: number;
-  totaalMinuten: number;
-  teVol: boolean;
-}
-
-// Afstand (meter) waarbinnen GPS je op een object plaatst; zelfde straal als de controlerondes.
-const GPS_STRAAL = 70;
-
-/**
- * De monsters van een object gegroepeerd per locatietekst. Het object is het
- * kunstwerk (Sluis Belfeld), de locatie is het onderdeel daarop (Belfeld
- * Westsluis). In het veld wil je de monsterpunten per onderdeel bij elkaar zien.
- */
-function perLocatie(lijst: PlanMonster[]): { locatie: string; monsters: PlanMonster[] }[] {
-  const groepen: { locatie: string; monsters: PlanMonster[] }[] = [];
-  for (const m of lijst) {
-    const locatie = (m.location || '').trim();
-    const bestaand = groepen.find((g) => g.locatie.toLowerCase() === locatie.toLowerCase());
-    if (bestaand) bestaand.monsters.push(m);
-    else groepen.push({ locatie, monsters: [m] });
-  }
-  return groepen;
-}
-
-/** Een kopje boven de monsterpunten heeft alleen zin als het iets toevoegt. */
-function toonLocatieKoppen(
-  groepen: { locatie: string }[],
-  objectNaam: string
-): boolean {
-  if (groepen.length > 1) return true;
-  if (groepen.length === 0) return false;
-  const enige = groepen[0].locatie;
-  return enige !== '' && enige.toLowerCase() !== objectNaam.toLowerCase();
-}
+export type { PlanMonster };
 
 /** "1 monster" of "3 monsters" */
 function monsters(aantal: number): string {
@@ -174,16 +75,6 @@ function routeHerkomst(dag: PlanDag): { achtervoegsel: string; titel: string } |
   return null;
 }
 
-function afstandMeter(aLat: number, aLng: number, bLat: number, bLng: number): number {
-  const R = 6371000;
-  const rad = (d: number) => (d * Math.PI) / 180;
-  const dLat = rad(bLat - aLat);
-  const dLng = rad(bLng - aLng);
-  const h =
-    Math.sin(dLat / 2) ** 2 + Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
 export default function PlanningPaneel({
   analysisYear,
   isAdmin,
@@ -199,14 +90,10 @@ export default function PlanningPaneel({
   // Pas true als de planning echt geladen is. Bij een fout of offline alleen de
   // foutmelding: geen "nog geen objecten", geen nultellers, geen Dag toevoegen.
   const [geladen, setGeladen] = useState(false);
-  // Dagscherm: een tik op een open monster opent Monster nemen (datum, olie,
-  // foto's). Vroeger zette die tik het monster direct op genomen, zonder bewijs.
-  const [neemDoel, setNeemDoel] = useState<NeemDoel | null>(null);
   // Na een object van een dag halen: tien seconden Ongedaan maken
   const [ongedaan, setOngedaan] = useState<OngedaanInhoud | null>(null);
 
-  const [weergave, setWeergave] = useState<'dagen' | 'dag' | 'tijd'>('dagen');
-  const [dagId, setDagId] = useState<number | null>(null);
+  const [weergave, setWeergave] = useState<'dagen' | 'tijd'>('dagen');
 
   const [nieuweDatum, setNieuweDatum] = useState('');
   // Invoerfouten (datum vergeten, dag bestaat al) horen niet in het laadfoutvak:
@@ -222,20 +109,6 @@ export default function PlanningPaneel({
 
   // Slepen (desktop)
   const sleepStop = useRef<number | null>(null);
-
-  // GPS in het dagscherm
-  const [gpsAan, setGpsAan] = useState(false);
-  const [positie, setPositie] = useState<{ lat: number; lng: number } | null>(null);
-  const [gpsFout, setGpsFout] = useState('');
-  const watchId = useRef<number | null>(null);
-  const dagRef = useRef<PlanDag | null>(null);
-  // Welke stops de GPS al gestart heeft. watchPosition komt ongeveer elke
-  // seconde terug; zonder deze lijst stuurt hij bij elke tik opnieuw "start" en
-  // schuift de starttijd op, precies de meting waar het om gaat.
-  const gestart = useRef<Set<number>>(new Set());
-
-  const dag = dagen.find((d) => d.id === dagId) ?? null;
-  dagRef.current = dag;
 
   const laadPlanning = useCallback(async () => {
     try {
@@ -285,33 +158,6 @@ export default function PlanningPaneel({
       setFoutmelding(GEEN_VERBINDING);
     } finally {
       setBezig(false);
-    }
-  };
-
-  // Een dag weghalen neemt alle stops mee, met hun volgorde en gemeten tijden.
-  // Daarom staat de knop niet meer naast Dag openen maar onderaan het dagscherm,
-  // en zegt de bevestiging wat er weggaat.
-  const verwijderDag = async (d: PlanDag) => {
-    const gemeten = d.stops.filter((st) => st.startedAt || st.endedAt || st.isDone).length;
-    const tekst =
-      `Dag ${datumAlsTekst(d.date)} verwijderen?\n\n` +
-      (d.stops.length > 0
-        ? `Daarmee gaan ${d.stops.length} ${objectenWoord(d.stops.length)} van deze dag weg, met hun volgorde en de route` +
-          (gemeten > 0 ? `, en de afgevinkte bezoeken en gemeten tijden (${gemeten})` : '') +
-          '. Dat komt niet terug.\n\n'
-        : '') +
-      'De monsters zelf blijven bestaan en staan daarna weer bij de ongeplande objecten.';
-    if (!confirm(tekst)) return;
-    try {
-      const res = await fetch(`/api/sample-plans/${d.id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        setFoutmelding(await foutTekst(res, 'De dag kon niet worden verwijderd.'));
-        return;
-      }
-      if (dagId === d.id) { setWeergave('dagen'); setDagId(null); }
-      await laadPlanning();
-    } catch {
-      setFoutmelding(GEEN_VERBINDING);
     }
   };
 
@@ -533,81 +379,6 @@ export default function PlanningPaneel({
     }
   };
 
-  /* ---------- Dagscherm ---------- */
-
-  const stopActie = async (d: PlanDag, stop: PlanStop, body: Record<string, unknown>) => {
-    try {
-      const res = await fetch(`/api/sample-plans/${d.id}/stops/${stop.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        setFoutmelding(`${stop.object.name} is niet bijgewerkt: ${await foutTekst(res, 'de server gaf geen reden.')}`);
-        return;
-      }
-      setFoutmelding('');
-      await laadPlanning();
-    } catch {
-      setFoutmelding(`${stop.object.name} is niet opgeslagen: geen verbinding met de server.`);
-    }
-  };
-
-  const naMonsterNemen = async (tekst: string) => {
-    setNeemDoel(null);
-    setFoutmelding('');
-    setMelding(tekst);
-    await laadPlanning();
-  };
-
-  const stopGps = useCallback(() => {
-    if (watchId.current !== null && typeof navigator !== 'undefined') {
-      navigator.geolocation.clearWatch(watchId.current);
-      watchId.current = null;
-    }
-    setGpsAan(false);
-  }, []);
-
-  const startGps = () => {
-    setGpsFout('');
-    if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      setGpsFout('Deze telefoon of browser ondersteunt geen locatie.');
-      return;
-    }
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        setPositie({ lat: latitude, lng: longitude });
-        // Kom je binnen de straal van een object dat nog niet gestart is, dan
-        // begint de tijd vanzelf te lopen. Afvinken doe je zelf, want jij weet
-        // wanneer je klaar bent.
-        const huidig = dagRef.current;
-        if (!huidig || !isAdmin) return;
-        for (const stop of huidig.stops) {
-          if (stop.isDone || stop.startedAt || gestart.current.has(stop.id)) continue;
-          if (stop.object.lat === null || stop.object.lng === null) continue;
-          const d = afstandMeter(latitude, longitude, stop.object.lat, stop.object.lng);
-          if (d <= GPS_STRAAL) {
-            gestart.current.add(stop.id);
-            stopActie(huidig, stop, { actie: 'start' });
-          }
-        }
-      },
-      (err) => {
-        setGpsFout(err.code === 1 ? 'Locatietoegang geweigerd.' : 'Locatie niet beschikbaar.');
-        stopGps();
-      },
-      { enableHighAccuracy: true, maximumAge: 3000, timeout: 15000 }
-    );
-    watchId.current = id;
-    setGpsAan(true);
-  };
-
-  useEffect(() => {
-    if (weergave !== 'dag') stopGps();
-  }, [weergave, stopGps]);
-  useEffect(() => () => stopGps(), [stopGps]);
-
   /* ---------- Afgeleide waarden ---------- */
 
   const totaalWerk = dagen.reduce((n, d) => n + d.werkMinuten, 0);
@@ -615,27 +386,6 @@ export default function PlanningPaneel({
   const totaalKm = dagen.reduce((n, d) => n + (d.routeDistance ?? 0), 0) / 1000;
   const ongepland = objecten.filter((o) => o.aantalOngepland > 0);
   const teVolDagen = dagen.filter((d) => d.teVol).length;
-
-  const kaartStops: MapStreet[] = dag
-    ? dag.stops
-        .filter((s) => s.object.lat !== null && s.object.lng !== null)
-        .map((s) => ({
-          id: s.id,
-          street: s.object.name,
-          lat: s.object.lat as number,
-          lng: s.object.lng as number,
-          isDone: s.isDone,
-          orderIndex: s.orderIndex,
-        }))
-    : [];
-
-  const kaartRoute: number[][] | null = (() => {
-    if (!dag?.routeGeometry) return null;
-    try { return JSON.parse(dag.routeGeometry); } catch { return null; }
-  })();
-
-  const volgendeStop = dag ? dag.stops.find((s) => !s.isDone) ?? null : null;
-  const klaarOpDag = dag ? dag.stops.filter((s) => s.isDone).length : 0;
 
   if (laden) {
     return <p className="laden">Planning laden...</p>;
@@ -771,10 +521,10 @@ export default function PlanningPaneel({
                         )}
                       </div>
                       <div className="knoppenrij plan-dag-knoppen">
-                        <button type="button" className="btn btn-sm" onClick={() => { setDagId(d.id); setWeergave('dag'); }}>
+                        <Link href={`/dashboard/planning/dag/${d.id}`} className="btn btn-sm">
                           <Icon name="gps-live" size={16} />
                           Dag openen
-                        </button>
+                        </Link>
                       </div>
                     </div>
 
@@ -873,223 +623,6 @@ export default function PlanningPaneel({
         </>
       )}
 
-      {/* ============ DAGSCHERM ============ */}
-      {weergave === 'dag' && dag && (
-        <>
-          <div className="plan-balk">
-            <div>
-              <div className="plan-dag-datum">{datumAlsTekst(dag.date)}</div>
-              <div className="plan-dag-sub">
-                {klaarOpDag} van de {dag.stops.length} objecten klaar,
-                {' '}{minutenAlsTekst(dag.totaalMinuten)} gepland
-              </div>
-            </div>
-            <div className="knoppenrij plan-knoppen">
-              <button type="button" className="btn btn-sm" onClick={() => { setWeergave('dagen'); setDagId(null); }}>
-                <Icon name="arrow-left" size={16} />
-                Terug naar de dagen
-              </button>
-              {isAdmin && (
-                <button
-                  type="button"
-                  className={`btn btn-sm plan-gps ${gpsAan ? 'btn-success' : 'btn-primary'}`}
-                  onClick={() => (gpsAan ? stopGps() : startGps())}
-                  aria-pressed={gpsAan}
-                >
-                  <Icon name="gps-live" size={16} />
-                  {gpsAan ? 'GPS aan, stop' : 'Start GPS'}
-                </button>
-              )}
-            </div>
-          </div>
-
-          {gpsFout && <div className="alert alert-danger plan-melding">{gpsFout}</div>}
-
-          {dag.stops.length === 0 ? (
-            <div className="leeg">
-              <Icon name="empty" size={32} />
-              <p style={{ margin: '0 0 12px' }}>Nog geen objecten op deze dag.</p>
-              <button type="button" className="btn btn-sm" onClick={() => { setWeergave('dagen'); setDagId(null); }}>
-                <Icon name="arrow-left" size={16} />
-                Terug naar de dagen
-              </button>
-            </div>
-          ) : (
-          <div className={`plan-dag-indeling${kaartStops.length === 0 ? ' plan-dag-indeling-zonder-kaart' : ''}`}>
-            {/* Geen enkel object met coordinaat: dan is een kaart van heel
-                Nederland alleen maar in de weg, zeker op de telefoon. */}
-            {kaartStops.length > 0 ? (
-              <div className="plan-kaart">
-                <RouteMap streets={kaartStops} geometry={kaartRoute} userPos={positie} height="100%" />
-              </div>
-            ) : (
-              <div className="alert alert-warning plan-melding" role="alert">
-                <Icon name="alert-warning" size={20} />
-                <span>
-                  Geen van de objecten van deze dag staat op de kaart, dus er is geen route te tonen.
-                  Vul de coordinaten aan bij Beheer, Objecten.
-                </span>
-              </div>
-            )}
-
-            <div className="plan-stoplijst">
-              {dag.stops.map((stop, i) => {
-                const loopt = !!stop.startedAt && !stop.endedAt;
-                return (
-                  <div key={stop.id} className={`card plan-veldstop${stop.isDone ? ' plan-veldstop-klaar' : ''}${volgendeStop?.id === stop.id ? ' plan-veldstop-volgende' : ''}`}>
-                    <div className="plan-veldstop-kop">
-                      <span className={`plan-nummer${stop.isDone ? ' plan-nummer-klaar' : ''}`}>{i + 1}</span>
-                      <span className="plan-stop-tekst">
-                        <span className="plan-stop-naam">
-                          <Icon name={objectTypeIcoon(stop.object.objectType)} size={16} />
-                          {stop.object.name}
-                        </span>
-                        <span className="plan-stop-sub">
-                          {stop.aantalGenomen} van de {stop.aantalMonsters} genomen,
-                          {' '}{minutenAlsTekst(stop.werkMinuten)} gepland
-                          {stop.werkelijkeMinuten !== null && `, werkelijk ${minutenAlsTekst(stop.werkelijkeMinuten)}`}
-                          {loopt && ', bezig'}
-                        </span>
-                      </span>
-                      {volgendeStop?.id === stop.id && <span className="plan-volgende-label">Volgende</span>}
-                    </div>
-
-                    {isAdmin && (
-                      <div className="knoppenrij plan-veldknoppen">
-                        {!stop.startedAt || stop.endedAt ? (
-                          <button type="button" className="btn btn-sm" onClick={() => stopActie(dag, stop, { actie: 'start' })}>
-                            <Icon name="clock" size={16} />
-                            {stop.endedAt ? 'Opnieuw starten' : 'Starten'}
-                          </button>
-                        ) : (
-                          <button type="button" className="btn btn-sm btn-blue" onClick={() => stopActie(dag, stop, { actie: 'stop' })}>
-                            <Icon name="clock" size={16} />
-                            Stoppen
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          className={`btn btn-sm ${stop.isDone ? '' : 'btn-primary'}`}
-                          onClick={() => stopActie(dag, stop, { isDone: !stop.isDone })}
-                          aria-pressed={stop.isDone}
-                        >
-                          <Icon name={stop.isDone ? 'reset' : 'check'} size={16} />
-                          {stop.isDone ? 'Toch niet klaar' : 'Object klaar'}
-                        </button>
-                        {stop.startedAt && (
-                          <button
-                            type="button"
-                            className="btn btn-sm"
-                            onClick={() => {
-                              gestart.current.delete(stop.id);
-                              stopActie(dag, stop, { actie: 'wis-tijden' });
-                            }}
-                            title="Gemeten tijd weggooien en opnieuw beginnen"
-                          >
-                            <Icon name="reset" size={16} />
-                            Tijden wissen
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* De monsterpunten binnen dit object, gegroepeerd per locatie */}
-                    {(() => {
-                      const groepen = perLocatie(stop.samples);
-                      const koppen = toonLocatieKoppen(groepen, stop.object.name);
-                      return (
-                        <ul className="plan-monsters">
-                          {stop.samples.length === 0 ? (
-                            <li className="plan-leeg-regel">Geen openstaande monsters op dit object.</li>
-                          ) : (
-                            groepen.map((groep) => (
-                              <li key={groep.locatie || '(zonder locatie)'} className="plan-locatiegroep">
-                                {koppen && (
-                                  <p className="plan-locatie-kop">
-                                    <Icon name="map-pin" size={16} />
-                                    {groep.locatie || 'Zonder locatie'}
-                                    <span className="plan-locatie-aantal">{monsters(groep.monsters.length)}</span>
-                                  </p>
-                                )}
-                                <ul className="plan-locatie-monsters">
-                                  {groep.monsters.map((m) => (
-                                    <li key={m.id} className={`plan-monster${m.isTaken ? ' plan-monster-genomen' : ''}`}>
-                                      <button
-                                        type="button"
-                                        className="plan-monster-knop"
-                                        onClick={() => isAdmin && !m.isTaken && setNeemDoel(m)}
-                                        disabled={!isAdmin || m.isTaken}
-                                        aria-haspopup={m.isTaken ? undefined : 'dialog'}
-                                        title={m.isTaken ? `${m.oNumber} is genomen` : `${m.oNumber} nemen: datum, type olie en foto's`}
-                                      >
-                                        <span className={`badge ${m.isTaken ? 'badge-success' : 'badge-danger'}`}>
-                                          <Icon name={m.isTaken ? 'status-taken' : 'status-not-taken'} size={16} />
-                                          {m.isTaken ? 'Genomen' : 'Niet genomen'}
-                                        </span>
-                                        <span className="plan-monster-tekst">
-                                          <strong>{m.oNumber}</strong>
-                                          <span className="plan-monster-sub">{m.description}</span>
-                                        </span>
-                                      </button>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </li>
-                            ))
-                          )}
-                        </ul>
-                      );
-                    })()}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          )}
-
-          {/* Dag verwijderen: apart, onderaan het dagscherm, niet naast Dag openen */}
-          {isAdmin && (
-            <section className="gevarenzone plan-dag-verwijderen">
-              <p className="gevarenzone-kop">
-                <Icon name="trash" size={16} />
-                Dag verwijderen
-              </p>
-              <p className="gevarenzone-tekst">
-                Haalt {datumAlsTekst(dag.date)} uit de planning, met de volgorde, de route en de gemeten tijden van
-                deze dag. De monsters blijven bestaan en komen weer bij de ongeplande objecten.
-              </p>
-              <button type="button" className="btn btn-sm btn-danger-soft" onClick={() => verwijderDag(dag)}>
-                <Icon name="trash" size={16} />
-                Dag verwijderen...
-              </button>
-            </section>
-          )}
-
-          {/* Vaste balk onderaan op de telefoon, zoals bij de controlerondes */}
-          <div className="plan-mobiel-balk">
-            <div className="plan-mobiel-info">
-              <span className="plan-mobiel-teller">{klaarOpDag}/{dag.stops.length}</span>
-              <span className="plan-mobiel-volgende">
-                {volgendeStop
-                  ? `Volgende: ${dag.stops.indexOf(volgendeStop) + 1}. ${volgendeStop.object.name}`
-                  : dag.stops.length > 0 ? 'Alle objecten klaar' : 'Geen objecten'}
-              </span>
-            </div>
-            {isAdmin && (
-              <button
-                type="button"
-                className={`btn btn-lg ${gpsAan ? 'btn-success' : 'btn-primary'}`}
-                onClick={() => (gpsAan ? stopGps() : startGps())}
-                aria-pressed={gpsAan}
-              >
-                <Icon name="gps-live" size={16} />
-                {gpsAan ? 'Stop' : 'Start GPS'}
-              </button>
-            )}
-          </div>
-        </>
-      )}
-
       {/* ============ TIJD: geschat tegenover werkelijk ============ */}
       {weergave === 'tijd' && (
         <PlanningTijd dagen={dagen} onTerug={() => setWeergave('dagen')} />
@@ -1171,12 +704,6 @@ export default function PlanningPaneel({
       )}
       <OngedaanMelding melding={ongedaan} onSluit={() => setOngedaan(null)} />
 
-      <MonsterNemenModal
-        key={`plan-nemen-${neemDoel?.id ?? 'geen'}`}
-        doel={neemDoel}
-        onClose={() => setNeemDoel(null)}
-        onKlaar={naMonsterNemen}
-      />
       </>)}
     </div>
   );

@@ -3,6 +3,34 @@ import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { foutAntwoord } from '@/lib/planningApi';
+import { haalPlanning } from '@/lib/samplePlans';
+
+// GET - Eén dag met stops, monsters en tijden, voor het dagscherm. Dezelfde
+// getallen als het planningsoverzicht, omdat hij uit haalPlanning komt.
+export const GET = withAuth({ rol: 'user', module: 'planning' }, async (
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) => {
+  try {
+    const { id } = await params;
+    const planId = /^\d+$/.test(id) ? parseInt(id) : NaN;
+    if (Number.isNaN(planId)) {
+      return NextResponse.json({ error: 'Onbekende dag' }, { status: 400 });
+    }
+    const plan = await prisma.samplePlan.findUnique({ where: { id: planId }, select: { analysisYear: true } });
+    if (!plan) {
+      return NextResponse.json({ error: 'Deze dag staat niet (meer) in de planning' }, { status: 404 });
+    }
+    const { dagen } = await haalPlanning(plan.analysisYear);
+    const dag = dagen.find((d) => d.id === planId);
+    if (!dag) {
+      return NextResponse.json({ error: 'Deze dag staat niet (meer) in de planning' }, { status: 404 });
+    }
+    return NextResponse.json(dag);
+  } catch (error) {
+    return foutAntwoord(error, 'Fout bij ophalen van de dag');
+  }
+});
 
 // PUT - Datum of notitie van een dag wijzigen (alleen admin)
 export const PUT = withAuth({ rol: 'admin', module: 'planning' }, async (
