@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import ProspectDetail from '@/app/components/ProspectDetail';
+import LaadFout from '@/app/components/LaadFout';
+import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import ProspectContactForm from '@/app/components/ProspectContactForm';
 import { isAlleenLezen } from '@/lib/roles';
 import {
@@ -76,6 +78,10 @@ export default function AcquisitiePage() {
   const [prospects, setProspects] = useState<ProspectRegel[]>([]);
   const [laden, setLaden] = useState(true);
   const [laadFout, setLaadFout] = useState('');
+  // Pas true als de lijst echt geladen is. Bij een fout tonen we alleen de
+  // foutmelding: geen nultellers, geen "Nog geen prospects. Importeer de lijst"
+  // (bij een storing nodigt dat uit om 175 prospects dubbel te importeren).
+  const [geladen, setGeladen] = useState(false);
 
   // Filters
   const [zoek, setZoek] = useState('');
@@ -119,15 +125,17 @@ export default function AcquisitiePage() {
     try {
       const res = await fetch(`/api/prospects${metArchief ? '?archief=1' : ''}`);
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        setLaadFout(err.error || 'De prospects konden niet opgehaald worden.');
+        setLaadFout(await foutTekst(res, 'Kon de prospects niet ophalen. Probeer het opnieuw.'));
         setProspects([]);
+        setGeladen(false);
         return;
       }
       setProspects(await res.json());
+      setGeladen(true);
       setLaadFout('');
     } catch {
-      setLaadFout('De prospects konden niet opgehaald worden.');
+      setLaadFout(GEEN_VERBINDING);
+      setGeladen(false);
     } finally {
       setLaden(false);
     }
@@ -364,7 +372,7 @@ export default function AcquisitiePage() {
       user={user}
       onHelp={() => setHelpOpen(true)}
       rightActions={
-        isAdmin ? (
+        isAdmin && geladen ? (
           <button type="button" className="nav-btn nav-btn-primary" onClick={openNieuw}>
             <Icon name="plus" size={16} />
             <span className="lang">Nieuwe prospect</span>
@@ -398,16 +406,11 @@ export default function AcquisitiePage() {
         Je werkbank voor nieuwe klanten: wie benader je, wanneer, en wat kwam eruit.
       </p>
 
-      {laadFout && (
-        <div className="alert alert-warning" style={{ marginBottom: '18px' }}>
-          <Icon name="alert-warning" size={16} />
-          {laadFout}
-        </div>
-      )}
+      {laadFout && <LaadFout melding={laadFout} onOpnieuw={laadProspects} />}
 
       {laden ? (
         <p className="laden">Laden...</p>
-      ) : (
+      ) : !geladen ? null : (
         <>
           {/* Cijfers */}
           <div className="stats-grid" style={{ marginBottom: '22px' }}>
