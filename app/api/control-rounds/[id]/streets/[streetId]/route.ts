@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
-import { cookies } from 'next/headers';
-import { isAlleenLezen } from '@/lib/roles';
+import { haalSessie, toegangsFout } from '@/lib/toegang';
 
 // PATCH - Straat markeren als gereden/nog te rijden. Body: { isDone: boolean }
 // Bewust geen audit-log per straat (te veel ruis tijdens het rijden).
@@ -12,16 +9,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; streetId: string }> }
 ) {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-    // De rol alleen lezen komt alleen in de oliemonstermodule, niet hier.
-    if (isAlleenLezen(session.role)) {
-      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
-    }
+    const session = await haalSessie();
+    // Wijzigen alleen door een admin, net als in de andere modules. De kijker
+    // komt hier helemaal niet.
+    const fout = toegangsFout(session, true);
+    if (fout) return fout;
 
     const { id, streetId } = await params;
     const body = await request.json();
