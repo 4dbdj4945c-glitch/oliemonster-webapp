@@ -1,41 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { syncLatestAttemptToSample } from '@/lib/sampleAttempts';
+import { ATTEMPT_BASIS_SELECT, syncLatestAttemptToSample } from '@/lib/sampleAttempts';
+import { haalSessie, toegangsFout } from '@/lib/toegang';
+import { foutAntwoordWensen2 } from '@/lib/kolommen';
 
 // PUT - Poging bijwerken
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; attemptId: string }> }
 ) {
+  const session = await haalSessie();
+  const fout = toegangsFout(session, true);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen pogingen bewerken' }, { status: 403 });
-    }
-
     const { id, attemptId } = await params;
     const oilSampleId = parseInt(id);
     const aId = parseInt(attemptId);
+    if (Number.isNaN(oilSampleId) || Number.isNaN(aId)) {
+      return NextResponse.json({ error: 'Onbekende poging' }, { status: 400 });
+    }
 
-    const existing = await prisma.sampleAttempt.findUnique({ where: { id: aId } });
+    const existing = await prisma.sampleAttempt.findUnique({
+      where: { id: aId },
+      select: { id: true, oilSampleId: true, photoUrl: true, isTaken: true },
+    });
     if (!existing || existing.oilSampleId !== oilSampleId) {
       return NextResponse.json({ error: 'Poging niet gevonden' }, { status: 404 });
     }
 
     const body = await request.json();
-    const { sampleDate, photoUrl, remarks, isTaken } = body as {
+    const { sampleDate, photoUrl, partPhotoUrl, remarks, isTaken } = body as {
       sampleDate?: string | null;
       photoUrl?: string | null;
+      partPhotoUrl?: string | null;
       remarks?: string | null;
       isTaken?: boolean;
     };
@@ -52,9 +51,13 @@ export async function PUT(
       data: {
         sampleDate: sampleDate ? new Date(sampleDate) : null,
         photoUrl: photoUrl === undefined ? existing.photoUrl : photoUrl,
+        // Een foto die niet meegestuurd wordt blijft staan; de foto's gaan via
+        // hun eigen route en niet via dit formulier.
+        ...(partPhotoUrl === undefined ? {} : { partPhotoUrl }),
         remarks: remarks ?? null,
         isTaken: isTaken ?? existing.isTaken,
       },
+      select: { ...ATTEMPT_BASIS_SELECT, partPhotoUrl: true },
     });
 
     await syncLatestAttemptToSample(oilSampleId);
@@ -69,8 +72,7 @@ export async function PUT(
 
     return NextResponse.json(attempt);
   } catch (error) {
-    console.error('Error updating attempt:', error);
-    return NextResponse.json({ error: 'Fout bij bijwerken van poging' }, { status: 500 });
+    return foutAntwoordWensen2(error, 'Fout bij bijwerken van poging');
   }
 }
 
@@ -79,23 +81,22 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; attemptId: string }> }
 ) {
+  const session = await haalSessie();
+  const fout = toegangsFout(session, true);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen pogingen verwijderen' }, { status: 403 });
-    }
-
     const { id, attemptId } = await params;
     const oilSampleId = parseInt(id);
     const aId = parseInt(attemptId);
+    if (Number.isNaN(oilSampleId) || Number.isNaN(aId)) {
+      return NextResponse.json({ error: 'Onbekende poging' }, { status: 400 });
+    }
 
-    const existing = await prisma.sampleAttempt.findUnique({ where: { id: aId } });
+    const existing = await prisma.sampleAttempt.findUnique({
+      where: { id: aId },
+      select: { id: true, oilSampleId: true },
+    });
     if (!existing || existing.oilSampleId !== oilSampleId) {
       return NextResponse.json({ error: 'Poging niet gevonden' }, { status: 404 });
     }
@@ -113,7 +114,6 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error deleting attempt:', error);
-    return NextResponse.json({ error: 'Fout bij verwijderen van poging' }, { status: 500 });
+    return foutAntwoordWensen2(error, 'Fout bij verwijderen van poging');
   }
 }

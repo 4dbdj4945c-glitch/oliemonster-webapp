@@ -1,28 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import { prisma } from '@/lib/prisma';
-import { getIronSession } from 'iron-session';
-import { sessionOptions, SessionData } from '@/lib/session';
-import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
+import { haalSessie, toegangsFout } from '@/lib/toegang';
+import { fotoLabel, fotoVeld, leesFotoSoort } from '@/lib/samplePhotos';
+import { foutAntwoordWensen2 } from '@/lib/kolommen';
+
+/*
+  Foto's op het monster zelf. Er zijn er twee: het onderdeel waar het monster
+  vandaan komt (soort "onderdeel", kolom partPhotoUrl) en het monsterpotje
+  (soort "potje", kolom photoUrl). Wie geen soort meestuurt krijgt de potjesfoto,
+  zodat bestaande aanroepen en bestaande foto's blijven kloppen.
+*/
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await haalSessie();
+  const fout = toegangsFout(session, true);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen foto’s uploaden' }, { status: 403 });
-    }
-
     const { id } = await params;
+    const sampleId = parseInt(id);
+    if (Number.isNaN(sampleId)) {
+      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
+    }
 
-    // Check if Blob token is configured
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
       return NextResponse.json(
         { error: 'Blob storage is niet geconfigureerd. Voeg BLOB_READ_WRITE_TOKEN toe in Vercel environment variables.' },
@@ -32,59 +37,46 @@ export async function POST(
 
     const formData = await request.formData();
     const file = formData.get('photo') as File;
-
     if (!file) {
-      return NextResponse.json(
-        { error: 'Geen foto gevonden' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Geen foto gevonden' }, { status: 400 });
     }
 
-    // Check if sample exists
+    const soort = leesFotoSoort(formData.get('soort'));
+    if (!soort) {
+      return NextResponse.json({ error: 'Onbekende soort foto' }, { status: 400 });
+    }
+
     const sample = await prisma.oilSample.findUnique({
-      where: { id: parseInt(id) },
+      where: { id: sampleId },
+      select: { id: true, oNumber: true },
     });
-
     if (!sample) {
-      return NextResponse.json(
-        { error: 'Monster niet gevonden' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
     }
 
-    // Upload to Vercel Blob storage
     const timestamp = Date.now();
     const extension = file.name.split('.').pop();
-    const filename = `sample-${id}-${timestamp}.${extension}`;
+    const filename = `sample-${sampleId}-${soort}-${timestamp}.${extension}`;
 
-    const blob = await put(filename, file, {
-      access: 'public',
-    });
+    const blob = await put(filename, file, { access: 'public' });
 
-    // Update database with photo URL
-    const photoUrl = blob.url;
     await prisma.oilSample.update({
-      where: { id: parseInt(id) },
-      data: { photoUrl },
+      where: { id: sampleId },
+      data: { [fotoVeld(soort)]: blob.url },
+      select: { id: true },
     });
 
-    // Log foto upload
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.UPLOAD_PHOTO,
-      details: { sampleId: parseInt(id), oNumber: sample.oNumber, filename },
+      details: { sampleId, oNumber: sample.oNumber, soort, filename },
       request,
     });
 
-    return NextResponse.json({ photoUrl });
+    return NextResponse.json({ photoUrl: blob.url, soort });
   } catch (error) {
-    console.error('Error uploading photo:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Fout bij uploaden van foto';
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    return foutAntwoordWensen2(error, 'Fout bij uploaden van foto');
   }
 }
 
@@ -92,49 +84,47 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await haalSessie();
+  const fout = toegangsFout(session, true);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen foto’s verwijderen' }, { status: 403 });
-    }
-
     const { id } = await params;
-    const sample = await prisma.oilSample.findUnique({
-      where: { id: parseInt(id) },
-    });
-
-    if (!sample) {
-      return NextResponse.json(
-        { error: 'Monster niet gevonden' },
-        { status: 404 }
-      );
+    const sampleId = parseInt(id);
+    if (Number.isNaN(sampleId)) {
+      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
     }
 
-    // Remove photo URL from database
+    // Welke van de twee foto's: ?soort=onderdeel of ?soort=potje (standaard potje).
+    const soort = leesFotoSoort(new URL(request.url).searchParams.get('soort'));
+    if (!soort) {
+      return NextResponse.json({ error: 'Onbekende soort foto' }, { status: 400 });
+    }
+
+    const sample = await prisma.oilSample.findUnique({
+      where: { id: sampleId },
+      select: { id: true, oNumber: true },
+    });
+    if (!sample) {
+      return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
+    }
+
     await prisma.oilSample.update({
-      where: { id: parseInt(id) },
-      data: { photoUrl: null },
+      where: { id: sampleId },
+      data: { [fotoVeld(soort)]: null },
+      select: { id: true },
     });
 
-    // Log foto verwijdering
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.DELETE_PHOTO,
-      details: { sampleId: parseInt(id), oNumber: sample.oNumber },
+      details: { sampleId, oNumber: sample.oNumber, soort, label: fotoLabel(soort) },
       request,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, soort });
   } catch (error) {
-    console.error('Error deleting photo:', error);
-    return NextResponse.json(
-      { error: 'Fout bij verwijderen van foto' },
-      { status: 500 }
-    );
+    return foutAntwoordWensen2(error, 'Fout bij verwijderen van foto');
   }
 }

@@ -1,45 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { syncLatestAttemptToSample } from '@/lib/sampleAttempts';
-import { isOilViewer2025 } from '@/lib/roles';
+import { ATTEMPT_BASIS_SELECT, syncLatestAttemptToSample } from '@/lib/sampleAttempts';
+import { haalSessie, toegangsFout } from '@/lib/toegang';
+import { foutAntwoordWensen2, tabelOntbreekt } from '@/lib/kolommen';
 
 // GET - Alle pogingen voor een monster (chronologisch, oudste eerst)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // De rol alleen lezen mag de pogingen niet zien: die zit alleen in het
+  // bewerkvenster van een admin. toegangsFout weigert hem, ook serverside.
+  const session = await haalSessie();
+  const fout = toegangsFout(session, false);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-
-    // De beperkte kijker heeft geen toegang tot de pogingen-details.
-    if (isOilViewer2025(session.role)) {
-      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
-    }
-
     const { id } = await params;
     const oilSampleId = parseInt(id);
+    if (Number.isNaN(oilSampleId)) {
+      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
+    }
 
-    const attempts = await prisma.sampleAttempt.findMany({
-      where: { oilSampleId },
-      orderBy: [
-        { sampleDate: 'asc' },
-        { createdAt: 'asc' },
-      ],
-    });
+    const volgorde = [{ sampleDate: 'asc' as const }, { createdAt: 'asc' as const }];
 
-    return NextResponse.json(attempts);
+    // Met de tweede foto erbij. Zolang ./db-push-wensen2.sh nog niet gedraaid is
+    // bestaat partPhotoUrl niet; dan halen we de oude velden op, zodat de lijst
+    // met pogingen gewoon blijft werken.
+    try {
+      const attempts = await prisma.sampleAttempt.findMany({
+        where: { oilSampleId },
+        orderBy: volgorde,
+        select: { ...ATTEMPT_BASIS_SELECT, partPhotoUrl: true },
+      });
+      return NextResponse.json(attempts);
+    } catch (error) {
+      if (!tabelOntbreekt(error)) throw error;
+      const oud = await prisma.sampleAttempt.findMany({
+        where: { oilSampleId },
+        orderBy: volgorde,
+        select: ATTEMPT_BASIS_SELECT,
+      });
+      return NextResponse.json(oud.map((a) => ({ ...a, partPhotoUrl: null })));
+    }
   } catch (error) {
-    console.error('Error fetching attempts:', error);
-    return NextResponse.json({ error: 'Fout bij ophalen van pogingen' }, { status: 500 });
+    return foutAntwoordWensen2(error, 'Fout bij ophalen van pogingen');
   }
 }
 
@@ -48,30 +54,30 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await haalSessie();
+  const fout = toegangsFout(session, true);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen pogingen toevoegen' }, { status: 403 });
-    }
-
     const { id } = await params;
     const oilSampleId = parseInt(id);
+    if (Number.isNaN(oilSampleId)) {
+      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
+    }
 
-    const sample = await prisma.oilSample.findUnique({ where: { id: oilSampleId } });
+    const sample = await prisma.oilSample.findUnique({
+      where: { id: oilSampleId },
+      select: { id: true, oNumber: true },
+    });
     if (!sample) {
       return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
     }
 
     const body = await request.json().catch(() => ({}));
-    const { sampleDate, photoUrl, remarks, isTaken } = body as {
+    const { sampleDate, photoUrl, partPhotoUrl, remarks, isTaken } = body as {
       sampleDate?: string | null;
       photoUrl?: string | null;
+      partPhotoUrl?: string | null;
       remarks?: string | null;
       isTaken?: boolean;
     };
@@ -81,9 +87,11 @@ export async function POST(
         oilSampleId,
         sampleDate: sampleDate ? new Date(sampleDate) : null,
         photoUrl: photoUrl || null,
+        partPhotoUrl: partPhotoUrl || null,
         remarks: remarks || null,
         isTaken: isTaken ?? false,
       },
+      select: { ...ATTEMPT_BASIS_SELECT, partPhotoUrl: true },
     });
 
     await syncLatestAttemptToSample(oilSampleId);
@@ -98,7 +106,6 @@ export async function POST(
 
     return NextResponse.json(attempt, { status: 201 });
   } catch (error) {
-    console.error('Error creating attempt:', error);
-    return NextResponse.json({ error: 'Fout bij aanmaken van poging' }, { status: 500 });
+    return foutAntwoordWensen2(error, 'Fout bij aanmaken van poging');
   }
 }
