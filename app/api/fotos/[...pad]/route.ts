@@ -10,7 +10,8 @@ import { isAlleenLezen } from '@/lib/roles';
 /*
   Alle foto's van de portal komen via deze route (adressen: lib/fotoAdres.ts).
   Eerst de toegang: een kijker krijgt alleen een foto van een monster, poging,
-  installatie of klantlogo van zijn eigen klant en jaar (lib/afscherming.ts).
+  installatie of klantlogo van zijn eigen klant en jaar (lib/afscherming.ts),
+  en nooit een foto van een inspectie (die ziet hij alleen in het rapport).
   Hoort het bij een andere klant, dan een 404, alsof de foto niet bestaat.
   Daarna haalt de server de foto zelf op en stuurt hem door, zodat het echte
   opslagadres nooit bij de browser komt.
@@ -25,6 +26,7 @@ const Pad = z.union([
   z.tuple([z.literal('poging'), z.string().regex(/^\d+$/), z.enum(['potje', 'onderdeel'])]),
   z.tuple([z.literal('installatie'), z.string().regex(/^\d+$/)]),
   z.tuple([z.literal('klantlogo'), z.string().regex(/^\d+$/)]),
+  z.tuple([z.literal('inspectie'), z.string().regex(/^\d+$/)]),
 ]);
 
 const NIET_GEVONDEN = 'Foto niet gevonden';
@@ -62,6 +64,17 @@ export const GET = apiRoute(
       // Een kijker zonder klant heeft geen installaties; met een klant alleen die van hem.
       const mag = installatie && (!isAlleenLezen(sessie.role) || (sessie.klantId && magKlant(sessie, installatie.object.klantId)));
       url = mag ? installatie.fotoUrl : null;
+    } else if (bron === 'inspectie') {
+      // Foto bij een bevinding: alleen voor beheerder en gebruiker. Een kijker
+      // krijgt de inspectie als rapport (PDF, op de server gemaakt) en heeft
+      // deze route dus niet nodig; ook met het klantportaal niet.
+      if (!isAlleenLezen(sessie.role)) {
+        const item = await prisma.inspectieItem.findFirst({
+          where: { id, deletedAt: null, inspectie: { deletedAt: null } },
+          select: { fotoUrl: true },
+        });
+        url = item?.fotoUrl;
+      }
     } else {
       const klant = await prisma.klant.findFirst({ where: { id, deletedAt: null }, select: { id: true, logoUrl: true } });
       const mag = klant && (!isAlleenLezen(sessie.role) || (sessie.klantId && magKlant(sessie, klant.id)));

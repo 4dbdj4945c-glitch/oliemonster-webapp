@@ -7,6 +7,7 @@
 //   /api/fotos/poging/5/potje?v=...          foto's van een poging (ook onderdeel)
 //   /api/fotos/installatie/3?v=...           foto van een installatie
 //   /api/fotos/klantlogo/2?v=...             logo van een klant
+//   /api/fotos/inspectie/7?v=...             foto bij een bevinding van een inspectie (id van de bevinding)
 //
 // De route (app/api/fotos/[...pad]/route.ts) controleert of de gebruiker het
 // monster, de installatie of de klant mag zien (lib/afscherming.ts) en haalt de
@@ -15,7 +16,7 @@
 //
 // Geen server-imports: dit bestand draait ook in de browser (tests, typen).
 
-export type FotoBron = 'monster' | 'poging' | 'installatie' | 'klantlogo';
+export type FotoBron = 'monster' | 'poging' | 'installatie' | 'klantlogo' | 'inspectie';
 
 /** Monsterfoto's per veld op OilSample. */
 export const MONSTER_FOTO_VELDEN = {
@@ -77,4 +78,10 @@ export function metInstallatieFoto<T extends { id: number; fotoUrl?: string | nu
 /** Het logo van een klant via de eigen route. */
 export function klantLogoAdres(klant: { id: number; logoUrl?: string | null }): string | null {
   return fotoAdres('klantlogo', klant.id, null, klant.logoUrl);
+}
+
+/** De foto bij een bevinding van een inspectie via de eigen route. */
+export function metInspectieFoto<T extends { id: number; fotoUrl?: string | null }>(item: T): T {
+  if (!('fotoUrl' in item)) return item;
+  return { ...item, fotoUrl: fotoAdres('inspectie', item.id, null, item.fotoUrl) };
 }

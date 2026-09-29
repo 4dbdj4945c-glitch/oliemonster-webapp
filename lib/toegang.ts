@@ -10,7 +10,9 @@
 // De regels:
 // - niet ingelogd, of de gebruiker bestaat niet meer: 401
 // - moet eerst een wachtwoord instellen: 403 (proxy.ts dwingt dat ook af)
-// - de rol alleen lezen mag UITSLUITEND lezen in de module oliemonsters, en
+// - de rol alleen lezen mag UITSLUITEND lezen in de module oliemonsters (en met
+//   de weergave klantportaal ook in de module inspecties, voor de rapporten van
+//   zijn eigen klant), en
 //   alleen de monsters van zijn eigen kijkjaar (sessie.viewYear) en, als hij
 //   bij een klant hoort (sessie.klantId), alleen die van zijn klant. Het filter
 //   daarvoor staat in lib/afscherming.ts; elke route die een kijker toelaat
@@ -27,6 +29,7 @@ import { prisma } from './prisma';
 import { sessionOptions, SessionData } from './session';
 import {
   isAlleenLezen,
+  krijgtKlantportaal,
   leesWeergave,
   OUD_KIJKJAAR,
   ROLE_ADMIN,
@@ -43,9 +46,14 @@ export async function haalSessie() {
 /** De melding als iemand eerst zijn wachtwoord moet instellen. */
 export const EERST_WACHTWOORD = 'Stel eerst je wachtwoord in.';
 
-/** De modules van de portal. Alleen oliemonsters is open voor de rol alleen lezen. */
+/**
+ * De modules van de portal. Oliemonsters is open voor de rol alleen lezen;
+ * inspecties alleen voor een kijker met de weergave klantportaal.
+ */
 export type Module =
   | 'oliemonsters'
+  | 'inspecties'
+  | 'eigen-dossier'
   | 'planning'
   | 'objecten'
   | 'klanten'
@@ -161,8 +169,12 @@ export function toegangsBesluit(
     return { status: 403, body: { error: EERST_WACHTWOORD, requiresPasswordChange: true } };
   }
   if (isAlleenLezen(gebruiker.role)) {
-    // Een kijker mag alleen lezen, en alleen in de oliemonstermodule.
-    if (opties.rol !== 'alleen_lezen' || opties.module !== 'oliemonsters') {
+    // Een kijker mag alleen lezen, en alleen in de oliemonstermodule. Met het
+    // klantportaal ook de inspecties (rapporten van zijn eigen klant); de
+    // klassieke weergave, zoals de Mourik-kijker, niet.
+    const magModule =
+      opties.module === 'oliemonsters' || (opties.module === 'inspecties' && krijgtKlantportaal(gebruiker));
+    if (opties.rol !== 'alleen_lezen' || !magModule) {
       return { status: 403, body: { error: 'Geen toegang' } };
     }
     return null;

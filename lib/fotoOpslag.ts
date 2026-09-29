@@ -9,7 +9,8 @@
 //   foto's via /api/fotos/... (lib/fotoAdres.ts), die eerst de toegang
 //   controleert (fase 3).
 // - ruimFotoOpAls: na het vervangen of verwijderen van een foto. Een adres wordt
-//   alleen gewist (`del`) als geen enkel monster, geen poging en geen installatie
+//   alleen gewist (`del`) als geen enkel monster, geen poging, geen installatie,
+//   geen bevinding van een inspectie en geen document uit het eigen dossier
 //   er nog naar wijst, ook niet in de prullenbak. De cachevelden op OilSample
 //   bevatten dezelfde adressen als de pogingen; daarom deze controle, en niet
 //   blind wissen.
@@ -44,15 +45,17 @@ export function isBlobAdres(url: string): boolean {
 
 /** Hoe vaak wordt dit adres nog gebruikt, over alle tabellen met foto's. */
 export async function aantalVerwijzingen(url: string): Promise<number> {
-  const [monsters, pogingen, installaties, klanten] = await Promise.all([
+  const [monsters, pogingen, installaties, klanten, bevindingen, documenten] = await Promise.all([
     prisma.oilSample.count({
       where: { OR: [{ photoUrl: url }, { partPhotoUrl: url }, { unreachablePhotoUrl: url }] },
     }),
     prisma.sampleAttempt.count({ where: { OR: [{ photoUrl: url }, { partPhotoUrl: url }] } }),
     prisma.installatie.count({ where: { fotoUrl: url } }),
     prisma.klant.count({ where: { logoUrl: url } }),
+    prisma.inspectieItem.count({ where: { fotoUrl: url } }),
+    prisma.eigenDocument.count({ where: { bestandUrl: url } }),
   ]);
-  return monsters + pogingen + installaties + klanten;
+  return monsters + pogingen + installaties + klanten + bevindingen + documenten;
 }
 
 /**

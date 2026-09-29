@@ -149,6 +149,7 @@ model SampleObject {
   samples      OilSample[]
   stops        SamplePlanStop[]
   installaties Installatie[]
+  inspecties   Inspectie[]
 
   @@index([region])
   @@index([klantId])
@@ -473,6 +474,7 @@ model Klant {
   gebruikers      User[]
   prospect        Prospect?
   losseMonsters   OilSample[]
+  inspecties      Inspectie[]
 
   @@index([naam])
   @@index([deletedAt])
@@ -514,9 +516,115 @@ model Installatie {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  object   SampleObject @relation(fields: [objectId], references: [id], onDelete: Restrict)
-  monsters OilSample[]
+  object         SampleObject    @relation(fields: [objectId], references: [id], onDelete: Restrict)
+  monsters       OilSample[]
+  inspecties     Inspectie[]
+  inspectieItems InspectieItem[]
 
   @@index([objectId])
+  @@index([deletedAt])
+}
+
+// ============================================
+// INSPECTIES (fase 4)
+// ============================================
+// Eén generiek model voor elke inspectie met rapport. Wat er per bevinding
+// wordt vastgelegd en hoe er gerekend wordt, staat in een sjabloon in de code
+// (lib/inspecties/sjablonen.ts): persluchtlekken en inspectie arbeidsmiddelen.
+// Sjabloonspecifieke getallen staan als JSON in `instellingen` (op de
+// inspectie) en `waarden` (per bevinding); de API controleert ze met zod.
+//
+// De klant staat op de inspectie zelf: daarop gaat de afscherming per klant
+// (een kijker met het klantportaal ziet alleen de afgeronde inspecties van zijn
+// klant). Verwijderen is zacht, net als bij klanten en monsters.
+
+model Inspectie {
+  id            Int       @id @default(autoincrement())
+  sjabloon      String // persluchtlekken | arbeidsmiddelen (lib/inspecties/sjablonen.ts)
+  klantId       Int
+  objectId      Int
+  installatieId Int? // optioneel: de installatie waar de hele inspectie over gaat
+  datum         DateTime // dag van de inspectie
+  uitvoerder    String
+  status        String    @default("concept") // concept | afgerond
+  samenvatting  String?
+  instellingen  Json? // per sjabloon, bijvoorbeeld druk, draaiuren en prijs per kWh
+  // De volgende inspectie van het geheel. Bij arbeidsmiddelen heeft elk
+  // arbeidsmiddel ook een eigen datum; de vroegste daarvan telt als volgende.
+  volgendeOp    DateTime?
+  afgerondOp    DateTime?
+  afgerondDoor  String?
+  deletedAt     DateTime?
+  deletedBy     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  klant       Klant           @relation(fields: [klantId], references: [id], onDelete: Restrict)
+  object      SampleObject    @relation(fields: [objectId], references: [id], onDelete: Restrict)
+  installatie Installatie?    @relation(fields: [installatieId], references: [id], onDelete: SetNull)
+  items       InspectieItem[]
+
+  @@index([klantId])
+  @@index([objectId])
+  @@index([installatieId])
+  @@index([datum])
+  @@index([deletedAt])
+}
+
+// Een bevinding in een inspectie: een lek, of een arbeidsmiddel met checklist.
+model InspectieItem {
+  id            Int       @id @default(autoincrement())
+  inspectieId   Int
+  volgorde      Int       @default(0)
+  installatieId Int? // arbeidsmiddelen: het arbeidsmiddel uit de installaties
+  titel         String // labelnummer van het lek, of naam van het arbeidsmiddel
+  locatie       String?
+  oordeel       String? // per sjabloon: prioriteit (lek) of uitslag (arbeidsmiddel)
+  notitie       String?
+  waarden       Json? // meetwaarden en checklist, per sjabloon
+  fotoUrl       String?
+  gerepareerd   Boolean   @default(false)
+  gerepareerdOp DateTime?
+  volgendeOp    DateTime? // arbeidsmiddelen: datum van de volgende inspectie
+  deletedAt     DateTime?
+  deletedBy     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  inspectie   Inspectie    @relation(fields: [inspectieId], references: [id], onDelete: Cascade)
+  installatie Installatie? @relation(fields: [installatieId], references: [id], onDelete: SetNull)
+
+  @@index([inspectieId])
+  @@index([installatieId])
+  @@index([deletedAt])
+}
+
+// ============================================
+// EIGEN DOSSIER (fase 4, alleen admin)
+// ============================================
+// Documenten van It's Done Services zelf: VCA, verzekering, KvK-uittreksel,
+// diploma's en cursussen (deskundigheidsdossier) en kalibratie van
+// meetmiddelen. Met vervaldatum; de geldige documenten gaan met één knop in
+// een inhuurdossier (PDF). Het bestand staat in Blob onder een onvindbare naam
+// en gaat alleen via de server naar de browser.
+
+model EigenDocument {
+  id          Int       @id @default(autoincrement())
+  soort       String // vca | verzekering | kvk | diploma | cursus | kalibratie | overig (lib/eigenDossier.ts)
+  titel       String
+  uitgever    String?
+  nummer      String?
+  afgegevenOp DateTime?
+  vervaltOp   DateTime? // leeg = verloopt niet
+  bestandUrl  String?
+  bestandNaam String?
+  bestandType String?
+  notities    String?
+  deletedAt   DateTime?
+  deletedBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([vervaltOp])
   @@index([deletedAt])
 }

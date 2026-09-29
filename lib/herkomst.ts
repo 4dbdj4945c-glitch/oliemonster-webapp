@@ -34,6 +34,8 @@ const UPLOAD_ROUTES = [
   /^\/api\/samples\/\d+\/attempts\/\d+\/photo$/,
   /^\/api\/installaties\/\d+\/foto$/,
   /^\/api\/klanten\/\d+\/logo$/,
+  /^\/api\/inspectie-items\/\d+\/foto$/,
+  /^\/api\/eigen-dossier\/\d+\/bestand$/,
 ];
 
 const VEILIGE_METHODES = new Set(['GET', 'HEAD', 'OPTIONS']);
