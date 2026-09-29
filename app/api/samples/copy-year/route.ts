@@ -1,22 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/toegang';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { apiRoute, ApiFout, jaarSchema, leesJson } from '@/lib/apiRoute';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { tabelOntbreekt } from '@/lib/planningApi';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 // POST - Neem de te nemen monsters van een vorig analyse-jaar over naar een nieuw jaar (alleen admin).
-// Body: { fromYear: 2025, toYear: 2026 }
+// Body: { fromYear: 2025, toYear: 2026 }. Werkt voor elk jaar (de pagina neemt het vorige jaar over).
 // Alle monsters uit fromYear, ook de daar geannuleerde, worden als "gepland" (niet genomen,
 // niet geannuleerd, zonder datum, foto of opmerking) aangemaakt in toYear. O-nummers die in toYear al bestaan worden overgeslagen.
-export const POST = withAuth({ rol: 'admin', module: 'oliemonsters', adminMelding: 'Alleen admins kunnen monsters overnemen' }, async (request: NextRequest, _context, session) => {
-  try {
-    const body = await request.json();
-    const fromYear = Number(body.fromYear);
-    const toYear = Number(body.toYear);
-    if (!Number.isInteger(fromYear) || !Number.isInteger(toYear) || fromYear === toYear) {
-      return NextResponse.json({ error: 'Ongeldig bron- of doeljaar' }, { status: 400 });
-    }
+const OvernemenSchema = z.object({
+  fromYear: jaarSchema,
+  toYear: jaarSchema,
+});
+
+export const POST = apiRoute(
+  { rol: 'admin', module: 'oliemonsters', adminMelding: 'Alleen admins kunnen monsters overnemen', fout: 'Fout bij overnemen van monsters' },
+  async (request, _context, session) => {
+    const { fromYear, toYear } = await leesJson(request, OvernemenSchema);
+    if (fromYear === toYear) throw new ApiFout(400, 'Ongeldig bron- of doeljaar');
 
     // Objecten zijn jaaroverstijgend: dezelfde sluis komt elk jaar terug. Neem de
     // koppeling dus mee, anders staat de planning van het nieuwe jaar leeg.
@@ -76,8 +79,5 @@ export const POST = withAuth({ rol: 'admin', module: 'oliemonsters', adminMeldin
       overgeslagen: bron.length - nieuw.length,
       bron: bron.length,
     });
-  } catch (error) {
-    console.error('Error copying samples:', error);
-    return NextResponse.json({ error: 'Fout bij overnemen van monsters' }, { status: 500 });
   }
-});
+);
