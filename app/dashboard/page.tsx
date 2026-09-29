@@ -349,7 +349,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-            {/* E-mail editor: losstaand HTML-bestand in public/, opent in een nieuw tabblad.
+            {/* Mail opstellen (de e-mail editor): losstaand HTML-bestand in public/, opent in een nieuw tabblad.
                 Bron en uitleg: Documents/Claude/email-templates/ (sync-webapp.sh kopieert 'm hierheen). */}
             <div
               className="module-card"
@@ -357,7 +357,7 @@ export default function DashboardPage() {
             >
               <div className="card-accent" />
               <span className="card-icon"><Icon name="module-email" size={24} /></span>
-              <h2 className="card-title">E-mail opstellen</h2>
+              <h2 className="card-title">Mail opstellen</h2>
               <p className="card-description">Opgemaakte mails in huisstijl samenstellen vanuit sjablonen en plakken in Apple Mail</p>
               <div className="card-stats">
                 <div className="stat-item">
