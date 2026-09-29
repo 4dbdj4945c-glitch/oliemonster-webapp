@@ -8,6 +8,7 @@
 //   /api/fotos/installatie/3?v=...           foto van een installatie
 //   /api/fotos/klantlogo/2?v=...             logo van een klant
 //   /api/fotos/inspectie/7?v=...             foto bij een bevinding van een inspectie (id van de bevinding)
+//   /api/fotos/dagrapport/4?v=...            foto bij een dagrapport (id van de foto)
 //
 // De route (app/api/fotos/[...pad]/route.ts) controleert of de gebruiker het
 // monster, de installatie of de klant mag zien (lib/afscherming.ts) en haalt de
@@ -16,7 +17,7 @@
 //
 // Geen server-imports: dit bestand draait ook in de browser (tests, typen).
 
-export type FotoBron = 'monster' | 'poging' | 'installatie' | 'klantlogo' | 'inspectie';
+export type FotoBron = 'monster' | 'poging' | 'installatie' | 'klantlogo' | 'inspectie' | 'dagrapport';
 
 /** Monsterfoto's per veld op OilSample. */
 export const MONSTER_FOTO_VELDEN = {

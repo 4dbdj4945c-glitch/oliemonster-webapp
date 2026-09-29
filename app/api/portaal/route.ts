@@ -9,6 +9,8 @@ import { isAlleenLezen, krijgtKlantportaal } from '@/lib/roles';
 import { inspectiesVanKlant, inspectieInLijst } from '@/lib/inspecties/server';
 import { sjabloonVan } from '@/lib/inspecties/sjablonen';
 import { onderhoudVoorKlant } from '@/lib/contractenServer';
+import { dagrapportNummer, haalDagrapporten } from '@/lib/dagrapporten';
+import { nlDag } from '@/lib/klantOpdracht';
 
 /*
   GET /api/portaal?jaar=2026 - het klantportaal van een kijker: voortgang, stand
@@ -82,9 +84,21 @@ export const GET = apiRoute(
     // geen interval, geen contractnaam (lib/contractenServer.ts).
     const onderhoud = await onderhoudVoorKlant(klantId, sessie.viewYear);
 
+    // Getekende dagrapporten van deze klant (lib/dagrapporten.ts); een concept
+    // ziet de klant nooit, ook niet in het voorbeeld van de beheerder.
+    const dagrapporten = (await haalDagrapporten(sessie, { klantId, status: 'getekend' })).map((r) => ({
+      id: r.id,
+      nummer: dagrapportNummer(r.id),
+      datum: nlDag(r.datum),
+      plek: r.object?.name ?? null,
+      getekendDoor: r.getekendDoor,
+      pdf: `/api/dagrapporten/${r.id}/pdf`,
+    }));
+
     return NextResponse.json({
       inspecties,
       onderhoud,
+      dagrapporten,
       klant: { id: opdracht.klant.id, naam: opdracht.klant.naam, logo: klantLogoAdres(opdracht.klant) },
       jaar,
       jaren,

@@ -85,7 +85,7 @@ export function adresTekst(k: Pick<Klant, 'adres' | 'postcode' | 'plaats'>): str
 // Klantdossier (GET /api/klanten/[id]/dossier, lib/klantDossier.ts)
 // ------------------------------------------------------------------
 
-export type MomentSoort = 'monster' | 'poging' | 'niet-bereikbaar' | 'geannuleerd' | 'open' | 'inspectie';
+export type MomentSoort = 'monster' | 'poging' | 'niet-bereikbaar' | 'geannuleerd' | 'open' | 'inspectie' | 'dagrapport';
 
 export interface Moment {
   sleutel: string;
@@ -106,6 +106,7 @@ export interface Moment {
   inspectie?: { id: number; sjabloon: string; status: string; oordeel: string | null; volgende: string | null; rapport: string };
   /** Moment van één arbeidsmiddel: alleen bij die installatie tonen, niet bij het object. */
   onderdeel?: boolean;
+  dagrapport?: { id: number; status: string; getekendDoor: string | null; pdf: string };
 }
 
 export interface DossierInstallatie extends InstallatieKort {

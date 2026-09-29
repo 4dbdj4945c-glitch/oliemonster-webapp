@@ -27,6 +27,7 @@ const Pad = z.union([
   z.tuple([z.literal('installatie'), z.string().regex(/^\d+$/)]),
   z.tuple([z.literal('klantlogo'), z.string().regex(/^\d+$/)]),
   z.tuple([z.literal('inspectie'), z.string().regex(/^\d+$/)]),
+  z.tuple([z.literal('dagrapport'), z.string().regex(/^\d+$/)]),
 ]);
 
 const NIET_GEVONDEN = 'Foto niet gevonden';
@@ -74,6 +75,16 @@ export const GET = apiRoute(
           select: { fotoUrl: true },
         });
         url = item?.fotoUrl;
+      }
+    } else if (bron === 'dagrapport') {
+      // Foto bij een dagrapport: net als bij een inspectie alleen voor beheerder
+      // en gebruiker. De klant krijgt de foto's in de PDF van het dagrapport.
+      if (!isAlleenLezen(sessie.role)) {
+        const foto = await prisma.dagrapportFoto.findFirst({
+          where: { id, dagrapport: { deletedAt: null } },
+          select: { url: true },
+        });
+        url = foto?.url;
       }
     } else {
       const klant = await prisma.klant.findFirst({ where: { id, deletedAt: null }, select: { id: true, logoUrl: true } });

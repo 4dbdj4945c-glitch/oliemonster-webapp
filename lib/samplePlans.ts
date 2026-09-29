@@ -97,7 +97,7 @@ export async function haalPlanning(analysisYear: number) {
       stops: {
         orderBy: { orderIndex: 'asc' },
         include: {
-          object: true,
+          object: { include: { klant: { select: { naam: true } } } },
           taak: {
             select: {
               id: true,
@@ -263,6 +263,7 @@ export async function haalPlanning(analysisYear: number) {
           address: stop.object.address,
           estimatedMinutes: stop.object.estimatedMinutes,
           klantId: stop.object.klantId,
+          klantNaam: stop.object.klant?.naam ?? null,
         },
         sampleIds: ids,
         orderIndex: stop.orderIndex,

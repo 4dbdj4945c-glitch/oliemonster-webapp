@@ -29,7 +29,9 @@ import OnbereikbaarModal, { type OnbereikbaarDoel } from '@/app/components/Onber
 import { AppShell, Icon, Laden } from '@/app/components/ui';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { objectTypeIcoon } from '@/lib/sampleObjects';
-import { datumAlsTekst, minutenAlsTekst } from '@/lib/planningInstellingen';
+import { datumAlsInvoer, datumAlsTekst, minutenAlsTekst } from '@/lib/planningInstellingen';
+import { magModule, moduleVan } from '@/lib/modules';
+import { STANDAARD_UITVOERDER, type DagrapportInLijst } from '@/app/components/dagrapport/types';
 import { kaartenLink, korteDatum } from '@/lib/vandaag';
 import type { MapStreet } from '@/app/components/RouteMap';
 import { isMonsterStop, stopNaam, type PlanDag, type PlanMonster, type PlanStop } from './types';
@@ -111,6 +113,9 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
   const [gekozenMonster, setGekozenMonster] = useState<number | null>(null);
   const [neemDoel, setNeemDoel] = useState<NeemDoel | null>(null);
   const [onbereikbaarDoel, setOnbereikbaarDoel] = useState<OnbereikbaarDoel | null>(null);
+  const magDagrapport = magModule(moduleVan('dagrapporten'), user.role);
+  const [dagrapporten, setDagrapporten] = useState<DagrapportInLijst[]>([]);
+  const [rapportBezig, setRapportBezig] = useState(false);
 
   const [gpsAan, setGpsAan] = useState(false);
   const [positie, setPositie] = useState<{ lat: number; lng: number } | null>(null);
@@ -143,6 +148,51 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
   useEffect(() => {
     laadDag();
   }, [laadDag]);
+
+  // De dagrapporten van deze dag. Mislukt het (geen verbinding), dan geen lijst.
+  useEffect(() => {
+    if (!magDagrapport) return;
+    let actueel = true;
+    fetch(`/api/dagrapporten?planId=${dagId}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d: DagrapportInLijst[]) => { if (actueel) setDagrapporten(d); })
+      .catch(() => {});
+    return () => { actueel = false; };
+  }, [dagId, magDagrapport]);
+
+  // Een dagrapport voor de klant van de stop: de dag, de plek en de gemeten tijd
+  // van zijn stops op deze dag staan er al in.
+  const maakDagrapport = async (s: PlanStop) => {
+    if (!dag || !s.object.klantId) return;
+    setRapportBezig(true);
+    try {
+      const gemeten = dag.stops
+        .filter((x) => x.object.klantId === s.object.klantId && x.werkelijkeMinuten !== null)
+        .reduce((n, x) => n + (x.werkelijkeMinuten ?? 0), 0);
+      const res = await fetch('/api/dagrapporten', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          klantId: s.object.klantId,
+          planId: dag.id,
+          objectId: s.objectId,
+          datum: datumAlsInvoer(dag.date),
+          uitvoerder: STANDAARD_UITVOERDER,
+          uren: gemeten > 0 ? Math.round((gemeten / 60) * 100) / 100 : null,
+        }),
+      });
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, 'Het dagrapport is niet aangemaakt.'));
+        return;
+      }
+      const nieuw = await res.json();
+      router.push(`/dashboard/dagrapporten/${nieuw.id}`);
+    } catch {
+      setFoutmelding(GEEN_VERBINDING);
+    } finally {
+      setRapportBezig(false);
+    }
+  };
 
   const stopActie = useCallback(
     async (stop: PlanStop, body: Record<string, unknown>) => {
@@ -563,6 +613,42 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
                     </ol>
                   </section>
                 </>
+              )}
+
+              {/* Dagrapport: bewijs van het bezoek met de handtekening van de klant */}
+              {magDagrapport && stops.length > 0 && (
+                <section className="veld-sectie" aria-labelledby="veld-dagrapport-kop">
+                  <h2 className="sectiekop" id="veld-dagrapport-kop">Dagrapport</h2>
+                  {dagrapporten.length > 0 && (
+                    <ul className="veld-lijst">
+                      {dagrapporten.map((r) => (
+                        <li key={r.id}>
+                          <Link href={`/dashboard/dagrapporten/${r.id}`} className="veld-lijst-regel">
+                            <span className="veld-lijst-tekst">
+                              <strong><Icon name="module-dagrapport" size={16} /> {r.nummer}, {r.klant.naam}</strong>
+                              <span>{r.object?.name ?? 'Geen vaste plek'}</span>
+                            </span>
+                            {r.status === 'getekend' ? (
+                              <span className="badge badge-success">Getekend</span>
+                            ) : (
+                              <span className="badge badge-gray">Concept</span>
+                            )}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {isAdmin && stop && (
+                    stop.object.klantId ? (
+                      <button type="button" className="btn btn-block veld-knop dr-veldknop" onClick={() => maakDagrapport(stop)} disabled={rapportBezig}>
+                        <Icon name="module-dagrapport" size={24} />
+                        {rapportBezig ? 'Bezig...' : `Dagrapport voor ${stop.object.klantNaam ?? stop.object.name}`}
+                      </button>
+                    ) : (
+                      <p className="hint">{stop.object.name} hoort nog niet bij een klant; koppel het object eerst in het klantdossier.</p>
+                    )
+                  )}
+                </section>
               )}
 
               {/* Dag verwijderen: helemaal onderaan en ingeklapt, in het veld wil je dat niet zien */}

@@ -70,6 +70,7 @@ export interface PlanStop {
     address: string | null;
     estimatedMinutes: number | null;
     klantId?: number | null;
+    klantNaam?: string | null;
   };
   sampleIds: number[] | null;
   orderIndex: number;

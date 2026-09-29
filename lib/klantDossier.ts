@@ -10,6 +10,8 @@
 // - inspectie: een inspectie (persluchtlekken, arbeidsmiddelen), op het object
 //   en, bij arbeidsmiddelen, ook per arbeidsmiddel dat een installatie is (dat
 //   moment heeft `onderdeel`, zodat het bij het object niet dubbel staat)
+// - dagrapport: een dagrapport van een bezoek (fase 5), bij het object als dat
+//   is ingevuld, anders bij de losse momenten
 
 import { prisma } from './prisma';
 import { actiefFilter } from './verwijderdeMonsters';
@@ -19,8 +21,9 @@ import { haalOpdracht, jarenVanKlant, nlDag } from './klantOpdracht';
 import { INSPECTIE_SELECT } from './inspecties/server';
 import { inspectieNummer, oordeelVan, sjabloonVan, type SjabloonSleutel } from './inspecties/sjablonen';
 import { uitkomstTekst, volgendeInspectie } from './inspecties/rekenen';
+import { DAGRAPPORT_SELECT, dagrapportNummer } from './dagrapporten';
 
-export type MomentSoort = 'monster' | 'poging' | 'niet-bereikbaar' | 'geannuleerd' | 'open' | 'inspectie';
+export type MomentSoort = 'monster' | 'poging' | 'niet-bereikbaar' | 'geannuleerd' | 'open' | 'inspectie' | 'dagrapport';
 
 export interface Moment {
   sleutel: string;
@@ -52,6 +55,8 @@ export interface Moment {
   };
   /** Moment van één arbeidsmiddel binnen een inspectie: alleen bij de installatie tonen. */
   onderdeel?: boolean;
+  /** Alleen bij een dagrapport */
+  dagrapport?: { id: number; status: string; getekendDoor: string | null; pdf: string };
 }
 
 export async function haalDossier(klantId: number, jaar: number | null) {
@@ -215,6 +220,35 @@ export async function haalDossier(klantId: number, jaar: number | null) {
         onderdeel: true,
       });
     }
+  }
+
+  // Dagrapporten van deze klant (ook concepten: dit is het dossier van de beheerder).
+  const dagrapporten = await prisma.dagrapport.findMany({
+    where: {
+      klantId,
+      deletedAt: null,
+      ...(jaar !== null ? { datum: { gte: new Date(Date.UTC(jaar, 0, 1)), lt: new Date(Date.UTC(jaar + 1, 0, 1)) } } : {}),
+    },
+    orderBy: { datum: 'desc' },
+    select: DAGRAPPORT_SELECT,
+  });
+  for (const r of dagrapporten) {
+    const nummer = dagrapportNummer(r.id);
+    momenten.push({
+      sleutel: `dagrapport-${r.id}`,
+      soort: 'dagrapport',
+      datum: nlDag(r.datum),
+      monsterId: null,
+      oNumber: nummer,
+      jaar: new Date(r.datum).getUTCFullYear(),
+      objectId: r.objectId,
+      installatieId: null,
+      titel: `Dagrapport ${nummer}`,
+      tekst: [r.werkzaamheden, r.bevindingen].filter(Boolean).join(' ') || null,
+      fotos: r.fotos.slice(0, 4).map((f) => ({ url: fotoAdres('dagrapport', f.id, null, f.url)!, label: f.bijschrift ?? 'Foto dagrapport' })),
+      door: r.uitvoerder,
+      dagrapport: { id: r.id, status: r.status, getekendDoor: r.getekendDoor, pdf: `/api/dagrapporten/${r.id}/pdf` },
+    });
   }
 
   // Open zonder datum bovenaan, dan nieuwste eerst.

@@ -149,6 +149,16 @@ export const MODULES: ModuleInfo[] = [
     tegel: true,
   },
   {
+    sleutel: 'dagrapporten',
+    naam: 'Dagrapporten',
+    beschrijving: "Per bezoek wat er gedaan is, met foto's, uren en de handtekening van de klant",
+    icoon: 'module-dagrapport',
+    route: '/dashboard/dagrapporten',
+    sectie: 'Rapportage',
+    rollen: MEDEWERKERS,
+    tegel: true,
+  },
+  {
     sleutel: 'objecten',
     naam: 'Objecten',
     beschrijving: 'Kunstwerken, vestigingen en locaties waar monsters vandaan komen',

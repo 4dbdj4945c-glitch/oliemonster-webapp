@@ -41,7 +41,6 @@ export default function AgendaVenster({ open, onClose }: { open: boolean; onClos
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) laad();
   }, [open, laad]);
 

@@ -23,6 +23,7 @@ import ContactpersoonFormulier from '@/app/components/klanten/ContactpersoonForm
 import InstallatieFormulier from '@/app/components/klanten/InstallatieFormulier';
 import DossierTijdlijn, { type DossierKeuze } from '@/app/components/klanten/DossierTijdlijn';
 import OnderhoudTab from '@/app/components/klanten/OnderhoudTab';
+import NieuwDagrapport from '@/app/components/dagrapport/NieuwDagrapport';
 import { termijnTekst, vandaagNl } from '@/lib/contracten';
 import {
   adresTekst,
@@ -70,6 +71,7 @@ export default function KlantPagina() {
   const [keuze, setKeuze] = useState<DossierKeuze | null>(null);
   const [logoBezig, setLogoBezig] = useState(false);
   const [aandacht, setAandacht] = useState<AandachtTaak[]>([]);
+  const [nieuwDagrapport, setNieuwDagrapport] = useState(false);
 
   const laad = useCallback(async () => {
     try {
@@ -329,6 +331,10 @@ export default function KlantPagina() {
                     Rapport maken
                   </button>
                 )}
+                <button type="button" className="btn" onClick={() => setNieuwDagrapport(true)}>
+                  <Icon name="module-dagrapport" size={16} />
+                  Dagrapport
+                </button>
                 <button type="button" className="btn" onClick={() => router.push(`/dashboard/klanten/${klant.id}/portaal`)}>
                   <Icon name="external-link" size={16} />
                   Klantportaal bekijken
@@ -444,6 +450,7 @@ export default function KlantPagina() {
           )}
 
           {tab === 'onderhoud' && <OnderhoudTab klant={{ id: klant.id, naam: klant.naam }} />}
+          {nieuwDagrapport && <NieuwDagrapport vasteKlant={{ id: klant.id, naam: klant.naam }} onClose={() => setNieuwDagrapport(false)} />}
 
           {tab === 'contact' && (
             <section className="card beheer-kaart">

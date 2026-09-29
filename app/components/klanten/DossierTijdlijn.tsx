@@ -28,7 +28,10 @@ const SOORT: Record<MomentSoort, { icoon: IconNaam; badge: string; label: string
   geannuleerd: { icoon: 'status-cancelled', badge: 'badge-gray', label: 'Geannuleerd' },
   open: { icoon: 'calendar', badge: 'badge-gray', label: 'Nog in te plannen' },
   inspectie: { icoon: 'module-inspecties', badge: 'badge-success', label: 'Afgerond' },
+  dagrapport: { icoon: 'module-dagrapport', badge: 'badge-success', label: 'Getekend' },
 };
+
+const DAGRAPPORT_CONCEPT = { icoon: 'module-dagrapport' as IconNaam, badge: 'badge-gray', label: 'Concept' };
 
 /** Badge van een inspectiemoment: de uitslag van het arbeidsmiddel, anders de status. */
 function inspectieBadge(m: Moment): { icoon: IconNaam; badge: string; label: string } {
@@ -43,7 +46,7 @@ function inspectieBadge(m: Moment): { icoon: IconNaam; badge: string; label: str
 
 const GEPLAND = { icoon: 'status-planned' as IconNaam, badge: 'badge-info', label: 'Gepland' };
 
-type Filter = 'alles' | 'monster' | 'open' | 'niet-bereikbaar' | 'geannuleerd' | 'inspectie';
+type Filter = 'alles' | 'monster' | 'open' | 'niet-bereikbaar' | 'geannuleerd' | 'inspectie' | 'dagrapport';
 const FILTERS: { sleutel: Filter; naam: string }[] = [
   { sleutel: 'alles', naam: 'Alles' },
   { sleutel: 'monster', naam: 'Genomen' },
@@ -51,6 +54,7 @@ const FILTERS: { sleutel: Filter; naam: string }[] = [
   { sleutel: 'niet-bereikbaar', naam: 'Niet bereikbaar' },
   { sleutel: 'geannuleerd', naam: 'Geannuleerd' },
   { sleutel: 'inspectie', naam: 'Inspecties' },
+  { sleutel: 'dagrapport', naam: 'Dagrapporten' },
 ];
 
 function past(m: Moment, f: Filter): boolean {
@@ -86,7 +90,8 @@ export default function DossierTijdlijn({
   const [foto, setFoto] = useState<{ fotos: FotoInVenster[]; start: number; nummer: string } | null>(null);
 
   // Het aantal monsters (ook open en gepland), niet het aantal momenten.
-  const aantalVoor = (k: DossierKeuze) => new Set(momentenVan(dossier, k).map((m) => m.monsterId)).size;
+  // Alleen monsters tellen; een inspectie of dagrapport heeft geen monsterId.
+  const aantalVoor = (k: DossierKeuze) => new Set(momentenVan(dossier, k).map((m) => m.monsterId).filter((id) => id !== null)).size;
   const isGekozen = (k: DossierKeuze) =>
     !!keuze && keuze.soort === k.soort && (k.soort === 'los' || (keuze.soort !== 'los' && keuze.id === k.id));
 
@@ -285,7 +290,14 @@ export default function DossierTijdlijn({
             ) : (
               <ol className="dossier-tijdlijn">
                 {zichtbaar.map((m) => {
-                  const w = m.soort === 'inspectie' ? inspectieBadge(m) : m.soort === 'open' && m.gepland ? GEPLAND : SOORT[m.soort];
+                  const w =
+                    m.soort === 'inspectie'
+                      ? inspectieBadge(m)
+                      : m.soort === 'dagrapport' && m.dagrapport?.status !== 'getekend'
+                        ? DAGRAPPORT_CONCEPT
+                        : m.soort === 'open' && m.gepland
+                          ? GEPLAND
+                          : SOORT[m.soort];
                   return (
                     <li key={m.sleutel} className="moment">
                       <div className="moment-datum">
@@ -307,7 +319,21 @@ export default function DossierTijdlijn({
                           <span className={`badge ${w.badge}`}>{w.label}</span>
                         </div>
                         {m.tekst && <p>{m.tekst}</p>}
-                        {m.door && <p className="moment-door">{m.inspectie ? 'Uitgevoerd' : 'Vastgelegd'} door {m.door}</p>}
+                        {m.door && <p className="moment-door">{m.inspectie || m.dagrapport ? 'Uitgevoerd' : 'Vastgelegd'} door {m.door}{m.dagrapport?.getekendDoor ? `, getekend door ${m.dagrapport.getekendDoor}` : ''}</p>}
+                        {m.dagrapport && (
+                          <p className="moment-links">
+                            <a
+                              href={`/dashboard/dagrapporten/${m.dagrapport.id}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                router.push(`/dashboard/dagrapporten/${m.dagrapport!.id}`);
+                              }}
+                            >
+                              <Icon name="pencil" size={16} />Openen
+                            </a>
+                            <a href={m.dagrapport.pdf} download><Icon name="file-pdf" size={16} />PDF</a>
+                          </p>
+                        )}
                         {m.inspectie && (
                           <p className="moment-links">
                             {m.inspectie.volgende && (
