@@ -78,7 +78,9 @@ tabelregel en veld in de portal, dus dat is een eigen besluit en geen los foutje
   (kop met avatar en rol, Terug naar dashboard, Help, sectie Beheer, Uitloggen). Knoppen in de balk
   kunnen een lange en korte tekst hebben (`<span class="lang">` / `<span class="kort">`). Het witte logo `header_logo.png` staat er zonder filter in.
 - **Fotovenster**: `PhotoModal` (`.foto-paneel`, `.foto-beeld`, `.foto-knop`), klein venster op desktop,
-  beeldvullend op de telefoon. CSS staat in globals.css.
+  beeldvullend op de telefoon. Krijgt een lijst foto's mee: een monster heeft er twee (het onderdeel en
+  het monsterpotje), en dan komt er een keuzerij bij (`.foto-keuze`), op de telefoon onderin met
+  tikdoelen van 44px. CSS staat in globals.css.
 - **Kaart**: `.card` (of het oude `.glass-card`), wit met grijze rand. Kop erboven: `.card-kop`.
 - **Knoppen**: `.btn` (wit met rand), `.btn-primary` (oranje met navy tekst, de hoofdactie op een pagina),
   `.btn-blue` (blauw, secundaire actie), `.btn-secondary`, `.btn-danger`, `.btn-danger-soft`,
@@ -96,6 +98,10 @@ tabelregel en veld in de portal, dus dat is een eigen besluit en geen los foutje
 - **Modal**: component `Modal` (grijze kopbalk, witte romp, voettekst met knoppen).
 - **Leeg / laden**: `.leeg`, `.laden`, `.laadscherm`.
 - **Inloggen**: `.auth-page > .auth-card > .auth-band + .auth-body (+ .auth-foot)`.
+- **Veldformulier**: `.veldwerk` om een formulier dat in het veld gebruikt wordt (Monster nemen,
+  Niet bereikbaar). Velden en knoppen worden er 52px, op de telefoon 56px. Foto's gaan via
+  `FotoKiezer` (`.foto-kiezer`, twee naast elkaar in `.veldwerk-fotos`, op de telefoon onder elkaar):
+  één groot tikvlak dat op de telefoon meteen de camera opent. Bedoeld voor werken met handschoenen aan.
 
 ## Iconen
 
@@ -110,7 +116,10 @@ Eén set voor de hele portal, via `<Icon name="..." />` uit `app/components/ui` 
   rood alleen voor Niet genomen en verwijderen. Stattegels: `.stat-card-icoon.is-genomen` / `.is-niet-genomen`, geen inline kleur.
 - **Actief**: niet met een gevuld icoon, maar via de container: navy vlak met wit icoon, of een oranje streep links (`border-left: 3px solid var(--oranje)`). Die klasse bestaat nog niet; maak hem pas als een menu een actieve staat krijgt.
 - **Status**: altijd icoon plus woord. Genomen `status-taken` (groen), Niet genomen `status-not-taken` (rood),
-  Gepland `status-planned` (blauw, `badge-info`), Geannuleerd `status-cancelled` (grijs). Rondes: `status-round-open/-busy/-done`.
+  Niet bereikbaar `alert-warning` (`badge-warning`, `--geel-tekst`), Gepland `status-planned` (blauw, `badge-info`),
+  Geannuleerd `status-cancelled` (grijs). Rondes: `status-round-open/-busy/-done`.
+  De vier statussen van een monster staan met hun label, badge en icoon in `lib/sampleStatus.ts`,
+  zodat de lijst, de tellingen en de PDF hetzelfde zeggen.
 - **Tabelacties**: op desktop Hermonstering als knop met tekst, Bewerken en Verwijderen als `.icon-btn` met `title` en
   `aria-label` (Verwijderen met `.icon-btn-verwijder`: rood in rust; elders blijft `.icon-btn-danger` grijs met rood bij hover); de tekst staat in `<span class="alleen-mobiel">`, zodat de telefoon altijd icoon plus tekst toont.
 - **Hulpklassen**: `.zoekveld` (loep in een veld), `.stat-card-icoon` (icoon rechtsboven in een stattegel), `.leeg > .icon`.
@@ -118,6 +127,7 @@ Eén set voor de hele portal, via `<Icon name="..." />` uit `app/components/ui` 
   Eerst in `iconen-voorstel/` tekenen volgens de spec en opnemen in `iconen.json`, dan opnieuw genereren.
 - **Later**: de objecticonen (cilinder, pomp, afsluiter, sluis, stuw, kunstwerk, aftappunt) en de lab-statussen
   liggen klaar in het voorstel, maar komen pas in de app als er een objecttype-veld of lab-stap in het datamodel komt.
+  Ook `status-unreachable` hoort daar nog bij getekend te worden: Niet bereikbaar leent nu `alert-warning`.
 
 ## Niet doen
 

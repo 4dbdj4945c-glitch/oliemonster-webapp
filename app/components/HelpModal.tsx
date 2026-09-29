@@ -1,6 +1,7 @@
 'use client';
 
 import { Modal } from '@/app/components/ui';
+import { isAlleenLezen } from '@/lib/roles';
 
 interface HelpModalProps {
   isOpen: boolean;
@@ -73,15 +74,24 @@ export default function HelpModal({ isOpen, onClose, userRole }: HelpModalProps)
           <ul>
             <li><strong>Zoeken:</strong> gebruik het zoekveld om te zoeken op o-nummer, locatie of omschrijving.</li>
             <li><strong>Sorteren:</strong> sorteer de lijst op o-nummer, datum, locatie of laatst toegevoegd.</li>
-            <li><strong>Status:</strong> groene badges zijn genomen monsters, rode badges niet genomen.</li>
-            <li><strong>Foto&apos;s:</strong> klik op &quot;Bekijk foto&quot; om foto&apos;s van monsters te bekijken.</li>
+            <li>
+              <strong>Status:</strong> er zijn vier statussen. Groen is genomen, rood is niet
+              genomen, oranje is niet bereikbaar (de locatie was niet te bereiken, het monster
+              blijft openstaan) en grijs is geannuleerd (hoeft niet meer).
+            </li>
+            <li>
+              <strong>Foto&apos;s:</strong> elk monster heeft twee foto&apos;s, van het onderdeel en
+              van het monsterpotje. Klik op een van de twee om ze te bekijken; in het fotovenster
+              wissel je met één tik.
+            </li>
           </ul>
         </section>
 
         <section className="help-sectie">
           <h3 className="section-label">Statistieken</h3>
           <p>
-            Bovenaan zie je drie kaarten met statistieken: totaal aantal monsters, aantal genomen monsters en aantal niet-genomen monsters.
+            Bovenaan zie je vijf kaarten: het totaal en de vier statussen (genomen, niet genomen,
+            niet bereikbaar, geannuleerd). Een tik op een kaart filtert de lijst.
           </p>
         </section>
 
@@ -100,12 +110,32 @@ export default function HelpModal({ isOpen, onClose, userRole }: HelpModalProps)
             </section>
 
             <section className="help-sectie">
+              <h3 className="section-label">Monster nemen (admin)</h3>
+              <ul>
+                <li>
+                  Bij elk monster dat nog open staat zit de knop &quot;Monster nemen&quot;. Die opent
+                  meteen het hele invulscherm: de datum staat al op vandaag, en je vult het type olie,
+                  een opmerking en beide foto&apos;s in. In één keer opslaan.
+                </li>
+                <li>
+                  Kon je er niet bij, dan schakel je in datzelfde scherm met &quot;Niet bereikbaar&quot;
+                  over naar het formulier daarvoor: een reden (afzetting, andere werkzaamheden,
+                  begroeiing of anders), een korte omschrijving en een foto als bewijs. Het monster
+                  blijft openstaan en blijft meetellen in de planning.
+                </li>
+                <li>
+                  Hermonstering blijft bestaan voor een tweede poging bij hetzelfde monster.
+                </li>
+              </ul>
+            </section>
+
+            <section className="help-sectie">
               <h3 className="section-label">Foto&apos;s uploaden (admin)</h3>
               <ul>
-                <li>Klik op &quot;Upload foto&quot; bij een monster zonder foto.</li>
-                <li>Selecteer een afbeelding van je apparaat.</li>
-                <li>De foto wordt automatisch geüpload en opgeslagen.</li>
-                <li>Foto&apos;s dienen als bewijs dat het monster is genomen.</li>
+                <li>Elk monster heeft twee foto&apos;s: het onderdeel waar het monster vandaan komt, en het monsterpotje.</li>
+                <li>Klik in de lijst op de uploadknop van de foto die nog ontbreekt.</li>
+                <li>Op de telefoon opent de camera meteen; op de computer kies je een bestand.</li>
+                <li>De foto&apos;s zijn het bewijs, en ze komen ook in de PDF voor de klant.</li>
               </ul>
             </section>
 
@@ -132,10 +162,16 @@ export default function HelpModal({ isOpen, onClose, userRole }: HelpModalProps)
           <section className="help-sectie">
             <h3 className="section-label">Gebruikersrechten</h3>
             <ul>
-              <li>Je kunt alle monsters bekijken en doorzoeken.</li>
-              <li>Je kunt foto&apos;s bekijken en downloaden.</li>
-              <li>Je kunt de lijst sorteren en filteren.</li>
+              <li>Je kunt de monsters bekijken en doorzoeken.</li>
+              <li>Je kunt beide foto&apos;s per monster bekijken en downloaden.</li>
+              <li>Je kunt de lijst sorteren en filteren, ook op geannuleerd en op niet bereikbaar.</li>
               <li><strong>Let op:</strong> alleen admins kunnen monsters toevoegen, bewerken of verwijderen.</li>
+              {isAlleenLezen(userRole) && (
+                <li>
+                  Met de rol alleen lezen zie je uitsluitend de oliemonsters. Heeft de beheerder een
+                  analysejaar voor je ingesteld, dan zie je alleen de monsters van dat jaar.
+                </li>
+              )}
             </ul>
           </section>
         )}

@@ -121,16 +121,21 @@ oliemonster-webapp/
 - id (Int)
 - username (String, unique)
 - password (String, hashed)
-- role (String: "admin" of "user")
+- role (String: "admin", "user" of "alleen_lezen", zie lib/roles.ts)
+- viewYear (Int, optioneel: bij alleen lezen het enige analysejaar dat deze gebruiker mag zien; leeg = alle jaren)
 - createdAt (DateTime)
 
 ### OilSample
 - id (Int)
-- oNumber (String, unique)
+- oNumber (String, uniek per analysisYear)
 - sampleDate (DateTime)
 - location (String)
 - description (String)
 - isTaken (Boolean)
+- isDisabled (Boolean: geannuleerd, valt buiten de planning)
+- isUnreachable (Boolean: de locatie was niet te bereiken; blijft openstaan en telt mee in de planning)
+- photoUrl (String: foto van het monsterpotje)
+- partPhotoUrl (String: foto van het onderdeel waar het monster vandaan komt)
 - createdAt (DateTime)
 - updatedAt (DateTime)
 
