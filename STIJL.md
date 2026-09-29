@@ -66,8 +66,8 @@ tabelregel en veld in de portal, dus dat is een eigen besluit en geen los foutje
 ## Bouwstenen
 
 - **Balk bovenaan**: `AppShell` (navy) regelt de hele balk zelf: links logo, "IDS Portal" en de
-  modulenaam (`title`), rechts Terug naar dashboard, het Beheer-menu (alleen admin: Audit logs,
-  Kolommen aanpassen, Instellingen, Afdrukken), een Help-knop (als de pagina `onHelp` meegeeft) en het
+  modulenaam (`title`), rechts Terug naar dashboard, het Beheer-menu (alleen admin: de modules uit
+  sectie Beheer van `lib/modules.ts`, dus Objecten, Audit logs, Kolommen aanpassen, Instellingen, en Afdrukken), een Help-knop (als de pagina `onHelp` meegeeft) en het
   gebruikersmenu (avatar met initiaal, naam, rol en Uitloggen). Een pagina geeft `user` mee (anders haalt
   de balk de sessie zelf op), optioneel `onPrint` (Beheer > Afdrukken, standaard `window.print()`) en
   `rightActions` voor echt paginaspecifieke knoppen. Losse knoppen daarin: `NavButton` / `.nav-btn`
@@ -97,6 +97,12 @@ tabelregel en veld in de portal, dus dat is een eigen besluit en geen los foutje
   een lijst (op de telefoon een volle knop van 44px bovenaan de kaart).
 - **Modal**: component `Modal` (grijze kopbalk, witte romp, voettekst met knoppen).
 - **Leeg / laden**: `.leeg`, `.laden`, `.laadscherm`.
+- **Filters boven een lijst**: `.filters > .filter-veld` (label `.filter-label`, veld `.filter-select`,
+  brede knop `.filter-veld-breed`), op de telefoon twee kolommen (component `MonsterFilters`).
+- **Beheerschermen** (Klanten, Installaties): kop `.beheer-kop` met `.beheer-knoppen`, terug `.terug-link`,
+  twee kolommen `.beheer-grid > .beheer-kolom > .card.beheer-kaart`, gegevens als `dl.gegevens-lijst`,
+  regels `.beheer-lijst > .beheer-lijst-regel`, code van een installatie `.badge.code-badge`,
+  formulier in een venster `.beheer-formulier` (lange velden `.beheer-veld-breed`).
 - **Inloggen**: `.auth-page > .auth-card > .auth-band + .auth-body (+ .auth-foot)`.
 - **Veldformulier**: `.veldwerk` om een formulier dat in het veld gebruikt wordt (Monster nemen,
   Niet bereikbaar). Velden en knoppen worden er 52px, op de telefoon 56px. Foto's gaan via
@@ -128,6 +134,8 @@ Eén set voor de hele portal, via `<Icon name="..." />` uit `app/components/ui` 
   verwijderen, `lib/verwijderdeMonsters.ts`). Na verwijderen van iets kleins of iets uit de prullenbak:
   `OngedaanMelding` (`.ongedaan-melding`, 10 seconden, knop Ongedaan maken). Een bevestiging noemt altijd wat er weggaat.
   `.icon-btn-verwijder` (rood in rust) alleen nog waar een rij geen bewerkvenster heeft.
+  Voor een klant of installatie: `VeiligVerwijderBlok` (zelfde gevarenzone, naam of code overtypen).
+  Een contactpersoon weghalen staat onderaan zijn bewerkvenster, zonder overtypen, met `OngedaanMelding`.
 - **Hulpklassen**: `.zoekveld` (loep in een veld), `.stat-card-icoon` (icoon rechtsboven in een stattegel), `.leeg > .icon`.
 - **Niet**: geen getypte "+" of "x" als icoon, geen emoji, geen losse inline `<svg>` in pagina's. Nieuw icoon nodig?
   Eerst in `iconen-voorstel/` tekenen volgens de spec en opnemen in `iconen.json`, dan opnieuw genereren.

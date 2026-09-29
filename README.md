@@ -30,6 +30,7 @@ Een webapp voor het bijhouden en inzichtelijk maken van oliemonsteranalyses.
 - **Backend**: Next.js API Routes
 - **Database**: PostgreSQL (Supabase in productie, Homebrew PostgreSQL lokaal) + Prisma ORM met migraties
 - **Authenticatie**: iron-session + bcryptjs, toegang per route via `withAuth` (lib/toegang.ts)
+- **Invoer**: zod, via `apiRoute` in lib/apiRoute.ts
 - **Tests**: Vitest (tests/), GitHub Action in .github/workflows/ci.yml
 
 ## Installatie
@@ -81,7 +82,7 @@ naar een database op deze computer wijst.
 |---|---|---|
 | `admin` | `admin123` | admin |
 | `gebruiker` | `user123` | gebruiker (leest alles, wijzigt niets) |
-| `kijker` | `kijker123` | alleen lezen, alleen 2025 (zoals de Mourik-kijker) |
+| `kijker` | `kijker123` | alleen lezen, alleen 2025, klant Mourik (zoals de Mourik-kijker) |
 | `nieuw` | geen | moet eerst een wachtwoord instellen via een uitnodigingslink |
 
 ## Gebruikshandleiding
@@ -136,6 +137,15 @@ oliemonster-webapp/
 - viewYear (Int, optioneel: bij alleen lezen het enige analysejaar dat deze gebruiker mag zien; leeg = alle jaren)
 - createdAt (DateTime)
 
+### Klanten (sinds fase 1b)
+- `Klant` (naam, adres, postcode, plaats, KvK, notities, zacht verwijderen)
+- `Contactpersoon` per klant (naam, functie, e-mail, telefoon)
+- `SampleObject.klantId`: een object (kunstwerk, vestiging, locatie) hoort bij een klant
+- `Installatie` op een object (pomp, aggregaat, compressor, pers; merk, type,
+  bouwjaar, serienummer, foto, korte `code` voor een latere QR-sticker)
+- `OilSample.installatieId` (optioneel), `Prospect.klantId` (na Wordt klant),
+  `User.klantId` (kijkers; de afscherming per klant komt in fase 3, tot die tijd geldt `viewYear`)
+
 ### OilSample
 - id (Int)
 - oNumber (String, uniek per analysisYear)
@@ -158,13 +168,37 @@ oliemonster-webapp/
 - `GET /api/auth/session` - Sessie info ophalen
 
 ### Oliemonsters
+
+De pagina is `/dashboard/oliemonsters/[jaar]`, één voor elk jaar. De oude
+adressen `/dashboard/oliemonsters` (2025) en `/dashboard/oliemonsters2026`
+sturen door (next.config.ts).
+
+Datum, genomen, opmerking en de twee foto's op OilSample zijn een spiegel van
+de laatste poging. Ze worden alleen via `wijzigLaatstePoging`
+(lib/sampleAttempts.ts) geschreven, nooit rechtstreeks op het monster.
+
 - `GET /api/samples?search={query}` - Alle monsters ophalen (met optionele zoekfilter)
+- `GET /api/samples/jaren` - Jaren met monsters, met aantal en genomen
 - `POST /api/samples` - Nieuw monster toevoegen (admin only)
 - `PUT /api/samples/[id]` - Monster bijwerken (admin only)
 - `DELETE /api/samples/[id]` - Monster naar de prullenbak (admin only, body `{ bevestigONummer }`; zacht verwijderen via `deletedAt`)
 - `GET /api/samples/verwijderd?year=` - Prullenbak van een jaar (admin only)
 - `POST /api/samples/[id]/herstellen` - Monster terugzetten uit de prullenbak (admin only)
 - `POST /api/samples/[id]/afname-ongedaan` - Laatste monstername terug naar niet genomen (admin only)
+
+### Klanten en installaties (alleen admin)
+- `GET/POST /api/klanten`, `GET/PUT/DELETE /api/klanten/[id]` (DELETE zacht, body `{ bevestigNaam }`), `POST /api/klanten/[id]/herstellen`
+- `POST /api/klanten/[id]/contactpersonen`, `PUT/DELETE /api/contactpersonen/[id]`, `POST /api/contactpersonen/[id]/herstellen`
+- `GET/POST /api/installaties` (`?klantId=`, `?objectId=`), `GET/PUT/DELETE /api/installaties/[id]` (DELETE zacht, body `{ bevestigCode }`), `POST .../herstellen`, `POST/DELETE .../foto`
+- `POST /api/prospects/[id]/wordt-klant` - Klant (plus contactpersoon) uit een prospect; 409 met `bestaandeKlant` als de naam al bestaat, dan opnieuw met `{ klantId }`
+
+### Foto's
+Uploaden via `bewaarFoto` (lib/fotoOpslag.ts): Vercel Blob met een willekeurig
+achtervoegsel. Wordt een foto vervangen of verwijderd, dan ruimt
+`ruimFotoOpAls` het oude bestand op (`del()`), maar alleen als geen monster,
+poging of installatie het adres nog gebruikt. Bij Afname ongedaan, Weer
+bereikbaar en een poging verwijderen blijven de foto's staan, met het adres in
+het logboek. Bestaande adressen blijven werken.
 
 ## Database: schema wijzigen en bijwerken
 
@@ -181,6 +215,22 @@ De oude `db-push-*.sh`-scripts zijn vervangen en niet meer nodig.
 `0_basis` is de beginstand: precies het schema van main op 29 september 2026.
 `prisma/basis-schema.prisma` is dat schema als bestand, voor de controle
 hieronder. Pas die twee nooit aan; wijzigingen komen altijd in een nieuwe migratie.
+
+**Migraties sinds 0_basis (fase 1b):**
+
+- `20260929180000_klanten_en_installaties`: nieuwe tabellen Klant,
+  Contactpersoon en Installatie, nieuwe lege kolommen (klantId op
+  SampleObject, User en Prospect, installatieId op OilSample). Daarna één
+  klant Mourik Infra B.V. (Trambaan 15, 6101 AJ Echt) met daaraan alle
+  bestaande objecten en alle gebruikers met de rol alleen lezen (ook de oude
+  kijkersrol). Idempotent: geen tweede Mourik, geen bestaande koppeling
+  overschreven. Er verdwijnt niets.
+- `20260929180100_gebruiker_koppelingen`: echte foreign keys van AuditLog en
+  UltimoComment naar User (ON DELETE SET NULL). Verwijzingen naar gebruikers
+  die al niet meer bestaan worden eerst leeg gemaakt; de gebruikersnaam staat
+  als tekst in dezelfde regel en blijft.
+- `20260929180200_contact_opheffen`: Contact en ContactNote gaan alleen weg als
+  ze allebei leeg zijn. Staat er iets in, dan blijven ze onaangeroerd staan.
 
 **Productie bijwerken (Roel, op zijn Mac):**
 
@@ -209,7 +259,7 @@ uitvoer in `schermen/`):
 
 ```bash
 node scripts/schermen.mjs --seed                                   # standaardset
-node scripts/schermen.mjs kijker:/dashboard/oliemonsters admin:/dashboard/objecten
+node scripts/schermen.mjs kijker:/dashboard/oliemonsters/2025 admin:/dashboard/klanten
 ```
 
 De tests in `tests/db` en `tests/routes` wissen `ids_portal_test` en vullen hem
@@ -219,12 +269,19 @@ de migratiecontrole, de tests (met een eigen PostgreSQL) en de build.
 
 ## Toegang
 
-- API-routes: `export const GET = withAuth({ rol, module }, async (request, context, sessie) => ...)`
-  uit `lib/toegang.ts`. De gebruiker komt bij elke aanvraag uit de database, dus
+- Moduleregister: `lib/modules.ts` (naam, icoon, route, sectie Werk, Klanten,
+  Rapportage of Beheer, rollen). Bron voor de dashboardtegels, het Beheer-menu
+  en de paginatoegang. Een nieuwe module: daar toevoegen.
+- API-routes: `export const GET = apiRoute({ rol, module, fout }, async (request, context, sessie) => ...)`
+  uit `lib/apiRoute.ts`. Dat is `withAuth` (lib/toegang.ts) plus invoer met zod
+  (`leesJson`, `leesQuery`, `leesId`) en één foutvorm: `{ error, velden? }`,
+  400 bij ongeldige invoer, `throw new ApiFout(status, melding)` voor een eigen
+  melding, 503 als de database nog niet bij is, anders 500. De gebruiker komt bij elke aanvraag uit de database, dus
   een verwijderde of teruggezette gebruiker verliest meteen zijn rechten. `rol` is
   `alleen_lezen` (ook de kijker, alleen in module `oliemonsters`), `user` of `admin`.
 - Pagina's: `app/dashboard/layout.tsx` controleert op de server sessie en rol en
-  stuurt door; de regel staat in `lib/paginaToegang.ts`. Pagina's lezen de
+  stuurt door; de regel staat in `lib/paginaToegang.ts` en leest het register.
+  Een kijker komt alleen op `/dashboard/oliemonsters/<zijn jaar>`. Pagina's lezen de
   gebruiker met `useGebruiker()` en doen zelf geen sessiecheck.
 - CSRF en "eerst wachtwoord instellen" staan daarnaast in `proxy.ts`.
 
