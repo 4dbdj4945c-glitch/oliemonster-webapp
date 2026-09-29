@@ -50,17 +50,22 @@ export const POST = apiRoute(
     });
 
     // Stops mee. Op een dag waar het doelobject al staat, gaan de stops samen.
+    // Een stop voor een contracttaak of inspectie verhuist alleen mee; samenvoegen
+    // doen alleen oliemonsterstops.
     const stops = await prisma.samplePlanStop.findMany({
       where: { objectId: vanId },
-      select: { id: true, planId: true, sampleIds: true, plannedMinutes: true },
+      select: { id: true, planId: true, sampleIds: true, plannedMinutes: true, taakId: true, inspectieId: true },
     });
     let stopsVerhuisd = 0;
     let stopsSamengevoegd = 0;
     for (const stop of stops) {
-      const doelStop = await prisma.samplePlanStop.findFirst({
-        where: { planId: stop.planId, objectId: naarId },
-        select: { id: true, sampleIds: true },
-      });
+      const olieStop = stop.taakId === null && stop.inspectieId === null;
+      const doelStop = olieStop
+        ? await prisma.samplePlanStop.findFirst({
+            where: { planId: stop.planId, objectId: naarId, taakId: null, inspectieId: null },
+            select: { id: true, sampleIds: true },
+          })
+        : null;
       if (!doelStop) {
         await prisma.samplePlanStop.update({ where: { id: stop.id }, data: { objectId: naarId } });
         stopsVerhuisd += 1;
@@ -77,6 +82,12 @@ export const POST = apiRoute(
       await prisma.samplePlanStop.delete({ where: { id: stop.id } });
       stopsSamengevoegd += 1;
     }
+
+    // Contracttaken, inspecties en dagrapporten horen voortaan bij het doelobject;
+    // anders houdt hun verwijzing het oude object vast.
+    await prisma.contractTaak.updateMany({ where: { objectId: vanId }, data: { objectId: naarId } });
+    await prisma.inspectie.updateMany({ where: { objectId: vanId }, data: { objectId: naarId } });
+    await prisma.dagrapport.updateMany({ where: { objectId: vanId }, data: { objectId: naarId } });
 
     await prisma.sampleObject.delete({ where: { id: vanId } });
 

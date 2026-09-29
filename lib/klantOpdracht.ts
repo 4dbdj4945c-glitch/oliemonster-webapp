@@ -126,12 +126,14 @@ export async function haalOpdracht(klantId: number, jaar: number, nu = new Date(
   // tijden, de route en de notities blijven intern.
   const vandaag = nlDag(nu);
   const plannen = await prisma.samplePlan.findMany({
-    where: { analysisYear: jaar, stops: { some: { object: { klantId } } } },
+    // Alleen oliemonsterstops: een contracttaak of inspectie op de planning
+    // staat bij de klant onder Onderhoud, niet bij de monsterdagen.
+    where: { analysisYear: jaar, stops: { some: { object: { klantId }, taakId: null, inspectieId: null } } },
     orderBy: { date: 'asc' },
     select: {
       date: true,
       stops: {
-        where: { object: { klantId } },
+        where: { object: { klantId }, taakId: null, inspectieId: null },
         orderBy: { orderIndex: 'asc' },
         select: { objectId: true, sampleIds: true, object: { select: { name: true } } },
       },

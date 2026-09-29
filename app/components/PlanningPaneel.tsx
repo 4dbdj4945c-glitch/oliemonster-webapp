@@ -14,7 +14,10 @@ import {
   isWerkdag,
   minutenAlsTekst,
   datumAlsTekst,
+  datumAlsInvoer,
 } from '@/lib/planningInstellingen';
+import { TAAK_STATUS_BADGE, TAAK_STATUS_LABEL, dagKort, dagenTot, taakSoortInfo, vandaagNl } from '@/lib/contracten';
+import { sjabloonVan } from '@/lib/inspecties/sjablonen';
 
 /*
   Planning van de oliemonsters: de pagina Planning en de tab binnen
@@ -23,7 +26,8 @@ import {
   kunnen geen styled-jsx gebruiken, zie STIJL.md.
 */
 
-import type { PlanDag, PlanMonster, PlanObject, PlanStop } from './planning/types';
+import { isMonsterStop, stopNaam, type PlanDag, type PlanMonster, type PlanObject, type PlanStop, type TePlannen } from './planning/types';
+import type { IconNaam } from './ui';
 
 export type { PlanMonster };
 
@@ -36,6 +40,28 @@ function monsters(aantal: number): string {
 function objectenWoord(aantal: number): string {
   return `${aantal} ${aantal === 1 ? 'object' : 'objecten'}`;
 }
+
+/** Het icoon van een stop: het objecttype, of de soort taak of inspectie. */
+function stopIcoon(stop: PlanStop): IconNaam {
+  if (stop.soort === 'taak' && stop.taak) return taakSoortInfo(stop.taak.soort).icoon;
+  if (stop.soort === 'inspectie' && stop.inspectie) return sjabloonVan(stop.inspectie.sjabloon).icoon;
+  return objectTypeIcoon(stop.object.objectType);
+}
+
+/** "3 objecten, 1 taak, 4 monsters" */
+function dagInhoud(d: PlanDag): string {
+  const olie = d.stops.filter(isMonsterStop);
+  const taken = d.stops.filter((s) => s.soort === 'taak').length;
+  const inspecties = d.stops.filter((s) => s.soort === 'inspectie').length;
+  const delen = [objectenWoord(olie.length)];
+  if (taken > 0) delen.push(`${taken} ${taken === 1 ? 'taak' : 'taken'}`);
+  if (inspecties > 0) delen.push(`${inspecties} ${inspecties === 1 ? 'inspectie' : 'inspecties'}`);
+  delen.push(monsters(olie.reduce((n, s) => n + s.aantalMonsters, 0)));
+  return delen.join(', ');
+}
+
+/** Taken tot zover vooruit staan in het blok Nog in te plannen; de rest staat bij Contracten. */
+const TAKEN_VOORUIT_DAGEN = 90;
 
 /** "1 dag" of "3 dagen" */
 function dagenWoord(aantal: number): string {
@@ -86,6 +112,7 @@ export default function PlanningPaneel({
 }) {
   const [dagen, setDagen] = useState<PlanDag[]>([]);
   const [objecten, setObjecten] = useState<PlanObject[]>([]);
+  const [tePlannen, setTePlannen] = useState<TePlannen>({ taken: [], inspecties: [] });
   const [laden, setLaden] = useState(true);
   const [foutmelding, setFoutmelding] = useState('');
   const [melding, setMelding] = useState('');
@@ -110,6 +137,12 @@ export default function PlanningPaneel({
   const [kiesAlles, setKiesAlles] = useState(true);
   const kiesPaneel = useVenster<HTMLDivElement>(kiesObject !== null, () => setKiesObject(null));
 
+  // Een contracttaak of inspectie op een dag zetten
+  const [kiesBezoek, setKiesBezoek] = useState<{ soort: 'taak' | 'inspectie'; id: number; titel: string; minuten: number } | null>(null);
+  const [bezoekDag, setBezoekDag] = useState<number | null>(null);
+  const [bezoekMinuten, setBezoekMinuten] = useState('');
+  const bezoekPaneel = useVenster<HTMLDivElement>(kiesBezoek !== null, () => setKiesBezoek(null));
+
   // Slepen (desktop)
   const sleepStop = useRef<number | null>(null);
 
@@ -123,6 +156,7 @@ export default function PlanningPaneel({
       const data = await res.json();
       setDagen(data.dagen ?? []);
       setObjecten(data.objecten ?? []);
+      setTePlannen(data.tePlannen ?? { taken: [], inspecties: [] });
       setGeladen(true);
       setFoutmelding('');
     } catch {
@@ -212,6 +246,43 @@ export default function PlanningPaneel({
     }
   };
 
+  const openBezoek = (soort: 'taak' | 'inspectie', id: number, titel: string, minuten: number) => {
+    setKiesBezoek({ soort, id, titel, minuten });
+    // Standaard de eerste dag vanaf vandaag.
+    const vandaag = vandaagNl();
+    setBezoekDag((dagen.find((d) => datumAlsInvoer(d.date) >= vandaag) ?? dagen[0])?.id ?? null);
+    setBezoekMinuten(String(minuten));
+  };
+
+  const planBezoekIn = async () => {
+    if (!kiesBezoek || !bezoekDag) return;
+    setBezig(true);
+    try {
+      const minuten = parseInt(bezoekMinuten);
+      const res = await fetch(`/api/sample-plans/${bezoekDag}/stops`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          [kiesBezoek.soort === 'taak' ? 'taakId' : 'inspectieId']: kiesBezoek.id,
+          // Alleen meesturen als het afwijkt van de standaard.
+          plannedMinutes: !Number.isNaN(minuten) && minuten > 0 && minuten !== kiesBezoek.minuten ? minuten : null,
+        }),
+      });
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, `${kiesBezoek.titel} kon niet worden ingepland.`));
+        return;
+      }
+      setMelding('');
+      setKiesBezoek(null);
+      setFoutmelding('');
+      await laadPlanning();
+    } catch {
+      setFoutmelding(GEEN_VERBINDING);
+    } finally {
+      setBezig(false);
+    }
+  };
+
   // Een object van een dag halen is klein en makkelijk opnieuw te doen: geen
   // vraag vooraf, wel tien seconden Ongedaan maken. Alleen als er al gemeten of
   // afgevinkt is, eerst een bevestiging, want die tijden komen niet terug.
@@ -220,7 +291,7 @@ export default function PlanningPaneel({
     if (
       gemeten &&
       !confirm(
-        `${stop.object.name} van ${datumAlsTekst(d.date)} halen?\n\nDit bezoek is al gestart of afgevinkt. De gemeten tijd en het vinkje gaan verloren, ook als je het daarna terugzet.`
+        `${stopNaam(stop)} van ${datumAlsTekst(d.date)} halen?\n\nDit bezoek is al gestart of afgevinkt. De gemeten tijd en het vinkje gaan verloren, ook als je het daarna terugzet.`
       )
     ) {
       return;
@@ -235,7 +306,7 @@ export default function PlanningPaneel({
       const volgorde = d.stops.map((st) => st.id);
       setOngedaan({
         sleutel: `stop-${stop.id}`,
-        tekst: `${stop.object.name} van ${datumAlsTekst(d.date)} gehaald`,
+        tekst: `${stopNaam(stop)} van ${datumAlsTekst(d.date)} gehaald`,
         onOngedaan: () => zetStopTerug(d, stop, volgorde),
       });
     } catch {
@@ -250,14 +321,16 @@ export default function PlanningPaneel({
       const res = await fetch(`/api/sample-plans/${d.id}/stops`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          objectId: stop.objectId,
-          sampleIds: stop.sampleIds,
-          plannedMinutes: stop.plannedMinutes,
-        }),
+        body: JSON.stringify(
+          stop.soort === 'taak' && stop.taak
+            ? { taakId: stop.taak.id, plannedMinutes: stop.plannedMinutes }
+            : stop.soort === 'inspectie' && stop.inspectie
+              ? { inspectieId: stop.inspectie.id, plannedMinutes: stop.plannedMinutes }
+              : { objectId: stop.objectId, sampleIds: stop.sampleIds, plannedMinutes: stop.plannedMinutes }
+        ),
       });
       if (!res.ok) {
-        setFoutmelding(await foutTekst(res, `${stop.object.name} kon niet worden teruggezet.`));
+        setFoutmelding(await foutTekst(res, `${stopNaam(stop)} kon niet worden teruggezet.`));
         return false;
       }
       const nieuw = await res.json().catch(() => null);
@@ -388,6 +461,9 @@ export default function PlanningPaneel({
   const totaalRij = dagen.reduce((n, d) => n + d.rijMinuten, 0);
   const totaalKm = dagen.reduce((n, d) => n + (d.routeDistance ?? 0), 0) / 1000;
   const ongepland = objecten.filter((o) => o.aantalOngepland > 0);
+  const vandaagDag = vandaagNl();
+  const takenNu = tePlannen.taken.filter((t) => dagenTot(t.volgendeOp, vandaagDag) <= TAKEN_VOORUIT_DAGEN);
+  const takenLater = tePlannen.taken.length - takenNu.length;
   const teVolDagen = dagen.filter((d) => d.teVol).length;
 
   if (laden) {
@@ -469,6 +545,65 @@ export default function PlanningPaneel({
                   ))
                 )}
               </div>
+
+              {/* Contracttaken en inspecties die nog op een dag kunnen */}
+              {(takenNu.length > 0 || tePlannen.inspecties.length > 0 || takenLater > 0) && (
+                <>
+                  <div className="card-kop plan-objecten-tussenkop">Taken en inspecties</div>
+                  <div className="plan-objecten-lijst">
+                    {takenNu.map((t) => (
+                      <div key={`taak-${t.id}`} className="plan-object">
+                        <div className="plan-object-tekst">
+                          <span className="plan-object-naam">
+                            <Icon name={taakSoortInfo(t.soort).icoon} size={16} />
+                            {t.titel}
+                          </span>
+                          <span className="plan-object-sub">
+                            {t.klant.naam}, {t.object.name}. {dagKort(t.volgendeOp)}, {minutenAlsTekst(t.minuten)}
+                          </span>
+                          <span>
+                            <span className={`badge ${TAAK_STATUS_BADGE[t.status]}`}>{TAAK_STATUS_LABEL[t.status]}</span>
+                          </span>
+                        </div>
+                        {isAdmin && dagen.length > 0 && (
+                          <button type="button" className="btn btn-sm" onClick={() => openBezoek('taak', t.id, t.titel, t.minuten)}>
+                            <Icon name="calendar" size={16} />
+                            Inplannen
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {tePlannen.inspecties.map((i) => {
+                      const s = sjabloonVan(i.sjabloon);
+                      return (
+                        <div key={`inspectie-${i.id}`} className="plan-object">
+                          <div className="plan-object-tekst">
+                            <span className="plan-object-naam">
+                              <Icon name={s.icoon} size={16} />
+                              {s.naam}
+                            </span>
+                            <span className="plan-object-sub">
+                              {i.klant.naam}, {i.object.name}. Concept van {dagKort(i.datum)}
+                            </span>
+                          </div>
+                          {isAdmin && dagen.length > 0 && (
+                            <button type="button" className="btn btn-sm" onClick={() => openBezoek('inspectie', i.id, s.naam, PLANNING.inspectieMinuten)}>
+                              <Icon name="calendar" size={16} />
+                              Inplannen
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                    {takenLater > 0 && (
+                      <p className="plan-leeg-regel">
+                        {takenLater} {takenLater === 1 ? 'taak staat' : 'taken staan'} pas over meer dan drie maanden,{' '}
+                        <Link href="/dashboard/contracten">zie Contracten</Link>.
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* De dagen */}
@@ -512,8 +647,7 @@ export default function PlanningPaneel({
                       <div>
                         <div className="plan-dag-datum">{datumAlsTekst(d.date)}</div>
                         <div className="plan-dag-sub">
-                          {d.stops.length} {d.stops.length === 1 ? 'object' : 'objecten'},
-                          {' '}{monsters(d.stops.reduce((n, s) => n + s.aantalMonsters, 0))}
+                          {dagInhoud(d)}
                           {d.manualOrder && ', volgorde met de hand gezet'}
                         </div>
                         {isAdmin && d.manualOrder && (
@@ -568,16 +702,22 @@ export default function PlanningPaneel({
                             <span className={`plan-nummer${stop.isDone ? ' plan-nummer-klaar' : ''}`}>{i + 1}</span>
                             <span className="plan-stop-tekst">
                               <span className="plan-stop-naam">
-                                <Icon name={objectTypeIcoon(stop.object.objectType)} size={16} />
-                                {stop.object.name}
+                                <Icon name={stopIcoon(stop)} size={16} />
+                                {stopNaam(stop)}
+                                {!isMonsterStop(stop) && (
+                                  <span className="badge badge-navy plan-stop-soort">{stop.soort === 'taak' ? 'Contracttaak' : 'Inspectie'}</span>
+                                )}
                               </span>
                               <span className="plan-stop-sub">
-                                {monsters(stop.aantalMonsters)}, {minutenAlsTekst(stop.werkMinuten)}
+                                {isMonsterStop(stop)
+                                  ? `${monsters(stop.aantalMonsters)}, ${minutenAlsTekst(stop.werkMinuten)}`
+                                  : `${(stop.taak ?? stop.inspectie)?.klant.naam}, ${stop.object.name}, ${minutenAlsTekst(stop.werkMinuten)}`}
                                 {stop.sampleIds && ', deel van het object'}
+                                {stop.isDone && !isMonsterStop(stop) && ', klaar'}
                                 {stop.werkelijkeMinuten !== null && `, werkelijk ${minutenAlsTekst(stop.werkelijkeMinuten)}`}
                                 {(stop.object.lat === null || stop.object.lng === null) &&
                                   ', geen plek op de kaart, rijtijd hierheen niet meegerekend'}
-                                {stop.aantalMonsters === 0 &&
+                                {isMonsterStop(stop) && stop.aantalMonsters === 0 &&
                                   ', geen monsters meer, je kunt dit object van de dag halen'}
                               </span>
                             </span>
@@ -588,7 +728,7 @@ export default function PlanningPaneel({
                                   className="icon-btn"
                                   onClick={() => verschuif(d, stop, -1)}
                                   disabled={i === 0}
-                                  aria-label={`${stop.object.name} naar boven`}
+                                  aria-label={`${stopNaam(stop)} naar boven`}
                                   title="Naar boven"
                                 >
                                   <Icon name="chevron-down" size={16} className="plan-omhoog" />
@@ -598,7 +738,7 @@ export default function PlanningPaneel({
                                   className="icon-btn"
                                   onClick={() => verschuif(d, stop, 1)}
                                   disabled={i === d.stops.length - 1}
-                                  aria-label={`${stop.object.name} naar beneden`}
+                                  aria-label={`${stopNaam(stop)} naar beneden`}
                                   title="Naar beneden"
                                 >
                                   <Icon name="chevron-down" size={16} />
@@ -607,7 +747,7 @@ export default function PlanningPaneel({
                                   type="button"
                                   className="icon-btn icon-btn-danger icon-btn-verwijder"
                                   onClick={() => verwijderStop(d, stop)}
-                                  aria-label={`${stop.object.name} van deze dag halen`}
+                                  aria-label={`${stopNaam(stop)} van deze dag halen`}
                                   title="Van deze dag halen"
                                 >
                                   <Icon name="close" size={16} />
@@ -713,6 +853,61 @@ export default function PlanningPaneel({
           </div>
         </div>
       )}
+      {/* Contracttaak of inspectie op een dag zetten */}
+      {kiesBezoek && (
+        <div className="modal-backdrop" onClick={() => setKiesBezoek(null)}>
+          <div
+            ref={bezoekPaneel}
+            className="modal-content modal-content-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="plan-bezoek-titel"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <h2 className="modal-title" id="plan-bezoek-titel">{kiesBezoek.titel} inplannen</h2>
+              <button type="button" className="icon-btn modal-sluit" onClick={() => setKiesBezoek(null)} aria-label="Sluiten">
+                <Icon name="close" />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="veld">
+                <label className="label" htmlFor="plan-bezoek-dag">Op welke dag</label>
+                <select
+                  id="plan-bezoek-dag"
+                  className="select"
+                  value={bezoekDag ?? ''}
+                  onChange={(e) => setBezoekDag(parseInt(e.target.value))}
+                >
+                  {dagen.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {datumAlsTekst(d.date)} ({minutenAlsTekst(d.totaalMinuten)} gepland)
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="veld">
+                <label className="label" htmlFor="plan-bezoek-minuten">Geschatte tijd op locatie (minuten)</label>
+                <input
+                  id="plan-bezoek-minuten"
+                  className="input"
+                  inputMode="numeric"
+                  value={bezoekMinuten}
+                  onChange={(e) => setBezoekMinuten(e.target.value.replace(/[^0-9]/g, ''))}
+                />
+                <p className="hint">Telt mee in het dagtotaal en de route, net als een object met oliemonsters.</p>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn" onClick={() => setKiesBezoek(null)}>Annuleren</button>
+              <button type="button" className="btn btn-primary" onClick={planBezoekIn} disabled={bezig || !bezoekDag}>
+                {bezig ? 'Bezig...' : 'Op de dag zetten'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <OngedaanMelding melding={ongedaan} onSluit={() => setOngedaan(null)} />
 
       </>)}
@@ -725,10 +920,12 @@ export default function PlanningPaneel({
 function PlanningTijd({ dagen, onTerug }: { dagen: PlanDag[]; onTerug: () => void }) {
   // Per object optellen over alle dagen, zodat een object dat over twee dagen
   // verdeeld is ook als één regel te lezen is.
-  const perObject = new Map<number, { naam: string; type: string | null; gepland: number; geplandGemeten: number; werkelijk: number; monsters: number; metTijd: number; bezoeken: number }>();
+  // Een taak of inspectie staat als eigen regel, niet bij de oliemonsters van dat object.
+  const perObject = new Map<string, { naam: string; icoon: IconNaam; gepland: number; geplandGemeten: number; werkelijk: number; monsters: number; metTijd: number; bezoeken: number }>();
   for (const d of dagen) {
     for (const s of d.stops) {
-      const r = perObject.get(s.objectId) ?? { naam: s.object.name, type: s.object.objectType, gepland: 0, geplandGemeten: 0, werkelijk: 0, monsters: 0, metTijd: 0, bezoeken: 0 };
+      const sleutel = s.soort === 'taak' && s.taak ? `taak-${s.taak.id}` : s.soort === 'inspectie' && s.inspectie ? `inspectie-${s.inspectie.id}` : `object-${s.objectId}`;
+      const r = perObject.get(sleutel) ?? { naam: stopNaam(s), icoon: stopIcoon(s), gepland: 0, geplandGemeten: 0, werkelijk: 0, monsters: 0, metTijd: 0, bezoeken: 0 };
       r.gepland += s.werkMinuten;
       r.monsters += s.aantalMonsters;
       r.bezoeken += 1;
@@ -739,7 +936,7 @@ function PlanningTijd({ dagen, onTerug }: { dagen: PlanDag[]; onTerug: () => voi
         r.geplandGemeten += s.werkMinuten;
         r.metTijd += 1;
       }
-      perObject.set(s.objectId, r);
+      perObject.set(sleutel, r);
     }
   }
   const regels = [...perObject.values()].sort((a, b) => a.naam.localeCompare(b.naam, 'nl'));
@@ -791,7 +988,7 @@ function PlanningTijd({ dagen, onTerug }: { dagen: PlanDag[]; onTerug: () => voi
                   return (
                     <tr key={r.naam}>
                       <td data-label="Object" className="kaart-kop font-medium">
-                        <Icon name={objectTypeIcoon(r.type)} size={16} /> {r.naam}
+                        <Icon name={r.icoon} size={16} /> {r.naam}
                       </td>
                       <td data-label="Monsters">{r.monsters}</td>
                       <td data-label="Geschat">{minutenAlsTekst(r.gepland)}</td>

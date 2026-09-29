@@ -26,6 +26,12 @@ export const PLANNING = {
   },
   /** Gemiddelde snelheid (km/u) voor de schatting als OSRM geen rijtijd geeft */
   gemiddeldeSnelheidKmU: 60,
+  /**
+   * Geschatte tijd voor een inspectiebezoek op de planning, als de stop zelf
+   * geen tijd heeft. Een contracttaak heeft een eigen standaard per soort
+   * (lib/contracten.ts, TAAK_SOORT_INFO).
+   */
+  inspectieMinuten: 180,
 } as const;
 
 /** Is deze datum een werkdag volgens de instellingen hierboven? */

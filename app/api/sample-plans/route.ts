@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { foutAntwoord } from '@/lib/planningApi';
 import { haalPlanning } from '@/lib/samplePlans';
+import { haalTePlannen } from '@/lib/contractenServer';
 
 /**
  * De dagen van de planning. Lezen mag iedereen die is ingelogd behalve de
@@ -12,7 +13,8 @@ import { haalPlanning } from '@/lib/samplePlans';
  */
 
 // GET - Alle dagen van een analysejaar, met stops, monsters en tijden, plus de
-// objecten met wat er nog ingepland moet worden.
+// objecten met wat er nog ingepland moet worden. Sinds fase 5 ook de
+// contracttaken en inspecties die nog op een dag kunnen (tePlannen).
 export const GET = withAuth({ rol: 'user', module: 'planning' }, async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
@@ -20,7 +22,8 @@ export const GET = withAuth({ rol: 'user', module: 'planning' }, async (request:
     if (Number.isNaN(jaar)) {
       return NextResponse.json({ error: 'Kies een analysejaar' }, { status: 400 });
     }
-    return NextResponse.json(await haalPlanning(jaar));
+    const [planning, tePlannen] = await Promise.all([haalPlanning(jaar), haalTePlannen()]);
+    return NextResponse.json({ ...planning, tePlannen });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij ophalen van de planning');
   }

@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { foutAntwoord } from '@/lib/planningApi';
 import { schrijfSampleIds } from '@/lib/samplePlans';
+import { maakUitvoeringOngedaan, registreerUitvoering } from '@/lib/contractenServer';
+import { nlDag } from '@/lib/klantOpdracht';
 
 /**
  * PATCH - Een stop bijwerken (alleen admin): afvinken, starten, stoppen, de
@@ -27,7 +29,7 @@ export const PATCH = withAuth({ rol: 'admin', module: 'planning' }, async (
 
     const bestaand = await prisma.samplePlanStop.findUnique({
       where: { id: sId },
-      select: { id: true, planId: true, objectId: true, startedAt: true },
+      select: { id: true, planId: true, objectId: true, startedAt: true, isDone: true, taakId: true, plan: { select: { date: true } } },
     });
     if (!bestaand || bestaand.planId !== planId) {
       return NextResponse.json({ error: 'Stop niet gevonden' }, { status: 404 });
@@ -75,15 +77,27 @@ export const PATCH = withAuth({ rol: 'admin', module: 'planning' }, async (
 
     const stop = await prisma.samplePlanStop.update({ where: { id: sId }, data: data as never });
 
+    // Een contracttaak die je op de dag afvinkt, is uitgevoerd op die dag: de
+    // volgende datum schuift door. Weer open (Toch niet klaar): terug.
+    let taak: { volgendeOp: string } | null = null;
+    if (bestaand.taakId && typeof body.isDone === 'boolean' && body.isDone !== bestaand.isDone) {
+      const bron = `stop-${sId}`;
+      if (body.isDone) {
+        taak = await registreerUitvoering(bestaand.taakId, { datum: nlDag(bestaand.plan.date), bron, door: session.username || null });
+      } else {
+        await maakUitvoeringOngedaan(bestaand.taakId, bron);
+      }
+    }
+
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.UPDATE_PLAN_STOP,
-      details: { planId, stopId: sId, velden: Object.keys(data), actie: body.actie ?? null },
+      details: { planId, stopId: sId, velden: Object.keys(data), actie: body.actie ?? null, ...(bestaand.taakId ? { taakId: bestaand.taakId } : {}) },
       request,
     });
 
-    return NextResponse.json(stop);
+    return NextResponse.json({ ...stop, ...(taak ? { volgendeOp: taak.volgendeOp } : {}) });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij bijwerken van de stop');
   }
@@ -105,13 +119,15 @@ export const DELETE = withAuth({ rol: 'admin', module: 'planning' }, async (
 
     const bestaand = await prisma.samplePlanStop.findUnique({
       where: { id: sId },
-      select: { id: true, planId: true, object: { select: { name: true } } },
+      select: { id: true, planId: true, isDone: true, taakId: true, object: { select: { name: true } } },
     });
     if (!bestaand || bestaand.planId !== planId) {
       return NextResponse.json({ error: 'Stop niet gevonden' }, { status: 404 });
     }
 
     await prisma.samplePlanStop.delete({ where: { id: sId } });
+    // Een afgevinkte taak die van de dag gaat, is ook niet meer uitgevoerd.
+    if (bestaand.taakId && bestaand.isDone) await maakUitvoeringOngedaan(bestaand.taakId, `stop-${sId}`);
 
     // Opnieuw doornummeren, anders blijven er gaten in de volgorde zitten.
     const over = await prisma.samplePlanStop.findMany({

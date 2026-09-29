@@ -32,8 +32,34 @@ export interface PlanObject {
   werkMinuten: number;
 }
 
+/** Een contracttaak op een dag (fase 5). */
+export interface PlanTaak {
+  id: number;
+  soort: string;
+  soortLabel: string;
+  titel: string;
+  intervalMaanden: number;
+  installatie: { id: number; naam: string } | null;
+  contract: { id: number; naam: string };
+  klant: { id: number; naam: string };
+}
+
+/** Een inspectiebezoek op een dag (fase 5). */
+export interface PlanInspectie {
+  id: number;
+  nummer: string;
+  sjabloon: string;
+  naam: string;
+  status: string;
+  klant: { id: number; naam: string };
+}
+
 export interface PlanStop {
   id: number;
+  /** monsters (oliemonsters, zoals altijd), taak (contracttaak) of inspectie */
+  soort?: 'monsters' | 'taak' | 'inspectie';
+  taak?: PlanTaak | null;
+  inspectie?: PlanInspectie | null;
   objectId: number;
   object: {
     id: number;
@@ -43,6 +69,7 @@ export interface PlanStop {
     lng: number | null;
     address: string | null;
     estimatedMinutes: number | null;
+    klantId?: number | null;
   };
   sampleIds: number[] | null;
   orderIndex: number;
@@ -72,4 +99,45 @@ export interface PlanDag {
   rijMinuten: number;
   totaalMinuten: number;
   teVol: boolean;
+}
+
+/** Wat er naast de oliemonsters nog op een dag kan (GET /api/sample-plans, tePlannen). */
+export interface TePlannenTaak {
+  id: number;
+  titel: string;
+  soort: string;
+  soortLabel: string;
+  klant: { id: number; naam: string };
+  contract: { id: number; naam: string };
+  object: { id: number; name: string; address: string | null };
+  installatie: { id: number; naam: string; code: string } | null;
+  intervalMaanden: number;
+  volgendeOp: string;
+  minuten: number;
+  status: 'verlopen' | 'binnenkort' | 'gepland' | 'later';
+}
+
+export interface TePlannenInspectie {
+  id: number;
+  sjabloon: string;
+  datum: string;
+  klant: { id: number; naam: string };
+  object: { id: number; name: string };
+}
+
+export interface TePlannen {
+  taken: TePlannenTaak[];
+  inspecties: TePlannenInspectie[];
+}
+
+/** De naam van een stop: het object, of bij een taak of inspectie wat je er gaat doen. */
+export function stopNaam(stop: Pick<PlanStop, 'soort' | 'taak' | 'inspectie' | 'object'>): string {
+  if (stop.soort === 'taak' && stop.taak) return stop.taak.titel;
+  if (stop.soort === 'inspectie' && stop.inspectie) return `${stop.inspectie.naam}, ${stop.inspectie.nummer}`;
+  return stop.object.name;
+}
+
+/** Is dit een gewone oliemonsterstop? */
+export function isMonsterStop(stop: Pick<PlanStop, 'soort'>): boolean {
+  return !stop.soort || stop.soort === 'monsters';
 }

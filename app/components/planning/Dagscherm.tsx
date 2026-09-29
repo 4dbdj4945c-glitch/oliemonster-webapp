@@ -32,7 +32,10 @@ import { objectTypeIcoon } from '@/lib/sampleObjects';
 import { datumAlsTekst, minutenAlsTekst } from '@/lib/planningInstellingen';
 import { kaartenLink, korteDatum } from '@/lib/vandaag';
 import type { MapStreet } from '@/app/components/RouteMap';
-import type { PlanDag, PlanMonster, PlanStop } from './types';
+import { isMonsterStop, stopNaam, type PlanDag, type PlanMonster, type PlanStop } from './types';
+import { dagKort, intervalTekst, taakSoortInfo } from '@/lib/contracten';
+import { sjabloonVan } from '@/lib/inspecties/sjablonen';
+import type { IconNaam } from '@/app/components/ui';
 
 const RouteMap = dynamic(() => import('@/app/components/RouteMap'), {
   ssr: false,
@@ -49,6 +52,13 @@ function afstandMeter(aLat: number, aLng: number, bLat: number, bLng: number): n
   const dLng = rad(bLng - aLng);
   const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLng / 2) ** 2;
   return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** Het icoon van een stop: het objecttype, of de soort taak of inspectie. */
+function stopIcoon(stop: PlanStop): IconNaam {
+  if (stop.soort === 'taak' && stop.taak) return taakSoortInfo(stop.taak.soort).icoon;
+  if (stop.soort === 'inspectie' && stop.inspectie) return sjabloonVan(stop.inspectie.sjabloon).icoon;
+  return objectTypeIcoon(stop.object.objectType);
 }
 
 function monsters(aantal: number): string {
@@ -143,13 +153,20 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
           body: JSON.stringify(body),
         });
         if (!res.ok) {
-          setFoutmelding(`${stop.object.name} is niet bijgewerkt: ${await foutTekst(res, 'de server gaf geen reden.')}`);
+          setFoutmelding(`${stopNaam(stop)} is niet bijgewerkt: ${await foutTekst(res, 'de server gaf geen reden.')}`);
           return;
+        }
+        // Een contracttaak afgevinkt: de volgende datum staat erin.
+        const uitkomst = await res.json().catch(() => null);
+        if (stop.soort === 'taak' && body.isDone === true && uitkomst?.volgendeOp) {
+          setMelding(`${stopNaam(stop)} is klaar. De volgende keer staat op ${dagKort(uitkomst.volgendeOp)}.`);
+        } else if (stop.soort === 'taak' && body.isDone === false) {
+          setMelding(`${stopNaam(stop)} staat weer open; de volgende datum is teruggezet.`);
         }
         setFoutmelding('');
         await laadDag();
       } catch {
-        setFoutmelding(`${stop.object.name} is niet opgeslagen: geen verbinding met de server.`);
+        setFoutmelding(`${stopNaam(stop)} is niet opgeslagen: geen verbinding met de server.`);
       }
     },
     [dagId, laadDag]
@@ -239,6 +256,8 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
     (stop && stop.samples.find((m) => m.id === gekozenMonster && !m.isTaken)) ?? volgendMonster(stop);
   const totaal = stops.reduce((n, s) => n + s.aantalMonsters, 0);
   const genomen = stops.reduce((n, s) => n + s.aantalGenomen, 0);
+  const bezoeken = stops.filter((s) => !isMonsterStop(s));
+  const bezoekStop = stop && !isMonsterStop(stop) ? stop : null;
   const loopt = !!stop?.startedAt && !stop?.endedAt;
   const navigeer = stop ? kaartenLink(stop.object) : null;
   const overigOpStop = stop ? stop.samples.filter((m) => m.id !== monster?.id) : [];
@@ -280,7 +299,7 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
         <Icon name="arrow-left" size={24} />
       </Link>
       <div className="veld-kop-tekst">
-        <h1>{stop ? stop.object.name : 'Monsterdag'}</h1>
+        <h1>{stop ? stopNaam(stop) : 'Monsterdag'}</h1>
         <p>
           {stop && `stop ${stopNummer} van ${stops.length}, `}
           monsterdag {dag ? korteDatum(dag.date) : ''}
@@ -320,6 +339,12 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
                 <div className="voortgang-balk" role="img" aria-label={`${genomen} van ${totaal} monsters genomen`}>
                   <i className="voortgang-genomen" style={{ width: `${totaal ? (genomen / totaal) * 100 : 0}%` }} />
                 </div>
+                {bezoeken.length > 0 && (
+                  <p className="veld-voortgang-bezoeken">
+                    {bezoeken.filter((b) => b.isDone).length} van {bezoeken.length}{' '}
+                    {bezoeken.length === 1 ? 'taak of inspectie' : 'taken en inspecties'} klaar
+                  </p>
+                )}
               </div>
 
               {stops.length === 0 ? (
@@ -334,7 +359,35 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
               ) : (
                 <>
                   {/* De grote kaart: wat nu aan de beurt is */}
-                  {monster ? (
+                  {bezoekStop ? (
+                    <section className={`veld-kaart${bezoekStop.isDone ? ' veld-kaart-klaar' : ''}`} aria-label="Aan de beurt">
+                      <span className="veld-kaart-label">
+                        <Icon name={bezoekStop.isDone ? 'status-taken' : stopIcoon(bezoekStop)} size={16} />
+                        {bezoekStop.isDone ? 'Klaar' : bezoekStop.soort === 'taak' ? 'Contracttaak' : 'Inspectiebezoek'}
+                      </span>
+                      <p className="veld-omschrijving veld-bezoek-titel">{stopNaam(bezoekStop)}</p>
+                      <dl className="veld-gegevens">
+                        <dt>Klant</dt>
+                        <dd>{(bezoekStop.taak ?? bezoekStop.inspectie)?.klant.naam}</dd>
+                        <dt>Plek</dt>
+                        <dd>{[bezoekStop.object.name, bezoekStop.object.address].filter(Boolean).join(', ')}</dd>
+                        {bezoekStop.taak?.installatie && (
+                          <>
+                            <dt>Installatie</dt>
+                            <dd>{bezoekStop.taak.installatie.naam}</dd>
+                          </>
+                        )}
+                        {bezoekStop.taak && (
+                          <>
+                            <dt>Terugkerend</dt>
+                            <dd>{bezoekStop.taak.soortLabel}, {intervalTekst(bezoekStop.taak.intervalMaanden)}</dd>
+                          </>
+                        )}
+                        <dt>Tijd</dt>
+                        <dd>{minutenAlsTekst(bezoekStop.werkMinuten)} gepland</dd>
+                      </dl>
+                    </section>
+                  ) : monster ? (
                     <section className="veld-kaart" aria-label="Aan de beurt">
                       <span className="veld-kaart-label">
                         <Icon name="map-pin" size={16} />
@@ -387,15 +440,16 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
                         Navigeer
                       </a>
                     )}
-                    {isAdmin && stop && (
+                    {/* Bij een taak die nog open staat, is Taak klaar de hoofdknop onderaan. */}
+                    {isAdmin && stop && !(bezoekStop?.soort === 'taak' && !bezoekStop.isDone) && (
                       <button
                         type="button"
-                        className={`btn veld-knop${!monster && !stop.isDone ? ' btn-primary' : ''}`}
+                        className={`btn veld-knop${!monster && !stop.isDone && !bezoekStop ? ' btn-primary' : ''}`}
                         onClick={() => stopActie(stop, { isDone: !stop.isDone })}
                         aria-pressed={stop.isDone}
                       >
                         <Icon name={stop.isDone ? 'reset' : 'check'} size={24} />
-                        {stop.isDone ? 'Toch niet klaar' : 'Object klaar'}
+                        {stop.isDone ? 'Toch niet klaar' : bezoekStop ? 'Bezoek klaar' : 'Object klaar'}
                       </button>
                     )}
                     {isAdmin && (
@@ -490,10 +544,12 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
                             <span className={`plan-nummer${s.isDone ? ' plan-nummer-klaar' : ''}`}>{i + 1}</span>
                             <span className="veld-lijst-tekst">
                               <strong>
-                                <Icon name={objectTypeIcoon(s.object.objectType)} size={16} /> {s.object.name}
+                                <Icon name={stopIcoon(s)} size={16} /> {stopNaam(s)}
                               </strong>
                               <span>
-                                {s.aantalGenomen} van {monsters(s.aantalMonsters)} genomen, {minutenAlsTekst(s.werkMinuten)}
+                                {isMonsterStop(s)
+                                  ? `${s.aantalGenomen} van ${monsters(s.aantalMonsters)} genomen, ${minutenAlsTekst(s.werkMinuten)}`
+                                  : `${s.soort === 'taak' ? 'Contracttaak' : 'Inspectie'} bij ${s.object.name}, ${minutenAlsTekst(s.werkMinuten)}`}
                               </span>
                             </span>
                             {s.isDone ? (
@@ -540,7 +596,27 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
         ) : null}
 
         {/* De hoofdactie, onderaan in duimbereik */}
-        {isAdmin && monster && (
+        {isAdmin && bezoekStop && !bezoekStop.isDone && (
+          <div className="veld-actiebalk">
+            {bezoekStop.soort === 'inspectie' && bezoekStop.inspectie ? (
+              <Link href={`/dashboard/inspecties/${bezoekStop.inspectie.id}`} className="btn btn-primary veld-hoofdknop">
+                <Icon name="module-inspecties" size={24} />
+                Inspectie openen
+              </Link>
+            ) : (
+              <button type="button" className="btn btn-primary veld-hoofdknop" onClick={() => stopActie(bezoekStop, { isDone: true })}>
+                <Icon name="check" size={24} />
+                Taak klaar
+              </button>
+            )}
+            <p>
+              {bezoekStop.soort === 'taak'
+                ? 'De volgende datum van deze taak schuift vanzelf door'
+                : 'Afronden in de inspectie zet het contract door'}
+            </p>
+          </div>
+        )}
+        {isAdmin && !bezoekStop && monster && (
           <div className="veld-actiebalk">
             <button type="button" className="btn btn-primary veld-hoofdknop" onClick={() => neem(monster)}>
               <Icon name="camera" size={24} />

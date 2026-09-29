@@ -3,6 +3,8 @@ import { PLANNING, geschatteMinuten } from './planningInstellingen';
 import { optimizePointRoute, LatLng } from './routePlanner';
 import { actiefFilter } from './verwijderdeMonsters';
 import { fotoAdres } from './fotoAdres';
+import { taakSoortInfo, taakTitel } from './contracten';
+import { inspectieNummer, sjabloonVan } from './inspecties/sjablonen';
 
 /**
  * Serverkant van de planning: de dagen met hun stops ophalen en er meteen de
@@ -42,6 +44,31 @@ export function leesSampleIds(waarde: string | null): number[] | null {
   }
 }
 
+/**
+ * Wat voor stop is dit? Een gewone oliemonsterstop (zoals altijd), een
+ * contracttaak of een inspectiebezoek (sinds fase 5). Alleen een
+ * oliemonsterstop heeft monsters; de andere twee hebben een eigen tijd en
+ * tellen verder precies zo mee in de route en het dagtotaal.
+ */
+export type StopSoort = 'monsters' | 'taak' | 'inspectie';
+
+export function stopSoort(stop: { taakId?: number | null; inspectieId?: number | null }): StopSoort {
+  if (stop.taakId) return 'taak';
+  if (stop.inspectieId) return 'inspectie';
+  return 'monsters';
+}
+
+/** Werktijd van een taak- of inspectiestop: eigen inschatting, anders die van de taak, anders de standaard. */
+export function bezoekMinuten(stop: {
+  plannedMinutes: number | null;
+  taakId?: number | null;
+  taak?: { soort: string; geschatteMinuten: number | null } | null;
+}): number {
+  if (stop.plannedMinutes && stop.plannedMinutes > 0) return stop.plannedMinutes;
+  if (stop.taakId && stop.taak) return stop.taak.geschatteMinuten ?? taakSoortInfo(stop.taak.soort).minuten;
+  return PLANNING.inspectieMinuten;
+}
+
 /** Schrijft een lijst monster-ids weg; leeg betekent "alles wat openstaat". */
 export function schrijfSampleIds(waarde: unknown): string | null {
   if (!Array.isArray(waarde)) return null;
@@ -69,7 +96,24 @@ export async function haalPlanning(analysisYear: number) {
     include: {
       stops: {
         orderBy: { orderIndex: 'asc' },
-        include: { object: true },
+        include: {
+          object: true,
+          taak: {
+            select: {
+              id: true,
+              soort: true,
+              omschrijving: true,
+              geschatteMinuten: true,
+              intervalMaanden: true,
+              volgendeOp: true,
+              installatie: { select: { id: true, naam: true } },
+              contract: { select: { id: true, naam: true, klant: { select: { id: true, naam: true } } } },
+            },
+          },
+          inspectie: {
+            select: { id: true, sjabloon: true, status: true, klant: { select: { id: true, naam: true } } },
+          },
+        },
       },
     },
   });
@@ -136,6 +180,8 @@ export async function haalPlanning(analysisYear: number) {
   const geplandeMonsters = new Set<number>();
   for (const plan of plannen) {
     for (const stop of plan.stops) {
+      // Een taak of inspectie op dit object plant geen monsters in.
+      if (stopSoort(stop) !== 'monsters') continue;
       const vanObject = perObject.get(stop.objectId) ?? [];
       const ids = leesSampleIds(stop.sampleIds);
       // Alleen monsters die nu echt bij dit object horen. Is een monster
@@ -149,15 +195,19 @@ export async function haalPlanning(analysisYear: number) {
 
   const dagen = plannen.map((plan) => {
     const stops = plan.stops.map((stop) => {
-      const alle = perObject.get(stop.objectId) ?? [];
+      const soort = stopSoort(stop);
+      const alle = soort === 'monsters' ? perObject.get(stop.objectId) ?? [] : [];
       const ids = leesSampleIds(stop.sampleIds);
       const samples = ids ? alle.filter((m) => ids.includes(m.id)) : alle;
 
       // Werktijd: eigen inschatting voor dit bezoek gaat voor. Anders die van het
       // object, naar rato als je maar een deel van de monsters meeneemt (een
       // object met zestien monsters past nu eenmaal niet altijd op één dag).
+      // Een taak of inspectie heeft een eigen tijd (bezoekMinuten).
       let werkMinuten: number;
-      if (stop.plannedMinutes && stop.plannedMinutes > 0) {
+      if (soort !== 'monsters') {
+        werkMinuten = bezoekMinuten(stop);
+      } else if (stop.plannedMinutes && stop.plannedMinutes > 0) {
         werkMinuten = stop.plannedMinutes;
       } else if (samples.length === 0) {
         // Niets meer te doen op dit object: dan kost het ook geen tijd.
@@ -175,8 +225,34 @@ export async function haalPlanning(analysisYear: number) {
           ? Math.max(0, Math.round((stop.endedAt.getTime() - stop.startedAt.getTime()) / 60000))
           : null;
 
+      const taak = stop.taak
+        ? {
+            id: stop.taak.id,
+            soort: stop.taak.soort,
+            soortLabel: taakSoortInfo(stop.taak.soort).label,
+            titel: taakTitel(stop.taak),
+            intervalMaanden: stop.taak.intervalMaanden,
+            installatie: stop.taak.installatie,
+            contract: { id: stop.taak.contract.id, naam: stop.taak.contract.naam },
+            klant: stop.taak.contract.klant,
+          }
+        : null;
+      const inspectie = stop.inspectie
+        ? {
+            id: stop.inspectie.id,
+            nummer: inspectieNummer(stop.inspectie.id),
+            sjabloon: stop.inspectie.sjabloon,
+            naam: sjabloonVan(stop.inspectie.sjabloon).naam,
+            status: stop.inspectie.status,
+            klant: stop.inspectie.klant,
+          }
+        : null;
+
       return {
         id: stop.id,
+        soort,
+        taak,
+        inspectie,
         objectId: stop.objectId,
         object: {
           id: stop.object.id,
@@ -186,6 +262,7 @@ export async function haalPlanning(analysisYear: number) {
           lng: stop.object.lng,
           address: stop.object.address,
           estimatedMinutes: stop.object.estimatedMinutes,
+          klantId: stop.object.klantId,
         },
         sampleIds: ids,
         orderIndex: stop.orderIndex,
@@ -291,6 +368,9 @@ type StopMetObject = {
   orderIndex: number;
   plannedMinutes: number | null;
   sampleIds: string | null;
+  taakId: number | null;
+  inspectieId: number | null;
+  taak: { soort: string; geschatteMinuten: number | null } | null;
   object: { id: number; lat: number | null; lng: number | null; estimatedMinutes: number | null };
 };
 
@@ -300,6 +380,7 @@ function werkMinutenVanStop(
   alleMonsters: MonsterKern[],
   noemer?: number
 ): number {
+  if (stopSoort(stop) !== 'monsters') return bezoekMinuten(stop);
   const ids = leesSampleIds(stop.sampleIds);
   const aantal = ids ? alleMonsters.filter((m) => ids.includes(m.id)).length : alleMonsters.length;
   if (stop.plannedMinutes && stop.plannedMinutes > 0) return stop.plannedMinutes;
@@ -392,7 +473,10 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
     include: {
       stops: {
         orderBy: { orderIndex: 'asc' },
-        include: { object: { select: { id: true, lat: true, lng: true, estimatedMinutes: true } } },
+        include: {
+          object: { select: { id: true, lat: true, lng: true, estimatedMinutes: true } },
+          taak: { select: { soort: true, geschatteMinuten: true } },
+        },
       },
     },
   });
@@ -436,6 +520,8 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
   for (const plan of plannen) {
     for (const stop of plan.stops) {
       if (stop.isDone || stop.startedAt || stop.endedAt) continue;
+      // Een taak of inspectie heeft geen monsters en blijft dus altijd staan.
+      if (stopSoort(stop) !== 'monsters') continue;
       const alle = perObject.get(stop.objectId) ?? [];
       const ids = leesSampleIds(stop.sampleIds);
       const aantal = ids ? alle.filter((m) => ids.includes(m.id)).length : alle.length;
@@ -451,7 +537,10 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
       include: {
         stops: {
           orderBy: { orderIndex: 'asc' },
-          include: { object: { select: { id: true, lat: true, lng: true, estimatedMinutes: true } } },
+          include: {
+          object: { select: { id: true, lat: true, lng: true, estimatedMinutes: true } },
+          taak: { select: { soort: true, geschatteMinuten: true } },
+        },
         },
       },
     });
@@ -489,14 +578,17 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
     // object), dan verhuist die stop niet: anders zet een klik op de knop je
     // splitsing ongemerkt terug op één dag. Ze tellen wel mee in de capaciteit
     // van hun eigen dag.
+    // Een taak of inspectie staat op de dag die jij koos (afgesproken met de
+    // klant) en verhuist dus ook niet; hij telt wel mee in de capaciteit.
+    const staatVast = (stop: StopMetObject) => stop.sampleIds !== null || stopSoort(stop) !== 'monsters';
     const vastgezet = new Map<number, StopMetObject[]>();
     for (const stop of losseStops) {
-      if (stop.sampleIds === null) continue;
+      if (!staatVast(stop)) continue;
       const lijst = vastgezet.get(stop.planId) ?? [];
       lijst.push(stop);
       vastgezet.set(stop.planId, lijst);
     }
-    const teVerdelen = reeks.filter((s) => s.sampleIds === null);
+    const teVerdelen = reeks.filter((s) => !staatVast(s));
 
     // Vullen tot een marge onder de werkdag: de schatting hier is hemelsbreed,
     // de echte route valt hoger uit. Zonder marge komt elke gevulde dag daarna
@@ -513,7 +605,7 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
         await prisma.samplePlanStop.update({
           where: { id: stop.id },
           // Een vastgezette stop krijgt alleen zijn plek in de rij; verhuizen doet hij niet.
-          data: stop.sampleIds !== null ? { orderIndex: i } : { planId: plan.id, orderIndex: i },
+          data: staatVast(stop) ? { orderIndex: i } : { planId: plan.id, orderIndex: i },
           select: { id: true },
         });
       }
@@ -530,8 +622,12 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
 
     // Past deze stop op deze dag? Eén object hoort niet twee keer op dezelfde
     // dag: dan zet je er twee keer je spullen voor klaar en klopt de telling niet.
+    // Alleen oliemonsterstops tellen hierbij: een taak op hetzelfde object mag
+    // op dezelfde dag staan (dat is juist handig).
+    const zelfdeObject = (stops: StopMetObject[], stop: StopMetObject) =>
+      stops.some((s) => s.objectId === stop.objectId && stopSoort(s) === 'monsters');
     const past = (stops: StopMetObject[], stop: StopMetObject) => {
-      if (stops.some((s) => s.objectId === stop.objectId)) return false;
+      if (zelfdeObject(stops, stop)) return false;
       if (stops.length === 0) return true;
       return dagMinuten([...stops, stop]) <= grens;
     };
@@ -562,7 +658,7 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
       }
 
       // Zelfde object op deze dag: doorschuiven, maar de dag gewoon verder vullen.
-      if (dagStops.some((s) => s.objectId === stop.objectId)) {
+      if (zelfdeObject(dagStops, stop)) {
         wachtrij.push(stop);
         continue;
       }
@@ -573,7 +669,7 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
         const rest = [...wachtrij, ...teVerdelen.slice(k)];
         wachtrij = [];
         for (const r of rest) {
-          if (dagStops.some((s) => s.objectId === r.objectId)) blijvenStaan += 1;
+          if (zelfdeObject(dagStops, r)) blijvenStaan += 1;
           else dagStops = [...dagStops, r];
         }
         nietGeplaatst = rest.length - blijvenStaan;
