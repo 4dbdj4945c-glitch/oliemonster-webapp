@@ -5,7 +5,7 @@
 // helemaal onderaan, Monster verwijderen.
 
 import { useEffect, useState } from 'react';
-import { Icon } from '@/app/components/ui';
+import { Icon, useVenster } from '@/app/components/ui';
 import SampleAttemptsPanel from '@/app/components/SampleAttemptsPanel';
 import HerstelHulp from '@/app/components/HerstelHulp';
 import MonsterVerwijderBlok, { type VerwijderDoel } from '@/app/components/MonsterVerwijderBlok';
@@ -56,6 +56,9 @@ export default function MonsterFormulier(p: Props) {
   const [formData, setFormData] = useState(() => formulierVan(p.sample));
   const [formError, setFormError] = useState('');
   const [oNumberWarning, setONumberWarning] = useState('');
+  // Fouten per veld, onder het veld zelf (niet als tooltip van de browser)
+  const [veldFouten, setVeldFouten] = useState<Record<string, string>>({});
+  const paneel = useVenster<HTMLDivElement>(true, p.onClose);
   const [afnameDoel, setAfnameDoel] = useState<AfnameDoel | null>(null);
   const [installaties, setInstallaties] = useState<InstallatieKeuze[]>([]);
 
@@ -97,6 +100,19 @@ export default function MonsterFormulier(p: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
+
+    const fouten: Record<string, string> = {};
+    if (!formData.oNumber.trim()) fouten.oNumber = 'Vul het o-nummer in.';
+    if (formData.isTaken && !formData.sampleDate) fouten.sampleDate = 'Vul de datum van de afname in.';
+    if (!formData.location.trim()) fouten.location = 'Vul de locatie in.';
+    if (!formData.description.trim()) fouten.description = 'Vul een omschrijving in.';
+    setVeldFouten(fouten);
+    const eerste = Object.keys(fouten)[0];
+    if (eerste) {
+      const id = { oNumber: 'veld-onummer', sampleDate: 'veld-datum', location: 'veld-locatie', description: 'veld-omschrijving' }[eerste];
+      if (id) document.getElementById(id)?.focus();
+      return;
+    }
 
     try {
       const url = bewerkt ? `/api/samples/${bewerkt.id}` : '/api/samples';
@@ -160,21 +176,32 @@ export default function MonsterFormulier(p: Props) {
 
   return (
     <div className="modal-backdrop">
-      <div className={`modal-content${bewerkt ? ' modal-content-lg' : ''}`}>
+      <div
+        ref={paneel}
+        className={`modal-content${bewerkt ? ' modal-content-lg' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="monster-venster-titel"
+        tabIndex={-1}
+      >
         <div className="modal-header">
-          <h2 className="modal-title">
+          <h2 className="modal-title" id="monster-venster-titel">
             {bewerkt ? 'Monster bewerken' : 'Nieuw monster toevoegen'}
           </h2>
+          <button type="button" className="icon-btn modal-sluit" onClick={p.onClose} aria-label="Sluiten" title="Sluiten">
+            <Icon name="close" />
+          </button>
         </div>
 
         <div className="modal-body">
-          <form id="sample-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <form id="sample-form" onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
               <label className="label" htmlFor="veld-onummer">O-nummer</label>
               <input
                 id="veld-onummer"
                 type="text"
-                aria-describedby={oNumberWarning ? 'veld-onummer-fout' : undefined}
+                aria-describedby={oNumberWarning || veldFouten.oNumber ? 'veld-onummer-fout' : undefined}
+                aria-invalid={!!(oNumberWarning || veldFouten.oNumber)}
                 value={formData.oNumber}
                 onChange={(e) => {
                   const value = e.target.value;
@@ -182,13 +209,12 @@ export default function MonsterFormulier(p: Props) {
                   checkONumberExists(value);
                 }}
                 onBlur={(e) => checkONumberExists(e.target.value)}
-                className="input"
-                style={oNumberWarning ? { borderColor: 'var(--rood)' } : undefined}
+                className={`input${oNumberWarning || veldFouten.oNumber ? ' input-fout' : ''}`}
                 required
               />
-              {oNumberWarning && (
-                <p id="veld-onummer-fout" role="alert" style={{ color: 'var(--rood)', fontSize: '13px', marginTop: '4px', fontWeight: 600 }}>
-                  {oNumberWarning}
+              {(oNumberWarning || veldFouten.oNumber) && (
+                <p id="veld-onummer-fout" role="alert" className="veld-fout">
+                  {oNumberWarning || veldFouten.oNumber}
                 </p>
               )}
               {/* Herstelhulp: nummer van vorig jaar of uit de prullenbak */}
@@ -223,9 +249,12 @@ export default function MonsterFormulier(p: Props) {
                 value={formData.sampleDate}
                 onChange={(e) => setFormData({ ...formData, sampleDate: e.target.value })}
                 disabled={!formData.isTaken}
-                className="input"
+                className={`input${veldFouten.sampleDate ? ' input-fout' : ''}`}
                 required={formData.isTaken}
+                aria-invalid={!!veldFouten.sampleDate}
+                aria-describedby={veldFouten.sampleDate ? 'veld-datum-fout' : undefined}
               />
+              {veldFouten.sampleDate && <p id="veld-datum-fout" className="veld-fout">{veldFouten.sampleDate}</p>}
             </div>
 
             {p.objectenBeschikbaar && (
@@ -270,9 +299,12 @@ export default function MonsterFormulier(p: Props) {
                 type="text"
                 value={formData.location}
                 onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                className="input"
+                className={`input${veldFouten.location ? ' input-fout' : ''}`}
                 required
+                aria-invalid={!!veldFouten.location}
+                aria-describedby={veldFouten.location ? 'veld-locatie-fout' : undefined}
               />
+              {veldFouten.location && <p id="veld-locatie-fout" className="veld-fout">{veldFouten.location}</p>}
             </div>
 
             <div>
@@ -281,10 +313,13 @@ export default function MonsterFormulier(p: Props) {
                 id="veld-omschrijving"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="textarea"
+                className={`textarea${veldFouten.description ? ' input-fout' : ''}`}
                 rows={3}
                 required
+                aria-invalid={!!veldFouten.description}
+                aria-describedby={veldFouten.description ? 'veld-omschrijving-fout' : undefined}
               />
+              {veldFouten.description && <p id="veld-omschrijving-fout" className="veld-fout">{veldFouten.description}</p>}
             </div>
 
             <div>
@@ -404,7 +439,7 @@ export default function MonsterFormulier(p: Props) {
             disabled={!!oNumberWarning}
             className="btn btn-primary"
           >
-            {bewerkt ? 'Bijwerken' : 'Toevoegen'}
+            {bewerkt ? 'Opslaan' : 'Toevoegen'}
           </button>
         </div>
       </div>
