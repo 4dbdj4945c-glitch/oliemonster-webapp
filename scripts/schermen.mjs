@@ -5,7 +5,7 @@
 // Gebruik (lokale PostgreSQL moet draaien, zie README.md):
 //   node scripts/schermen.mjs                    standaardset
 //   node scripts/schermen.mjs --seed             eerst npm run seed (wist ids_portal_dev)
-//   node scripts/schermen.mjs kijker:/dashboard/oliemonsters admin:/dashboard/objecten
+//   node scripts/schermen.mjs kijker:/dashboard/oliemonsters/2025 admin:/dashboard/klanten
 // Gebruikers en wachtwoorden: prisma/nepdata.ts. Uitvoer: schermen/<naam>-<breedte>.png
 // (1440 en 390 breed) en per scherm of de pagina horizontaal overloopt.
 import { spawn, execSync } from 'node:child_process';
@@ -26,9 +26,10 @@ const args = process.argv.slice(2);
 if (args.includes('--seed')) execSync('npm run seed', { cwd: repo, stdio: 'inherit' });
 const gevraagd = args.filter((a) => a.includes(':'));
 const SCHERMEN = (gevraagd.length ? gevraagd : [
-  'kijker:/dashboard/oliemonsters',
+  'kijker:/dashboard/oliemonsters/2025',
   'admin:/dashboard',
-  'admin:/dashboard/oliemonsters2026',
+  'admin:/dashboard/oliemonsters/2026',
+  'admin:/dashboard/klanten',
   'gebruiker:/dashboard',
 ]).map((a) => { const [wie, pad] = a.split(/:(.*)/s); return { wie, pad }; });
 

@@ -3,7 +3,21 @@
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ROLE_LABELS, isAlleenLezen } from '@/lib/roles';
+import { modulesVoor } from '@/lib/modules';
 import Icon from './Icon';
+import type { IconNaam } from './icons/namen';
+
+/** Het Beheer-menu: de modules uit sectie Beheer van het register, met Kolommen aanpassen vlak voor Instellingen. */
+function beheerItems(role: string): { naam: string; icoon: IconNaam; route: string }[] {
+  const items: { naam: string; icoon: IconNaam; route: string }[] = [];
+  for (const m of modulesVoor(role, 'Beheer')) {
+    if (m.sleutel === 'instellingen') {
+      items.push({ naam: 'Kolommen aanpassen', icoon: 'columns', route: `${m.route}?tab=columns` });
+    }
+    items.push({ naam: m.naam, icoon: m.icoon, route: m.route });
+  }
+  return items;
+}
 
 /*
   Navy balk bovenaan elke pagina (zie STIJL.md, "Balk bovenaan").
@@ -114,10 +128,9 @@ export default function AppShell({
                 buttonClass="nav-btn"
                 button={<><Icon name="admin" size={16} />Beheer<Icon name="chevron-down" size={16} /></>}
               >
-                <MenuItem icon={<Icon name="map-pin" />} onClick={() => router.push('/dashboard/objecten')}>Objecten</MenuItem>
-                <MenuItem icon={<Icon name="audit-log" />} onClick={() => router.push('/dashboard/audit-logs')}>Audit logs</MenuItem>
-                <MenuItem icon={<Icon name="columns" />} onClick={() => router.push('/dashboard/admin?tab=columns')}>Kolommen aanpassen</MenuItem>
-                <MenuItem icon={<Icon name="settings" />} onClick={() => router.push('/dashboard/admin')}>Instellingen</MenuItem>
+                {beheerItems(user?.role ?? '').map((b) => (
+                  <MenuItem key={b.route} icon={<Icon name={b.icoon} />} onClick={() => router.push(b.route)}>{b.naam}</MenuItem>
+                ))}
                 <span className="toolbar-menu-scheiding" />
                 <MenuItem icon={<Icon name="printer" />} onClick={afdrukken}>Afdrukken</MenuItem>
               </ToolbarMenu>
@@ -179,10 +192,9 @@ export default function AppShell({
               {isAdmin && (
                 <>
                   <span className="toolbar-menu-label">Beheer</span>
-                  <MenuItem icon={<Icon name="map-pin" />} onClick={() => router.push('/dashboard/objecten')}>Objecten</MenuItem>
-                  <MenuItem icon={<Icon name="audit-log" />} onClick={() => router.push('/dashboard/audit-logs')}>Audit logs</MenuItem>
-                  <MenuItem icon={<Icon name="columns" />} onClick={() => router.push('/dashboard/admin?tab=columns')}>Kolommen aanpassen</MenuItem>
-                  <MenuItem icon={<Icon name="settings" />} onClick={() => router.push('/dashboard/admin')}>Instellingen</MenuItem>
+                  {beheerItems(user?.role ?? '').map((b) => (
+                    <MenuItem key={b.route} icon={<Icon name={b.icoon} />} onClick={() => router.push(b.route)}>{b.naam}</MenuItem>
+                  ))}
                   <MenuItem icon={<Icon name="printer" />} onClick={afdrukken}>Afdrukken</MenuItem>
                 </>
               )}

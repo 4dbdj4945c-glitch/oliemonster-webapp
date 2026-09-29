@@ -34,6 +34,7 @@ interface User {
 interface SampleObject {
   id: number;
   name: string;
+  klantId?: number | null;
   region: string | null;
   objectType: string | null;
   address: string | null;
@@ -72,6 +73,7 @@ const leegFormulier = {
   uren: '',
   minuten: '',
   notes: '',
+  klantId: '',
 };
 
 export default function ObjectenPage() {
@@ -87,6 +89,8 @@ export default function ObjectenPage() {
   const [formulier, setFormulier] = useState({ ...leegFormulier });
   const [formulierFout, setFormulierFout] = useState('');
   const [opslaan, setOpslaan] = useState(false);
+  // Klanten voor de keuzelijst Klant (alleen een admin wijzigt objecten)
+  const [klanten, setKlanten] = useState<{ id: number; naam: string }[]>([]);
 
   // Adreszoeker
   const [adresZoek, setAdresZoek] = useState('');
@@ -145,6 +149,14 @@ export default function ObjectenPage() {
     if (user) laadObjecten();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, jaar]);
+
+  useEffect(() => {
+    if (user?.role !== 'admin') return;
+    fetch('/api/klanten')
+      .then((r) => (r.ok ? r.json() : []))
+      .then((lijst) => setKlanten(Array.isArray(lijst) ? lijst : []))
+      .catch(() => {});
+  }, [user?.role]);
 
   const laadObjecten = async () => {
     try {
@@ -236,6 +248,7 @@ export default function ObjectenPage() {
       uren: object.estimatedMinutes ? String(Math.floor(object.estimatedMinutes / 60)) : '',
       minuten: object.estimatedMinutes ? String(object.estimatedMinutes % 60) : '',
       notes: object.notes || '',
+      klantId: object.klantId ? String(object.klantId) : '',
     });
     setAdresZoek(object.address || '');
     setAdresHits([]);
@@ -268,6 +281,7 @@ export default function ObjectenPage() {
           lng: formulier.lng,
           estimatedMinutes: totaal > 0 ? totaal : null,
           notes: formulier.notes,
+          klantId: formulier.klantId === '' ? null : Number(formulier.klantId),
         }),
       });
       if (!res.ok) {
@@ -775,6 +789,21 @@ export default function ObjectenPage() {
                 <option value="">Kies een type</option>
                 {OBJECT_TYPES.map((t) => (
                   <option key={t.waarde} value={t.waarde}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="veld">
+              <label className="label" htmlFor="object-klant">Klant</label>
+              <select
+                id="object-klant"
+                className="select"
+                value={formulier.klantId}
+                onChange={(e) => setFormulier({ ...formulier, klantId: e.target.value })}
+              >
+                <option value="">Geen klant</option>
+                {klanten.map((k) => (
+                  <option key={k.id} value={String(k.id)}>{k.naam}</option>
                 ))}
               </select>
             </div>
