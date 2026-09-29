@@ -1,10 +1,12 @@
 'use client';
 
-import { ReactNode, useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { ROLE_LABELS, isAlleenLezen } from '@/lib/roles';
 import { modulesVoor } from '@/lib/modules';
 import Icon from './Icon';
+import { MenuItem, ToolbarMenu, initiaal } from './Menu';
+import Schil from './Schil';
 import type { IconNaam } from './icons/namen';
 
 /** Het Beheer-menu: de modules uit sectie Beheer van het register, met Kolommen aanpassen vlak voor Instellingen. */
@@ -36,7 +38,7 @@ export interface ShellUser {
   viewYear?: number | null;
 }
 
-interface AppShellProps {
+export interface AppShellProps {
   /** Naam van de module, komt gedimd achter "IDS Portal" te staan. */
   title?: string;
   /** Sessiegebruiker als de pagina die al heeft; anders haalt de balk hem zelf op. */
@@ -50,20 +52,15 @@ interface AppShellProps {
   rightActions?: ReactNode;
   children: ReactNode;
   wide?: boolean;
+  /**
+   * Veldscherm (dagscherm): op de telefoon geen onderbalk en geen kopbalk,
+   * want de pagina heeft een eigen kop en een vaste actiebalk onderaan.
+   */
+  veld?: boolean;
 }
 
-export default function AppShell({
-  title,
-  user: userProp,
-  onPrint,
-  onHelp,
-  leftExtra,
-  rightActions,
-  children,
-  wide = false,
-}: AppShellProps) {
-  const router = useRouter();
-  const pathname = usePathname();
+export default function AppShell(props: AppShellProps) {
+  const { user: userProp } = props;
   const [fetchedUser, setFetchedUser] = useState<ShellUser | null>(null);
   const user = userProp === undefined ? fetchedUser : userProp;
 
@@ -76,6 +73,30 @@ export default function AppShell({
       .catch(() => {});
     return () => { actief = false; };
   }, [userProp]);
+
+  // Een kijker (rol alleen lezen) houdt de oude balk bovenaan, precies zoals hij
+  // hem kende: zijn eigen klantportaal komt later. Zolang de gebruiker nog niet
+  // bekend is, ook de oude balk: die toont dan niets wat niet mag.
+  if (!user || isAlleenLezen(user.role)) return <KlassiekeBalk {...props} user={user} />;
+  return <Schil {...props} user={user} />;
+}
+
+/*
+  De oude balk, alleen nog voor de rol alleen lezen. Niet aanpassen zonder de
+  kijker-screenshots te vergelijken (zie README, Screenshots).
+*/
+function KlassiekeBalk({
+  title,
+  user,
+  onPrint,
+  onHelp,
+  leftExtra,
+  rightActions,
+  children,
+  wide = false,
+}: AppShellProps & { user: ShellUser | null }) {
+  const router = useRouter();
+  const pathname = usePathname();
 
   const isAdmin = user?.role === 'admin';
   const opDashboard = pathname === '/dashboard';
@@ -213,81 +234,3 @@ export default function AppShell({
   );
 }
 
-function initiaal(naam: string): string {
-  return naam.trim().charAt(0).toUpperCase() || '?';
-}
-
-/* ---------- Uitklapmenu in de balk ---------- */
-
-interface ToolbarMenuProps {
-  label: string;
-  button: ReactNode;
-  /** Andere knopinhoud zolang het menu open is (bv. een kruisje). */
-  buttonOpen?: ReactNode;
-  buttonClass: string;
-  panelClass?: string;
-  children: ReactNode;
-}
-
-function ToolbarMenu({ label, button, buttonOpen, buttonClass, panelClass = 'toolbar-menu-paneel', children }: ToolbarMenuProps) {
-  const [open, setOpen] = useState(false);
-  const wrap = useRef<HTMLDivElement>(null);
-
-  // Sluiten bij klik buiten het menu, bij Escape en bij een keuze (klik binnen het paneel).
-  useEffect(() => {
-    if (!open) return;
-    const buiten = (e: MouseEvent | TouchEvent) => {
-      if (wrap.current && !wrap.current.contains(e.target as Node)) setOpen(false);
-    };
-    const toets = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', buiten);
-    document.addEventListener('touchstart', buiten);
-    document.addEventListener('keydown', toets);
-    return () => {
-      document.removeEventListener('mousedown', buiten);
-      document.removeEventListener('touchstart', buiten);
-      document.removeEventListener('keydown', toets);
-    };
-  }, [open]);
-
-  return (
-    <div className="toolbar-menu" ref={wrap}>
-      <button
-        type="button"
-        className={`${buttonClass}${open ? ' on' : ''}`}
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="menu"
-        aria-expanded={open}
-        aria-label={label}
-      >
-        {open && buttonOpen ? buttonOpen : button}
-      </button>
-      {open && (
-        <div className={panelClass} role="menu" onClick={() => setOpen(false)}>
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-interface MenuItemProps {
-  icon?: ReactNode;
-  danger?: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}
-
-function MenuItem({ icon, danger = false, onClick, children }: MenuItemProps) {
-  return (
-    <button
-      type="button"
-      role="menuitem"
-      className={`toolbar-menu-item${danger ? ' toolbar-menu-item-danger' : ''}`}
-      onClick={onClick}
-    >
-      {icon}
-      {children}
-    </button>
-  );
-}

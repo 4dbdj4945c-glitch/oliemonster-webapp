@@ -22,7 +22,7 @@ export const ALLOWED_ROLES = [ROLE_ADMIN, ROLE_USER, ROLE_ALLEEN_LEZEN];
 
 // Menselijke labels voor in de UI.
 export const ROLE_LABELS: Record<string, string> = {
-  [ROLE_ADMIN]: 'Admin',
+  [ROLE_ADMIN]: 'Beheerder',
   [ROLE_USER]: 'Gebruiker',
   [ROLE_ALLEEN_LEZEN]: 'Alleen lezen',
   [ROLE_VIEWER_OIL2025_OUD]: 'Alleen lezen (oude rol)',
