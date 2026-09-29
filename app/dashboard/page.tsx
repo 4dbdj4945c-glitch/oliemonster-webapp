@@ -349,21 +349,6 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-            <div
-              className="module-card"
-              onClick={() => router.push('/dashboard/print-calculator')}
-            >
-              <div className="card-accent" />
-              <span className="card-icon"><Icon name="module-print-calc" size={24} /></span>
-              <h2 className="card-title">Printkosten calculator</h2>
-              <p className="card-description">Kostprijs en adviesverkoopprijs per bedrukt item (UV-printer) berekenen</p>
-              <div className="card-stats">
-                <div className="stat-item">
-                  <div className="stat-value">€</div>
-                  <div className="stat-label">Kostprijs per stuk</div>
-                </div>
-              </div>
-            </div>
             {/* E-mail editor: losstaand HTML-bestand in public/, opent in een nieuw tabblad.
                 Bron en uitleg: Documents/Claude/email-templates/ (sync-webapp.sh kopieert 'm hierheen). */}
             <div
