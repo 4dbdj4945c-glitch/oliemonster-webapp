@@ -2,7 +2,18 @@
 import { describe, expect, it } from 'vitest';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { MODULES, SECTIES, jaarUitPad, moduleVoorPad, modulesVoor, oliemonsterPad, registerRol } from '@/lib/modules';
+import {
+  MODULES,
+  SECTIES,
+  actieveTab,
+  actiefNavItem,
+  jaarUitPad,
+  moduleVoorPad,
+  modulesVoor,
+  navigatieVoor,
+  oliemonsterPad,
+  registerRol,
+} from '@/lib/modules';
 
 describe('moduleregister', () => {
   it('elke module heeft een unieke sleutel, een sectie en minstens één rol', () => {
@@ -27,7 +38,8 @@ describe('moduleregister', () => {
     expect(gebruiker).toContain('acquisitie');
     expect(gebruiker).not.toContain('klanten');
     expect(gebruiker).not.toContain('instellingen');
-    expect(modulesVoor('admin', 'Beheer').map((m) => m.sleutel)).toEqual(['objecten', 'audit-logs', 'instellingen']);
+    expect(modulesVoor('admin', 'Beheer').map((m) => m.sleutel)).toEqual(['objecten', 'instellingen']);
+    expect(modulesVoor('admin', 'Rapportage').map((m) => m.sleutel)).toEqual(['audit-logs']);
   });
 
   it('pad naar module en jaar', () => {
@@ -40,5 +52,38 @@ describe('moduleregister', () => {
     expect(jaarUitPad('/dashboard/oliemonsters2026')).toBeNull();
     expect(jaarUitPad('/dashboard/oliemonsters/1999')).toBeNull();
     expect(registerRol('iets-anders')).toBe('user');
+  });
+
+  it('navigatie: per sectie de modules van de gebruiker, zonder lege secties', () => {
+    const admin = navigatieVoor('admin', 2026);
+    expect(admin.map((s) => s.sectie)).toEqual(['Werk', 'Klanten', 'Rapportage', 'Beheer']);
+    expect(admin[0].items.map((i) => i.href)).toEqual([
+      '/dashboard/oliemonsters/2026',
+      '/dashboard/planning',
+      '/dashboard/controlerondes',
+      '/dashboard/ultimo',
+    ]);
+    expect(admin[3].items.map((i) => i.sleutel)).toEqual(['objecten', 'kolommen', 'instellingen']);
+
+    const gebruiker = navigatieVoor('user', 2026);
+    expect(gebruiker.map((s) => s.sectie)).toEqual(['Werk', 'Klanten', 'Beheer']);
+    expect(gebruiker.flatMap((s) => s.items.map((i) => i.sleutel))).not.toContain('klanten');
+
+    expect(navigatieVoor('alleen_lezen', 2025)).toEqual([
+      { sectie: 'Werk', items: [expect.objectContaining({ sleutel: 'oliemonsters', href: '/dashboard/oliemonsters/2025' })] },
+    ]);
+  });
+
+  it('actieve pagina en tab', () => {
+    expect(actiefNavItem('/dashboard')).toBe('vandaag');
+    expect(actiefNavItem('/dashboard/')).toBe('vandaag');
+    expect(actiefNavItem('/dashboard/oliemonsters/2025')).toBe('oliemonsters');
+    expect(actiefNavItem('/dashboard/planning/dag/4')).toBe('planning');
+    expect(actiefNavItem('/login')).toBeNull();
+    expect(actieveTab('/dashboard')).toBe('vandaag');
+    expect(actieveTab('/dashboard/planning')).toBe('Werk');
+    expect(actieveTab('/dashboard/klanten/3')).toBe('Klanten');
+    expect(actieveTab('/dashboard/audit-logs')).toBe('meer');
+    expect(actieveTab('/dashboard/admin')).toBe('meer');
   });
 });

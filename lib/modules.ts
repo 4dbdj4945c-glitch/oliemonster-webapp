@@ -1,9 +1,9 @@
 // Moduleregister: welke modules de portal heeft, waar ze staan en wie erbij mag.
 //
 // Eén bron voor de tegels op het dashboard, het Beheer-menu in de balk en de
-// toegang tot pagina's (lib/paginaToegang.ts). De navigatie van fase 2 (zijbalk
-// en onderbalk) leest hier ook uit: per sectie de modules die de gebruiker mag
-// zien, zie modulesVoor().
+// toegang tot pagina's (lib/paginaToegang.ts). De navigatie (zijbalk op desktop,
+// onderbalk op de telefoon, AppShell) leest hier ook uit: per sectie de modules
+// die de gebruiker mag zien, zie navigatieVoor().
 //
 // Een nieuwe module: voeg hem hier toe, met een route onder /dashboard. Rechten
 // op de API staan los daarvan in de routes zelf (withAuth, lib/toegang.ts).
@@ -55,6 +55,16 @@ export const MODULES: ModuleInfo[] = [
     rollen: IEDEREEN,
     tegel: true,
     perJaar: true,
+  },
+  {
+    sleutel: 'planning',
+    naam: 'Planning',
+    beschrijving: 'Monsterdagen plannen, de route per dag en het dagscherm voor in het veld',
+    icoon: 'calendar',
+    route: '/dashboard/planning',
+    sectie: 'Werk',
+    rollen: MEDEWERKERS,
+    tegel: false,
   },
   {
     sleutel: 'controlerondes',
@@ -130,11 +140,11 @@ export const MODULES: ModuleInfo[] = [
   },
   {
     sleutel: 'audit-logs',
-    naam: 'Audit logs',
+    naam: 'Logboek',
     beschrijving: 'Wie deed wat en wanneer',
     icoon: 'audit-log',
     route: '/dashboard/audit-logs',
-    sectie: 'Beheer',
+    sectie: 'Rapportage',
     rollen: ADMIN,
     tegel: false,
   },
@@ -149,6 +159,73 @@ export const MODULES: ModuleInfo[] = [
     tegel: false,
   },
 ];
+
+// ------------------------------------------------------------------
+// Navigatie (zijbalk op desktop, onderbalk op de telefoon)
+// ------------------------------------------------------------------
+
+export interface NavItem {
+  sleutel: string;
+  naam: string;
+  icoon: IconNaam;
+  href: string;
+  extern?: boolean;
+}
+
+export interface NavSectie {
+  sectie: Sectie;
+  items: NavItem[];
+}
+
+/** De tabs onderaan op de telefoon. Rapportage en Beheer zitten samen onder Meer. */
+export type NavTab = 'vandaag' | 'Werk' | 'Klanten' | 'meer';
+
+export function tabVanSectie(sectie: Sectie): NavTab {
+  return sectie === 'Werk' || sectie === 'Klanten' ? sectie : 'meer';
+}
+
+/**
+ * Het hoofdmenu voor deze gebruiker: per sectie de modules die hij mag zien,
+ * in de volgorde van het register. De oliemonsters wijzen naar het huidige
+ * jaar; het jaar kies je op de pagina zelf. Bij Instellingen hoort ook
+ * Kolommen aanpassen, zoals in het oude Beheer-menu. Lege secties vallen weg.
+ * Vandaag (/dashboard) staat er los boven en is geen module.
+ */
+export function navigatieVoor(role: string | null | undefined, jaar = new Date().getFullYear()): NavSectie[] {
+  const uitkomst: NavSectie[] = [];
+  for (const sectie of SECTIES) {
+    const items: NavItem[] = [];
+    for (const m of modulesVoor(role, sectie)) {
+      if (m.sleutel === 'instellingen') {
+        items.push({ sleutel: 'kolommen', naam: 'Kolommen aanpassen', icoon: 'columns', href: `${m.route}?tab=columns` });
+      }
+      items.push({
+        sleutel: m.sleutel,
+        naam: m.naam,
+        icoon: m.icoon,
+        href: m.perJaar ? `${m.route}/${jaar}` : m.route,
+        extern: m.extern,
+      });
+    }
+    if (items.length > 0) uitkomst.push({ sectie, items });
+  }
+  return uitkomst;
+}
+
+/** Welk menu-item hoort bij dit pad? 'vandaag' voor /dashboard, null als geen. */
+export function actiefNavItem(pad: string): string | null {
+  const schoon = pad.replace(/\/+$/, '') || '/';
+  if (schoon === '/dashboard') return 'vandaag';
+  return moduleVoorPad(schoon)?.sleutel ?? null;
+}
+
+/** Welke tab onderaan hoort bij dit pad? */
+export function actieveTab(pad: string): NavTab | null {
+  const sleutel = actiefNavItem(pad);
+  if (sleutel === 'vandaag') return 'vandaag';
+  const m = sleutel ? MODULES.find((x) => x.sleutel === sleutel) : null;
+  return m ? tabVanSectie(m.sectie) : null;
+}
 
 /** De rol van een gebruiker zoals het register hem kent. */
 export function registerRol(role: string | null | undefined): ModuleRol {
