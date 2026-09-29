@@ -17,6 +17,8 @@ export interface NeemDoel {
   location: string;
   description: string;
   oilType?: string | null;
+  /** De opmerking die er al staat (van de openstaande poging); die blijft staan */
+  remarks?: string | null;
   /** Foto's die er al staan, van een eerdere poging */
   photoUrl?: string | null;
   partPhotoUrl?: string | null;
@@ -52,11 +54,12 @@ function vandaag(): string {
 */
 export default function MonsterNemenModal({ doel, onClose, onKlaar }: Props) {
   // De pagina geeft dit venster een key mee per monster, dus elk nieuw monster
-  // begint met een leeg formulier en de datum van vandaag.
+  // begint met een leeg formulier en de datum van vandaag. Een opmerking die er
+  // al stond, staat er meteen in; anders zou opslaan hem wissen.
   const [stap, setStap] = useState<'nemen' | 'onbereikbaar'>('nemen');
   const [datum, setDatum] = useState(vandaag());
   const [oilType, setOilType] = useState(doel?.oilType || '');
-  const [opmerking, setOpmerking] = useState('');
+  const [opmerking, setOpmerking] = useState(doel?.remarks || '');
   const [fotoOnderdeel, setFotoOnderdeel] = useState<File | null>(null);
   const [fotoPotje, setFotoPotje] = useState<File | null>(null);
   const [onbereikbaar, setOnbereikbaar] = useState<OnbereikbaarWaarden>(leegOnbereikbaar());

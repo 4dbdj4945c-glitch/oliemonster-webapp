@@ -1,129 +1,99 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/toegang';
-import { put } from '@vercel/blob';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { fotoLabel, fotoVeld, leesFotoSoort } from '@/lib/samplePhotos';
-import { foutAntwoordWensen2 } from '@/lib/kolommen';
+import { KOLOM_ONTBREEKT_WENSEN2 } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
+import { bewaarFoto, ruimFotoOpAls } from '@/lib/fotoOpslag';
+import { wijzigLaatstePoging } from '@/lib/sampleAttempts';
+import { apiRoute, ApiFout, leesId } from '@/lib/apiRoute';
 
 /*
   Foto's op het monster zelf. Er zijn er twee: het onderdeel waar het monster
   vandaan komt (soort "onderdeel", kolom partPhotoUrl) en het monsterpotje
   (soort "potje", kolom photoUrl). Wie geen soort meestuurt krijgt de potjesfoto,
   zodat bestaande aanroepen en bestaande foto's blijven kloppen.
+
+  De foto's op het monster zijn een spiegel van de laatste poging. Deze route
+  zet de foto dus op die poging (of maakt er een aan) en spiegelt daarna; zo
+  verdwijnt een foto niet meer bij de volgende hermonstering. Een vervangen of
+  verwijderde foto gaat ook uit de opslag, tenzij iets anders er nog naar wijst.
 */
 
-export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-  session
-) => {
-  try {
-    const { id } = await params;
-    const sampleId = parseInt(id);
-    if (Number.isNaN(sampleId)) {
-      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
-    }
+const OPTIES = { ontbreekt: KOLOM_ONTBREEKT_WENSEN2 };
+
+async function haalMonster(sampleId: number) {
+  const sample = await prisma.oilSample.findUnique({
+    where: { id: sampleId, ...(await actiefFilter()) },
+    select: { id: true, oNumber: true },
+  });
+  if (!sample) throw new ApiFout(404, 'Monster niet gevonden');
+  return sample;
+}
+
+export const POST = apiRoute(
+  { rol: 'admin', module: 'oliemonsters', fout: 'Fout bij uploaden van foto', ...OPTIES },
+  async (request, context, session) => {
+    const sampleId = await leesId(context, 'Onbekend monster');
 
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return NextResponse.json(
-        { error: 'Blob storage is niet geconfigureerd. Voeg BLOB_READ_WRITE_TOKEN toe in Vercel environment variables.' },
-        { status: 500 }
-      );
+      throw new ApiFout(500, 'Blob storage is niet geconfigureerd. Voeg BLOB_READ_WRITE_TOKEN toe in Vercel environment variables.');
     }
 
     const formData = await request.formData();
     const file = formData.get('photo');
-    if (!(file instanceof File) || file.size === 0) {
-      return NextResponse.json({ error: 'Geen foto gevonden' }, { status: 400 });
-    }
+    if (!(file instanceof File) || file.size === 0) throw new ApiFout(400, 'Geen foto gevonden');
     const fotoMelding = fotoFout(file);
-    if (fotoMelding) {
-      return NextResponse.json({ error: fotoMelding }, { status: 400 });
-    }
+    if (fotoMelding) throw new ApiFout(400, fotoMelding);
 
     const soort = leesFotoSoort(formData.get('soort'));
-    if (!soort) {
-      return NextResponse.json({ error: 'Onbekende soort foto' }, { status: 400 });
-    }
+    if (!soort) throw new ApiFout(400, 'Onbekende soort foto');
 
-    const sample = await prisma.oilSample.findUnique({
-      where: { id: sampleId, ...(await actiefFilter()) },
-      select: { id: true, oNumber: true },
-    });
-    if (!sample) {
-      return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
-    }
+    const sample = await haalMonster(sampleId);
 
-    const timestamp = Date.now();
-    const filename = `sample-${sampleId}-${soort}-${timestamp}.${fotoExtensie(file)}`;
+    const filename = `sample-${sampleId}-${soort}-${Date.now()}.${fotoExtensie(file)}`;
+    const url = await bewaarFoto(filename, file);
 
-    const blob = await put(filename, file, { access: 'public' });
-
-    await prisma.oilSample.update({
-      where: { id: sampleId },
-      data: { [fotoVeld(soort)]: blob.url },
-      select: { id: true },
-    });
+    const veld = fotoVeld(soort);
+    const { vorige } = await wijzigLaatstePoging(sampleId, { [veld]: url });
+    await ruimFotoOpAls(vorige?.[veld]);
 
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.UPLOAD_PHOTO,
-      details: { sampleId, oNumber: sample.oNumber, soort, filename },
+      details: { sampleId, oNumber: sample.oNumber, soort, filename, vervangen: vorige?.[veld] ?? null },
       request,
     });
 
-    return NextResponse.json({ photoUrl: blob.url, soort });
-  } catch (error) {
-    return foutAntwoordWensen2(error, 'Fout bij uploaden van foto');
+    return NextResponse.json({ photoUrl: url, soort });
   }
-});
+);
 
-export const DELETE = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-  session
-) => {
-  try {
-    const { id } = await params;
-    const sampleId = parseInt(id);
-    if (Number.isNaN(sampleId)) {
-      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
-    }
+export const DELETE = apiRoute(
+  { rol: 'admin', module: 'oliemonsters', fout: 'Fout bij verwijderen van foto', ...OPTIES },
+  async (request, context, session) => {
+    const sampleId = await leesId(context, 'Onbekend monster');
 
     // Welke van de twee foto's: ?soort=onderdeel of ?soort=potje (standaard potje).
     const soort = leesFotoSoort(new URL(request.url).searchParams.get('soort'));
-    if (!soort) {
-      return NextResponse.json({ error: 'Onbekende soort foto' }, { status: 400 });
-    }
+    if (!soort) throw new ApiFout(400, 'Onbekende soort foto');
 
-    const sample = await prisma.oilSample.findUnique({
-      where: { id: sampleId, ...(await actiefFilter()) },
-      select: { id: true, oNumber: true },
-    });
-    if (!sample) {
-      return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
-    }
+    const sample = await haalMonster(sampleId);
 
-    await prisma.oilSample.update({
-      where: { id: sampleId },
-      data: { [fotoVeld(soort)]: null },
-      select: { id: true },
-    });
+    const veld = fotoVeld(soort);
+    const { vorige } = await wijzigLaatstePoging(sampleId, { [veld]: null });
+    await ruimFotoOpAls(vorige?.[veld]);
 
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.DELETE_PHOTO,
-      details: { sampleId, oNumber: sample.oNumber, soort, label: fotoLabel(soort) },
+      details: { sampleId, oNumber: sample.oNumber, soort, label: fotoLabel(soort), url: vorige?.[veld] ?? null },
       request,
     });
 
     return NextResponse.json({ success: true, soort });
-  } catch (error) {
-    return foutAntwoordWensen2(error, 'Fout bij verwijderen van foto');
   }
-});
+);

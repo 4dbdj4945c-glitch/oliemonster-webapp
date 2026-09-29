@@ -1,9 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/toegang';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { tabelOntbreekt } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
+import { apiRoute, ApiFout, leesId, leesJson, optioneleDatum } from '@/lib/apiRoute';
+import { NIEUWSTE_EERST, wijzigLaatstePoging } from '@/lib/sampleAttempts';
+
+const StatusSchema = z.object({
+  isTaken: z.boolean({ error: 'Geef mee of het monster genomen is' }),
+  sampleDate: optioneleDatum().catch(null),
+});
 
 /**
  * PATCH - Zet een monster met één handeling op genomen of niet genomen.
@@ -12,36 +19,20 @@ import { actiefFilter } from '@/lib/verwijderdeMonsters';
  * van vijf handelingen via het bewerkvenster. Bij "genomen" komt de datum op
  * vandaag, tenzij er al een datum meegestuurd wordt.
  *
- * De velden op OilSample zijn een spiegel van de meest recente poging
- * (SampleAttempt). Bestaat die poging, dan zetten we de status op allebei, zodat
- * hij blijft kloppen zodra er een hermonstering bijkomt.
- *
- * Bewust géén syncLatestAttemptToSample: die spiegelt ook remarks en photoUrl
- * terug, en het bewerkvenster schrijft de opmerking op het monster zelf. Eén tik
- * op de status zou die opmerking dan stilletjes wissen. Deze route raakt alleen
- * de status en de datum aan. De datum van een bestaande poging blijft staan als
- * je op "niet genomen" zet, anders ben je een afnamedatum kwijt die je niet
- * terugkrijgt; de lijst toont de datum toch alleen bij een genomen monster.
+ * Status en datum komen uit de laatste poging, dus die zetten we op de poging
+ * (wijzigLaatstePoging) en spiegelen daarna. De opmerking en de foto's staan ook
+ * op die poging en blijven dus gewoon staan. De datum van een bestaande poging
+ * blijft staan als je op "niet genomen" zet, anders ben je een afnamedatum kwijt
+ * die je niet terugkrijgt; de lijst toont de datum toch alleen bij een genomen
+ * monster.
  */
-export const PATCH = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-  session
-) => {
-  // De rol alleen lezen mag niets wijzigen, ook niet via de API.
-
-  try {
-    const { id } = await params;
-    const sampleId = parseInt(id);
-    if (Number.isNaN(sampleId)) {
-      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
-    }
-
-    const body = await request.json().catch(() => ({}));
-    if (typeof body.isTaken !== 'boolean') {
-      return NextResponse.json({ error: 'Geef mee of het monster genomen is' }, { status: 400 });
-    }
-    const isTaken: boolean = body.isTaken;
+export const PATCH = apiRoute(
+  { rol: 'admin', module: 'oliemonsters', fout: 'Fout bij bijwerken van de status' },
+  async (request, context, session) => {
+    // De rol alleen lezen mag niets wijzigen, ook niet via de API.
+    const sampleId = await leesId(context, 'Onbekend monster');
+    const invoer = await leesJson(request, StatusSchema);
+    const isTaken = invoer.isTaken;
 
     const basis = { id: true, oNumber: true, isTaken: true, isDisabled: true, analysisYear: true, sampleDate: true } as const;
     let sample: { id: number; oNumber: string; isTaken: boolean; isDisabled: boolean; analysisYear: number; sampleDate: Date | null; isUnreachable?: boolean } | null;
@@ -54,70 +45,37 @@ export const PATCH = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
       if (!tabelOntbreekt(error)) throw error;
       sample = await prisma.oilSample.findUnique({ where: { id: sampleId, ...(await actiefFilter()) }, select: basis });
     }
-    if (!sample) {
-      return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
-    }
-    if (sample.isDisabled) {
-      return NextResponse.json(
-        { error: 'Dit monster is geannuleerd. Draai de annulering eerst terug.' },
-        { status: 400 }
-      );
-    }
+    if (!sample) throw new ApiFout(404, 'Monster niet gevonden');
+    if (sample.isDisabled) throw new ApiFout(400, 'Dit monster is geannuleerd. Draai de annulering eerst terug.');
 
     const laatste = await prisma.sampleAttempt.findFirst({
       where: { oilSampleId: sampleId },
-      orderBy: [{ sampleDate: 'desc' }, { createdAt: 'desc' }],
-      select: { id: true, sampleDate: true },
+      orderBy: NIEUWSTE_EERST,
+      select: { sampleDate: true },
     });
 
     // Datum bij "genomen": de meegestuurde datum, anders de datum die er al
     // stond, anders vandaag. Bij "niet genomen" blijft de datum staan.
     const bestaandeDatum = laatste ? laatste.sampleDate : sample.sampleDate;
-    let sampleDate: Date | null = bestaandeDatum;
-    if (isTaken) {
-      const gekozen =
-        typeof body.sampleDate === 'string' && body.sampleDate ? new Date(body.sampleDate) : null;
-      sampleDate =
-        gekozen && !Number.isNaN(gekozen.getTime()) ? gekozen : bestaandeDatum ?? new Date();
-    }
+    const sampleDate: Date | null = isTaken ? invoer.sampleDate ?? bestaandeDatum ?? new Date() : bestaandeDatum;
 
-    if (laatste) {
-      await prisma.sampleAttempt.update({
-        where: { id: laatste.id },
-        data: { isTaken, sampleDate },
-        select: { id: true },
-      });
-    }
+    await wijzigLaatstePoging(sampleId, { isTaken, sampleDate });
+
     // Een genomen monster is niet meer onbereikbaar: die registratie gaat eruit,
     // anders houdt het monster twee statussen tegelijk. De reden blijft in het
     // logboek staan.
-    const wasOnbereikbaar = sample.isUnreachable === true;
-    const wisOnbereikbaar = isTaken && wasOnbereikbaar;
-    try {
+    const wisOnbereikbaar = isTaken && sample.isUnreachable === true;
+    if (wisOnbereikbaar) {
       await prisma.oilSample.update({
         where: { id: sampleId },
         data: {
-          isTaken,
-          sampleDate,
-          ...(wisOnbereikbaar
-            ? {
-                isUnreachable: false,
-                unreachableReason: null,
-                unreachableNote: null,
-                unreachablePhotoUrl: null,
-                unreachableAt: null,
-                unreachableBy: null,
-              }
-            : {}),
+          isUnreachable: false,
+          unreachableReason: null,
+          unreachableNote: null,
+          unreachablePhotoUrl: null,
+          unreachableAt: null,
+          unreachableBy: null,
         },
-        select: { id: true },
-      });
-    } catch (error) {
-      if (!tabelOntbreekt(error)) throw error;
-      // Kolommen van Niet bereikbaar staan er nog niet: alleen de status zetten.
-      await prisma.oilSample.update({
-        where: { id: sampleId },
-        data: { isTaken, sampleDate },
         select: { id: true },
       });
     }
@@ -140,8 +98,5 @@ export const PATCH = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
     });
 
     return NextResponse.json({ id: sampleId, isTaken, sampleDate });
-  } catch (error) {
-    console.error('Error updating sample status:', error);
-    return NextResponse.json({ error: 'Fout bij bijwerken van de status' }, { status: 500 });
   }
-});
+);

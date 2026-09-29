@@ -41,6 +41,18 @@ export function verzoek(pad: string, opties: { method?: string; body?: unknown }
   });
 }
 
+/** Een multipart-verzoek met een foto, zoals de uploadroutes het krijgen. */
+export function fotoVerzoek(pad: string, velden: Record<string, string | File>) {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(velden)) form.append(k, v);
+  return new NextRequest(PORTAL + pad, { method: 'POST', headers: { origin: PORTAL }, body: form });
+}
+
+/** Een klein nepbestand dat door de fotocontrole komt. */
+export function nepFoto(naam = 'foto.jpg') {
+  return new File([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3])], naam, { type: 'image/jpeg' });
+}
+
 /** Context zoals Next.js die aan een route met [id] meegeeft. */
 export function metParams<P extends Record<string, string>>(params: P) {
   return { params: Promise.resolve(params) };

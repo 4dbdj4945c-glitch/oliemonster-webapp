@@ -60,6 +60,7 @@ export const SAMPLE_PLANNING_SELECT = {
  */
 export const SAMPLE_VOL_SELECT = {
   ...SAMPLE_PLANNING_SELECT,
+  installatieId: true,
   partPhotoUrl: true,
   isUnreachable: true,
   unreachableReason: true,
@@ -81,6 +82,7 @@ export const SAMPLE_PLANNING_LEEG = {
 
 /** De standaardwaarden van de velden uit wensenronde 2, voor de terugval. */
 export const SAMPLE_WENSEN2_LEEG = {
+  installatieId: null,
   partPhotoUrl: null,
   isUnreachable: false,
   unreachableReason: null,

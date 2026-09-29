@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/toegang';
-import { put } from '@vercel/blob';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { syncLatestAttemptToSample } from '@/lib/sampleAttempts';
-import { tabelOntbreekt, foutAntwoordWensen2 } from '@/lib/kolommen';
+import { NIEUWSTE_EERST, syncLatestAttemptToSample } from '@/lib/sampleAttempts';
+import { tabelOntbreekt, KOLOM_ONTBREEKT_WENSEN2 } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
+import { bewaarFoto, ruimFotoOpAls } from '@/lib/fotoOpslag';
+import { apiRoute, ApiFout, leesId } from '@/lib/apiRoute';
 
 /**
  * POST - Monster nemen in één keer.
@@ -26,17 +26,10 @@ import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
  * gevuld in plaats van dat er een tweede poging bijkomt. Anders komt er een
  * nieuwe poging bij, zodat hermonstering blijft werken zoals het werkte.
  */
-export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-  session
-) => {
-  try {
-    const { id } = await params;
-    const sampleId = parseInt(id);
-    if (Number.isNaN(sampleId)) {
-      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
-    }
+export const POST = apiRoute(
+  { rol: 'admin', module: 'oliemonsters', fout: 'Fout bij opslaan van het genomen monster', ontbreekt: KOLOM_ONTBREEKT_WENSEN2 },
+  async (request, context, session) => {
+    const sampleId = await leesId(context, 'Onbekend monster');
 
     const form = await request.formData();
     const tekst = (naam: string) => {
@@ -49,13 +42,9 @@ export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
     };
 
     const datumTekst = tekst('sampleDate');
-    if (!datumTekst) {
-      return NextResponse.json({ error: 'Vul de datum van de afname in' }, { status: 400 });
-    }
+    if (!datumTekst) throw new ApiFout(400, 'Vul de datum van de afname in');
     const sampleDate = new Date(datumTekst);
-    if (Number.isNaN(sampleDate.getTime())) {
-      return NextResponse.json({ error: 'De datum van de afname klopt niet' }, { status: 400 });
-    }
+    if (Number.isNaN(sampleDate.getTime())) throw new ApiFout(400, 'De datum van de afname klopt niet');
 
     const oilType = tekst('oilType');
     const remarks = tekst('remarks');
@@ -63,35 +52,23 @@ export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
     const fotoPotje = bestand('photoPotje');
     for (const foto of [fotoOnderdeel, fotoPotje]) {
       const melding = foto ? fotoFout(foto) : null;
-      if (melding) return NextResponse.json({ error: melding }, { status: 400 });
+      if (melding) throw new ApiFout(400, melding);
     }
 
     const sample = await prisma.oilSample.findUnique({
       where: { id: sampleId, ...(await actiefFilter()) },
       select: { id: true, oNumber: true, analysisYear: true, isDisabled: true },
     });
-    if (!sample) {
-      return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
-    }
-    if (sample.isDisabled) {
-      return NextResponse.json(
-        { error: 'Dit monster is geannuleerd. Draai de annulering eerst terug.' },
-        { status: 400 }
-      );
-    }
+    if (!sample) throw new ApiFout(404, 'Monster niet gevonden');
+    if (sample.isDisabled) throw new ApiFout(400, 'Dit monster is geannuleerd. Draai de annulering eerst terug.');
 
     if ((fotoOnderdeel || fotoPotje) && !process.env.BLOB_READ_WRITE_TOKEN) {
-      return NextResponse.json(
-        { error: 'Blob storage is niet geconfigureerd. Voeg BLOB_READ_WRITE_TOKEN toe in Vercel environment variables.' },
-        { status: 500 }
-      );
+      throw new ApiFout(500, 'Blob storage is niet geconfigureerd. Voeg BLOB_READ_WRITE_TOKEN toe in Vercel environment variables.');
     }
 
     const uploaden = async (file: File | null, soort: string): Promise<string | null> => {
       if (!file) return null;
-      const filename = `sample-${sampleId}-${soort}-${Date.now()}.${fotoExtensie(file)}`;
-      const blob = await put(filename, file, { access: 'public' });
-      return blob.url;
+      return bewaarFoto(`sample-${sampleId}-${soort}-${Date.now()}.${fotoExtensie(file)}`, file);
     };
 
     const partPhotoUrl = await uploaden(fotoOnderdeel, 'onderdeel');
@@ -100,8 +77,8 @@ export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
     // Een nog openstaande poging vullen we in; anders komt er een poging bij.
     const laatste = await prisma.sampleAttempt.findFirst({
       where: { oilSampleId: sampleId },
-      orderBy: [{ sampleDate: 'desc' }, { createdAt: 'desc' }],
-      select: { id: true, isTaken: true },
+      orderBy: NIEUWSTE_EERST,
+      select: { id: true, isTaken: true, photoUrl: true, partPhotoUrl: true },
     });
 
     const pogingData = {
@@ -132,6 +109,11 @@ export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
 
     // Spiegelt datum, foto's, opmerking en status naar het monster.
     await syncLatestAttemptToSample(sampleId);
+
+    // Een openstaande poging die een nieuwe foto kreeg: de oude foto opruimen.
+    if (!nieuwePoging && laatste) {
+      await ruimFotoOpAls(photoUrl ? laatste.photoUrl : null, partPhotoUrl ? laatste.partPhotoUrl : null);
+    }
 
     // Type olie staat op het monster zelf, niet op de poging. En een genomen
     // monster is niet meer onbereikbaar.
@@ -179,7 +161,5 @@ export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
     });
 
     return NextResponse.json({ id: sampleId, attemptId, isTaken: true, sampleDate });
-  } catch (error) {
-    return foutAntwoordWensen2(error, 'Fout bij opslaan van het genomen monster');
   }
-});
+);

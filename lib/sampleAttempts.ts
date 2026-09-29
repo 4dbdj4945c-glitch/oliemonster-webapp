@@ -89,3 +89,66 @@ export async function syncLatestAttemptToSample(oilSampleId: number) {
     });
   }
 }
+
+/** De velden van een monster die uit de laatste poging komen (de cache). */
+export interface PogingVelden {
+  sampleDate?: Date | null;
+  photoUrl?: string | null;
+  partPhotoUrl?: string | null;
+  remarks?: string | null;
+  isTaken?: boolean;
+}
+
+/** Dezelfde volgorde als syncLatestAttemptToSample: de nieuwste poging eerst. */
+export const NIEUWSTE_EERST = [{ sampleDate: 'desc' as const }, { createdAt: 'desc' as const }];
+
+/**
+ * De enige manier om de cachevelden van een monster te wijzigen: via de laatste
+ * poging, en daarna syncLatestAttemptToSample. Zo kan een volgende wijziging aan
+ * de pogingen niets meer wissen dat alleen op het monster stond (dat was de
+ * cachebug: een opmerking of foto die rechtstreeks op OilSample stond,
+ * verdween bij de eerstvolgende hermonstering of pogingwijziging).
+ *
+ * Heeft het monster nog geen poging (oude monsters, of net aangemaakt), dan
+ * komt er een, gevuld met wat er nu op het monster staat plus de wijziging.
+ * Staat er dan nog helemaal niets in (geen datum, niet genomen, geen opmerking,
+ * geen foto), dan maken we geen lege poging aan.
+ *
+ * Geeft de poging terug zoals hij was, zodat de route oude foto's kan opruimen.
+ */
+export async function wijzigLaatstePoging(
+  oilSampleId: number,
+  wijziging: PogingVelden
+): Promise<{ attemptId: number | null; vorige: Required<PogingVelden> | null }> {
+  const laatste = await prisma.sampleAttempt.findFirst({
+    where: { oilSampleId },
+    orderBy: NIEUWSTE_EERST,
+    select: { id: true, sampleDate: true, photoUrl: true, partPhotoUrl: true, remarks: true, isTaken: true },
+  });
+
+  if (laatste) {
+    const { id, ...vorige } = laatste;
+    await prisma.sampleAttempt.update({ where: { id }, data: wijziging, select: { id: true } });
+    await syncLatestAttemptToSample(oilSampleId);
+    return { attemptId: id, vorige };
+  }
+
+  const monster = await prisma.oilSample.findUniqueOrThrow({
+    where: { id: oilSampleId },
+    select: { sampleDate: true, photoUrl: true, partPhotoUrl: true, remarks: true, isTaken: true },
+  });
+  const nieuw = { ...monster, ...wijziging };
+  const leeg =
+    !nieuw.isTaken && !nieuw.sampleDate && !nieuw.remarks && !nieuw.photoUrl && !nieuw.partPhotoUrl;
+  if (leeg) {
+    // Niets om te bewaren; het monster zelf ook leeg zetten, zodat het klopt.
+    await syncLatestAttemptToSample(oilSampleId);
+    return { attemptId: null, vorige: monster };
+  }
+  const poging = await prisma.sampleAttempt.create({
+    data: { oilSampleId, ...nieuw, isTaken: nieuw.isTaken ?? false },
+    select: { id: true },
+  });
+  await syncLatestAttemptToSample(oilSampleId);
+  return { attemptId: poging.id, vorige: monster };
+}

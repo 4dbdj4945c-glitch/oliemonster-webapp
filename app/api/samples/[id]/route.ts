@@ -1,101 +1,83 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/toegang';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { SAMPLE_BASIS_SELECT } from '@/lib/planningApi';
 import { tabelOntbreekt } from '@/lib/kolommen';
+import { apiRoute, ApiFout, leesId, leesJson } from '@/lib/apiRoute';
+import { controleerInstallatie, controleerObject, MonsterSchema } from '@/lib/monsterInvoer';
+import { wijzigLaatstePoging, type PogingVelden } from '@/lib/sampleAttempts';
 import { actiefFilter, verwijderKolomBestaat, KOLOM_ONTBREEKT_VERWIJDEREN } from '@/lib/verwijderdeMonsters';
 
-// PUT - Update sample (alleen admin)
-export const PUT = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-  session
-) => {
-  try {
-    const { id } = await params;
-    const body = await request.json();
-    const { oNumber, sampleDate, location, description, oilType, remarks, isTaken, objectId } = body;
+const zelfdeDag = (a: Date | null, b: Date | null) =>
+  (a === null && b === null) || (!!a && !!b && a.toISOString().slice(0, 10) === b.toISOString().slice(0, 10));
 
-    // Datum is alleen verplicht als monster genomen is
-    if (!oNumber || !location || !description || isTaken === undefined) {
-      return NextResponse.json(
-        { error: 'O-nummer, locatie en omschrijving zijn verplicht' },
-        { status: 400 }
-      );
-    }
+// PUT - Monster bijwerken (alleen admin)
+//
+// De velden van het monster zelf (o-nummer, locatie, omschrijving, type olie,
+// object, installatie) staan op OilSample. Datum, genomen en opmerking komen uit
+// de laatste poging; die schrijven we dus via de poging (wijzigLaatstePoging),
+// anders wist de eerstvolgende hermonstering ze weer. Alleen wat echt veranderd
+// is gaat naar de poging, zodat Bijwerken nooit een wijziging uit het
+// pogingenpaneel terugdraait.
+export const PUT = apiRoute(
+  { rol: 'admin', module: 'oliemonsters', fout: 'Fout bij bijwerken van monster' },
+  async (request, context, session) => {
+    const id = await leesId(context, 'Onbekend monster');
+    const invoer = await leesJson(request, MonsterSchema);
 
-    if (isTaken && !sampleDate) {
-      return NextResponse.json(
-        { error: 'Datum is verplicht voor genomen monsters' },
-        { status: 400 }
-      );
-    }
-
-    // Object: leeg betekent geen object; onzin geeft een nette melding, geen 500.
-    let gelezenObjectId: number | null = null;
-    if (objectId !== undefined && objectId !== null && objectId !== '') {
-      gelezenObjectId = parseInt(String(objectId));
-      if (Number.isNaN(gelezenObjectId)) {
-        return NextResponse.json({ error: 'Onbekend object' }, { status: 400 });
-      }
-    }
-
-    // Check of een ander sample in hetzelfde analyse-jaar al dit o-nummer heeft
     const huidig = await prisma.oilSample.findFirst({
-      where: { id: parseInt(id), ...(await actiefFilter()) },
-      select: { analysisYear: true },
+      where: { id, ...(await actiefFilter()) },
+      select: { analysisYear: true, objectId: true, sampleDate: true, isTaken: true, remarks: true },
     });
-    if (!huidig) {
-      return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
-    }
+    if (!huidig) throw new ApiFout(404, 'Monster niet gevonden');
+
     // Ook een monster in de prullenbak houdt zijn nummer bezet (uniek per jaar),
     // dus die tellen hier mee, met een eigen melding.
     const existing = await prisma.oilSample.findFirst({
-      where: {
-        oNumber,
-        analysisYear: huidig.analysisYear,
-        id: { not: parseInt(id) },
-      },
+      where: { oNumber: invoer.oNumber, analysisYear: huidig.analysisYear, id: { not: id } },
       select: { id: true },
     });
-
     if (existing) {
       const actief = await prisma.oilSample.findFirst({
         where: { id: existing.id, ...(await actiefFilter()) },
         select: { id: true },
       });
-      return NextResponse.json(
-        {
-          error: actief
-            ? 'O-nummer bestaat al'
-            : `O-nummer ${oNumber} staat in de prullenbak. Zet dat monster terug of kies een ander nummer.`,
-        },
-        { status: 400 }
+      throw new ApiFout(
+        400,
+        actief
+          ? 'O-nummer bestaat al'
+          : `O-nummer ${invoer.oNumber} staat in de prullenbak. Zet dat monster terug of kies een ander nummer.`
       );
     }
 
+    const objectId = invoer.objectId === undefined ? huidig.objectId : invoer.objectId;
+    await controleerObject(invoer.objectId);
+    await controleerInstallatie(invoer.installatieId, objectId);
+
     const gegevens = {
-      oNumber,
-      sampleDate: sampleDate ? new Date(sampleDate) : null,
-      location,
-      description,
-      oilType: oilType || null,
-      remarks: remarks || null,
-      isTaken,
+      oNumber: invoer.oNumber,
+      location: invoer.location,
+      description: invoer.description,
+      oilType: invoer.oilType ?? null,
       // Alleen meesturen als de pagina een object koos, zie de POST-route.
-      ...(objectId === undefined ? {} : { objectId: gelezenObjectId }),
+      ...(invoer.objectId === undefined ? {} : { objectId: invoer.objectId }),
+      // Een ander object: een installatie van het oude object past niet meer.
+      ...(invoer.installatieId !== undefined
+        ? { installatieId: invoer.installatieId }
+        : invoer.objectId !== undefined && invoer.objectId !== huidig.objectId
+        ? { installatieId: null }
+        : {}),
     };
 
     // Zet je hier op genomen, dan is het monster niet meer onbereikbaar. Zelfde
     // regel als in de statusroute, zodat een monster nooit twee statussen heeft.
-    let sample;
     try {
-      sample = await prisma.oilSample.update({
-        where: { id: parseInt(id) },
+      await prisma.oilSample.update({
+        where: { id },
         data: {
           ...gegevens,
-          ...(isTaken
+          ...(invoer.isTaken
             ? {
                 isUnreachable: false,
                 unreachableReason: null,
@@ -106,74 +88,67 @@ export const PUT = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
               }
             : {}),
         },
-        select: SAMPLE_BASIS_SELECT,
+        select: { id: true },
       });
     } catch (error) {
       if (!tabelOntbreekt(error)) throw error;
-      sample = await prisma.oilSample.update({
-        where: { id: parseInt(id) },
-        data: gegevens,
-        select: SAMPLE_BASIS_SELECT,
-      });
+      await prisma.oilSample.update({ where: { id }, data: gegevens, select: { id: true } });
     }
+
+    // Wat uit de laatste poging komt: alleen wat veranderd is. Bij niet genomen
+    // blijft de datum van de poging staan (zoals bij de statusknop); de lijst
+    // toont hem dan toch niet.
+    const naarPoging: PogingVelden = {};
+    if (invoer.isTaken !== huidig.isTaken) naarPoging.isTaken = invoer.isTaken;
+    if (invoer.isTaken && !zelfdeDag(invoer.sampleDate ?? null, huidig.sampleDate)) {
+      naarPoging.sampleDate = invoer.sampleDate ?? null;
+    }
+    if ((invoer.remarks ?? null) !== (huidig.remarks ?? null)) naarPoging.remarks = invoer.remarks ?? null;
+    if (Object.keys(naarPoging).length > 0) await wijzigLaatstePoging(id, naarPoging);
+
+    const sample = await prisma.oilSample.findUniqueOrThrow({ where: { id }, select: SAMPLE_BASIS_SELECT });
 
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.UPDATE_SAMPLE,
-      details: { id: parseInt(id), oNumber, location, isTaken },
+      details: { id, oNumber: invoer.oNumber, location: invoer.location, isTaken: invoer.isTaken },
       request,
     });
 
     return NextResponse.json(sample);
-  } catch (error) {
-    console.error('Error updating sample:', error);
-    return NextResponse.json(
-      { error: 'Fout bij bijwerken van monster' },
-      { status: 500 }
-    );
   }
-});
+);
+
+const VerwijderSchema = z.object({ bevestigONummer: z.string().optional() });
 
 // DELETE - Monster naar de prullenbak (alleen admin)
 //
 // Zacht verwijderen: het monster krijgt deletedAt en deletedBy en blijft met
 // pogingen, datums en foto's staan. Een admin zet het terug via de prullenbak.
-// Staat de kolom nog niet in de database (db push nog niet gedraaid), dan
-// weigeren we: terugvallen op een harde delete is precies wat misging.
-export const DELETE = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-  session
-) => {
-  try {
-    const { id } = await params;
-    const sampleId = parseInt(id);
-    if (Number.isNaN(sampleId)) {
-      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
-    }
+// Staat de kolom nog niet in de database, dan weigeren we: terugvallen op een
+// harde delete is precies wat misging.
+export const DELETE = apiRoute(
+  { rol: 'admin', module: 'oliemonsters', fout: 'Fout bij verwijderen van monster' },
+  async (request, context, session) => {
+    const sampleId = await leesId(context, 'Onbekend monster');
 
     if (!(await verwijderKolomBestaat())) {
-      return NextResponse.json({ error: KOLOM_ONTBREEKT_VERWIJDEREN, tabelOntbreekt: true }, { status: 503 });
+      throw new ApiFout(503, KOLOM_ONTBREEKT_VERWIJDEREN, { tabelOntbreekt: true });
     }
 
     const sample = await prisma.oilSample.findFirst({
       where: { id: sampleId, deletedAt: null },
       select: { oNumber: true, location: true, analysisYear: true, _count: { select: { attempts: true } } },
     });
-    if (!sample) {
-      return NextResponse.json({ error: 'Monster niet gevonden of al verwijderd' }, { status: 404 });
-    }
+    if (!sample) throw new ApiFout(404, 'Monster niet gevonden of al verwijderd');
 
     // Het O-nummer moet ter bevestiging meekomen, zodat een losse aanroep of
     // een verkeerde rij nooit per ongeluk een monster weghaalt.
-    const body = await request.json().catch(() => ({}));
-    const bevestiging = typeof body?.bevestigONummer === 'string' ? body.bevestigONummer.trim() : '';
+    const body = await leesJson(request, VerwijderSchema).catch(() => ({ bevestigONummer: undefined }));
+    const bevestiging = (body.bevestigONummer ?? '').trim();
     if (bevestiging.toLowerCase() !== sample.oNumber.trim().toLowerCase()) {
-      return NextResponse.json(
-        { error: `Typ het O-nummer ${sample.oNumber} over om het verwijderen te bevestigen.` },
-        { status: 400 }
-      );
+      throw new ApiFout(400, `Typ het O-nummer ${sample.oNumber} over om het verwijderen te bevestigen.`);
     }
 
     await prisma.oilSample.update({
@@ -198,11 +173,5 @@ export const DELETE = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
     });
 
     return NextResponse.json({ success: true, id: sampleId, oNumber: sample.oNumber });
-  } catch (error) {
-    console.error('Error deleting sample:', error);
-    return NextResponse.json(
-      { error: 'Fout bij verwijderen van monster' },
-      { status: 500 }
-    );
   }
-});
+);
