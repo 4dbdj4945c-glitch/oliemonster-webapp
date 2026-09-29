@@ -13,7 +13,18 @@ interface User {
   role: string;
   /** Alleen bij de rol alleen lezen: het analysejaar dat deze gebruiker mag zien. */
   viewYear?: number | null;
+  /** Nog geen wachtwoord ingesteld: wacht op de link. */
+  requiresPasswordChange?: boolean;
   createdAt: string;
+}
+
+/** De eenmalige link die de beheerder zelf naar de gebruiker stuurt. */
+interface LinkVoorGebruiker {
+  username: string;
+  link: string | null;
+  verlooptOp?: string;
+  /** Kon er geen link gemaakt worden (db push nog niet gedraaid), dan staat hier waarom. */
+  fout?: string;
 }
 
 interface SessionUser {
@@ -44,6 +55,11 @@ export default function AdminPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [saveMessage, setSaveMessage] = useState('');
   const [foutmelding, setFoutmelding] = useState('');
+  // Pas true als de lijst echt geladen is. Bij een fout tonen we alleen de
+  // foutmelding: geen "Nog geen gebruikers" en geen knop Nieuwe gebruiker.
+  const [gebruikersGeladen, setGebruikersGeladen] = useState(false);
+  const [linkVenster, setLinkVenster] = useState<LinkVoorGebruiker | null>(null);
+  const [gekopieerd, setGekopieerd] = useState(false);
   const router = useRouter();
 
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
@@ -98,6 +114,7 @@ export default function AdminPage() {
         return;
       }
       setUsers(await response.json());
+      setGebruikersGeladen(true);
       setFoutmelding('');
     } catch (error) {
       setFoutmelding(GEEN_VERBINDING);
@@ -217,6 +234,15 @@ export default function AdminPage() {
       setShowUserModal(false);
       resetForm();
       loadUsers();
+      // Nieuwe gebruiker: laat meteen de link zien om het wachtwoord in te stellen.
+      if (!editingUser) {
+        toonLink({
+          username: data.username,
+          link: data.uitnodiging?.link ?? null,
+          verlooptOp: data.uitnodiging?.verlooptOp,
+          fout: data.uitnodigingFout,
+        });
+      }
     } catch {
       setFormError('Er is een fout opgetreden');
     }
@@ -247,17 +273,40 @@ export default function AdminPage() {
     }
   };
 
-  const handleResetPassword = async (id: number, username: string) => {
-    if (!confirm(`Weet je zeker dat je het wachtwoord van ${username} wilt resetten? De gebruiker moet bij volgende login een nieuw wachtwoord instellen.`)) return;
+  const toonLink = (gegevens: LinkVoorGebruiker) => {
+    setGekopieerd(false);
+    setLinkVenster(gegevens);
+  };
+
+  const kopieerLink = async () => {
+    if (!linkVenster?.link) return;
+    try {
+      await navigator.clipboard.writeText(linkVenster.link);
+      setGekopieerd(true);
+    } catch {
+      // Geen klembord (bijvoorbeeld in een iframe): selecteer het veld, dan kan
+      // de beheerder zelf kopiëren.
+      const veld = document.getElementById('uitnodiging-link') as HTMLInputElement | null;
+      veld?.select();
+    }
+  };
+
+  // Wachtwoord resetten, of een nieuwe link voor wie nog geen wachtwoord heeft.
+  // Beide geven een eenmalige link terug die de beheerder zelf verstuurt.
+  const handleResetPassword = async (user: User) => {
+    const vraag = user.requiresPasswordChange
+      ? `Een nieuwe link maken voor ${user.username}? Een eerdere link werkt daarna niet meer.`
+      : `Het wachtwoord van ${user.username} resetten? Het huidige wachtwoord werkt daarna niet meer. Je krijgt een link die je zelf naar ${user.username} stuurt.`;
+    if (!confirm(vraag)) return;
 
     try {
-      const response = await fetch(`/api/users/${id}/reset-password`, { method: 'POST' });
+      const response = await fetch(`/api/users/${user.id}/reset-password`, { method: 'POST' });
       const data = await response.json();
       if (!response.ok) {
         alert(data.error || 'Fout bij resetten wachtwoord');
         return;
       }
-      alert(`Wachtwoord van ${username} is gereset. Bij volgende login moet een nieuw wachtwoord worden ingesteld.`);
+      toonLink({ username: user.username, link: data.uitnodiging.link, verlooptOp: data.uitnodiging.verlooptOp });
       loadUsers();
     } catch {
       alert('Fout bij resetten wachtwoord');
@@ -312,12 +361,15 @@ export default function AdminPage() {
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3" style={{ marginBottom: '16px' }}>
                 <p className="section-label" style={{ margin: 0 }}>Gebruikersbeheer</p>
+                {gebruikersGeladen && (
                 <button type="button" onClick={openAddModal} className="btn btn-primary w-full sm:w-auto">
                   <Icon name="user-plus" />
                   Nieuwe gebruiker
                 </button>
+                )}
               </div>
 
+              {gebruikersGeladen && (
               <div className="table-container">
                 <div className="table-scroll">
                   <table className="table table-kaarten">
@@ -353,6 +405,11 @@ export default function AdminPage() {
                                 {kijkjaarTekst(user)}
                               </span>
                             )}
+                            {user.requiresPasswordChange && (
+                              <span className="hint" style={{ display: 'block', marginTop: '4px' }}>
+                                Nog geen wachtwoord ingesteld
+                              </span>
+                            )}
                           </td>
                           <td className="text-secondary sm:whitespace-nowrap" data-label="Aangemaakt">
                             {new Date(user.createdAt).toLocaleDateString('nl-NL')}
@@ -367,11 +424,11 @@ export default function AdminPage() {
                                 <>
                                   <button
                                     type="button"
-                                    onClick={() => handleResetPassword(user.id, user.username)}
+                                    onClick={() => handleResetPassword(user)}
                                     className="btn btn-sm"
                                   >
-                                    <Icon name="reset" size={16} />
-                                    Wachtwoord resetten
+                                    <Icon name={user.requiresPasswordChange ? 'copy' : 'reset'} size={16} />
+                                    {user.requiresPasswordChange ? 'Nieuwe link' : 'Wachtwoord resetten'}
                                   </button>
                                 </>
                               )}
@@ -383,6 +440,7 @@ export default function AdminPage() {
                   </table>
                 </div>
               </div>
+              )}
             </div>
           )}
 
@@ -475,11 +533,11 @@ export default function AdminPage() {
 
           {editingUser ? (
             <div className="alert alert-info" style={{ marginBottom: '12px' }}>
-              Gebruik de knop &quot;Wachtwoord resetten&quot; in het overzicht om het wachtwoord te resetten.
+              Gebruik de knop &quot;Wachtwoord resetten&quot; in het overzicht. Je krijgt dan een link die je zelf naar de gebruiker stuurt.
             </div>
           ) : (
             <div className="alert alert-success" style={{ marginBottom: '12px' }}>
-              Geen wachtwoord nodig. De gebruiker stelt zelf een wachtwoord in bij de eerste login.
+              Geen wachtwoord nodig. Na Toevoegen krijg je een link (72 uur geldig) die je zelf naar de gebruiker stuurt; daarmee stelt die een wachtwoord in.
             </div>
           )}
 
@@ -549,6 +607,58 @@ export default function AdminPage() {
               Gebruiker verwijderen...
             </button>
           </section>
+        )}
+      </Modal>
+
+      <Modal
+        open={linkVenster !== null}
+        onClose={() => setLinkVenster(null)}
+        title="Link om het wachtwoord in te stellen"
+        footer={
+          <>
+            <button type="button" onClick={() => setLinkVenster(null)} className="btn">
+              Sluiten
+            </button>
+            {linkVenster?.link && (
+              <button type="button" onClick={kopieerLink} className="btn btn-primary">
+                <Icon name={gekopieerd ? 'check' : 'copy'} />
+                {gekopieerd ? 'Gekopieerd' : 'Link kopiëren'}
+              </button>
+            )}
+          </>
+        }
+      >
+        {linkVenster?.link ? (
+          <>
+            <p style={{ margin: '0 0 12px 0' }}>
+              Stuur deze link zelf naar <strong>{linkVenster.username}</strong>, bijvoorbeeld via WhatsApp of mail.
+              Met de link kiest {linkVenster.username} een wachtwoord en is daarna ingelogd.
+            </p>
+            <div className="veld">
+              <label className="label" htmlFor="uitnodiging-link">Link</label>
+              <input
+                id="uitnodiging-link"
+                type="text"
+                className="input"
+                value={linkVenster.link}
+                readOnly
+                onFocus={(e) => e.currentTarget.select()}
+              />
+              {linkVenster.verlooptOp && (
+                <p className="hint">
+                  Werkt één keer en is geldig tot{' '}
+                  {new Date(linkVenster.verlooptOp).toLocaleString('nl-NL', { dateStyle: 'long', timeStyle: 'short' })}.
+                  Deze link zie je maar één keer; kwijt? Maak dan een nieuwe met Nieuwe link.
+                </p>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="alert alert-warning" role="alert">
+            <Icon name="alert-warning" />
+            {linkVenster?.username} is aangemaakt, maar er kon nog geen link gemaakt worden.
+            {linkVenster?.fout ? ` ${linkVenster.fout}` : ''} Daarna maak je de link met Nieuwe link in het overzicht.
+          </div>
         )}
       </Modal>
     </AppShell>

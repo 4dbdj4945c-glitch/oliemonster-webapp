@@ -42,9 +42,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Zoek gebruiker
-    const user = await prisma.user.findUnique({
-      where: { username },
-    });
+    // Expliciete select: nieuwe kolommen of relaties op User mogen het inloggen
+    // nooit raken zolang een db push nog niet gedraaid is.
+    const user = typeof username === 'string'
+      ? await prisma.user.findUnique({
+          where: { username },
+          select: { id: true, username: true, password: true, role: true, requiresPasswordChange: true },
+        })
+      : null;
 
     if (!user) {
       await createAuditLog({
@@ -61,42 +66,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Controleer of gebruiker een wachtwoord moet instellen
-    if (!user.password || user.requiresPasswordChange) {
-      // Gebruiker heeft nog geen wachtwoord - check of username correct is
-      // Voor eerste login zonder wachtwoord
-      const cookieStore = await cookies();
-      const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-      
-      session.userId = user.id;
-      session.username = user.username;
-      session.role = user.role;
-      session.isLoggedIn = true;
-      session.requiresPasswordChange = true;
-      
-      await session.save();
-
+    // Nog geen wachtwoord (nieuwe gebruiker of na een reset): hier komt niemand
+    // meer binnen. Vroeger kreeg zo'n account zonder controle een volledige
+    // sessie, zodat iedereen die de gebruikersnaam kende kon inloggen. Nu stelt
+    // de gebruiker het wachtwoord in via de eenmalige link van de beheerder.
+    if (!user.password) {
       await createAuditLog({
         userId: user.id,
-        username: user.username,
-        action: AuditActions.LOGIN,
-        details: { role: user.role, requiresPasswordChange: true },
+        username,
+        action: AuditActions.LOGIN_FAILED,
+        details: { reason: 'No password set, invitation link required' },
         request,
+        success: false,
       });
 
-      return NextResponse.json({
-        success: true,
-        requiresPasswordChange: true,
-        user: {
-          id: user.id,
-          username: user.username,
-          role: user.role,
+      return NextResponse.json(
+        {
+          error:
+            'Voor dit account is nog geen wachtwoord ingesteld. Gebruik de link die je van de beheerder hebt gekregen, of vraag om een nieuwe.',
         },
-      });
+        { status: 401 }
+      );
     }
 
-    // Controleer wachtwoord voor bestaande gebruikers
-    const isValidPassword = await bcrypt.compare(password, user.password);
+    // Controleer het wachtwoord. Dit geldt ook voor wie een nieuw wachtwoord
+    // moet kiezen: zonder het huidige wachtwoord geen sessie.
+    const isValidPassword = typeof password === 'string' && password.length > 0
+      ? await bcrypt.compare(password, user.password)
+      : false;
 
     if (!isValidPassword) {
       await createAuditLog({
@@ -122,7 +119,10 @@ export async function POST(request: NextRequest) {
     session.username = user.username;
     session.role = user.role;
     session.isLoggedIn = true;
-    session.requiresPasswordChange = false;
+    // Moet deze gebruiker een nieuw wachtwoord kiezen (de beheerder zette er een
+    // voor hem), dan krijgt hij een beperkte sessie: lib/toegang.ts en proxy.ts
+    // laten dan alleen het wachtwoord instellen toe.
+    session.requiresPasswordChange = user.requiresPasswordChange;
     
     await session.save();
 
@@ -134,12 +134,15 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       username: user.username,
       action: AuditActions.LOGIN,
-      details: { role: user.role },
+      details: user.requiresPasswordChange
+        ? { role: user.role, requiresPasswordChange: true }
+        : { role: user.role },
       request,
     });
 
     return NextResponse.json({
       success: true,
+      requiresPasswordChange: user.requiresPasswordChange,
       user: {
         id: user.id,
         username: user.username,

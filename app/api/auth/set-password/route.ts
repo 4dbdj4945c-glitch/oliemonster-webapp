@@ -18,9 +18,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Een account zonder wachtwoord stelt het in via de eenmalige link
+    // (/api/auth/uitnodiging), niet via een sessie. Zo kan een sessie die nog uit
+    // de tijd van inloggen zonder wachtwoord stamt, het account niet overnemen.
+    const gebruiker = session.userId
+      ? await prisma.user.findUnique({
+          where: { id: session.userId },
+          select: { id: true, password: true },
+        })
+      : null;
+    if (!gebruiker) {
+      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+    if (!gebruiker.password) {
+      return NextResponse.json(
+        { error: 'Gebruik de link die je van de beheerder hebt gekregen om je wachtwoord in te stellen.' },
+        { status: 403 }
+      );
+    }
+
     const { newPassword } = await request.json();
 
-    if (!newPassword || newPassword.length < 6) {
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
       return NextResponse.json(
         { error: 'Wachtwoord moet minimaal 6 karakters lang zijn' },
         { status: 400 }

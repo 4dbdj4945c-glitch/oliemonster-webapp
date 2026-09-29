@@ -9,11 +9,36 @@ export default function SetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  // Via de eenmalige link van de beheerder: /set-password?token=...
+  const [token, setToken] = useState<string | null>(null);
+  const [linkFout, setLinkFout] = useState('');
   const router = useRouter();
 
   useEffect(() => {
-    checkSession();
+    const uitLink = new URLSearchParams(window.location.search).get('token');
+    if (uitLink) {
+      setToken(uitLink);
+      controleerLink(uitLink);
+    } else {
+      checkSession();
+    }
   }, []);
+
+  const controleerLink = async (uitLink: string) => {
+    try {
+      const response = await fetch(`/api/auth/uitnodiging?token=${encodeURIComponent(uitLink)}`);
+      const data = await response.json();
+      if (!response.ok) {
+        setLinkFout(data.error || 'Deze link werkt niet meer. Vraag de beheerder om een nieuwe link.');
+      } else {
+        setUsername(data.username);
+      }
+    } catch {
+      setLinkFout('Geen verbinding. Controleer je internet en open de link opnieuw.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const checkSession = async () => {
     try {
@@ -48,10 +73,10 @@ export default function SetPasswordPage() {
     }
 
     try {
-      const response = await fetch('/api/auth/set-password', {
+      const response = await fetch(token ? '/api/auth/uitnodiging' : '/api/auth/set-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newPassword }),
+        body: JSON.stringify(token ? { token, newPassword } : { newPassword }),
       });
 
       const data = await response.json();
@@ -100,8 +125,14 @@ export default function SetPasswordPage() {
 
           <div className="auth-body">
             <h1 className="auth-title">Wachtwoord instellen</h1>
+            {linkFout ? (
+              <>
+                <div className="alert alert-danger fout" role="alert">{linkFout}</div>
+                <a href="/login" className="btn btn-block btn-lg">Naar inloggen</a>
+              </>
+            ) : (<>
             <p className="auth-subtitle">
-              Welkom, <strong>{username}</strong>. Dit is je eerste keer inloggen, kies een veilig wachtwoord om door te gaan.
+              Welkom, <strong>{username}</strong>. Kies een veilig wachtwoord om door te gaan.
             </p>
 
             <form onSubmit={handleSubmit}>
@@ -135,12 +166,13 @@ export default function SetPasswordPage() {
                 />
               </div>
 
-              {error && <div className="alert alert-danger fout">{error}</div>}
+              {error && <div className="alert alert-danger fout" role="alert">{error}</div>}
 
               <button type="submit" className="btn btn-primary btn-block btn-lg">
                 Wachtwoord instellen
               </button>
             </form>
+            </>)}
           </div>
 
           <div className="auth-foot">

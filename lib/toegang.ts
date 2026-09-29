@@ -20,10 +20,24 @@ export async function haalSessie(): Promise<SessionData> {
   return getIronSession<SessionData>(cookieStore, sessionOptions);
 }
 
-/** Niet ingelogd: 401. Anders null. */
+/** De melding als iemand eerst zijn wachtwoord moet instellen. */
+export const EERST_WACHTWOORD = 'Stel eerst je wachtwoord in.';
+
+/**
+ * Niet ingelogd: 401. Moet de gebruiker nog een wachtwoord instellen: 403, want
+ * zo'n sessie mag alleen dat ene (via /api/auth/set-password, dat deze helper
+ * niet gebruikt). Anders null. proxy.ts dwingt hetzelfde af voor routes die
+ * deze helper (nog) niet gebruiken.
+ */
 export function sessieFout(session: SessionData): NextResponse | null {
   if (!session.isLoggedIn) {
     return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+  }
+  if (session.requiresPasswordChange) {
+    return NextResponse.json(
+      { error: EERST_WACHTWOORD, requiresPasswordChange: true },
+      { status: 403 }
+    );
   }
   return null;
 }

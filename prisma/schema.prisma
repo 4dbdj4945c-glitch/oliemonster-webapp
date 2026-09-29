@@ -21,6 +21,25 @@ model User {
   viewYear               Int?
   requiresPasswordChange Boolean  @default(true)  // Moet gebruiker wachtwoord instellen?
   createdAt              DateTime @default(now())
+  uitnodigingen          Uitnodiging[]
+}
+
+// Eenmalige link om een wachtwoord in te stellen (nieuwe gebruiker of reset).
+// De beheerder kopieert de link en verstuurt hem zelf. In de database staat
+// alleen de SHA-256 van het token, nooit het token zelf. Een aparte tabel en
+// geen kolommen op User, zodat het inloggen van bestaande gebruikers niet raakt
+// aan iets dat pas na ./db-push-fase0.sh bestaat.
+model Uitnodiging {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String    @unique
+  verlooptOp  DateTime
+  gebruiktOp  DateTime?
+  gemaaktDoor String?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model OilSample {

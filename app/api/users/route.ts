@@ -4,6 +4,7 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { ALLOWED_ROLES, leesViewYear } from '@/lib/roles';
 import { tabelOntbreekt, foutAntwoordWensen2 } from '@/lib/kolommen';
+import { maakUitnodiging, linkVoor, originVan, KOLOM_ONTBREEKT_FASE0 } from '@/lib/uitnodiging';
 
 // GET - Lijst van alle gebruikers (alleen admin)
 export async function GET(request: NextRequest) {
@@ -66,12 +67,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Check of gebruikersnaam al bestaat
-    const existingUser = await prisma.user.findUnique({ where: { username } });
+    const existingUser = await prisma.user.findUnique({ where: { username }, select: { id: true } });
     if (existingUser) {
       return NextResponse.json({ error: 'Gebruikersnaam bestaat al' }, { status: 400 });
     }
 
-    // Maak gebruiker aan zonder wachtwoord; die stelt die zelf in bij de eerste login.
+    // Maak gebruiker aan zonder wachtwoord; die stelt het zelf in via de
+    // eenmalige link hieronder. Inloggen zonder wachtwoord kan niet meer.
     const newUser = await prisma.user.create({
       data: {
         username,
@@ -91,7 +93,19 @@ export async function POST(request: NextRequest) {
       request,
     });
 
-    return NextResponse.json(newUser, { status: 201 });
+    // De link om het wachtwoord in te stellen. Lukt dat niet (tabel ontbreekt
+    // nog), dan bestaat de gebruiker wel, maar kan hij nog niet inloggen. De
+    // beheerder maakt de link later met Nieuwe link.
+    try {
+      const { token, verlooptOp } = await maakUitnodiging(newUser.id, session.username);
+      return NextResponse.json(
+        { ...newUser, uitnodiging: { link: linkVoor(originVan(request), token), verlooptOp } },
+        { status: 201 }
+      );
+    } catch (error) {
+      if (!tabelOntbreekt(error)) throw error;
+      return NextResponse.json({ ...newUser, uitnodiging: null, uitnodigingFout: KOLOM_ONTBREEKT_FASE0 }, { status: 201 });
+    }
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij aanmaken gebruiker');
   }

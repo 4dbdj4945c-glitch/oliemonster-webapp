@@ -4,8 +4,12 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { createAuditLog } from '@/lib/auditLog';
+import { tabelOntbreekt } from '@/lib/kolommen';
+import { maakUitnodiging, linkVoor, originVan, KOLOM_ONTBREEKT_FASE0, UITNODIGING_GELDIG_UREN } from '@/lib/uitnodiging';
 
-// POST - Reset wachtwoord (admin zet gebruiker terug naar eerste login status)
+// POST - Reset wachtwoord, of een nieuwe link voor wie nog geen wachtwoord heeft.
+// Het oude wachtwoord vervalt en de beheerder krijgt een eenmalige link terug
+// (72 uur geldig) die hij zelf naar de gebruiker stuurt.
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -25,9 +29,12 @@ export async function POST(
     const userId = parseInt(id);
 
     // Haal gebruiker op
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
+    const user = isNaN(userId)
+      ? null
+      : await prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, username: true },
+        });
 
     if (!user) {
       return NextResponse.json(
@@ -36,7 +43,19 @@ export async function POST(
       );
     }
 
-    // Reset wachtwoord - gebruiker moet bij volgende login nieuw wachtwoord instellen
+    // Eerst de link. Kan dat niet (tabel ontbreekt nog), dan resetten we ook
+    // niet: anders zit de gebruiker buiten zonder manier om terug te komen.
+    let uitnodiging: { token: string; verlooptOp: Date };
+    try {
+      uitnodiging = await maakUitnodiging(userId, session.username);
+    } catch (error) {
+      if (tabelOntbreekt(error)) {
+        return NextResponse.json({ error: KOLOM_ONTBREEKT_FASE0, tabelOntbreekt: true }, { status: 503 });
+      }
+      throw error;
+    }
+
+    // Oude wachtwoord vervalt; inloggen kan pas weer na de link.
     await prisma.user.update({
       where: { id: userId },
       data: {
@@ -53,7 +72,14 @@ export async function POST(
       request,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      uitnodiging: {
+        link: linkVoor(originVan(request), uitnodiging.token),
+        verlooptOp: uitnodiging.verlooptOp,
+        geldigUren: UITNODIGING_GELDIG_UREN,
+      },
+    });
   } catch (error) {
     console.error('Error resetting password:', error);
     return NextResponse.json(
