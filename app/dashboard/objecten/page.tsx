@@ -302,17 +302,29 @@ export default function ObjectenPage() {
     }
   };
 
+  // Verwijderen staat niet meer in de rij naast Bewerken en Samenvoegen, maar
+  // onderaan het bewerkvenster. Het kan alleen zonder monsters (alle jaren),
+  // en de bevestiging noemt wat er verloren gaat.
   const verwijder = async (object: SampleObject) => {
-    if (object.aantalMonsters > 0) {
-      setFoutmelding(
-        `Aan "${object.name}" hangen nog ${object.aantalMonsters} ${
-          object.aantalMonsters === 1 ? 'monster' : 'monsters'
-        }. Voeg dit object eerst samen met het goede kunstwerk.`
+    const aantal = object.aantalAlleJaren ?? object.aantalMonsters;
+    if (aantal > 0) {
+      setFormulierFout(
+        `Aan "${object.name}" hangen nog ${aantal} ${
+          aantal === 1 ? 'monster' : 'monsters'
+        } (alle jaren). Voeg dit object eerst samen met het goede kunstwerk.`
       );
       return;
     }
+    const weg = [
+      object.address ? 'het adres' : null,
+      object.lat !== null && object.lng !== null ? 'de speld op de kaart' : null,
+      object.estimatedMinutes ? 'de geschatte tijd' : null,
+      object.notes ? 'de notities' : null,
+    ].filter(Boolean);
     if (!confirm(
-      `Object "${object.name}" verwijderen?\n\nEr hangen geen monsters aan. Staat dit object op een dag in de planning, dan verdwijnt het daar wel van.`
+      `Object "${object.name}" verwijderen?\n\n` +
+        (weg.length ? `Daarmee verdwijnen ${weg.join(', ')}. ` : '') +
+        'Staat het object op een dag in de planning, dan verdwijnt het daar ook, met de gemeten tijd. Dit kan niet ongedaan worden gemaakt.'
     )) return;
     try {
       const res = await fetch(`/api/sample-objects/${object.id}`, { method: 'DELETE' });
@@ -321,6 +333,7 @@ export default function ObjectenPage() {
         return;
       }
       setFoutmelding('');
+      setToonModal(false);
       await laadObjecten();
     } catch {
       setFoutmelding(GEEN_VERBINDING);
@@ -735,16 +748,6 @@ export default function ObjectenPage() {
                           <Icon name="copy" size={16} />
                           <span className="alleen-mobiel">Samenvoegen</span>
                         </button>
-                        <button
-                          type="button"
-                          className="icon-btn icon-btn-danger icon-btn-verwijder"
-                          onClick={() => verwijder(object)}
-                          title="Verwijderen"
-                          aria-label={`${object.name} verwijderen`}
-                        >
-                          <Icon name="trash" size={16} />
-                          <span className="alleen-mobiel">Verwijderen</span>
-                        </button>
                       </td>
                     )}
                   </tr>
@@ -916,6 +919,27 @@ export default function ObjectenPage() {
         </div>
 
         {formulierFout && <div className="alert alert-danger" style={{ marginTop: '12px' }}>{formulierFout}</div>}
+
+        {/* Verwijderen: apart en onderaan, niet meer als prullenbakje in de rij */}
+        {bewerkt && isAdmin && (
+          <section className="gevarenzone">
+            <p className="gevarenzone-kop">
+              <Icon name="trash" size={16} />
+              Object verwijderen
+            </p>
+            <p className="gevarenzone-tekst">
+              {(bewerkt.aantalAlleJaren ?? bewerkt.aantalMonsters) > 0
+                ? `Kan niet: aan ${bewerkt.name} hangen nog ${bewerkt.aantalAlleJaren ?? bewerkt.aantalMonsters} monsters. Voeg het eerst samen met het goede kunstwerk.`
+                : `Haalt ${bewerkt.name} weg, met adres, speld en geschatte tijd. Staat het op een dag in de planning, dan verdwijnt het daar ook. Dit kan niet ongedaan worden gemaakt.`}
+            </p>
+            {(bewerkt.aantalAlleJaren ?? bewerkt.aantalMonsters) === 0 && (
+              <button type="button" className="btn btn-sm btn-danger-soft" onClick={() => verwijder(bewerkt)}>
+                <Icon name="trash" size={16} />
+                Object verwijderen...
+              </button>
+            )}
+          </section>
+        )}
       </Modal>
 
       {/* De vaste kunstwerkenlijst aanmaken */}
