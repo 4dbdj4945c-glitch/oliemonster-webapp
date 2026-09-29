@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { isOilViewer2025 } from '@/lib/roles';
+import { isAlleenLezen } from '@/lib/roles';
 import { tabelOntbreekt, SAMPLE_BASIS_SELECT } from '@/lib/planningApi';
 
 // GET - Lijst van alle samples (met optionele zoekfunctie en analysisYear-filter)
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search');
     // De beperkte kijker mag uitsluitend 2025 zien; forceer dat serverside,
     // ongeacht welk jaar er in de query staat.
-    const year = isOilViewer2025(session.role) ? '2025' : searchParams.get('year');
+    const year = isAlleenLezen(session.role) ? '2025' : searchParams.get('year');
 
     const yearFilter = year ? { analysisYear: parseInt(year) } : {};
 

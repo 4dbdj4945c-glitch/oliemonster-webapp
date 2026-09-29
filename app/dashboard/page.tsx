@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { isOilViewer2025 } from '@/lib/roles';
+import { isAlleenLezen } from '@/lib/roles';
 import { actieStaatOpen, eindeVanVandaag } from '@/lib/prospects';
 import LaadFout from '@/app/components/LaadFout';
 import { GEEN_VERBINDING } from '@/lib/foutmelding';
@@ -48,7 +48,7 @@ export default function DashboardPage() {
       if (!data.isLoggedIn) { router.push('/login'); return; }
       if (data.requiresPasswordChange) { router.push('/set-password'); return; }
       // Beperkte kijker: alleen Oliemonsters 2025, stuur direct daarheen.
-      if (isOilViewer2025(data.role)) { router.replace('/dashboard/oliemonsters'); return; }
+      if (isAlleenLezen(data.role)) { router.replace('/dashboard/oliemonsters'); return; }
       setUser(data);
     } catch {
       router.push('/login');

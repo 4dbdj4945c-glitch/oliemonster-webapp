@@ -13,7 +13,7 @@ import { ANNULEER_REDENEN } from '@/lib/cancelReasons';
 import PlanningPaneel from '@/app/components/PlanningPaneel';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
-import { isOilViewer2025 } from '@/lib/roles';
+import { isAlleenLezen } from '@/lib/roles';
 
 interface User {
   userId: number;
@@ -581,7 +581,7 @@ export default function DashboardPage() {
   // Kolommen: de zichtbare kolommen plus Foto, plus Acties voor een admin.
   const kolomAantal = visibleColumns.length + 1 + (objectenBeschikbaar ? 1 : 0) + (isAdmin ? 1 : 0);
   // De beperkte kijker krijgt de planning niet te zien; de API weigert hem ook.
-  const magPlannen = objectenBeschikbaar && !isOilViewer2025(user?.role);
+  const magPlannen = objectenBeschikbaar && !isAlleenLezen(user?.role);
   const objectNaamVanFilter =
     objecten.find((o) => String(o.id) === objectFilter)?.name ?? 'dit object';
   const aantalGenomen = samples.filter((s) => s.isTaken && !s.isDisabled).length;
@@ -665,9 +665,9 @@ export default function DashboardPage() {
               aria-label="Zoeken"
             />
           </label>
-          {(!isOilViewer2025(user?.role) || isAdmin) && (
+          {(!isAlleenLezen(user?.role) || isAdmin) && (
             <div className="knoppenrij flex gap-3">
-              {!isOilViewer2025(user?.role) && (
+              {!isAlleenLezen(user?.role) && (
                 <button
                   type="button"
                   onClick={handleGeneratePdf}

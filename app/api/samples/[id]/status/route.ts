@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { isOilViewer2025 } from '@/lib/roles';
+import { isAlleenLezen } from '@/lib/roles';
 
 /**
  * PATCH - Zet een monster met één handeling op genomen of niet genomen.
@@ -36,7 +36,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
     }
     // De beperkte kijker mag niets wijzigen, ook niet via de API.
-    if (isOilViewer2025(session.role)) {
+    if (isAlleenLezen(session.role)) {
       return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
     }
     if (session.role !== 'admin') {

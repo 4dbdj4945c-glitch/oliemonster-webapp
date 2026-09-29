@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import ProspectDetail from '@/app/components/ProspectDetail';
 import ProspectContactForm from '@/app/components/ProspectContactForm';
-import { isOilViewer2025 } from '@/lib/roles';
+import { isAlleenLezen } from '@/lib/roles';
 import {
   PROSPECT_STATUSSEN,
   STATUS_LABELS,
@@ -106,7 +106,7 @@ export default function AcquisitiePage() {
         const data = await res.json();
         if (!data.isLoggedIn) { router.push('/login'); return; }
         if (data.requiresPasswordChange) { router.push('/set-password'); return; }
-        if (isOilViewer2025(data.role)) { router.replace('/dashboard/oliemonsters'); return; }
+        if (isAlleenLezen(data.role)) { router.replace('/dashboard/oliemonsters'); return; }
         setUser(data);
       } catch {
         router.push('/login');

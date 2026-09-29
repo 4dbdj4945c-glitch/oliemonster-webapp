@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { ROLE_LABELS, isOilViewer2025 } from '@/lib/roles';
+import { ROLE_LABELS, isAlleenLezen } from '@/lib/roles';
 import Icon from './Icon';
 
 /*
@@ -64,7 +64,7 @@ export default function AppShell({
   const isAdmin = user?.role === 'admin';
   const opDashboard = pathname === '/dashboard';
   // De beperkte kijker heeft geen dashboard; navigatieknoppen hebben voor hem geen zin.
-  const toonNavigatie = !opDashboard && !isOilViewer2025(user?.role);
+  const toonNavigatie = !opDashboard && !isAlleenLezen(user?.role);
 
   const handleLogout = async () => {
     try {
