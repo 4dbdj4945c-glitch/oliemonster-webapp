@@ -1,4 +1,5 @@
 #!/bin/bash
+# VERVANGEN door ./db-bijwerken.sh (migraties in prisma/migrations). Niet meer draaien.
 # Zet het Prisma-schema (inclusief de tabellen van de module Acquisitie) in de
 # Supabase-database. Gebruikt de directe verbinding, want via de pooler kan Prisma
 # geen schema wijzigen. Draaien vanuit deze projectmap: ./db-push-acquisitie.sh

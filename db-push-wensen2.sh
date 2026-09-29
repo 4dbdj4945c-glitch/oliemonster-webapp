@@ -1,4 +1,5 @@
 #!/bin/bash
+# VERVANGEN door ./db-bijwerken.sh (migraties in prisma/migrations). Niet meer draaien.
 # Zet het Prisma-schema in de Supabase-database, inclusief alles van de vier
 # wensen uit ronde 2:
 #   1. de tweede foto (OilSample.partPhotoUrl en SampleAttempt.partPhotoUrl);

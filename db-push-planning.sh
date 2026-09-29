@@ -1,4 +1,5 @@
 #!/bin/bash
+# VERVANGEN door ./db-bijwerken.sh (migraties in prisma/migrations). Niet meer draaien.
 # Zet het Prisma-schema in de Supabase-database, inclusief alles van de
 # planningsmodule: SampleObject, OilSample.objectId, de annuleervelden
 # (cancelReason, cancelledAt, cancelledBy, cancelReasonInPdf) en de planning zelf

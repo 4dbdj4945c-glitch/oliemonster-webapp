@@ -1,4 +1,5 @@
 #!/bin/bash
+# VERVANGEN door ./db-bijwerken.sh (migraties in prisma/migrations). Niet meer draaien.
 # Zet het Prisma-schema in de Supabase-database, inclusief alles van fase 0 van
 # het portaalplan: de nieuwe tabel Uitnodiging voor de eenmalige links waarmee
 # een nieuwe gebruiker (of iemand na een wachtwoordreset) zelf een wachtwoord

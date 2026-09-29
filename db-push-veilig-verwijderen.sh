@@ -1,4 +1,5 @@
 #!/bin/bash
+# VERVANGEN door ./db-bijwerken.sh (migraties in prisma/migrations). Niet meer draaien.
 # Zet het Prisma-schema in de Supabase-database, inclusief alles van veilig
 # verwijderen: de kolommen OilSample.deletedAt en OilSample.deletedBy (plus een
 # index op deletedAt). Daarmee gaat een verwijderd monster naar de prullenbak
