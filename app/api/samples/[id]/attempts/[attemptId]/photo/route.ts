@@ -1,135 +1,86 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/toegang';
-import { put } from '@vercel/blob';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { syncLatestAttemptToSample } from '@/lib/sampleAttempts';
 import { fotoLabel, fotoVeld, leesFotoSoort } from '@/lib/samplePhotos';
-import { foutAntwoordWensen2 } from '@/lib/kolommen';
+import { KOLOM_ONTBREEKT_WENSEN2 } from '@/lib/kolommen';
 import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
+import { bewaarFoto, ruimFotoOpAls } from '@/lib/fotoOpslag';
+import { apiRoute, ApiFout, leesId } from '@/lib/apiRoute';
 
 /*
   Foto's per poging. Net als op het monster zelf zijn er twee: het onderdeel
   (soort "onderdeel", kolom partPhotoUrl) en het monsterpotje (soort "potje",
-  kolom photoUrl). Zonder soort wordt het de potjesfoto.
+  kolom photoUrl). Zonder soort wordt het de potjesfoto. Een vervangen of
+  verwijderde foto gaat uit de opslag, tenzij iets anders er nog naar wijst.
 */
 
+const OPTIES = { rol: 'admin', module: 'oliemonsters', ontbreekt: KOLOM_ONTBREEKT_WENSEN2 } as const;
+
+async function leesPoging(context: unknown) {
+  const oilSampleId = await leesId(context, 'Onbekende poging');
+  const aId = await leesId(context, 'Onbekende poging', 'attemptId');
+  const existing = await prisma.sampleAttempt.findUnique({
+    where: { id: aId },
+    select: { id: true, oilSampleId: true, photoUrl: true, partPhotoUrl: true },
+  });
+  if (!existing || existing.oilSampleId !== oilSampleId) throw new ApiFout(404, 'Poging niet gevonden');
+  return { oilSampleId, aId, existing };
+}
+
 // POST - Foto uploaden voor een specifieke poging
-export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; attemptId: string }> },
-  session
-) => {
-  try {
-    const { id, attemptId } = await params;
-    const oilSampleId = parseInt(id);
-    const aId = parseInt(attemptId);
-    if (Number.isNaN(oilSampleId) || Number.isNaN(aId)) {
-      return NextResponse.json({ error: 'Onbekende poging' }, { status: 400 });
-    }
-
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      return NextResponse.json(
-        { error: 'Blob storage is niet geconfigureerd. Voeg BLOB_READ_WRITE_TOKEN toe in Vercel environment variables.' },
-        { status: 500 }
-      );
-    }
-
-    const existing = await prisma.sampleAttempt.findUnique({
-      where: { id: aId },
-      select: { id: true, oilSampleId: true },
-    });
-    if (!existing || existing.oilSampleId !== oilSampleId) {
-      return NextResponse.json({ error: 'Poging niet gevonden' }, { status: 404 });
-    }
-
-    const formData = await request.formData();
-    const file = formData.get('photo');
-    if (!(file instanceof File) || file.size === 0) {
-      return NextResponse.json({ error: 'Geen foto gevonden' }, { status: 400 });
-    }
-    const fotoMelding = fotoFout(file);
-    if (fotoMelding) {
-      return NextResponse.json({ error: fotoMelding }, { status: 400 });
-    }
-
-    const soort = leesFotoSoort(formData.get('soort'));
-    if (!soort) {
-      return NextResponse.json({ error: 'Onbekende soort foto' }, { status: 400 });
-    }
-
-    const timestamp = Date.now();
-    const filename = `sample-${oilSampleId}-attempt-${aId}-${soort}-${timestamp}.${fotoExtensie(file)}`;
-
-    const blob = await put(filename, file, { access: 'public' });
-
-    await prisma.sampleAttempt.update({
-      where: { id: aId },
-      data: { [fotoVeld(soort)]: blob.url },
-      select: { id: true },
-    });
-
-    await syncLatestAttemptToSample(oilSampleId);
-
-    await createAuditLog({
-      userId: session.userId,
-      username: session.username || 'unknown',
-      action: AuditActions.UPLOAD_ATTEMPT_PHOTO,
-      details: { oilSampleId, attemptId: aId, soort, filename },
-      request,
-    });
-
-    return NextResponse.json({ photoUrl: blob.url, soort });
-  } catch (error) {
-    return foutAntwoordWensen2(error, 'Fout bij uploaden van foto');
+export const POST = apiRoute({ ...OPTIES, fout: 'Fout bij uploaden van foto' }, async (request, context, session) => {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new ApiFout(500, 'Blob storage is niet geconfigureerd. Voeg BLOB_READ_WRITE_TOKEN toe in Vercel environment variables.');
   }
+  const { oilSampleId, aId, existing } = await leesPoging(context);
+
+  const formData = await request.formData();
+  const file = formData.get('photo');
+  if (!(file instanceof File) || file.size === 0) throw new ApiFout(400, 'Geen foto gevonden');
+  const fotoMelding = fotoFout(file);
+  if (fotoMelding) throw new ApiFout(400, fotoMelding);
+
+  const soort = leesFotoSoort(formData.get('soort'));
+  if (!soort) throw new ApiFout(400, 'Onbekende soort foto');
+
+  const filename = `sample-${oilSampleId}-attempt-${aId}-${soort}-${Date.now()}.${fotoExtensie(file)}`;
+  const url = await bewaarFoto(filename, file);
+
+  const veld = fotoVeld(soort);
+  await prisma.sampleAttempt.update({ where: { id: aId }, data: { [veld]: url }, select: { id: true } });
+  await syncLatestAttemptToSample(oilSampleId);
+  await ruimFotoOpAls(existing[veld]);
+
+  await createAuditLog({
+    userId: session.userId,
+    username: session.username || 'unknown',
+    action: AuditActions.UPLOAD_ATTEMPT_PHOTO,
+    details: { oilSampleId, attemptId: aId, soort, filename, vervangen: existing[veld] },
+    request,
+  });
+
+  return NextResponse.json({ photoUrl: url, soort });
 });
 
 // DELETE - Foto verwijderen van een poging
-export const DELETE = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; attemptId: string }> },
-  session
-) => {
-  try {
-    const { id, attemptId } = await params;
-    const oilSampleId = parseInt(id);
-    const aId = parseInt(attemptId);
-    if (Number.isNaN(oilSampleId) || Number.isNaN(aId)) {
-      return NextResponse.json({ error: 'Onbekende poging' }, { status: 400 });
-    }
+export const DELETE = apiRoute({ ...OPTIES, fout: 'Fout bij verwijderen van foto' }, async (request, context, session) => {
+  const soort = leesFotoSoort(new URL(request.url).searchParams.get('soort'));
+  if (!soort) throw new ApiFout(400, 'Onbekende soort foto');
+  const { oilSampleId, aId, existing } = await leesPoging(context);
 
-    const soort = leesFotoSoort(new URL(request.url).searchParams.get('soort'));
-    if (!soort) {
-      return NextResponse.json({ error: 'Onbekende soort foto' }, { status: 400 });
-    }
+  const veld = fotoVeld(soort);
+  await prisma.sampleAttempt.update({ where: { id: aId }, data: { [veld]: null }, select: { id: true } });
+  await syncLatestAttemptToSample(oilSampleId);
+  await ruimFotoOpAls(existing[veld]);
 
-    const existing = await prisma.sampleAttempt.findUnique({
-      where: { id: aId },
-      select: { id: true, oilSampleId: true },
-    });
-    if (!existing || existing.oilSampleId !== oilSampleId) {
-      return NextResponse.json({ error: 'Poging niet gevonden' }, { status: 404 });
-    }
+  await createAuditLog({
+    userId: session.userId,
+    username: session.username || 'unknown',
+    action: AuditActions.DELETE_ATTEMPT_PHOTO,
+    details: { oilSampleId, attemptId: aId, soort, label: fotoLabel(soort), url: existing[veld] },
+    request,
+  });
 
-    await prisma.sampleAttempt.update({
-      where: { id: aId },
-      data: { [fotoVeld(soort)]: null },
-      select: { id: true },
-    });
-
-    await syncLatestAttemptToSample(oilSampleId);
-
-    await createAuditLog({
-      userId: session.userId,
-      username: session.username || 'unknown',
-      action: AuditActions.DELETE_ATTEMPT_PHOTO,
-      details: { oilSampleId, attemptId: aId, soort, label: fotoLabel(soort) },
-      request,
-    });
-
-    return NextResponse.json({ success: true, soort });
-  } catch (error) {
-    return foutAntwoordWensen2(error, 'Fout bij verwijderen van foto');
-  }
+  return NextResponse.json({ success: true, soort });
 });

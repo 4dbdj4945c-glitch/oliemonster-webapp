@@ -1,31 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/toegang';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { ATTEMPT_BASIS_SELECT, syncLatestAttemptToSample } from '@/lib/sampleAttempts';
-import { foutAntwoordWensen2, tabelOntbreekt } from '@/lib/kolommen';
+import { KOLOM_ONTBREEKT_WENSEN2, tabelOntbreekt } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
+import { apiRoute, ApiFout, leesId, leesJson, optioneleDatum, optioneleTekst } from '@/lib/apiRoute';
+
+const OPTIES = { module: 'oliemonsters', ontbreekt: KOLOM_ONTBREEKT_WENSEN2 } as const;
 
 // GET - Alle pogingen voor een monster (chronologisch, oudste eerst)
-export const GET = withAuth({ rol: 'user', module: 'oliemonsters' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) => {
-  // De rol alleen lezen mag de pogingen niet zien: die zit alleen in het
-  // bewerkvenster van een admin. withAuth weigert hem, ook serverside.
-
-  try {
-    const { id } = await params;
-    const oilSampleId = parseInt(id);
-    if (Number.isNaN(oilSampleId)) {
-      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
-    }
-
+export const GET = apiRoute(
+  { rol: 'user', ...OPTIES, fout: 'Fout bij ophalen van pogingen' },
+  async (_request, context) => {
+    // De rol alleen lezen mag de pogingen niet zien: die zit alleen in het
+    // bewerkvenster van een admin. withAuth weigert hem, ook serverside.
+    const oilSampleId = await leesId(context, 'Onbekend monster');
     const volgorde = [{ sampleDate: 'asc' as const }, { createdAt: 'asc' as const }];
 
-    // Met de tweede foto erbij. Zolang ./db-push-wensen2.sh nog niet gedraaid is
-    // bestaat partPhotoUrl niet; dan halen we de oude velden op, zodat de lijst
-    // met pogingen gewoon blijft werken.
     try {
       const attempts = await prisma.sampleAttempt.findMany({
         where: { oilSampleId },
@@ -42,49 +34,39 @@ export const GET = withAuth({ rol: 'user', module: 'oliemonsters' }, async (
       });
       return NextResponse.json(oud.map((a) => ({ ...a, partPhotoUrl: null })));
     }
-  } catch (error) {
-    return foutAntwoordWensen2(error, 'Fout bij ophalen van pogingen');
   }
+);
+
+const NieuwePogingSchema = z.object({
+  sampleDate: optioneleDatum(),
+  photoUrl: optioneleTekst(2000),
+  partPhotoUrl: optioneleTekst(2000),
+  remarks: optioneleTekst(),
+  isTaken: z.boolean().optional(),
 });
 
 // POST - Nieuwe poging toevoegen (hermonstering)
-export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-  session
-) => {
-  try {
-    const { id } = await params;
-    const oilSampleId = parseInt(id);
-    if (Number.isNaN(oilSampleId)) {
-      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
-    }
+export const POST = apiRoute(
+  { rol: 'admin', ...OPTIES, fout: 'Fout bij aanmaken van poging' },
+  async (request, context, session) => {
+    const oilSampleId = await leesId(context, 'Onbekend monster');
 
     const sample = await prisma.oilSample.findUnique({
       where: { id: oilSampleId, ...(await actiefFilter()) },
       select: { id: true, oNumber: true },
     });
-    if (!sample) {
-      return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
-    }
+    if (!sample) throw new ApiFout(404, 'Monster niet gevonden');
 
-    const body = await request.json().catch(() => ({}));
-    const { sampleDate, photoUrl, partPhotoUrl, remarks, isTaken } = body as {
-      sampleDate?: string | null;
-      photoUrl?: string | null;
-      partPhotoUrl?: string | null;
-      remarks?: string | null;
-      isTaken?: boolean;
-    };
+    const invoer = await leesJson(request, NieuwePogingSchema);
 
     const attempt = await prisma.sampleAttempt.create({
       data: {
         oilSampleId,
-        sampleDate: sampleDate ? new Date(sampleDate) : null,
-        photoUrl: photoUrl || null,
-        partPhotoUrl: partPhotoUrl || null,
-        remarks: remarks || null,
-        isTaken: isTaken ?? false,
+        sampleDate: invoer.sampleDate ?? null,
+        photoUrl: invoer.photoUrl ?? null,
+        partPhotoUrl: invoer.partPhotoUrl ?? null,
+        remarks: invoer.remarks ?? null,
+        isTaken: invoer.isTaken ?? false,
       },
       select: { ...ATTEMPT_BASIS_SELECT, partPhotoUrl: true },
     });
@@ -100,7 +82,5 @@ export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
     });
 
     return NextResponse.json(attempt, { status: 201 });
-  } catch (error) {
-    return foutAntwoordWensen2(error, 'Fout bij aanmaken van poging');
   }
-});
+);

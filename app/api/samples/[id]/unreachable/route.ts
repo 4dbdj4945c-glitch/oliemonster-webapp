@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/toegang';
-import { put } from '@vercel/blob';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { bouwOnbereikbaarReden } from '@/lib/unreachableReasons';
-import { foutAntwoordWensen2 } from '@/lib/kolommen';
+import { KOLOM_ONTBREEKT_WENSEN2 } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
+import { bewaarFoto, ruimFotoOpAls } from '@/lib/fotoOpslag';
+import { apiRoute, ApiFout, leesId } from '@/lib/apiRoute';
 
 /**
  * Niet bereikbaar: de locatie was door afzetting, andere werkzaamheden of
@@ -18,7 +18,9 @@ import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
  * meetellen in de planning, want het moet waarschijnlijk alsnog gebeuren.
  *
  * PATCH  zet de status, met reden, omschrijving en een eigen foto als bewijs.
- * DELETE draait het terug: het monster is weer gewoon niet genomen.
+ *        Een nieuwe bewijsfoto vervangt de oude; die gaat uit de opslag.
+ * DELETE draait het terug: het monster is weer gewoon niet genomen. De
+ *        bewijsfoto blijft in de opslag staan en het adres gaat in het logboek.
  */
 
 /** Leest de velden uit een multipart-formulier of uit JSON. */
@@ -48,29 +50,19 @@ async function leesVelden(request: NextRequest): Promise<{
   };
 }
 
-export const PATCH = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-  session
-) => {
-  try {
-    const { id } = await params;
-    const sampleId = parseInt(id);
-    if (Number.isNaN(sampleId)) {
-      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
-    }
+export const PATCH = apiRoute(
+  { rol: 'admin', module: 'oliemonsters', fout: 'Fout bij vastleggen dat de locatie niet bereikbaar was', ontbreekt: KOLOM_ONTBREEKT_WENSEN2 },
+  async (request, context, session) => {
+    const sampleId = await leesId(context, 'Onbekend monster');
 
     const velden = await leesVelden(request);
     const reden = bouwOnbereikbaarReden(velden.reason, velden.toelichting);
     if ('fout' in reden) {
-      return NextResponse.json({ error: reden.fout }, { status: 400 });
+      throw new ApiFout(400, reden.fout);
     }
     const omschrijving = velden.note.trim();
     if (!omschrijving) {
-      return NextResponse.json(
-        { error: 'Vul een korte omschrijving in van wat je aantrof' },
-        { status: 400 }
-      );
+      throw new ApiFout(400, 'Vul een korte omschrijving in van wat je aantrof');
     }
 
     const sample = await prisma.oilSample.findUnique({
@@ -78,19 +70,13 @@ export const PATCH = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
       select: { id: true, oNumber: true, analysisYear: true, isDisabled: true, isTaken: true },
     });
     if (!sample) {
-      return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
+      throw new ApiFout(404, 'Monster niet gevonden');
     }
     if (sample.isDisabled) {
-      return NextResponse.json(
-        { error: 'Dit monster is geannuleerd. Draai de annulering eerst terug.' },
-        { status: 400 }
-      );
+      throw new ApiFout(400, 'Dit monster is geannuleerd. Draai de annulering eerst terug.');
     }
     if (sample.isTaken) {
-      return NextResponse.json(
-        { error: 'Dit monster staat al als genomen te boek. Zet het eerst op niet genomen.' },
-        { status: 400 }
-      );
+      throw new ApiFout(400, 'Dit monster staat al als genomen te boek. Zet het eerst op niet genomen.');
     }
 
     // De bewijsfoto is optioneel: liever een vastgelegde reden zonder foto dan
@@ -99,18 +85,17 @@ export const PATCH = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
     if (velden.file) {
       const fotoMelding = fotoFout(velden.file);
       if (fotoMelding) {
-        return NextResponse.json({ error: fotoMelding }, { status: 400 });
+        throw new ApiFout(400, fotoMelding);
       }
       if (!process.env.BLOB_READ_WRITE_TOKEN) {
-        return NextResponse.json(
-          { error: 'Blob storage is niet geconfigureerd. Voeg BLOB_READ_WRITE_TOKEN toe in Vercel environment variables.' },
-          { status: 500 }
-        );
+        throw new ApiFout(500, 'Blob storage is niet geconfigureerd. Voeg BLOB_READ_WRITE_TOKEN toe in Vercel environment variables.');
       }
       const filename = `sample-${sampleId}-onbereikbaar-${Date.now()}.${fotoExtensie(velden.file)}`;
-      const blob = await put(filename, velden.file, { access: 'public' });
-      photoUrl = blob.url;
+      photoUrl = await bewaarFoto(filename, velden.file);
     }
+    const vorigeFoto = photoUrl
+      ? (await prisma.oilSample.findUnique({ where: { id: sampleId }, select: { unreachablePhotoUrl: true } }))?.unreachablePhotoUrl ?? null
+      : null;
 
     const bijgewerkt = await prisma.oilSample.update({
       where: { id: sampleId },
@@ -133,6 +118,7 @@ export const PATCH = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
         unreachableBy: true,
       },
     });
+    await ruimFotoOpAls(vorigeFoto);
 
     await createAuditLog({
       userId: session.userId,
@@ -150,22 +136,13 @@ export const PATCH = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
     });
 
     return NextResponse.json(bijgewerkt);
-  } catch (error) {
-    return foutAntwoordWensen2(error, 'Fout bij vastleggen dat de locatie niet bereikbaar was');
   }
-});
+);
 
-export const DELETE = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-  session
-) => {
-  try {
-    const { id } = await params;
-    const sampleId = parseInt(id);
-    if (Number.isNaN(sampleId)) {
-      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
-    }
+export const DELETE = apiRoute(
+  { rol: 'admin', module: 'oliemonsters', fout: 'Fout bij terugdraaien van Niet bereikbaar', ontbreekt: KOLOM_ONTBREEKT_WENSEN2 },
+  async (request, context, session) => {
+    const sampleId = await leesId(context, 'Onbekend monster');
 
     const sample = await prisma.oilSample.findUnique({
       where: { id: sampleId, ...(await actiefFilter()) },
@@ -175,10 +152,11 @@ export const DELETE = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
         analysisYear: true,
         isUnreachable: true,
         unreachableReason: true,
+        unreachablePhotoUrl: true,
       },
     });
     if (!sample) {
-      return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
+      throw new ApiFout(404, 'Monster niet gevonden');
     }
 
     const bijgewerkt = await prisma.oilSample.update({
@@ -203,12 +181,11 @@ export const DELETE = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
         oNumber: sample.oNumber,
         analysisYear: sample.analysisYear,
         vorigeReden: sample.unreachableReason,
+        bewijsfoto: sample.unreachablePhotoUrl,
       },
       request,
     });
 
     return NextResponse.json(bijgewerkt);
-  } catch (error) {
-    return foutAntwoordWensen2(error, 'Fout bij terugdraaien van Niet bereikbaar');
   }
-});
+);
