@@ -334,14 +334,25 @@ export default function ControleRondesPage() {
     else loadRounds();
   };
 
-  const deleteRound = async (id: number, name: string) => {
-    if (!confirm(`Ronde "${name}" verwijderen?`)) return;
+  // Een ronde verwijderen neemt de straten, de berekende route en de voortgang
+  // mee, en dat komt niet terug. Daarom staat de knop niet meer op de kaart in de
+  // lijst (waar je tikt om de ronde te openen), maar onderaan het rondescherm.
+  const deleteRound = async (ronde: RoundDetail) => {
+    const gereden = ronde.streets.filter((s) => s.isDone).length;
+    if (!confirm(
+      `Ronde "${ronde.name}" verwijderen?\n\n` +
+        `Daarmee verdwijnen ${ronde.streets.length} ${ronde.streets.length === 1 ? 'straat' : 'straten'}, de berekende route` +
+        (gereden > 0 ? ` en de voortgang (${gereden} gereden)` : '') +
+        '. Dit kan niet ongedaan worden gemaakt.'
+    )) return;
     try {
-      const res = await apiFetch(`/api/control-rounds/${id}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/control-rounds/${ronde.id}`, { method: 'DELETE' });
       if (!res.ok) {
         setFoutmelding(await foutTekst(res, 'De ronde kon niet worden verwijderd.'));
         return;
       }
+      stopGps();
+      setView('list');
       loadRounds();
     } catch (e) {
       setFoutmelding(GEEN_VERBINDING);
@@ -388,7 +399,12 @@ export default function ControleRondesPage() {
   const resetRound = async () => {
     const d = detailRef.current;
     if (!d) return;
-    if (!confirm('Voortgang van deze ronde resetten?')) return;
+    const gereden = d.streets.filter((s) => s.isDone).length;
+    if (!confirm(
+      gereden > 0
+        ? `Voortgang van "${d.name}" resetten?\n\n${gereden} van de ${d.streets.length} straten staan nu op gereden en gaan terug naar niet gereden. Dit kan niet ongedaan worden gemaakt.`
+        : `Voortgang van "${d.name}" resetten? Er staat nog niets op gereden.`
+    )) return;
     try {
       const res = await apiFetch(`/api/control-rounds/${d.id}/reset`, { method: 'POST' });
       if (!res.ok) {
@@ -491,7 +507,6 @@ export default function ControleRondesPage() {
 
   const gpsIcon = <Icon name="gps-live" />;
   const plusIcon = <Icon name="plus" />;
-  const trashIcon = <Icon name="trash" size={16} />;
   const kruisIcon = <Icon name="close" size={16} />;
   const rondeStatus = (klaar: boolean, bezig: boolean) =>
     <Icon name={klaar ? 'status-round-done' : bezig ? 'status-round-busy' : 'status-round-open'} size={16} />;
@@ -649,14 +664,6 @@ export default function ControleRondesPage() {
                         <div className="round-naam">{r.name}</div>
                         <div className="round-plaats">{r.place}</div>
                       </div>
-                      <button
-                        type="button"
-                        className="icon-btn icon-btn-danger verwijder"
-                        onClick={(e) => { e.stopPropagation(); deleteRound(r.id, r.name); }}
-                        aria-label={`Ronde ${r.name} verwijderen`}
-                      >
-                        {trashIcon}
-                      </button>
                     </div>
                     <div className="bar"><div className="bar-fill" style={{ width: `${pct}%` }} /></div>
                     <div className="round-voet">
@@ -923,6 +930,22 @@ export default function ControleRondesPage() {
               </div>
             </div>
           </div>
+
+          {/* Ronde verwijderen: apart en onderaan, niet op de kaart in de lijst */}
+          <section className="gevarenzone">
+            <p className="gevarenzone-kop">
+              <Icon name="trash" size={16} />
+              Ronde verwijderen
+            </p>
+            <p className="gevarenzone-tekst">
+              Haalt deze ronde weg met alle {totalCount} straten, de berekende route en de voortgang. Dit kan niet
+              ongedaan worden gemaakt.
+            </p>
+            <button type="button" className="btn btn-sm btn-danger-soft" onClick={() => deleteRound(detail)}>
+              <Icon name="trash" size={16} />
+              Ronde verwijderen...
+            </button>
+          </section>
 
           {/* Vaste balk onderaan op de telefoon: voortgang, volgende straat en de GPS-knop altijd bij de hand */}
           <div className="mobiel-balk">
