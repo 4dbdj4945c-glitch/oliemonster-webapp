@@ -85,7 +85,7 @@ export default function AfnameOngedaanModal({
         {doel.aantalPogingen > 1 ? 'De laatste monstername' : 'De monstername'} van {doel.oNumber} gaat terug
         naar niet genomen.
       </p>
-      <p className="label" style={{ margin: '0 0 4px' }}>Dit verdwijnt</p>
+      <p className="label" style={{ margin: '12px 0 4px' }}>Dit verdwijnt</p>
       <ul className="afname-lijst">
         {weg.map((w) => (
           <li key={w}>{w}</li>

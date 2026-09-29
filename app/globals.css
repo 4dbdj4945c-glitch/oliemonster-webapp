@@ -3075,6 +3075,7 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
 .afname-lijst {
   margin: 0 0 12px;
   padding-left: 20px;
+  list-style: disc;
   color: var(--navy);
 }
 

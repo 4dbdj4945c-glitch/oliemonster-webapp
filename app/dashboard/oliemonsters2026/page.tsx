@@ -809,7 +809,6 @@ export default function DashboardPage() {
                 className={tab === 'prullenbak' ? 'on' : ''}
                 onClick={() => setTab('prullenbak')}
               >
-                <Icon name="trash" size={16} />
                 Prullenbak
               </button>
             )}
