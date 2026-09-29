@@ -87,3 +87,36 @@ export default function MonsterTellingen({ totaal, totalen, statusFilter, onFilt
     </div>
   );
 }
+
+/**
+ * Dezelfde tellingen als filterchips op één regel, voor de compacte lijst op de
+ * telefoon (niet voor de kijker). Eén tik filtert, nog een tik op de actieve
+ * chip zet het filter terug op Alle.
+ */
+export function StatusChips({ totaal, totalen, statusFilter, onFilter }: Props) {
+  const chips: { waarde: 'all' | SampleStatus; label: string; aantal: number }[] = [
+    { waarde: 'all', label: 'Alle', aantal: totaal },
+    { waarde: 'niet-genomen', label: 'Niet genomen', aantal: totalen['niet-genomen'] },
+    { waarde: 'genomen', label: 'Genomen', aantal: totalen.genomen },
+    { waarde: 'niet-bereikbaar', label: 'Niet bereikbaar', aantal: totalen['niet-bereikbaar'] },
+    { waarde: 'geannuleerd', label: 'Geannuleerd', aantal: totalen.geannuleerd },
+  ];
+  return (
+    <div className="filterchips" role="group" aria-label="Filter op status">
+      {chips
+        .filter((c) => c.waarde === 'all' || c.aantal > 0 || statusFilter === c.waarde)
+        .map((c) => (
+          <button
+            key={c.waarde}
+            type="button"
+            className={`filterchip${statusFilter === c.waarde ? ' on' : ''}`}
+            aria-pressed={statusFilter === c.waarde}
+            onClick={() => onFilter(statusFilter === c.waarde ? 'all' : c.waarde)}
+          >
+            {c.label}
+            <span className="filterchip-aantal">{c.aantal}</span>
+          </button>
+        ))}
+    </div>
+  );
+}

@@ -28,6 +28,11 @@ interface Props {
   onBewerk: (s: OilSample) => void;
   onWisFilter: () => void;
   onNieuw: () => void;
+  /**
+   * Compacte kaarten op de telefoon (beheerder en gebruiker): drie regels per
+   * monster en één knop. De kijker krijgt de oude kaarten, dus false.
+   */
+  compact?: boolean;
   /** Knop Overnemen uit vorig jaar in de lege staat (admin, leeg jaar) */
   overnemen: { vanJaar: number; bezig: boolean; onOvernemen: () => void } | null;
 }
@@ -58,7 +63,7 @@ export default function MonsterTabel(p: Props) {
   return (
     <div className="table-container">
       <div className="table-scroll">
-        <table className="table table-kaarten">
+        <table className={`table table-kaarten${p.compact ? ' table-compact' : ''}`}>
           <thead>
             <tr>
               {visibleColumns.includes('status') && (<th>Status</th>)}
@@ -118,6 +123,13 @@ export default function MonsterTabel(p: Props) {
                 <tr key={sample.id} style={{ opacity: sample.isDisabled ? 0.6 : 1 }}>
                   {visibleColumns.includes('status') && (
                     <td data-label="Status" className="kaart-status" style={{ whiteSpace: 'nowrap' }}>
+                      {/* Compact op de telefoon: alleen de badge. De snelle statustik
+                          blijft voor het bijwerken achteraf op desktop. */}
+                      {p.compact && (
+                        <span className="compact-badge">
+                          <StatusBadge sample={sample} />
+                        </span>
+                      )}
                       <span className="status-cel">
                         {/* Hoofdhandeling: één tik zet het monster op genomen of niet genomen */}
                         {isAdmin && !sample.isDisabled ? (
@@ -170,6 +182,46 @@ export default function MonsterTabel(p: Props) {
                       opacity: sample.isDisabled ? 0.7 : 1
                     }}>
                       {sample.oNumber}
+                    </td>
+                  )}
+                  {p.compact && (
+                    <td className="compact-samenvatting">
+                      {/* Alleen op de telefoon: plek en omschrijving, dan object en datum.
+                          Een tik opent het monster (beheerder) of de foto's. */}
+                      <button
+                        type="button"
+                        className="compact-open"
+                        onClick={() => {
+                          if (isAdmin) p.onBewerk(sample);
+                          else if (sample.partPhotoUrl || sample.photoUrl) p.onOpenFoto(sample, (sample.partPhotoUrl || sample.photoUrl)!);
+                        }}
+                        disabled={!isAdmin && !sample.partPhotoUrl && !sample.photoUrl}
+                        aria-label={isAdmin ? `${sample.oNumber} openen` : `Foto's van ${sample.oNumber}`}
+                      >
+                        <span className="compact-regel">
+                          {[sample.location, sample.description].filter(Boolean).join(' · ')}
+                        </span>
+                        <span className="compact-regel compact-regel-sub">
+                          {[
+                            sample.object?.name,
+                            sample.isTaken && sample.sampleDate ? new Date(sample.sampleDate).toLocaleDateString('nl-NL') : null,
+                            sample.oilType,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ') || 'Geen object of datum'}
+                          {(sample.partPhotoUrl || sample.photoUrl) && (
+                            <span className="compact-foto" title="Heeft foto's">
+                              <Icon name="camera" size={16} />
+                            </span>
+                          )}
+                        </span>
+                        {sample.isUnreachable && !sample.isTaken && !sample.isDisabled && sample.unreachableReason && (
+                          <span className="compact-regel compact-regel-sub">Niet bereikbaar: {sample.unreachableReason}</span>
+                        )}
+                        {sample.isDisabled && sample.cancelReason && (
+                          <span className="compact-regel compact-regel-sub">Geannuleerd: {sample.cancelReason}</span>
+                        )}
+                      </button>
                     </td>
                   )}
                   {visibleColumns.includes('sampleDate') && (
@@ -286,27 +338,29 @@ export default function MonsterTabel(p: Props) {
                         <button
                           type="button"
                           onClick={() => p.onNemen(sample)}
-                          className="btn btn-primary btn-sm sm:mr-2.5"
+                          className="btn btn-sm sm:mr-2.5 knop-nemen"
                           title={`${sample.oNumber} nemen: datum, type olie, opmerking en beide foto's in één keer`}
                         >
                           <Icon name="oil-sample" size={16} />
-                          Monster nemen
+                          <span className="lang">Monster nemen</span>
+                          <span className="kort">Nemen</span>
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => p.onMeer(sample)}
-                        className="btn btn-sm sm:mr-2.5"
+                        className="btn btn-sm sm:mr-2.5 knop-meer"
+                        aria-label={`Meer bij ${sample.oNumber}`}
                         aria-haspopup="dialog"
                         title={`Meer handelingen bij ${sample.oNumber}: annuleren, hermonstering${sample.isUnreachable ? ', niet bereikbaar' : ''}`}
                       >
                         <Icon name="menu" size={16} />
-                        Meer
+                        <span className="knop-meer-tekst">Meer</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => p.onBewerk(sample)}
-                        className="icon-btn sm:mr-1"
+                        className="icon-btn sm:mr-1 knop-bewerk"
                         title="Bewerken"
                         aria-label={`${sample.oNumber} bewerken`}
                       >

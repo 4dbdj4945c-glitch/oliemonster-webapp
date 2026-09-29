@@ -3822,6 +3822,12 @@ a.beheer-naam:hover {
 
 /* Ruimte onder de inhoud, zodat de onderbalk niets afdekt */
 .schil .schil-hoofd { padding-bottom: calc(var(--onderbalk-hoogte) + env(safe-area-inset-bottom) + 16px); }
+/* Melding Ongedaan maken boven de onderbalk, niet erachter */
+@media (max-width: 899px) {
+  .schil:not(.schil-veld) .ongedaan-melding {
+    bottom: calc(var(--onderbalk-hoogte) + env(safe-area-inset-bottom) + 12px);
+  }
+}
 /* Veldscherm: eigen kop en eigen actiebalk, dus geen kop- en onderbalk */
 .schil-veld .schil-kop,
 .schil-veld .onderbalk { display: none; }
@@ -4353,11 +4359,9 @@ h2.sectiekop {
 
 @media (max-width: 640px) {
   .veld { font-size: 16px; }
-  /* Eigen navy kop in plaats van de kopbalk van de schil */
-  .schil-veld .app-content,
-  .schil-veld .app-content-wide { padding-top: 0; }
+  /* Eigen navy kop in plaats van de kopbalk van de schil (tegen de bovenrand) */
   .veld-kop {
-    margin: 0 -16px 16px;
+    margin: -20px -16px 16px;
     padding: 10px 16px 12px;
     padding-top: max(10px, env(safe-area-inset-top));
     background: var(--navy);
@@ -4389,4 +4393,158 @@ h2.sectiekop {
   .veld-hoofdknop { min-height: 64px; }
   .veld:has(.veld-actiebalk) { padding-bottom: 120px; }
   .veld-kaartvak { height: 240px; }
+}
+
+/* ============================================================
+   Monsterlijst compact op de telefoon (beheerder en gebruiker)
+   MonsterTabel met compact, OliemonstersPagina .monsterlijst-compact.
+   De kijker houdt de oude kaarten: hier staat niets wat hem raakt.
+   ============================================================ */
+.compact-samenvatting,
+.compact-badge,
+.filterchips,
+.knop-filter { display: none; }
+.knop-nemen .kort { display: none; }
+
+@media (max-width: 640px) {
+  /* Zoekveld plakt bovenaan tijdens het scrollen, onder de kopbalk */
+  .monsterlijst-compact .zoekkaart {
+    position: sticky;
+    top: 56px;
+    z-index: 20;
+    padding: 12px;
+    margin-bottom: 12px !important;
+  }
+  .monsterlijst-compact .zoekkaart .knoppenrij { flex-direction: row; }
+  .monsterlijst-compact .zoekkaart .knoppenrij .btn { flex: 1 1 0; width: auto; }
+  .monsterlijst-compact .knop-filter { display: inline-flex; }
+  .monsterlijst-compact .knop-filter.on { border-color: var(--navy); }
+  /* PDF maak je niet in het veld: op de telefoon via Meer, Afdrukken */
+  .monsterlijst-compact .knop-pdf { display: none; }
+  /* Filters en tegels maken plaats voor een regel filterchips */
+  .monsterlijst-compact > .card:has(> .filters) { display: none; }
+  .monsterlijst-compact.filters-open > .card:has(> .filters) { display: block; }
+  .monsterlijst-compact .stats-grid-vijf { display: none; }
+
+  .monsterlijst-compact .filterchips {
+    display: flex;
+    gap: 8px;
+    margin: 0 -16px 12px;
+    padding: 0 16px 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .monsterlijst-compact .filterchips::-webkit-scrollbar { display: none; }
+  .filterchip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex: none;
+    min-height: 40px;
+    padding: 0 14px;
+    background: var(--wit);
+    border: 1px solid var(--grijs-300);
+    border-radius: 999px;
+    color: var(--navy);
+    font-size: 14px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  .filterchip.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .filterchip-aantal { font-variant-numeric: tabular-nums; color: var(--grijs-500); font-weight: 700; }
+  .filterchip.on .filterchip-aantal { color: var(--navy-tekst); }
+
+  /* Een monster in drie regels: o-nummer en status, plek en omschrijving,
+     object en datum. Rechts één knop. */
+  .table-compact tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 12px;
+    row-gap: 2px;
+    align-items: center;
+    padding: 12px 16px;
+  }
+  .table-compact td { display: none; padding: 0; }
+  .table-compact td.kaart-kop {
+    display: block;
+    grid-column: 1;
+    grid-row: 1;
+    padding: 0;
+    font-size: 16px;
+  }
+  .table-compact td.kaart-status {
+    display: flex;
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: flex-end;
+    padding: 0;
+  }
+  .table-compact td.kaart-status .status-cel { display: none; }
+  .table-compact .compact-badge { display: inline-flex; }
+  .table-compact td.compact-samenvatting {
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    text-align: left;
+  }
+  .table-compact td.kaart-acties {
+    display: flex;
+    flex-wrap: nowrap;
+    grid-column: 2;
+    grid-row: 2;
+    align-self: end;
+    gap: 6px;
+    padding: 0;
+  }
+  .table-compact td.kaart-acties .knop-bewerk,
+  .table-compact .knop-meer-tekst,
+  .table-compact .knop-nemen .lang { display: none; }
+  .table-compact .knop-nemen .kort { display: inline; }
+  .table-compact td.kaart-acties .btn { min-height: 44px; min-width: 44px; padding: 0 12px; margin: 0; }
+  .table-compact td.td-leeg { display: block; grid-column: 1 / -1; }
+  .compact-open {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    width: 100%;
+    min-height: 44px;
+    padding: 2px 0;
+    background: transparent;
+    border: 0;
+    text-align: left;
+    color: inherit;
+    cursor: pointer;
+  }
+  .compact-open:disabled { cursor: default; }
+  .compact-regel { font-size: 14px; color: var(--grijs-700); overflow-wrap: anywhere; }
+  .compact-regel-sub { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--grijs-500); }
+  .compact-foto { display: inline-flex; color: var(--grijs-500); }
+}
+.knoppenrij-eind { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* Zichtbare focus voor wie met het toetsenbord werkt (niet bij klikken of tikken) */
+.modal-content:focus { outline: none; }
+.btn:focus-visible,
+.icon-btn:focus-visible,
+.nav-btn:focus-visible,
+.tabs button:focus-visible,
+.status-knop:focus-visible,
+.filterchip:focus-visible,
+.compact-open:focus-visible,
+.veld-lijst-regel:focus-visible,
+.week-dag:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* Fout bij een veld: rode rand en de melding eronder, niet als browsertooltip */
+.input-fout,
+.input.input-fout,
+.textarea.input-fout { border-color: var(--rood); }
+.veld-fout {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rood-tekst);
 }

@@ -21,7 +21,7 @@ import OngedaanMelding, { type OngedaanInhoud } from '@/app/components/OngedaanM
 import type { VerwijderDoel } from '@/app/components/MonsterVerwijderBlok';
 import VerwijderdeMonsters from '@/app/components/VerwijderdeMonsters';
 import PlanningPaneel from '@/app/components/PlanningPaneel';
-import { AppShell, Icon } from '@/app/components/ui';
+import { AppShell, Icon, Laden } from '@/app/components/ui';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { type FotoSoort } from '@/lib/samplePhotos';
 import { telStatussen, type SampleStatus } from '@/lib/sampleStatus';
@@ -33,7 +33,7 @@ import AnnuleerModal, { type AnnuleerDoel } from './AnnuleerModal';
 import MonsterFilters from './MonsterFilters';
 import MonsterFormulier from './MonsterFormulier';
 import MonsterTabel from './MonsterTabel';
-import MonsterTellingen from './MonsterTellingen';
+import MonsterTellingen, { StatusChips } from './MonsterTellingen';
 import { zichtbareMonsters } from './monsterLijst';
 import { useKolommen } from './useKolommen';
 import { useMonsters } from './useMonsters';
@@ -86,6 +86,10 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
   const [onbereikbaarDoel, setOnbereikbaarDoel] = useState<OnbereikbaarDoel | null>(null);
   const [copying, setCopying] = useState(false);
   const [copyMessage, setCopyMessage] = useState('');
+  // Compacte lijst op de telefoon: de filters zitten achter een knop.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // De kijker houdt de lijst zoals hij hem kende; de rest krijgt de compacte kaarten.
+  const compact = !alleenLezen;
 
   useEffect(() => {
     if (!magJaarKiezen) return;
@@ -337,8 +341,19 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
     }
   };
 
-  if (loading) {
+  // Laden: de kijker houdt het oude laadscherm; de rest ziet de schil met de
+  // titel en een skelet van de lijst.
+  if (loading && alleenLezen) {
     return <div className="laadscherm">Laden...</div>;
+  }
+  if (loading) {
+    return (
+      <AppShell title={`Oliemonsters ${jaar}`} wide user={user}>
+        <h1 className="page-title">Oliemonsters {jaar}</h1>
+        <p className="page-subtitle">De monsters worden opgehaald.</p>
+        <Laden label="Monsters laden" regels={4} soort="lijst" />
+      </AppShell>
+    );
   }
 
   const zichtbareSamples = zichtbareMonsters(samples, {
@@ -424,9 +439,9 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
         />
       )}
 
-      {toonLijst && lijstGeladen && (<>
+      {toonLijst && lijstGeladen && (<div className={compact ? `monsterlijst-compact${filtersOpen ? ' filters-open' : ''}` : undefined}>
         {/* Zoeken en toevoegen */}
-        <div className="card" style={{ marginBottom: '16px' }}>
+        <div className="card zoekkaart" style={{ marginBottom: '16px' }}>
           <div className="flex flex-col sm:flex-row gap-3">
             <label className="zoekveld flex-1">
               <Icon name="search" />
@@ -442,11 +457,22 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
             {/* Een kijker heeft hier geen knoppen: geen PDF en niets toevoegen */}
             {(!alleenLezen || isAdmin) && (
               <div className="knoppenrij flex gap-3">
+                {compact && (
+                  <button
+                    type="button"
+                    className={`btn knop-filter${filtersOpen ? ' on' : ''}`}
+                    onClick={() => setFiltersOpen((v) => !v)}
+                    aria-expanded={filtersOpen}
+                  >
+                    <Icon name="filter" />
+                    Filter
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleGeneratePdf}
                   disabled={generatingPdf}
-                  className="btn"
+                  className="btn knop-pdf"
                   title={`Download een PDF met alle oliemonsters van ${jaar} en de datum waarop ze zijn genomen`}
                 >
                   <Icon name="file-pdf" />
@@ -499,6 +525,9 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
         />
 
         <MonsterTellingen totaal={samples.length} totalen={totalen} statusFilter={statusFilter} onFilter={setStatusFilter} />
+        {compact && (
+          <StatusChips totaal={samples.length} totalen={totalen} statusFilter={statusFilter} onFilter={setStatusFilter} />
+        )}
 
         <MonsterTabel
           samples={zichtbareSamples}
@@ -519,8 +548,9 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
           onWisFilter={wisFilter}
           onNieuw={() => setEditing({ sample: null })}
           overnemen={kanOvernemen ? { vanJaar: vorigJaar, bezig: copying, onOvernemen: handleCopyFromVorigJaar } : null}
+          compact={compact}
         />
-      </>)}
+      </div>)}
 
       {/* Toevoegen / bewerken */}
       {editing && (
