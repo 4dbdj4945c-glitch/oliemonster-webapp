@@ -105,3 +105,43 @@ export function krijgtKlantportaal(g: {
 }): boolean {
   return isAlleenLezen(g.role) && !!g.klantId && leesWeergave(g.portaalWeergave) === WEERGAVE_KLANTPORTAAL;
 }
+
+/**
+ * Leest klant en weergave van een kijker uit een request-body. Net als het
+ * kijkjaar hoort dit alleen bij de rol alleen lezen: bij een andere rol wordt
+ * het leeggemaakt (geen klant, klassiek). Een nieuwe kijker met een klant krijgt
+ * standaard het klantportaal; zonder klant kan dat niet (er is dan niets om te
+ * tonen), dus dan klassiek. `huidig` is wat er nu staat, voor een wijziging
+ * waarin niet alles meekomt.
+ */
+export function leesKijkerInstelling(
+  body: { klantId?: unknown; portaalWeergave?: unknown },
+  role: string,
+  huidig: { klantId: number | null; portaalWeergave: string } | null = null
+): { klantId: number | null; portaalWeergave: PortaalWeergave } | { fout: string } {
+  if (!isAlleenLezen(role)) return { klantId: null, portaalWeergave: WEERGAVE_KLASSIEK };
+
+  let klantId: number | null;
+  if (body.klantId === undefined) {
+    klantId = huidig?.klantId ?? null;
+  } else if (body.klantId === null || body.klantId === '') {
+    klantId = null;
+  } else {
+    const n = typeof body.klantId === 'number' ? body.klantId : Number(String(body.klantId));
+    if (!Number.isSafeInteger(n) || n <= 0) return { fout: 'Onbekende klant' };
+    klantId = n;
+  }
+
+  let weergave: PortaalWeergave;
+  if (body.portaalWeergave === undefined) {
+    weergave = huidig ? leesWeergave(huidig.portaalWeergave) : klantId ? WEERGAVE_KLANTPORTAAL : WEERGAVE_KLASSIEK;
+  } else if (body.portaalWeergave === WEERGAVE_KLASSIEK || body.portaalWeergave === WEERGAVE_KLANTPORTAAL) {
+    weergave = body.portaalWeergave;
+  } else {
+    return { fout: 'Kies klassiek of klantportaal' };
+  }
+  if (weergave === WEERGAVE_KLANTPORTAAL && !klantId) {
+    return { fout: 'Het klantportaal hoort bij een klant. Kies eerst de klant.' };
+  }
+  return { klantId, portaalWeergave: weergave };
+}

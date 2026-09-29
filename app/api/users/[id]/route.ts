@@ -3,7 +3,9 @@ import { withAuth } from '@/lib/toegang';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { ALLOWED_ROLES, leesViewYear } from '@/lib/roles';
+import { ALLOWED_ROLES, leesKijkerInstelling, leesViewYear } from '@/lib/roles';
+import { controleerKlant } from '@/lib/klanten';
+import { ApiFout } from '@/lib/apiRoute';
 import { foutAntwoordWensen2 } from '@/lib/kolommen';
 
 // PUT - Gebruiker bijwerken (alleen admin)
@@ -25,7 +27,7 @@ export const PUT = withAuth({ rol: 'admin', module: 'beheer' }, async (
 
     const existingUser = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, username: true, role: true },
+      select: { id: true, username: true, role: true, klantId: true, portaalWeergave: true },
     });
     if (!existingUser) {
       return NextResponse.json({ error: 'Gebruiker niet gevonden' }, { status: 404 });
@@ -61,10 +63,27 @@ export const PUT = withAuth({ rol: 'admin', module: 'beheer' }, async (
       updateData.viewYear = jaar.viewYear;
     }
 
+    // Klant en weergave horen ook bij de rol. Wat niet meekomt, blijft staan:
+    // een bestaande kijker gaat nooit vanzelf naar het klantportaal.
+    if ('klantId' in body || 'portaalWeergave' in body || role) {
+      const kijker = leesKijkerInstelling(body, role || existingUser.role, existingUser);
+      if ('fout' in kijker) {
+        return NextResponse.json({ error: kijker.fout }, { status: 400 });
+      }
+      try {
+        await controleerKlant(kijker.klantId);
+      } catch (error) {
+        if (error instanceof ApiFout) return NextResponse.json({ error: error.message }, { status: error.status });
+        throw error;
+      }
+      updateData.klantId = kijker.klantId;
+      updateData.portaalWeergave = kijker.portaalWeergave;
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: updateData,
-      select: { id: true, username: true, role: true, viewYear: true, createdAt: true },
+      select: { id: true, username: true, role: true, viewYear: true, klantId: true, portaalWeergave: true, createdAt: true },
     });
 
     await createAuditLog({
@@ -76,6 +95,8 @@ export const PUT = withAuth({ rol: 'admin', module: 'beheer' }, async (
         gebruiker: updatedUser.username,
         rol: updatedUser.role,
         kijkjaar: updatedUser.viewYear,
+        klantId: updatedUser.klantId,
+        weergave: updatedUser.portaalWeergave,
         wachtwoordGezet: Boolean(newPassword),
       },
       request,

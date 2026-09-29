@@ -8,7 +8,9 @@ import { POST as login } from '@/app/api/auth/login/route';
 import { GET as monsters } from '@/app/api/samples/route';
 import { GET as jaren } from '@/app/api/samples/jaren/route';
 import { GET as sessie } from '@/app/api/auth/session/route';
-import { uitloggen, verzoek } from '../hulp/verzoek';
+import { POST as nieuweGebruiker } from '@/app/api/users/route';
+import { PUT as wijzigGebruiker } from '@/app/api/users/[id]/route';
+import { metParams, uitloggen, verzoek } from '../hulp/verzoek';
 
 let ids: Awaited<ReturnType<typeof vulMetNepdata>>;
 
@@ -103,5 +105,56 @@ describe('sessie', () => {
     await inloggenAls('kijker', 'kijker123');
     const s = await (await sessie()).json();
     expect(s.portaalWeergave).toBe('klassiek');
+  });
+});
+
+describe('gebruikersbeheer: klant en weergave', () => {
+  beforeEach(async () => {
+    await inloggenAls('admin', 'admin123');
+  });
+
+  it('een nieuwe kijker met een klant krijgt standaard het klantportaal', async () => {
+    const res = await nieuweGebruiker(
+      verzoek('/api/users', { body: { username: 'martin', role: 'alleen_lezen', viewYear: 2026, klantId: ids.klanten.mourik } }),
+      undefined
+    );
+    expect(res.status).toBe(201);
+    const u = await res.json();
+    expect(u.klantId).toBe(ids.klanten.mourik);
+    expect(u.portaalWeergave).toBe('klantportaal');
+  });
+
+  it('zonder klant blijft een nieuwe kijker klassiek, en klantportaal zonder klant kan niet', async () => {
+    const zonder = await (await nieuweGebruiker(verzoek('/api/users', { body: { username: 'los', role: 'alleen_lezen' } }), undefined)).json();
+    expect(zonder.portaalWeergave).toBe('klassiek');
+    const fout = await nieuweGebruiker(
+      verzoek('/api/users', { body: { username: 'los2', role: 'alleen_lezen', portaalWeergave: 'klantportaal' } }),
+      undefined
+    );
+    expect(fout.status).toBe(400);
+  });
+
+  it('een onbekende klant wordt geweigerd', async () => {
+    const res = await nieuweGebruiker(verzoek('/api/users', { body: { username: 'x', role: 'alleen_lezen', klantId: 99999 } }), undefined);
+    expect(res.status).toBe(400);
+  });
+
+  it('de bestaande kijker blijft klassiek als je alleen zijn jaar wijzigt', async () => {
+    const id = String(ids.gebruikers.kijker);
+    const res = await wijzigGebruiker(verzoek(`/api/users/${id}`, { method: 'PUT', body: { viewYear: 2026 } }), metParams({ id }));
+    expect(res.status).toBe(200);
+    const u = await prisma.user.findUniqueOrThrow({ where: { id: ids.gebruikers.kijker } });
+    expect(u.portaalWeergave).toBe('klassiek');
+    expect(u.klantId).toBe(ids.klanten.mourik);
+  });
+
+  it('Roel zet de kijker om naar het klantportaal, en een andere rol maakt klant en weergave leeg', async () => {
+    const id = String(ids.gebruikers.kijker);
+    await wijzigGebruiker(verzoek(`/api/users/${id}`, { method: 'PUT', body: { portaalWeergave: 'klantportaal' } }), metParams({ id }));
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: Number(id) } })).portaalWeergave).toBe('klantportaal');
+    await wijzigGebruiker(verzoek(`/api/users/${id}`, { method: 'PUT', body: { role: 'user' } }), metParams({ id }));
+    const u = await prisma.user.findUniqueOrThrow({ where: { id: Number(id) } });
+    expect(u.klantId).toBeNull();
+    expect(u.portaalWeergave).toBe('klassiek');
   });
 });

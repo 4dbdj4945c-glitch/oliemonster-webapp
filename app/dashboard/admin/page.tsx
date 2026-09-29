@@ -5,7 +5,17 @@ import { useGebruiker } from '@/app/components/GebruikerProvider';
 import { AppShell, Modal, Icon, Laden } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
-import { ROLE_ALLEEN_LEZEN, ROLE_ADMIN, ROLE_USER, ROLE_LABELS } from '@/lib/roles';
+import {
+  ROLE_ALLEEN_LEZEN,
+  ROLE_ADMIN,
+  ROLE_USER,
+  ROLE_LABELS,
+  WEERGAVE_KLASSIEK,
+  WEERGAVE_KLANTPORTAAL,
+  WEERGAVE_LABELS,
+  isAlleenLezen,
+  leesWeergave,
+} from '@/lib/roles';
 
 interface User {
   id: number;
@@ -15,7 +25,16 @@ interface User {
   viewYear?: number | null;
   /** Nog geen wachtwoord ingesteld: wacht op de link. */
   requiresPasswordChange?: boolean;
+  /** Alleen bij alleen lezen: voor welke klant, en klassiek of klantportaal. */
+  klantId?: number | null;
+  klant?: { id: number; naam: string } | null;
+  portaalWeergave?: string;
   createdAt: string;
+}
+
+interface KlantKeuze {
+  id: number;
+  naam: string;
 }
 
 /** De eenmalige link die de beheerder zelf naar de gebruiker stuurt. */
@@ -71,7 +90,11 @@ export default function AdminPage() {
     role: ROLE_USER as string,
     // Leeg betekent alle jaren; alleen van belang bij de rol alleen lezen.
     viewYear: '',
+    // Alleen bij alleen lezen: de klant (leeg = geen) en de weergave.
+    klantId: '',
+    portaalWeergave: WEERGAVE_KLANTPORTAAL as string,
   });
+  const [klanten, setKlanten] = useState<KlantKeuze[]>([]);
   const [formError, setFormError] = useState('');
 
   useEffect(() => {
@@ -85,6 +108,7 @@ export default function AdminPage() {
     if (sessionUser?.role === 'admin') {
       loadUsers();
       loadSettings();
+      loadKlanten();
     }
   }, [sessionUser]);
 
@@ -102,6 +126,17 @@ export default function AdminPage() {
       setFoutmelding(GEEN_VERBINDING);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // De klanten voor de keuzelijst bij een kijker. Lukt het niet, dan staat er
+  // alleen "Geen klant" en zegt het formulier dat.
+  const loadKlanten = async () => {
+    try {
+      const response = await fetch('/api/klanten');
+      if (response.ok) setKlanten(await response.json());
+    } catch {
+      // de lijst blijft leeg
     }
   };
 
@@ -160,7 +195,7 @@ export default function AdminPage() {
   };
 
   const resetForm = () => {
-    setFormData({ username: '', password: '', role: ROLE_USER, viewYear: '' });
+    setFormData({ username: '', password: '', role: ROLE_USER, viewYear: '', klantId: '', portaalWeergave: WEERGAVE_KLANTPORTAAL });
     setFormError('');
     setEditingUser(null);
   };
@@ -176,6 +211,8 @@ export default function AdminPage() {
       password: '',
       role: user.role,
       viewYear: user.viewYear ? String(user.viewYear) : '',
+      klantId: user.klantId ? String(user.klantId) : '',
+      portaalWeergave: leesWeergave(user.portaalWeergave),
     });
     setEditingUser(user);
     setShowUserModal(true);
@@ -195,6 +232,11 @@ export default function AdminPage() {
         // Leeg = alle jaren. De route maakt het veld leeg bij een andere rol.
         viewYear: formData.role === ROLE_ALLEEN_LEZEN ? formData.viewYear : '',
       };
+      // Klant en weergave alleen bij een kijker; zonder klant altijd klassiek.
+      if (formData.role === ROLE_ALLEEN_LEZEN) {
+        body.klantId = formData.klantId === '' ? null : Number(formData.klantId);
+        body.portaalWeergave = formData.klantId === '' ? WEERGAVE_KLASSIEK : formData.portaalWeergave;
+      }
 
       if (editingUser && formData.password) {
         body.newPassword = formData.password;
@@ -312,7 +354,11 @@ export default function AdminPage() {
 
   /** Wat een kijker mag zien: één jaar, of alle jaren als het veld leeg is. */
   const kijkjaarTekst = (user: User) =>
-    user.viewYear ? `Alleen ${user.viewYear}` : 'Alle jaren';
+    [
+      user.klant ? user.klant.naam : 'Geen klant',
+      user.viewYear ? `alleen ${user.viewYear}` : 'alle jaren',
+      WEERGAVE_LABELS[leesWeergave(user.portaalWeergave)].toLowerCase(),
+    ].join(', ');
 
   const sluitModal = () => { setShowUserModal(false); resetForm(); };
 
@@ -387,7 +433,7 @@ export default function AdminPage() {
                             <span className={rolBadgeClass(user.role)}>
                               {ROLE_LABELS[user.role] ?? user.role}
                             </span>
-                            {user.role === ROLE_ALLEEN_LEZEN && (
+                            {isAlleenLezen(user.role) && (
                               <span className="hint" style={{ display: 'block', marginTop: '4px' }}>
                                 {kijkjaarTekst(user)}
                               </span>
@@ -545,7 +591,8 @@ export default function AdminPage() {
               <p className="hint">
                 Mag uitsluitend de oliemonsters bekijken: de lijst, de foto&apos;s, de
                 geannuleerde monsters en de monsters die niet bereikbaar waren. Geen
-                wijzigingen, geen PDF, geen andere module en geen beheerpagina.
+                wijzigingen, geen andere module en geen beheerpagina. Met het klantportaal
+                ook het rapport van zijn eigen klant als PDF.
               </p>
             )}
           </div>
@@ -568,6 +615,60 @@ export default function AdminPage() {
                 Bijvoorbeeld 2025. Laat het leeg als deze gebruiker alle jaren mag zien.
               </p>
             </div>
+          )}
+
+          {formData.role === ROLE_ALLEEN_LEZEN && (
+            <div className="veld">
+              <label className="label" htmlFor="admin-klant">Klant</label>
+              <select
+                id="admin-klant"
+                className="select"
+                value={formData.klantId}
+                onChange={(e) => setFormData({ ...formData, klantId: e.target.value })}
+              >
+                <option value="">Geen klant (ziet alle monsters van het jaar)</option>
+                {klanten.map((k) => (
+                  <option key={k.id} value={String(k.id)}>{k.naam}</option>
+                ))}
+              </select>
+              <p className="hint">
+                Met een klant ziet deze gebruiker alleen de monsters, objecten, planning en foto&apos;s van die klant.
+              </p>
+            </div>
+          )}
+
+          {formData.role === ROLE_ALLEEN_LEZEN && (
+            <fieldset className="veld keuzegroep">
+              <legend className="label">Weergave</legend>
+              <label className="keuze">
+                <input
+                  type="radio"
+                  name="admin-weergave"
+                  value={WEERGAVE_KLANTPORTAAL}
+                  checked={formData.klantId !== '' && formData.portaalWeergave === WEERGAVE_KLANTPORTAAL}
+                  disabled={formData.klantId === ''}
+                  onChange={() => setFormData({ ...formData, portaalWeergave: WEERGAVE_KLANTPORTAAL })}
+                />
+                <span>
+                  <strong>{WEERGAVE_LABELS.klantportaal}</strong>
+                  <small>Voortgang, stand per object, planning, foto&apos;s en het rapport als PDF.</small>
+                </span>
+              </label>
+              <label className="keuze">
+                <input
+                  type="radio"
+                  name="admin-weergave"
+                  value={WEERGAVE_KLASSIEK}
+                  checked={formData.klantId === '' || formData.portaalWeergave === WEERGAVE_KLASSIEK}
+                  onChange={() => setFormData({ ...formData, portaalWeergave: WEERGAVE_KLASSIEK })}
+                />
+                <span>
+                  <strong>{WEERGAVE_LABELS.klassiek}</strong>
+                  <small>De monsterlijst met de navy balk, zoals de kijker hem nu kent.</small>
+                </span>
+              </label>
+              {formData.klantId === '' && <p className="hint">Het klantportaal kan pas als je een klant kiest.</p>}
+            </fieldset>
           )}
 
           {formError && (

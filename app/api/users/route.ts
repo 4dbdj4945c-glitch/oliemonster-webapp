@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { ALLOWED_ROLES, leesViewYear } from '@/lib/roles';
+import { ALLOWED_ROLES, leesKijkerInstelling, leesViewYear } from '@/lib/roles';
+import { controleerKlant } from '@/lib/klanten';
+import { ApiFout } from '@/lib/apiRoute';
 import { tabelOntbreekt, foutAntwoordWensen2 } from '@/lib/kolommen';
 import { maakUitnodiging, linkVoor, originVan, KOLOM_ONTBREEKT_FASE0 } from '@/lib/uitnodiging';
 
@@ -18,18 +20,24 @@ export const GET = withAuth({ rol: 'admin', module: 'beheer' }, async () => {
     } as const;
     const volgorde = { createdAt: 'desc' as const };
 
-    // Zolang ./db-push-wensen2.sh nog niet gedraaid is bestaat viewYear niet;
-    // dan laten we het jaar leeg in plaats van de pagina te laten vallen.
+    // Staat een kolom er nog niet (database nog niet bij), dan zonder die kolom:
+    // eerst zonder klant en weergave (migratie klantportaal), dan zonder jaar.
     try {
       const users = await prisma.user.findMany({
-        select: { ...basis, viewYear: true },
+        select: { ...basis, viewYear: true, klantId: true, portaalWeergave: true, klant: { select: { id: true, naam: true } } },
         orderBy: volgorde,
       });
       return NextResponse.json(users);
     } catch (error) {
       if (!tabelOntbreekt(error)) throw error;
+    }
+    try {
+      const users = await prisma.user.findMany({ select: { ...basis, viewYear: true }, orderBy: volgorde });
+      return NextResponse.json(users.map((u) => ({ ...u, klantId: null, portaalWeergave: 'klassiek', klant: null })));
+    } catch (error) {
+      if (!tabelOntbreekt(error)) throw error;
       const oud = await prisma.user.findMany({ select: basis, orderBy: volgorde });
-      return NextResponse.json(oud.map((u) => ({ ...u, viewYear: null })));
+      return NextResponse.json(oud.map((u) => ({ ...u, viewYear: null, klantId: null, portaalWeergave: 'klassiek', klant: null })));
     }
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij ophalen gebruikers');
@@ -57,6 +65,18 @@ export const POST = withAuth({ rol: 'admin', module: 'beheer' }, async (request:
     if ('fout' in jaar) {
       return NextResponse.json({ error: jaar.fout }, { status: 400 });
     }
+    // Klant en weergave (alleen bij alleen lezen). Een nieuwe kijker met een
+    // klant krijgt standaard het klantportaal.
+    const kijker = leesKijkerInstelling(body, role);
+    if ('fout' in kijker) {
+      return NextResponse.json({ error: kijker.fout }, { status: 400 });
+    }
+    try {
+      await controleerKlant(kijker.klantId);
+    } catch (error) {
+      if (error instanceof ApiFout) return NextResponse.json({ error: error.message }, { status: error.status });
+      throw error;
+    }
 
     // Check of gebruikersnaam al bestaat
     const existingUser = await prisma.user.findUnique({ where: { username }, select: { id: true } });
@@ -72,16 +92,18 @@ export const POST = withAuth({ rol: 'admin', module: 'beheer' }, async (request:
         password: null,
         role,
         viewYear: jaar.viewYear,
+        klantId: kijker.klantId,
+        portaalWeergave: kijker.portaalWeergave,
         requiresPasswordChange: true,
       },
-      select: { id: true, username: true, role: true, viewYear: true, createdAt: true },
+      select: { id: true, username: true, role: true, viewYear: true, klantId: true, portaalWeergave: true, createdAt: true },
     });
 
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.CREATE_USER,
-      details: { id: newUser.id, gebruiker: username, rol: role, kijkjaar: jaar.viewYear },
+      details: { id: newUser.id, gebruiker: username, rol: role, kijkjaar: jaar.viewYear, klantId: kijker.klantId, weergave: kijker.portaalWeergave },
       request,
     });
 

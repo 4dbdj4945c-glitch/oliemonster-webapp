@@ -4566,3 +4566,29 @@ h2.sectiekop {
 @media (max-width: 380px) {
   .schil-kop-titel { display: none; }
 }
+
+/* ============================================================
+   Fase 3: gebruikersbeheer (klant en weergave), klantdossier,
+   klantportaal en de privacyverklaring
+   ============================================================ */
+
+/* Keuze met uitleg (radio), bijvoorbeeld de weergave van een kijker */
+.keuzegroep { border: 0; padding: 0; margin: 0 0 16px; min-width: 0; }
+.keuzegroep > legend { padding: 0; margin-bottom: 6px; }
+.keuze {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius-md);
+  background: var(--wit);
+  cursor: pointer;
+}
+.keuze + .keuze { margin-top: 8px; }
+.keuze:has(input:checked) { border-color: var(--navy); background: var(--grijs-50); }
+.keuze:has(input:disabled) { cursor: default; opacity: 0.6; }
+.keuze input { margin-top: 3px; flex: none; }
+.keuze > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.keuze strong { font-weight: 600; color: var(--navy); }
+.keuze small { font-size: 13px; color: var(--grijs-500); }
