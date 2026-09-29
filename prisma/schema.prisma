@@ -20,11 +20,15 @@ model User {
   // niet alleen in de schermen.
   viewYear               Int?
   requiresPasswordChange Boolean         @default(true) // Moet gebruiker wachtwoord instellen?
-  // Bij de rol alleen lezen: de klant waarvoor deze gebruiker meekijkt. In fase
-  // 1b alleen vastgelegd (de migratie koppelt de bestaande kijkers aan Mourik);
-  // de afscherming per klant komt in fase 3. Tot die tijd geldt viewYear.
+  // Bij de rol alleen lezen: de klant waarvoor deze gebruiker meekijkt. Sinds
+  // fase 3 ziet zo'n gebruiker alleen de monsters, objecten, planning en foto's
+  // van die klant (lib/afscherming.ts), en daarbinnen alleen zijn viewYear.
   klantId                Int?
   klant                  Klant?          @relation(fields: [klantId], references: [id], onDelete: SetNull)
+  // Wat een kijker te zien krijgt: "klassiek" (de oude monsterlijst met de navy
+  // balk, zoals de Mourik-kijker hem kent) of "klantportaal". Bestaande
+  // gebruikers blijven klassiek; Roel zet het per gebruiker om.
+  portaalWeergave        String          @default("klassiek")
   createdAt              DateTime        @default(now())
   uitnodigingen          Uitnodiging[]
   auditLogs              AuditLog[]
@@ -65,6 +69,11 @@ model OilSample {
   photoUrl            String? // cache: foto van het monsterpotje, van de meest recente poging
   partPhotoUrl        String? // cache: foto van het onderdeel waar het monster vandaan komt
   objectId            Int? // object waar dit monster bij hoort (planning); location blijft bestaan
+  // Alleen voor een monster ZONDER object: bij welke klant het hoort. Met een
+  // object telt de klant van het object en wordt dit veld genegeerd (zie
+  // lib/afscherming.ts). De migratie fase3 zet het op Mourik voor de oude
+  // monsters zonder object, zodat de Mourik-kijker die blijft zien.
+  klantId             Int?
   installatieId       Int? // optioneel: de installatie op dat object (pomp, aggregaat, ...)
   // Annuleren met reden. Deze velden blijven buiten de synchronisatie met de
   // pogingen (lib/sampleAttempts.ts), anders worden ze overschreven zodra er
@@ -99,10 +108,12 @@ model OilSample {
   attempts    SampleAttempt[]
   object      SampleObject?   @relation(fields: [objectId], references: [id], onDelete: SetNull)
   installatie Installatie?    @relation(fields: [installatieId], references: [id], onDelete: SetNull)
+  klant       Klant?          @relation(fields: [klantId], references: [id], onDelete: SetNull)
 
   @@unique([oNumber, analysisYear])
   @@index([analysisYear])
   @@index([objectId])
+  @@index([klantId])
   @@index([installatieId])
   @@index([deletedAt])
 }
@@ -449,6 +460,9 @@ model Klant {
   plaats    String?
   kvkNummer String?
   notities  String?
+  // Logo voor het klantportaal en het rapport: een pad in /public
+  // (/mourik_logo.png) of een foto in de Blob-opslag.
+  logoUrl   String?
   deletedAt DateTime?
   deletedBy String?
   createdAt DateTime  @default(now())
@@ -458,6 +472,7 @@ model Klant {
   objecten        SampleObject[]
   gebruikers      User[]
   prospect        Prospect?
+  losseMonsters   OilSample[]
 
   @@index([naam])
   @@index([deletedAt])
