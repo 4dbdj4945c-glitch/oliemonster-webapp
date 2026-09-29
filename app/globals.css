@@ -2849,7 +2849,10 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   min-height: 84px;
 }
 
-.veldwerk .btn {
+.veldwerk .btn,
+/* De knoppen in de voettekst van zo'n venster staan buiten .veldwerk; die
+   krijgen deze klasse, zodat ze even groot zijn als de rest. */
+.veldwerk-knop {
   min-height: 52px;
 }
 
@@ -2976,16 +2979,27 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
 }
 
 @media (max-width: 640px) {
+  /* Dezelfde vorm als de algemene veldregel hierboven, maar met .veldwerk ervoor:
+     die algemene regel staat op de losse elementen (input, select, textarea) en
+     weegt daarmee zwaarder dan een enkele klasse. Zonder dit bleven de velden
+     hier 44px in plaats van 56px. */
   .veldwerk .input,
   .veldwerk .select,
-  .veldwerk .textarea {
+  .veldwerk .textarea,
+  .veldwerk input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+  .veldwerk select,
+  .veldwerk textarea {
     min-height: 56px;
     font-size: 17px;
   }
-  .veldwerk .textarea {
+  .veldwerk .textarea,
+  .veldwerk textarea {
     min-height: 96px;
   }
-  .veldwerk .btn {
+  .veldwerk .btn,
+  /* .modal-footer .btn zet hier 46px; even zwaar plus later in het bestand, dus
+     de knoppen van een veldvenster blijven 56px. */
+  .modal-footer .veldwerk-knop {
     min-height: 56px;
   }
   /* Onder elkaar: met handschoenen aan is één groot vlak per foto prettiger

@@ -118,18 +118,18 @@ export default function MonsterNemenModal({ doel, onClose, onKlaar }: Props) {
       footer={
         stap === 'nemen' ? (
           <>
-            <button type="button" className="btn" onClick={onClose} disabled={bezig}>Terug</button>
-            <button type="button" className="btn btn-primary" onClick={opslaan} disabled={bezig}>
+            <button type="button" className="btn veldwerk-knop" onClick={onClose} disabled={bezig}>Terug</button>
+            <button type="button" className="btn btn-primary veldwerk-knop" onClick={opslaan} disabled={bezig}>
               <Icon name="status-taken" size={16} />
               {bezig ? 'Bezig...' : 'Opslaan als genomen'}
             </button>
           </>
         ) : (
           <>
-            <button type="button" className="btn" onClick={() => setStap('nemen')} disabled={bezig}>
+            <button type="button" className="btn veldwerk-knop" onClick={() => setStap('nemen')} disabled={bezig}>
               Terug naar nemen
             </button>
-            <button type="button" className="btn btn-primary" onClick={legVastOnbereikbaar} disabled={bezig}>
+            <button type="button" className="btn btn-primary veldwerk-knop" onClick={legVastOnbereikbaar} disabled={bezig}>
               <Icon name="alert-warning" size={16} />
               {bezig ? 'Bezig...' : 'Vastleggen'}
             </button>

@@ -53,8 +53,8 @@ export default function OnbereikbaarModal({ doel, onClose, onKlaar }: Props) {
       title={`${doel?.oNumber ?? ''}: niet bereikbaar`}
       footer={
         <>
-          <button type="button" className="btn" onClick={onClose} disabled={bezig}>Terug</button>
-          <button type="button" className="btn btn-primary" onClick={opslaan} disabled={bezig}>
+          <button type="button" className="btn veldwerk-knop" onClick={onClose} disabled={bezig}>Terug</button>
+          <button type="button" className="btn btn-primary veldwerk-knop" onClick={opslaan} disabled={bezig}>
             <Icon name="alert-warning" size={16} />
             {bezig ? 'Bezig...' : 'Vastleggen'}
           </button>
