@@ -17,6 +17,19 @@ import {
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { monsterFilter } from '@/lib/afscherming';
 import { metMonsterFotos } from '@/lib/fotoAdres';
+import { isAlleenLezen } from '@/lib/roles';
+
+/**
+ * Wat een kijker (rol alleen lezen) niet krijgt: wie annuleerde of iets als niet
+ * bereikbaar vastlegde, en de reden van annuleren als die voor intern gebruik is
+ * (cancelReasonInPdf uit). Zelfde regel als de PDF voor de klant.
+ */
+function voorKijker<T extends { cancelledBy?: string | null; unreachableBy?: string | null; cancelReason?: string | null; cancelReasonInPdf?: boolean }>(m: T): T {
+  const { cancelledBy: _a, unreachableBy: _b, ...rest } = m;
+  void _a;
+  void _b;
+  return { ...rest, cancelReason: m.cancelReasonInPdf === false ? null : m.cancelReason ?? null } as T;
+}
 
 const LijstQuery = z.object({
   search: z.string().max(200).optional(),
@@ -90,8 +103,9 @@ export const GET = apiRoute(
 
     // attemptsCount als veld op het monster voor de schermen. De foto's gaan
     // via /api/fotos/... (lib/fotoAdres.ts), nooit het echte opslagadres.
+    const kijker = isAlleenLezen(session.role);
     const response = samples.map(({ _count, ...rest }) => ({
-      ...metMonsterFotos(rest),
+      ...(kijker ? voorKijker(metMonsterFotos(rest)) : metMonsterFotos(rest)),
       attemptsCount: _count.attempts,
     }));
 

@@ -106,10 +106,17 @@ describe('rapport als PDF', () => {
   it('het rapport van een andere klant krijgt de kijker niet', async () => {
     await inloggenAls('kempen', 'kempen123');
     expect((await rapport(verzoek(`/api/rapport?jaar=2025&klantId=${ids.klanten.mourik}`), undefined)).status).toBe(404);
+    // Een kijker met klantportaal en een kijkjaar: zijn eigen klant, maar niet zijn jaar.
+    await prisma.user.update({ where: { username: 'kempen' }, data: { viewYear: 2026 } });
+    await inloggenAls('kempen', 'kempen123');
+    expect((await rapport(verzoek('/api/rapport?jaar=2025'), undefined)).status).toBe(404);
+  });
+
+  it('de klassieke kijker krijgt geen PDF en geen klantportaal, zoals op main', async () => {
     await inloggenAls('kijker', 'kijker123');
-    expect((await rapport(verzoek(`/api/rapport?jaar=2025&klantId=${ids.klanten.tweede}`), undefined)).status).toBe(404);
-    // Zijn eigen klant, maar niet zijn jaar.
-    expect((await rapport(verzoek('/api/rapport?jaar=2026'), undefined)).status).toBe(404);
+    expect((await rapport(verzoek('/api/rapport?jaar=2025'), undefined)).status).toBe(403);
+    expect((await rapport(verzoek(`/api/rapport?jaar=2025&klantId=${ids.klanten.tweede}`), undefined)).status).toBe(403);
+    expect((await portaal(verzoek('/api/portaal'), undefined)).status).toBe(403);
   });
 
   it('admin maakt het rapport van elke klant, ook zonder foto\'s', async () => {

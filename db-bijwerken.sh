@@ -62,6 +62,11 @@ if [ "$status" = "basis-ontbreekt" ]; then
   npx prisma migrate resolve --applied 0_basis
 fi
 
+# Alleen lezen: hoeveel monsters raakt de cachemigratie (zie scripts/cache-telling.mjs).
+echo ""
+node scripts/cache-telling.mjs voor || echo "(De telling lukte niet; de migraties gaan gewoon door.)"
+echo ""
+
 echo "Openstaande migraties uitvoeren..."
 if ! npx prisma migrate deploy; then
   echo ""
@@ -73,4 +78,9 @@ if ! npx prisma migrate deploy; then
   echo "(met DATABASE_URL naar de directe verbinding) en draai daarna dit script opnieuw."
   exit 1
 fi
+echo ""
+node scripts/cache-telling.mjs na || echo "(De controle achteraf lukte niet.)"
+echo ""
 echo "Klaar: de database is bij."
+echo "Deploy de portal NU direct (de nieuwe code hoort bij deze database). Tot die"
+echo "deploy draait de oude versie op een nieuwere database; dat werkt, maar wacht niet lang."

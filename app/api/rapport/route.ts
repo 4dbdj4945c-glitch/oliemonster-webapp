@@ -7,16 +7,17 @@ import { magJaar } from '@/lib/afscherming';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalOpdracht } from '@/lib/klantOpdracht';
 import { maakRapportPdf, rapportNaam } from '@/lib/rapport/rapportPdf';
-import { isAlleenLezen } from '@/lib/roles';
+import { isAlleenLezen, krijgtKlantportaal } from '@/lib/roles';
 
 /*
   GET /api/rapport?jaar=2026[&klantId=3][&fotos=0] - het rapport van een
   oliemonsteropdracht als PDF, op de server gemaakt (lib/rapport/rapportPdf.ts).
 
   - Admin en gebruiker: elke klant, met ?klantId=.
-  - Kijker: alleen zijn eigen klant (klantId in de URL moet die klant zijn of
+  - Kijker met de weergave klantportaal: alleen zijn eigen klant (klantId in de URL moet die klant zijn of
     wegblijven; een andere klant geeft 404) en alleen zijn kijkjaar. Een kijker
-    zonder klant krijgt geen rapport (403): dat hoort bij het klantportaal.
+    zonder klant of met de klassieke weergave krijgt geen rapport (403): dat
+    hoort bij het klantportaal.
 */
 
 // Foto's ophalen en verkleinen kan even duren bij een groot jaar.
@@ -55,7 +56,8 @@ export const GET = apiRoute(
 
     let klantId: number;
     if (kijker) {
-      if (!sessie.klantId) throw new ApiFout(403, 'Geen rapport voor deze gebruiker');
+      // Alleen met de weergave klantportaal; een klassieke kijker maakt geen PDF (zoals op main).
+      if (!sessie.klantId || !krijgtKlantportaal(sessie)) throw new ApiFout(403, 'Geen rapport voor deze gebruiker');
       if (query.klantId && query.klantId !== sessie.klantId) throw new ApiFout(404, 'Klant niet gevonden');
       klantId = sessie.klantId;
     } else {

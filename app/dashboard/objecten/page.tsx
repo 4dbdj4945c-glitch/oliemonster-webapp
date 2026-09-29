@@ -236,6 +236,18 @@ export default function ObjectenPage() {
     setToonModal(true);
   };
 
+  // Vanuit het klantdossier: /dashboard/objecten?nieuw=1&klant=3 opent meteen
+  // Nieuw object met die klant al gekozen.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('nieuw') !== '1') return;
+    const klant = q.get('klant');
+    setBewerkt(null);
+    setFormulier({ ...leegFormulier, klantId: klant && /^\d+$/.test(klant) ? klant : '' });
+    setToonModal(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const openBewerken = (object: SampleObject) => {
     setBewerkt(object);
     setFormulier({

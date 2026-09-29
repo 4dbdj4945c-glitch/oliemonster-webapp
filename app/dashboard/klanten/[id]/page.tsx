@@ -384,6 +384,7 @@ export default function KlantPagina() {
                 dossierFout ? null : <Laden regels={3} soort="lijst" />
               ) : (
                 <DossierTijdlijn
+                  klantId={klant.id}
                   dossier={dossier}
                   keuze={gekozen}
                   onKies={setKeuze}

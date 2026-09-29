@@ -5,7 +5,7 @@ import { magJaar } from '@/lib/afscherming';
 import { fotoAdres, klantLogoAdres } from '@/lib/fotoAdres';
 import { haalOpdracht, jarenVanKlant } from '@/lib/klantOpdracht';
 import { teNemen } from '@/lib/klantStatus';
-import { isAlleenLezen } from '@/lib/roles';
+import { isAlleenLezen, krijgtKlantportaal } from '@/lib/roles';
 
 /*
   GET /api/portaal?jaar=2026 - het klantportaal van een kijker: voortgang, stand
@@ -28,6 +28,8 @@ export const GET = apiRoute(
   async (request, _context, sessie) => {
     const query = leesQuery(request, Query);
     const kijker = isAlleenLezen(sessie.role);
+    // Een klassieke kijker heeft geen klantportaal (zoals op main).
+    if (kijker && !krijgtKlantportaal(sessie)) throw new ApiFout(403, 'Geen klantportaal voor deze gebruiker');
     const klantId = kijker ? sessie.klantId : query.klantId ?? null;
     if (!klantId) throw new ApiFout(kijker ? 403 : 400, kijker ? 'Geen klantportaal voor deze gebruiker' : 'Kies een klant');
 

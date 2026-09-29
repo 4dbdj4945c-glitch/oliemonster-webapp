@@ -115,6 +115,8 @@ export default function Vandaag() {
   const werkFout =
     planning.status === 'fout' ? planning.melding : samples.status === 'fout' ? samples.melding : null;
   const acties = prospects.status === 'ok' ? actiesVoorVandaag(prospects.data) : null;
+  // Alles mislukt (geen verbinding, server plat): één foutblok, geen koppen zonder inhoud.
+  const totaleStoring = werkFout !== null && (!magAcquisitie || prospects.status === 'fout');
 
   const samenvatting = (() => {
     if (!overzicht) return '';
@@ -136,6 +138,15 @@ export default function Vandaag() {
         </div>
       </div>
 
+      {totaleStoring ? (
+        <LaadFout
+          melding={werkFout}
+          onOpnieuw={() => {
+            laadWerk();
+            laadActies();
+          }}
+        />
+      ) : (
       <div className="vandaag">
         <div className="vandaag-hoofd">
           {/* ---------- De monsterdag ---------- */}
@@ -251,12 +262,13 @@ export default function Vandaag() {
 
         <div className="vandaag-zij">
           {/* ---------- Openstaande monsters ---------- */}
+          {!werkFout && (
           <section className="vandaag-sectie" aria-labelledby="kop-open">
             <div className="sectiekop">
               <h2 id="kop-open">Openstaande monsters {jaar}</h2>
               <Link href={oliemonsterPad(jaar)}>Alle</Link>
             </div>
-            {werkFout ? null : !overzicht ? (
+            {!overzicht ? (
               <Laden label="Tellingen laden" regels={4} soort="tegels" />
             ) : (
               <div className="card kengetallen">
@@ -267,6 +279,7 @@ export default function Vandaag() {
               </div>
             )}
           </section>
+          )}
 
           {/* ---------- Voortgang per opdracht ---------- */}
           {overzicht && overzicht.opdrachten.length > 0 && (
@@ -303,6 +316,7 @@ export default function Vandaag() {
           )}
         </div>
       </div>
+      )}
     </AppShell>
   );
 }

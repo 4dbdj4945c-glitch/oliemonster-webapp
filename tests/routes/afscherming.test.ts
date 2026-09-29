@@ -248,3 +248,21 @@ describe('de klant blijft bij het monster', () => {
     expect(l.map((x) => x.id)).toContain(id);
   });
 });
+
+describe('interne velden voor de kijker', () => {
+  it('geen cancelledBy, unreachableBy en geen interne reden van annuleren', async () => {
+    await prisma.oilSample.updateMany({ where: { oNumber: 'O-2025-005' }, data: { cancelReasonInPdf: false } });
+    await inloggenAls('kijker', 'kijker123');
+    const l = (await (await monsters(verzoek('/api/samples'), undefined)).json()) as Record<string, unknown>[];
+    for (const m of l) {
+      expect(m).not.toHaveProperty('cancelledBy');
+      expect(m).not.toHaveProperty('unreachableBy');
+    }
+    expect(l.find((m) => m.oNumber === 'O-2025-005')?.cancelReason).toBeNull();
+  });
+  it('admin ziet ze wel', async () => {
+    await inloggenAls('admin', 'admin123');
+    const l = (await (await monsters(verzoek('/api/samples?year=2025'), undefined)).json()) as Record<string, unknown>[];
+    expect(l.find((m) => m.oNumber === 'O-2025-005')?.cancelledBy).toBe('admin');
+  });
+});

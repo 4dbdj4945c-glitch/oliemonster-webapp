@@ -54,11 +54,13 @@ export function momentenVan(dossier: Dossier, keuze: DossierKeuze): Moment[] {
 const dagDatum = (dag: string) => new Date(`${dag}T12:00:00`);
 
 export default function DossierTijdlijn({
+  klantId,
   dossier,
   keuze,
   onKies,
   onNieuweInstallatie,
 }: {
+  klantId: number;
   dossier: Dossier;
   keuze: DossierKeuze | null;
   onKies: (k: DossierKeuze) => void;
@@ -69,7 +71,8 @@ export default function DossierTijdlijn({
   const [alles, setAlles] = useState(false);
   const [foto, setFoto] = useState<{ fotos: FotoInVenster[]; start: number; nummer: string } | null>(null);
 
-  const aantalVoor = (k: DossierKeuze) => momentenVan(dossier, k).filter((m) => m.soort !== 'open' && m.soort !== 'poging').length;
+  // Het aantal monsters (ook open en gepland), niet het aantal momenten.
+  const aantalVoor = (k: DossierKeuze) => new Set(momentenVan(dossier, k).map((m) => m.monsterId)).size;
   const isGekozen = (k: DossierKeuze) =>
     !!keuze && keuze.soort === k.soort && (k.soort === 'los' || (keuze.soort !== 'los' && keuze.id === k.id));
 
@@ -77,7 +80,28 @@ export default function DossierTijdlijn({
     return (
       <div className="card leeg">
         <Icon name="map-pin" size={32} />
-        <p>Nog geen objecten bij deze klant. Koppel een object bij Gegevens, of maak er een aan bij Beheer, Objecten.</p>
+        <p>
+          Nog geen objecten bij deze klant. Maak eerst een object aan (een vestiging, kunstwerk of locatie); daarop
+          zet je daarna de installaties. Een bestaand object koppel je bij Gegevens.
+        </p>
+        <div className="knoppenrij dossier-leeg-knoppen">
+          <a
+            className="btn"
+            href={`/dashboard/objecten?nieuw=1&klant=${klantId}`}
+            onClick={(e) => {
+              e.preventDefault();
+              router.push(`/dashboard/objecten?nieuw=1&klant=${klantId}`);
+            }}
+          >
+            <Icon name="plus" size={16} />
+            Object toevoegen
+          </a>
+          <button type="button" className="btn" disabled title="Kan zodra er een object is">
+            <Icon name="pump" size={16} />
+            Installatie toevoegen
+          </button>
+        </div>
+        <p className="hint">Installatie toevoegen kan zodra er een object is.</p>
       </div>
     );
   }
@@ -125,7 +149,7 @@ export default function DossierTijdlijn({
                   {o.region ? `, ${o.region}` : ''}
                 </small>
               </span>
-              <span className="badge badge-gray">{aantalVoor({ soort: 'object', id: o.id })}</span>
+              <span className="badge badge-gray" title="Aantal monsters, ook open en gepland">{aantalVoor({ soort: 'object', id: o.id })}</span>
             </button>
             {o.installaties.map((i) => (
               <button
@@ -155,7 +179,7 @@ export default function DossierTijdlijn({
               <b>Zonder object</b>
               <small>Monsters met alleen een locatie</small>
             </span>
-            <span className="badge badge-gray">{aantalVoor({ soort: 'los' })}</span>
+            <span className="badge badge-gray" title="Aantal monsters, ook open en gepland">{aantalVoor({ soort: 'los' })}</span>
           </button>
         )}
       </nav>

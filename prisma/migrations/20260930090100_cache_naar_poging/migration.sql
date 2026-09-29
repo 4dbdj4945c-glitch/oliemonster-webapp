@@ -43,6 +43,12 @@
 -- klik toch een andere poging spiegelen. Die afwijkers laat de query
 -- hieronder zien: die moet Roel met de hand bekijken (bewerkvenster, pogingen).
 --
+-- Een geplande hermonstering (nieuwste poging zonder datum en niet genomen,
+-- met een eerdere poging) wordt nooit op genomen gezet; de genomen-gegevens
+-- gaan dan naar de vorige poging (deel 3). Zo'n monster staat daarna, net als
+-- in de code, als niet genomen met een geplande hermonstering, en de
+-- afwijkersquery toont het.
+--
 -- Na de migratie: welke monsters wijken nog af (datum of status)?
 --   WITH l AS (SELECT DISTINCT ON ("oilSampleId") * FROM "SampleAttempt"
 --              ORDER BY "oilSampleId", "sampleDate" DESC, "createdAt" DESC)
@@ -94,6 +100,12 @@ FROM laatste AS l
 JOIN "OilSample" AS s ON s."id" = l."oilSampleId"
 WHERE a."id" = l."id"
   AND (a."isTaken" IS DISTINCT FROM s."isTaken" OR a."sampleDate" IS DISTINCT FROM s."sampleDate")
+  -- Een geplande hermonstering (geen datum, niet genomen, met een eerdere poging)
+  -- blijft gepland: de genomen-gegevens horen bij de vorige poging (deel 3).
+  AND NOT (
+    a."sampleDate" IS NULL AND NOT a."isTaken" AND s."isTaken"
+    AND EXISTS (SELECT 1 FROM "SampleAttempt" AS e WHERE e."oilSampleId" = l."oilSampleId" AND e."id" <> l."id")
+  )
   -- Met de nieuwe datum blijft deze poging bovenaan: geen andere poging zonder
   -- datum (die gaan voor) en geen met een latere datum, of dezelfde datum en later gemaakt.
   AND (
@@ -109,3 +121,28 @@ WHERE a."id" = l."id"
         )
     )
   );
+
+-- Deel 3: het monster staat op genomen, maar de nieuwste poging is een
+-- geplande hermonstering. Dan horen datum en genomen bij de vorige poging: die
+-- krijgt ze, als hij nog niet genomen is en geen of dezelfde datum heeft. De
+-- hermonstering blijft gepland. Lukt dat niet, dan blijft alles staan en toont
+-- de afwijkersquery het monster.
+WITH geordend AS (
+  SELECT "id", "oilSampleId", "sampleDate", "isTaken",
+         ROW_NUMBER() OVER (PARTITION BY "oilSampleId" ORDER BY "sampleDate" DESC, "createdAt" DESC) AS nr
+  FROM "SampleAttempt"
+)
+UPDATE "SampleAttempt" AS a
+SET
+  "isTaken" = true,
+  "sampleDate" = s."sampleDate",
+  "updatedAt" = CURRENT_TIMESTAMP
+FROM geordend AS l
+JOIN geordend AS v ON v."oilSampleId" = l."oilSampleId" AND v.nr = 2
+JOIN "OilSample" AS s ON s."id" = l."oilSampleId"
+WHERE l.nr = 1
+  AND a."id" = v."id"
+  AND l."sampleDate" IS NULL AND NOT l."isTaken"
+  AND s."isTaken" AND s."sampleDate" IS NOT NULL
+  AND NOT v."isTaken"
+  AND (v."sampleDate" IS NULL OR v."sampleDate" = s."sampleDate");

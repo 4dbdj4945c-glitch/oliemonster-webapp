@@ -4885,3 +4885,16 @@ h2.sectiekop {
   .moment-inhoud { grid-column: 2; padding-top: 2px; }
   .dossier-meer { padding: 4px 16px 16px 56px; }
 }
+
+/* Tikdoelen van minimaal 44px op de telefoon (STIJL.md, Mobiel), voor knoppen
+   en links die kleiner waren: Tijd starten in het veldscherm, de filterchips in
+   de monsterlijst, Planning en Alle op Vandaag, de namen in de klanten- en
+   installatielijst en Vastleggen en Openen in de acquisitie. */
+@media (max-width: 640px) {
+  .veld-tijd-knoppen .btn,
+  .acq-actie-knoppen .btn { min-height: 44px; }
+  .monsterlijst-compact .filterchip { min-height: 44px; }
+  .vandaag-sectie .sectiekop a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; margin: -12px -4px; }
+  a.beheer-naam { min-height: 44px; }
+}
+.dossier-leeg-knoppen { justify-content: center; margin-top: 4px; }

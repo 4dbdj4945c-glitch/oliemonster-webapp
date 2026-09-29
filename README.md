@@ -280,9 +280,10 @@ hieronder. Pas die twee nooit aan; wijzigingen komen altijd in een nieuwe migrat
   zonder poging krijgt een poging met die gegevens; (1) lege opmerking en foto's van de
   laatste poging worden gevuld vanuit het monster; (2) datum en status van het monster gaan
   naar de laatste poging, behalve als een andere poging daardoor de laatste zou worden (die
-  blijven staan en moeten met de hand bekeken worden). Bovenin het bestand staat de
-  telquery (vooraf op een kopie draaien), onderaan in het commentaar de query die na afloop
-  de overgebleven afwijkers toont.
+  blijven staan en moeten met de hand bekeken worden); (3) is de nieuwste poging een geplande
+  hermonstering, dan blijft die gepland en krijgt de vorige poging genomen en de datum.
+  `./db-bijwerken.sh` toont zelf vooraf hoeveel monsters het raakt en na afloop welke nog
+  afwijken (scripts/cache-telling.mjs, alleen lezen), en zegt dat de deploy meteen moet volgen.
 
 **Productie bijwerken (Roel, op zijn Mac):**
 
@@ -350,6 +351,9 @@ de migratiecontrole, de tests (met een eigen PostgreSQL) en de build.
 - Een rapport boven 4 MB (Vercel-limiet 4,5 MB) gaat eerst naar Blob (`rapporten/`, onvindbare
   naam, een uur bewaard) en de browser krijgt een doorverwijzing. Opruimen gebeurt bij de volgende grote
   download; komt die niet, dan blijft het (openbare maar onvindbare) bestand staan.
+- Een kijker krijgt uit `/api/samples` geen `cancelledBy` en `unreachableBy`, en geen reden
+  van annuleren die niet in de PDF mag. `/api/portaal` en `/api/rapport` alleen voor de
+  weergave klantportaal (en medewerkers); de klassieke kijker maakt, zoals op main, geen PDF.
 - Een nieuw monster zonder object krijgt alleen een klant als `klantId` meekomt in de API;
   het monsterformulier heeft daar nog geen keuze voor. Zo'n monster ziet geen enkele kijker
   tot het een object (met klant) krijgt.
