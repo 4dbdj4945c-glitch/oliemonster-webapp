@@ -1781,9 +1781,12 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
 
 /* Tekst die alleen op de telefoon naast een icoonknop staat (desktop: alleen icoon, met title) */
 .alleen-mobiel { display: none; }
+/* En andersom: een kort woord op desktop dat op de telefoon plaatsmaakt voor de volle tekst */
+.alleen-desktop { display: inline; }
 
 @media (max-width: 640px) {
   .alleen-mobiel { display: inline; }
+  .alleen-desktop { display: none; }
   /* Lege tabel: icoon boven de tekst, ook als de rij een kaart is */
   .table-kaarten td:has(> .icon-leeg) {
     flex-direction: column;
@@ -3148,5 +3151,28 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   .afname-blok .btn {
     width: 100%;
     min-height: 44px;
+  }
+}
+
+/* Venster Meer bij een monster (MonsterActiesModal): handelingen onder elkaar */
+.acties-lijst {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.acties-lijst .btn {
+  justify-content: flex-start;
+}
+
+/* Actiecel in de monstertabel op desktop: de knoppen mogen over twee regels,
+   zodat de tabel binnen zijn kader blijft (Bewerken viel op 1440 px buiten beeld). */
+@media (min-width: 641px) {
+  .table td.acties-cel {
+    white-space: normal;
+    min-width: 150px;
+    max-width: 170px;
+  }
+  .table td.acties-cel > * {
+    margin-block: 3px;
   }
 }

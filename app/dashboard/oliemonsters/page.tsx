@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import PhotoModal, { type FotoInVenster } from '@/app/components/PhotoModal';
 import MonsterNemenModal, { type NeemDoel } from '@/app/components/MonsterNemenModal';
+import MonsterActiesModal from '@/app/components/MonsterActiesModal';
 import OnbereikbaarModal, { type OnbereikbaarDoel } from '@/app/components/OnbereikbaarModal';
 import HelpModal from '@/app/components/HelpModal';
 import Tooltip from '@/app/components/Tooltip';
@@ -124,6 +125,8 @@ export default function DashboardPage() {
   // Monster nemen: het volledige invulscherm in één keer (datum, type olie,
   // opmerking, beide foto's en de knop Niet bereikbaar).
   const [neemDoel, setNeemDoel] = useState<NeemDoel | null>(null);
+  // Het monster waarvan het venster Meer open staat (annuleren, hermonstering, ...).
+  const [actiesDoel, setActiesDoel] = useState<OilSample | null>(null);
   // Niet bereikbaar: de reden van een monster dat al onbereikbaar was aanpassen.
   const [onbereikbaarDoel, setOnbereikbaarDoel] = useState<OnbereikbaarDoel | null>(null);
 
@@ -1149,20 +1152,28 @@ export default function DashboardPage() {
                                 title={`${soort.label} van ${sample.oNumber} bekijken`}
                               >
                                 <Icon name={soort.icoon} size={16} />
-                                {soort.label}
+                                <span className="alleen-desktop">{soort.kort}</span>
+                                <span className="alleen-mobiel">{soort.label}</span>
                               </button>
                             );
                           }
                           if (!isAdmin) {
                             return (
-                              <span key={soort.soort} className="text-tertiary" style={{ fontSize: '13px' }}>
-                                Geen {soort.label.toLowerCase()}
+                              <span key={soort.soort} className="text-tertiary" style={{ fontSize: '13px' }} title={`Geen ${soort.label.toLowerCase()}`}>
+                                <span className="alleen-desktop">Geen {soort.kort.toLowerCase()}</span>
+                                <span className="alleen-mobiel">Geen {soort.label.toLowerCase()}</span>
                               </span>
                             );
                           }
                           return (
-                            <label key={soort.soort} className="btn-link" style={{ color: 'var(--grijs-500)' }}>
-                              {bezig ? 'Uploaden...' : <><Icon name="image-upload" size={16} />{soort.knop}</>}
+                            <label key={soort.soort} className="btn-link" style={{ color: 'var(--grijs-500)' }} title={soort.knop}>
+                              {bezig ? 'Uploaden...' : (
+                                <>
+                                  <Icon name="image-upload" size={16} />
+                                  <span className="alleen-desktop">{soort.kort}</span>
+                                  <span className="alleen-mobiel">{soort.knop}</span>
+                                </>
+                              )}
                               <input
                                 type="file"
                                 accept="image/*"
@@ -1185,15 +1196,18 @@ export default function DashboardPage() {
                             title={`Foto van de situatie bij ${sample.oNumber}`}
                           >
                             <Icon name="alert-warning" size={16} />
-                            Foto niet bereikbaar
+                            <span className="alleen-desktop">Situatie</span>
+                            <span className="alleen-mobiel">Foto niet bereikbaar</span>
                           </button>
                         )}
                       </span>
                     </td>
                     {isAdmin && (
-                      <td data-label="Acties" className="kaart-acties" style={{ whiteSpace: 'nowrap' }}>
+                      <td data-label="Acties" className="kaart-acties acties-cel">
                         {/* Monster nemen: het volledige invulscherm in één keer.
-                            Alleen zolang het monster nog open staat. */}
+                            Alleen zolang het monster nog open staat. De rest
+                            (annuleren, hermonstering, niet bereikbaar) zit achter
+                            Meer, zodat de rij binnen de tabel blijft. */}
                         {!sample.isDisabled && !sample.isTaken && (
                           <button
                             type="button"
@@ -1205,58 +1219,15 @@ export default function DashboardPage() {
                             Monster nemen
                           </button>
                         )}
-                        {/* Al als niet bereikbaar vastgelegd: reden bijstellen of terugdraaien */}
-                        {!sample.isDisabled && !sample.isTaken && sample.isUnreachable && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => setOnbereikbaarDoel(sample)}
-                              className="btn btn-sm sm:mr-2.5"
-                              title="Reden of omschrijving van Niet bereikbaar aanpassen"
-                            >
-                              <Icon name="pencil" size={16} />
-                              Reden aanpassen
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => weerBereikbaar(sample)}
-                              className="btn btn-sm sm:mr-2.5"
-                              title="Niet bereikbaar terugdraaien; het monster staat dan weer op niet genomen"
-                            >
-                              <Icon name="reset" size={16} />
-                              Weer bereikbaar
-                            </button>
-                          </>
-                        )}
-                        {sample.isDisabled ? (
-                          <button
-                            type="button"
-                            onClick={() => draaiAnnuleringTerug(sample)}
-                            className="btn btn-sm sm:mr-2.5"
-                            title="Annulering terugdraaien"
-                          >
-                            <Icon name="reset" size={16} />
-                            Terugdraaien
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => openAnnuleren(sample)}
-                            className="btn btn-sm sm:mr-2.5"
-                            title="Monster annuleren met een reden"
-                          >
-                            <Icon name="status-cancelled" size={16} />
-                            Annuleren
-                          </button>
-                        )}
                         <button
                           type="button"
-                          onClick={() => handleAddAttempt(sample)}
-                          title="Nieuwe monstername (hermonstering) toevoegen"
+                          onClick={() => setActiesDoel(sample)}
                           className="btn btn-sm sm:mr-2.5"
+                          aria-haspopup="dialog"
+                          title={`Meer handelingen bij ${sample.oNumber}: annuleren, hermonstering${sample.isUnreachable ? ', niet bereikbaar' : ''}`}
                         >
-                          <Icon name="resample" size={16} />
-                          Hermonstering
+                          <Icon name="menu" size={16} />
+                          Meer
                         </button>
                         <button
                           type="button"
@@ -1604,6 +1575,16 @@ export default function DashboardPage() {
       <OngedaanMelding melding={ongedaan} onSluit={() => setOngedaan(null)} />
 
       {/* Monster nemen: alles in één scherm, met de knop Niet bereikbaar erin */}
+      <MonsterActiesModal
+        doel={actiesDoel}
+        onClose={() => setActiesDoel(null)}
+        onRedenAanpassen={() => actiesDoel && setOnbereikbaarDoel(actiesDoel)}
+        onWeerBereikbaar={() => actiesDoel && weerBereikbaar(actiesDoel)}
+        onTerugdraaien={() => actiesDoel && draaiAnnuleringTerug(actiesDoel)}
+        onAnnuleren={() => actiesDoel && openAnnuleren(actiesDoel)}
+        onHermonstering={() => actiesDoel && handleAddAttempt(actiesDoel)}
+      />
+
       <MonsterNemenModal
         key={`nemen-${neemDoel?.id ?? 'geen'}`}
         doel={neemDoel}

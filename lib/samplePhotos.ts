@@ -18,6 +18,8 @@ export interface FotoSoortInfo {
   label: string;
   /** Tekst bij de uploadknop */
   knop: string;
+  /** Kort woord voor de fotokolom op desktop (de volle tekst staat in de title) */
+  kort: string;
   icoon: IconNaam;
 }
 
@@ -27,6 +29,7 @@ export const FOTO_SOORTEN: FotoSoortInfo[] = [
     veld: 'partPhotoUrl',
     label: 'Foto onderdeel',
     knop: 'Foto van het onderdeel',
+    kort: 'Onderdeel',
     icoon: 'sample-point',
   },
   {
@@ -34,6 +37,7 @@ export const FOTO_SOORTEN: FotoSoortInfo[] = [
     veld: 'photoUrl',
     label: 'Foto potje',
     knop: 'Foto van het monsterpotje',
+    kort: 'Potje',
     icoon: 'oil-sample',
   },
 ];
