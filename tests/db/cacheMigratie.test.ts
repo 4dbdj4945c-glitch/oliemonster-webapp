@@ -46,15 +46,29 @@ describe('cache naar de laatste poging', () => {
     expect(m.photoUrl).toBe('https://x.public.blob.vercel-storage.com/a.jpg');
   });
 
-  it('kiest dezelfde laatste poging als de app: een poging zonder datum gaat voor', async () => {
+  it('een poging zonder datum gaat voor, en als hermonstering krijgt die de opmerking niet', async () => {
     const id = ids.monsters[2025][2];
+    const [vorige] = await prisma.sampleAttempt.findMany({ where: { oilSampleId: id } });
     const zonderDatum = await prisma.sampleAttempt.create({ data: { oilSampleId: id, isTaken: false } });
     await prisma.oilSample.update({ where: { id }, data: { remarks: 'alleen op het monster' } });
     await draaiMigratie();
-    expect((await prisma.sampleAttempt.findUniqueOrThrow({ where: { id: zonderDatum.id } })).remarks).toBe('alleen op het monster');
+    // De genomen poging (vorige) draagt de opmerking; de geplande hermonstering niet.
+    // Een eigen opmerking van de vorige poging blijft, die van het monster komt eronder.
+    expect((await prisma.sampleAttempt.findUniqueOrThrow({ where: { id: vorige.id } })).remarks).toBe('Monster zonder bijzonderheden\nalleen op het monster');
+    expect((await prisma.sampleAttempt.findUniqueOrThrow({ where: { id: zonderDatum.id } })).remarks).toBeNull();
+  });
+
+  it('zonder hermonstering: een lege laatste poging zonder datum krijgt de opmerking', async () => {
+    const id = ids.monsters[2026][9];
+    await prisma.sampleAttempt.deleteMany({ where: { oilSampleId: id } });
+    const enige = await prisma.sampleAttempt.create({ data: { oilSampleId: id, isTaken: false } });
+    await prisma.oilSample.update({ where: { id }, data: { remarks: 'alleen op het monster', isTaken: false, sampleDate: null } });
+    await draaiMigratie();
+    expect((await prisma.sampleAttempt.findUniqueOrThrow({ where: { id: enige.id } })).remarks).toBe('alleen op het monster');
     await wijzigLaatstePoging(id, { isTaken: true, sampleDate: new Date() });
     expect((await prisma.oilSample.findUniqueOrThrow({ where: { id } })).remarks).toBe('alleen op het monster');
   });
+
 });
 
 describe('datum en genomen van het monster naar de laatste poging', () => {
@@ -147,5 +161,34 @@ describe('geplande hermonstering (zoals O-4005)', () => {
     await draaiMigratie();
     expect((await prisma.sampleAttempt.findUniqueOrThrow({ where: { id: herm.id } })).isTaken).toBe(false);
     expect((await prisma.sampleAttempt.findUniqueOrThrow({ where: { id: vorige.id } })).isTaken).toBe(false);
+  });
+});
+
+describe('geplande hermonstering met opmerking en foto op het monster (R-002)', () => {
+  it('opmerking en foto gaan naar de vorige poging, de hermonstering houdt die van zichzelf', async () => {
+    const id = ids.monsters[2025][10];
+    await prisma.sampleAttempt.deleteMany({ where: { oilSampleId: id } });
+    const datum = new Date(Date.UTC(2025, 3, 11));
+    const eerste = await prisma.sampleAttempt.create({ data: { oilSampleId: id, isTaken: false, createdAt: new Date(Date.UTC(2025, 3, 1)) } });
+    const herm = await prisma.sampleAttempt.create({ data: { oilSampleId: id, isTaken: false, remarks: 'Hermonstering', createdAt: new Date(Date.UTC(2025, 4, 1)) } });
+    await prisma.oilSample.update({
+      where: { id },
+      data: { isTaken: true, sampleDate: datum, remarks: 'Genomen via bewerken', photoUrl: 'https://x.public.blob.vercel-storage.com/genomen.jpg' },
+    });
+    await draaiMigratie();
+    await draaiMigratie();
+
+    const e = await prisma.sampleAttempt.findUniqueOrThrow({ where: { id: eerste.id } });
+    expect(e).toMatchObject({ isTaken: true, remarks: 'Genomen via bewerken', photoUrl: 'https://x.public.blob.vercel-storage.com/genomen.jpg' });
+    expect(e.sampleDate?.toISOString()).toBe(datum.toISOString());
+    const h = await prisma.sampleAttempt.findUniqueOrThrow({ where: { id: herm.id } });
+    expect(h).toMatchObject({ isTaken: false, sampleDate: null, remarks: 'Hermonstering', photoUrl: null });
+
+    // De eerste wijziging daarna (zoals PUT op de hermonstering): niets verdwijnt.
+    await prisma.sampleAttempt.update({ where: { id: herm.id }, data: { remarks: 'Nieuwe opmerking' } });
+    const { syncLatestAttemptToSample } = await import('@/lib/sampleAttempts');
+    await syncLatestAttemptToSample(id);
+    expect(await prisma.sampleAttempt.count({ where: { oilSampleId: id, remarks: 'Genomen via bewerken' } })).toBe(1);
+    expect(await prisma.sampleAttempt.count({ where: { oilSampleId: id, photoUrl: 'https://x.public.blob.vercel-storage.com/genomen.jpg' } })).toBe(1);
   });
 });

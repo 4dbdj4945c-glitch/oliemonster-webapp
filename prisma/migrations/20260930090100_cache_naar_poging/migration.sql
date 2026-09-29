@@ -44,8 +44,9 @@
 -- hieronder zien: die moet Roel met de hand bekijken (bewerkvenster, pogingen).
 --
 -- Een geplande hermonstering (nieuwste poging zonder datum en niet genomen,
--- met een eerdere poging) wordt nooit op genomen gezet; de genomen-gegevens
--- gaan dan naar de vorige poging (deel 3). Zo'n monster staat daarna, net als
+-- met een eerdere poging) wordt nooit op genomen gezet en krijgt geen
+-- opmerking of foto van het genomen monster; datum, genomen, opmerking en
+-- foto's gaan dan naar de vorige poging (deel 3, draait als eerste). Zo'n monster staat daarna, net als
 -- in de code, als niet genomen met een geplande hermonstering, en de
 -- afwijkersquery toont het.
 --
@@ -63,6 +64,50 @@ FROM "OilSample" AS m
 WHERE NOT EXISTS (SELECT 1 FROM "SampleAttempt" AS x WHERE x."oilSampleId" = m."id")
   AND (m."isTaken" OR m."sampleDate" IS NOT NULL OR m."remarks" IS NOT NULL OR m."photoUrl" IS NOT NULL OR m."partPhotoUrl" IS NOT NULL);
 
+-- Deel 3 (vóór deel 1 en 2): het monster staat op genomen, maar de nieuwste
+-- poging is een geplande hermonstering (geen datum, niet genomen). Dan horen
+-- datum, genomen, opmerking en foto's bij de VORIGE poging: die krijgt ze, als
+-- hij nog niet genomen is en geen of dezelfde datum heeft, of al genomen is op
+-- dezelfde datum (dan alleen de lege opmerking en foto's). De hermonstering
+-- blijft gepland en krijgt niets. Lukt dat niet, dan gaan deel 1 en 2 hun eigen
+-- gang (niets gaat verloren) en toont de controle achteraf het monster.
+WITH geordend AS (
+  SELECT "id", "oilSampleId", "sampleDate", "isTaken",
+         ROW_NUMBER() OVER (PARTITION BY "oilSampleId" ORDER BY "sampleDate" DESC, "createdAt" DESC) AS nr
+  FROM "SampleAttempt"
+)
+UPDATE "SampleAttempt" AS a
+SET
+  "isTaken" = true,
+  "sampleDate" = s."sampleDate",
+  -- Een eigen opmerking van de vorige poging blijft staan; die van het monster
+  -- komt eronder, zodat er geen tekst verloren gaat.
+  "remarks" = CASE
+    WHEN a."remarks" IS NULL THEN s."remarks"
+    WHEN s."remarks" IS NULL OR position(s."remarks" in a."remarks") > 0 THEN a."remarks"
+    ELSE a."remarks" || E'\n' || s."remarks"
+  END,
+  "photoUrl" = COALESCE(a."photoUrl", s."photoUrl"),
+  "partPhotoUrl" = COALESCE(a."partPhotoUrl", s."partPhotoUrl"),
+  "updatedAt" = CURRENT_TIMESTAMP
+FROM geordend AS l
+JOIN geordend AS v ON v."oilSampleId" = l."oilSampleId" AND v.nr = 2
+JOIN "OilSample" AS s ON s."id" = l."oilSampleId"
+WHERE l.nr = 1
+  AND a."id" = v."id"
+  AND l."sampleDate" IS NULL AND NOT l."isTaken"
+  AND s."isTaken" AND s."sampleDate" IS NOT NULL
+  AND (
+    (NOT v."isTaken" AND (v."sampleDate" IS NULL OR v."sampleDate" = s."sampleDate"))
+    OR (v."isTaken" AND v."sampleDate" = s."sampleDate")
+  )
+  AND (
+    NOT a."isTaken" OR a."sampleDate" IS DISTINCT FROM s."sampleDate"
+    OR (s."remarks" IS NOT NULL AND (a."remarks" IS NULL OR position(s."remarks" in a."remarks") = 0))
+    OR (a."photoUrl" IS NULL AND s."photoUrl" IS NOT NULL)
+    OR (a."partPhotoUrl" IS NULL AND s."partPhotoUrl" IS NOT NULL)
+  );
+
 -- Deel 1: opmerking en foto's.
 WITH laatste AS (
   SELECT DISTINCT ON ("oilSampleId") "id", "oilSampleId"
@@ -78,6 +123,21 @@ SET
 FROM laatste AS l
 JOIN "OilSample" AS s ON s."id" = l."oilSampleId"
 WHERE a."id" = l."id"
+  -- Door deel 3 afgehandeld (geplande hermonstering, vorige poging genomen op
+  -- de datum van het monster): de hermonstering krijgt geen opmerking of foto.
+  AND NOT (
+    a."sampleDate" IS NULL AND NOT a."isTaken" AND s."isTaken"
+    AND EXISTS (
+      SELECT 1 FROM "SampleAttempt" AS v
+      WHERE v."oilSampleId" = l."oilSampleId" AND v."id" <> l."id"
+        AND v."isTaken" AND v."sampleDate" = s."sampleDate"
+        -- alleen als de vorige poging alles van het monster al heeft; anders
+        -- toch naar de laatste, want verliezen is erger dan een verkeerde plek
+        AND (s."remarks" IS NULL OR position(s."remarks" in coalesce(v."remarks", '')) > 0)
+        AND (s."photoUrl" IS NULL OR v."photoUrl" = s."photoUrl")
+        AND (s."partPhotoUrl" IS NULL OR v."partPhotoUrl" = s."partPhotoUrl")
+    )
+  )
   AND (
     (a."remarks" IS NULL AND s."remarks" IS NOT NULL)
     OR (a."photoUrl" IS NULL AND s."photoUrl" IS NOT NULL)
@@ -121,28 +181,3 @@ WHERE a."id" = l."id"
         )
     )
   );
-
--- Deel 3: het monster staat op genomen, maar de nieuwste poging is een
--- geplande hermonstering. Dan horen datum en genomen bij de vorige poging: die
--- krijgt ze, als hij nog niet genomen is en geen of dezelfde datum heeft. De
--- hermonstering blijft gepland. Lukt dat niet, dan blijft alles staan en toont
--- de afwijkersquery het monster.
-WITH geordend AS (
-  SELECT "id", "oilSampleId", "sampleDate", "isTaken",
-         ROW_NUMBER() OVER (PARTITION BY "oilSampleId" ORDER BY "sampleDate" DESC, "createdAt" DESC) AS nr
-  FROM "SampleAttempt"
-)
-UPDATE "SampleAttempt" AS a
-SET
-  "isTaken" = true,
-  "sampleDate" = s."sampleDate",
-  "updatedAt" = CURRENT_TIMESTAMP
-FROM geordend AS l
-JOIN geordend AS v ON v."oilSampleId" = l."oilSampleId" AND v.nr = 2
-JOIN "OilSample" AS s ON s."id" = l."oilSampleId"
-WHERE l.nr = 1
-  AND a."id" = v."id"
-  AND l."sampleDate" IS NULL AND NOT l."isTaken"
-  AND s."isTaken" AND s."sampleDate" IS NOT NULL
-  AND NOT v."isTaken"
-  AND (v."sampleDate" IS NULL OR v."sampleDate" = s."sampleDate");

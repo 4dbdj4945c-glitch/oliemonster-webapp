@@ -33,8 +33,14 @@ try {
     const rijen = await prisma.$queryRawUnsafe(`${LAATSTE}
       SELECT s."oNumber", s."analysisYear", s."sampleDate" AS monster_datum, s."isTaken" AS monster_genomen,
              l."sampleDate" AS poging_datum, l."isTaken" AS poging_genomen,
+             -- Klopt alleen als de vorige poging genomen is op de datum van het monster
+             -- en de opmerking en foto's van het monster daar ook staan.
              (l."sampleDate" IS NULL AND NOT l."isTaken" AND EXISTS (
-               SELECT 1 FROM "SampleAttempt" v WHERE v."oilSampleId" = s.id AND v.id <> l.id AND v."isTaken")) AS hermonstering
+               SELECT 1 FROM "SampleAttempt" v WHERE v."oilSampleId" = s.id AND v.id <> l.id
+                 AND v."isTaken" AND v."sampleDate" = s."sampleDate"
+                 AND (s."remarks" IS NULL OR position(s."remarks" in coalesce(v."remarks", '')) > 0)
+                 AND (s."photoUrl" IS NULL OR v."photoUrl" = s."photoUrl")
+                 AND (s."partPhotoUrl" IS NULL OR v."partPhotoUrl" = s."partPhotoUrl"))) AS hermonstering
       FROM l JOIN "OilSample" s ON s.id = l."oilSampleId"
       WHERE s."deletedAt" IS NULL AND (l."isTaken" IS DISTINCT FROM s."isTaken" OR l."sampleDate" IS DISTINCT FROM s."sampleDate")
       ORDER BY s."analysisYear", s."oNumber"`);
