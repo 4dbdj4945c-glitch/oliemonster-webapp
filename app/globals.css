@@ -5172,7 +5172,9 @@ a.rij-tekst.rij-link:hover strong { text-decoration: underline; }
   .contract-kaart-kop { flex-direction: column; }
   .contract-taak { flex-wrap: wrap; }
   .contract-taak .rij-tekst { flex-basis: calc(100% - 50px); }
-  .contract-taak-status { flex-direction: row; align-items: center; justify-content: space-between; width: 100%; padding-left: 50px; }
+  .contract-taak-status { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 6px 12px; width: 100%; padding-left: 50px; text-align: left; }
+  .contract-taak-status > span { white-space: nowrap; }
+  .contract-taak-status .badge { margin-left: auto; }
   .contract-taak .rij-knoppen { width: 100%; padding-left: 50px; }
   .contract-taak .rij-knoppen .btn { flex: 1; }
 }

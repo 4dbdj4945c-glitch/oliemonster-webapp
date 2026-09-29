@@ -161,6 +161,25 @@ tabelregel en veld in de portal, dus dat is een eigen besluit en geen los foutje
 - **Eigen dossier** (`/dashboard/eigen-dossier`, alleen admin): twee kaarten (Bedrijf, Deskundigheid), per document een
   badge Geldig, Verloopt binnenkort (amber), Verlopen (rood) of Verloopt niet; bovenaan een `alert-warning` bij iets dat
   binnen 30 dagen verloopt. Hetzelfde staat op Vandaag, blok Eigen dossier.
+- **Contracten** (`/dashboard/contracten`, `.contract-*`): per contract een kaart met kop (naam, klant, looptijd) en de taken als
+  `TaakRegel` (icoon van de soort, titel, plek, interval, rechts datum, termijn en status). Status: Verlopen (rood, te laat),
+  Binnenkort (amber, binnen 30 dagen), Gepland (blauw, staat op een komende dag), Op schema (grijs). Hetzelfde blok staat als
+  Onderhoud op Vandaag (alleen verlopen en binnenkort), als tab Onderhoud in het klantdossier (met een `alert-warning` erboven) en,
+  neutraal (Ingepland, Verwacht rond, Wordt binnenkort ingepland; nooit Verlopen), in het klantportaal. Notities zijn intern.
+- **Planning met taken**: een taak- of inspectiestop staat tussen de objecten met het icoon van de soort en een navy badge
+  Contracttaak of Inspectie. In het veldscherm een eigen grote kaart (klant, plek, installatie, interval, tijd) en onderaan de
+  oranje knop Taak klaar (of Inspectie openen). Nog in te plannen heeft een tweede kop Taken en inspecties.
+- **Dagrapport** (`/dashboard/dagrapporten/[id]`, `.dr-*`): veldscherm, links het bezoek en de foto's, rechts Akkoord van de klant
+  met het tekenvlak (`HandtekeningVeld`, `.handtekening-vlak`: 2px gestippelde rand `--grijs-400`, 200 tot 220 px hoog,
+  `touch-action: none`), onderaan de oranje knop Tekenen en afronden, na tekenen PDF downloaden. Beheer (handtekening wissen,
+  verwijderen) ingeklapt onderaan.
+- **Wachtrij** (`WachtrijOverzicht`, `.wachtrij`): blauw vlak (amber als iets definitief mislukte) met "x wacht op verzending",
+  de invoer als regels en de knop Nu versturen. In de balk een blauwe pil `.wachtrij-balk` (niet oranje). Een monster dat in de
+  wachtrij staat, heeft in het veldscherm de badge Wacht op verzending (blauw) en is niet meer aan de beurt.
+- **Agenda-abonnement** (gebruikersmenu, `AgendaVenster`, `.agenda-*`): de link met Kopiëren, de oranje knop Openen in Agenda
+  (webcal), uitleg voor iPhone en Mac naast elkaar (op de telefoon onder elkaar), onderaan Nieuwe link maken en Link intrekken.
+- **Acquisitie, bellen**: een telefoonnummer is altijd een `tel:`-link. Na een tik op Bellen staat onderaan `.acq-gebeld`
+  ("Gebeld met X?" en de oranje knop Vastleggen), die het contactmoment opent met kanaal Telefoon en "Gebeld met ..." al ingevuld.
 - **Privacyverklaring** (`/privacy`, `.privacy-*`): smalle leeskolom, `.privacy-open` markeert wat nog ingevuld of
   nagekeken moet, bovenaan een `alert-warning` zolang het een concept is.
 - **Inloggen**: `.auth-page > .auth-card > .auth-band + .auth-body (+ .auth-foot)`.

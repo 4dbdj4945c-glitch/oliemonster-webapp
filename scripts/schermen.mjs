@@ -9,6 +9,7 @@
 //   node scripts/schermen.mjs admin:/dashboard/planning/dag/{vandaag}   dagscherm van de monsterdag van vandaag
 //   node scripts/schermen.mjs admin:/dashboard/klanten/{kempen}          klantdossier ({mourik} of {kempen})
 //   node scripts/schermen.mjs admin:/dashboard/inspecties/{lekken}       invulscherm ({lekken} of {arbeidsmiddelen})
+//   node scripts/schermen.mjs admin:/dashboard/contracten/{contract} admin:/dashboard/dagrapporten/{dagrapport}   ({dagrapportconcept})
 //   node scripts/schermen.mjs "admin:/dashboard@.onderbalk button:nth-of-type(1)"   eerst klikken, dan alleen het scherm zelf
 // Gebruikers en wachtwoorden: prisma/nepdata.ts. Uitvoer: schermen/<naam>-<breedte>.png
 // (1440 en 390 breed) en per scherm of de pagina horizontaal overloopt.
@@ -89,6 +90,20 @@ async function vulIn(pad, cookie) {
     const i = lijst.find((x) => x.sjabloon === sjabloon && x.status === 'afgerond');
     if (!i) throw new Error(`Geen afgeronde inspectie ${sjabloon}. Draai met --seed.`);
     pad = pad.replace(`{${naam}}`, String(i.id));
+  }
+  // {contract}: het contract van de tweede klant; {dagrapport} het getekende en
+  // {dagrapportconcept} het concept-dagrapport uit de nepdata (fase 5).
+  if (pad.includes('{contract}')) {
+    const lijst = await (await fetch(`${BASIS}/api/contracten`, { headers: { Cookie: `${cookie[0]}=${cookie[1]}` } })).json();
+    const c = lijst.find((x) => x.klant.naam.startsWith('Kempen'));
+    if (!c) throw new Error('Geen contract. Draai met --seed.');
+    pad = pad.replace('{contract}', String(c.id));
+  }
+  for (const [, naam] of pad.matchAll(/\{(dagrapport|dagrapportconcept)\}/g)) {
+    const lijst = await (await fetch(`${BASIS}/api/dagrapporten`, { headers: { Cookie: `${cookie[0]}=${cookie[1]}` } })).json();
+    const d = lijst.find((x) => x.status === (naam === 'dagrapport' ? 'getekend' : 'concept'));
+    if (!d) throw new Error(`Geen ${naam}. Draai met --seed.`);
+    pad = pad.replace(`{${naam}}`, String(d.id));
   }
   if (!pad.includes('{vandaag}')) return pad;
   const nu = new Date();

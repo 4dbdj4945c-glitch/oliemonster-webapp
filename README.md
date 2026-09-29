@@ -215,6 +215,17 @@ de laatste poging. Ze worden alleen via `wijzigLaatstePoging`
 - `GET /api/portaal` geeft ook `inspecties` (afgerond, met `volgende` en het rapportadres); het klantdossier geeft momenten van soort `inspectie`
 - `GET/POST /api/eigen-dossier`, `PUT/DELETE /api/eigen-dossier/[id]`, `POST .../herstellen`, `GET/POST/DELETE .../bestand` (PDF, JPEG of PNG tot 4 MB, in UPLOAD_ROUTES), `GET /api/eigen-dossier/inhuurdossier` (voorblad plus alle geldige bestanden in één PDF, pdf-lib). Alles alleen admin
 
+### Contracten, planning met taken, agendafeed, dagrapport en wachtrij (fase 5)
+- `GET/POST /api/contracten` (`?klantId=`), `GET/PUT/DELETE /api/contracten/[id]` (DELETE zacht, body `{ bevestigNaam }`), `POST .../herstellen`, `POST /api/contracten/[id]/taken`
+- `GET /api/contract-taken` (`?aandacht=1` verlopen en binnen 30 dagen, `?klantId=`), `PUT/DELETE /api/contract-taken/[id]`, `POST .../herstellen`, `POST/DELETE /api/contract-taken/[id]/uitgevoerd` (met de hand uitgevoerd, `{ datum }`; terug met `{ bron }`, alleen de laatste)
+- Lezen: beheerder en gebruiker; wijzigen: admin. Een kijker komt er nooit bij; het klantportaal krijgt uit `GET /api/portaal` alleen `onderhoud` (soort, titel, plek, datum, gepland of niet), zonder notities, interval of contractnaam
+- De volgende datum schuift vanzelf door (lib/contracten.ts, lib/contractenServer.ts): een afgeronde inspectie van het passende sjabloon op hetzelfde object (en dezelfde installatie als de taak er een heeft), een afgevinkte taakstop op de planning, of Uitgevoerd. Altijd vanaf de dag van de uitvoering plus het interval; bestaat die dag niet in de maand, dan de laatste dag van de maand (31 januari plus een maand is 28 februari). Elke uitvoering heeft een bron die per taak uniek is, dus twee keer afronden zet niets dubbel door; weer concept, weer open of de inspectie weghalen zet de datum terug (als het de laatste uitvoering was)
+- Planning: `POST /api/sample-plans/[id]/stops` met `{ taakId }` of `{ inspectieId }` (en eventueel `plannedMinutes`) zet een contracttaak of inspectiebezoek op een dag. Het object komt van de taak of inspectie; de stop telt in route en dagtotaal mee met de eigen tijd (taak: geschatte minuten of de standaard per soort, inspectie: 180 minuten, `lib/planningInstellingen.ts`). Zo'n stop heeft geen monsters, plant geen monsters in, voegt nooit samen met een oliemonsterstop en verhuist niet bij Volgorde en verdeling berekenen. `GET /api/sample-plans` geeft ook `tePlannen` (taken zonder komende dag en concept-inspecties)
+- Agendafeed: `GET/POST/DELETE /api/agenda` (eigen link tonen, nieuw maken, intrekken; beheerder en gebruiker), `GET /api/agenda/feed/<token>.ics` (zonder sessie, voor Apple Agenda). Het token is een sleutel uit `AgendaFeed` plus een HMAC met `SESSION_SECRET` (lib/agenda.ts): geen nieuwe omgevingsvariabele, en de database alleen is niet genoeg. Planningsdagen vanaf 60 dagen terug als afspraak van 08:00 met de geplande duur, de plek van de eerste stop en een herinnering een dag vooraf; taken zonder dag als hele dag met een herinnering om 15:00 de dag ervoor. Wijzigt `SESSION_SECRET`, dan moet iedereen opnieuw abonneren
+- Dagrapporten: `GET/POST /api/dagrapporten` (`?klantId=`, `?planId=`), `GET/PUT/DELETE /api/dagrapporten/[id]` (DELETE zacht, `{ bevestig: "DR-12" }`), `POST .../herstellen`, `POST /api/dagrapporten/[id]/fotos` (in UPLOAD_ROUTES), `DELETE /api/dagrapport-fotos/[id]`, `POST/DELETE /api/dagrapporten/[id]/handtekening` (`{ naam, handtekening }` als PNG-data-URL; getekend ligt vast tot de handtekening gewist wordt), `GET /api/dagrapporten/[id]/pdf` (lib/rapport/dagrapportPdf.ts, in het logboek). Een kijker met het klantportaal alleen de PDF van een getekend rapport van zijn eigen klant, de klassieke kijker niets. Geen factuurkoppeling
+- Offline wachtrij (lib/wachtrij.ts): Monster nemen en een nieuwe bevinding zonder bereik gaan met de verkleinde foto's in IndexedDB en worden vanzelf verstuurd (bij openen, bij `online` en elke 30 seconden). Elke invoer heeft een eigen sleutel in de header `Idempotentie-Sleutel`; `POST /api/samples/[id]/nemen` en `POST /api/inspecties/[id]/items` verwerken dezelfde sleutel maar één keer en geven een herhaling het bewaarde antwoord (`Idempotentie-Herhaling: 1`, lib/idempotentie.ts, tabel `Verzending`, 30 dagen bewaard). Service worker `public/sw.js`: alleen voor het veldscherm, een inspectie en een dagrapport (eerst netwerk, zonder bereik de bewaarde kopie) en de scripts van Next.js; al het andere gaat er ongemoeid langs. Uitloggen wist de kopieën
+- Proef zonder bereik in een echte Chrome: `node scripts/offline-proef.mjs` (na `npm run seed`)
+
 De sjablonen staan als configuratie in `lib/inspecties/sjablonen.ts` (velden, oordelen,
 checklist, instellingen, rapporttekst); rekenen in `lib/inspecties/rekenen.ts`. Een nieuw
 sjabloon: daar een object toevoegen, het model blijft gelijk. Persluchtlekken rekent
@@ -307,6 +318,13 @@ hieronder. Pas die twee nooit aan; wijzigingen komen altijd in een nieuwe migrat
 - `20261001090000_inspecties_en_eigen_dossier`: drie nieuwe, lege tabellen
   (`Inspectie`, `InspectieItem`, `EigenDocument`) met hun foreign keys. Aan bestaande
   tabellen en gegevens verandert niets.
+
+**Migratie fase 5 (contracten, dagrapport, agendafeed, wachtrij):**
+
+- `20261002090000_contracten_dagrapport_agenda`: zeven nieuwe, lege tabellen (`Contract`,
+  `ContractTaak`, `ContractTaakUitvoering`, `Dagrapport`, `DagrapportFoto`, `AgendaFeed`,
+  `Verzending`) en twee nieuwe, lege kolommen op `SamplePlanStop` (`taakId`, `inspectieId`).
+  Elke bestaande stop blijft een oliemonsterstop; aan bestaande gegevens verandert niets.
 
 **Productie bijwerken (Roel, op zijn Mac):**
 
