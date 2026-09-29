@@ -8,13 +8,21 @@ import type { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 export const NEP_GEBRUIKERS = {
-  admin: { username: 'admin', wachtwoord: 'admin123', role: 'admin', viewYear: null },
-  gebruiker: { username: 'gebruiker', wachtwoord: 'user123', role: 'user', viewYear: null },
-  // Zoals de Mourik-kijker: alleen lezen, alleen 2025, eigen wachtwoord.
-  kijker: { username: 'kijker', wachtwoord: 'kijker123', role: 'alleen_lezen', viewYear: 2025 },
+  admin: { username: 'admin', wachtwoord: 'admin123', role: 'admin', viewYear: null, klant: null, weergave: 'klassiek' },
+  gebruiker: { username: 'gebruiker', wachtwoord: 'user123', role: 'user', viewYear: null, klant: null, weergave: 'klassiek' },
+  // Zoals de Mourik-kijker: alleen lezen, alleen 2025, eigen wachtwoord, klassieke weergave.
+  kijker: { username: 'kijker', wachtwoord: 'kijker123', role: 'alleen_lezen', viewYear: 2025, klant: 'mourik', weergave: 'klassiek' },
+  // Kijker van de tweede klant, met het klantportaal en alle jaren.
+  kempen: { username: 'kempen', wachtwoord: 'kempen123', role: 'alleen_lezen', viewYear: null, klant: 'tweede', weergave: 'klantportaal' },
   // Nog geen wachtwoord: moet eerst via een uitnodigingslink.
-  nieuw: { username: 'nieuw', wachtwoord: null, role: 'user', viewYear: null },
+  nieuw: { username: 'nieuw', wachtwoord: null, role: 'user', viewYear: null, klant: null, weergave: 'klassiek' },
 } as const;
+
+/** Nepfoto's in public/nepdata (grijze vlakken met een woord), voor de tweede klant. */
+export const NEP_FOTOS = {
+  potje: ['/nepdata/potje-1.jpg', '/nepdata/potje-2.jpg'],
+  onderdeel: ['/nepdata/onderdeel-1.jpg', '/nepdata/onderdeel-2.jpg'],
+};
 
 /** true als de URL naar een database op deze computer wijst. */
 export function magLokaalWissen(url: string | undefined): boolean {
@@ -76,7 +84,7 @@ export async function vulMetNepdata(prisma: PrismaClient) {
 
   // Klanten: Mourik (zoals de migratie hem aanmaakt) en een tweede, verzonnen klant.
   const mourik = await prisma.klant.create({
-    data: { naam: 'Mourik Infra B.V.', adres: 'Trambaan 15', postcode: '6101 AJ', plaats: 'Echt' },
+    data: { naam: 'Mourik Infra B.V.', adres: 'Trambaan 15', postcode: '6101 AJ', plaats: 'Echt', logoUrl: '/mourik_logo.png' },
   });
   const tweede = await prisma.klant.create({
     data: {
@@ -105,7 +113,8 @@ export async function vulMetNepdata(prisma: PrismaClient) {
         role: g.role,
         viewYear: g.viewYear,
         requiresPasswordChange: g.wachtwoord === null,
-        klantId: g.role === 'alleen_lezen' ? mourik.id : null,
+        klantId: g.klant === 'mourik' ? mourik.id : g.klant === 'tweede' ? tweede.id : null,
+        portaalWeergave: g.weergave,
       },
     });
     gebruikers[sleutel] = user.id;
@@ -196,6 +205,69 @@ export async function vulMetNepdata(prisma: PrismaClient) {
     },
   });
 
+  // De tweede klant: monsters op zijn installaties, in 2025 afgerond en in 2026
+  // half, met foto's, een niet bereikbaar, een geannuleerd, een op de planning
+  // en een los monster zonder object (klant via OilSample.klantId). Dit ziet de
+  // kijker van Mourik nooit, en de kijker kempen alleen dit.
+  const tweedeMonsters: Record<number, number[]> = { 2025: [], 2026: [] };
+  const [kantpers, compressor] = [installaties[2], installaties[3]];
+  const TWEEDE = [
+    { jaar: 2025, nr: 'K-2025-01', inst: kantpers, genomen: true, dag: [2025, 4, 12] },
+    { jaar: 2025, nr: 'K-2025-02', inst: compressor, genomen: true, dag: [2025, 4, 12] },
+    { jaar: 2026, nr: 'K-2026-01', inst: kantpers, genomen: true, dag: [2026, 2, 10] },
+    { jaar: 2026, nr: 'K-2026-02', inst: compressor, genomen: true, dag: [2026, 2, 10] },
+    { jaar: 2026, nr: 'K-2026-03', inst: kantpers, genomen: true, dag: [2026, 5, 16] },
+    { jaar: 2026, nr: 'K-2026-04', inst: compressor, onbereikbaar: true, dag: [2026, 5, 16] },
+    { jaar: 2026, nr: 'K-2026-05', inst: kantpers },
+    { jaar: 2026, nr: 'K-2026-06', inst: compressor, geannuleerd: true, dag: [2026, 1, 3] },
+  ] as const;
+  for (const [i, t] of TWEEDE.entries()) {
+    const datum = 'dag' in t ? new Date(Date.UTC(t.dag[0], t.dag[1], t.dag[2])) : null;
+    const genomen = 'genomen' in t && t.genomen;
+    const onbereikbaar = 'onbereikbaar' in t && t.onbereikbaar;
+    const geannuleerd = 'geannuleerd' in t && t.geannuleerd;
+    const fotoPotje = genomen ? NEP_FOTOS.potje[i % 2] : null;
+    const fotoOnderdeel = genomen ? NEP_FOTOS.onderdeel[i % 2] : null;
+    const monster = await prisma.oilSample.create({
+      data: {
+        oNumber: t.nr,
+        analysisYear: t.jaar,
+        location: werkplaats.name,
+        description: t.inst.naam,
+        oilType: t.inst === kantpers ? 'HLP 46' : 'Roto-Inject',
+        objectId: werkplaats.id,
+        installatieId: t.inst.id,
+        isTaken: genomen,
+        sampleDate: genomen ? datum : null,
+        photoUrl: fotoPotje,
+        partPhotoUrl: fotoOnderdeel,
+        isDisabled: geannuleerd,
+        cancelReason: geannuleerd ? 'Compressor vervangen, nieuwe draait nog in' : null,
+        cancelledAt: geannuleerd ? datum : null,
+        cancelledBy: geannuleerd ? 'admin' : null,
+        isUnreachable: onbereikbaar,
+        unreachableReason: onbereikbaar ? 'Andere werkzaamheden' : null,
+        unreachableNote: onbereikbaar ? 'Technische ruimte afgesloten voor een verbouwing' : null,
+        unreachableAt: onbereikbaar ? datum : null,
+        unreachableBy: onbereikbaar ? 'admin' : null,
+      },
+    });
+    if (genomen) {
+      await prisma.sampleAttempt.create({
+        data: { oilSampleId: monster.id, sampleDate: datum, isTaken: true, photoUrl: fotoPotje, partPhotoUrl: fotoOnderdeel, remarks: 'Olie helder, geen bijzonderheden' },
+      });
+    }
+    tweedeMonsters[t.jaar].push(monster.id);
+  }
+  const losMonster = await prisma.oilSample.create({
+    data: { oNumber: 'K-2026-07', analysisYear: 2026, location: 'Magazijn', description: 'Heftruck, hefcilinder', isTaken: false, klantId: tweede.id },
+  });
+  tweedeMonsters[2026].push(losMonster.id);
+  // Een monster zonder object en zonder klant: ziet geen enkele kijker.
+  const zonderKlant = await prisma.oilSample.create({
+    data: { oNumber: 'O-2026-200', analysisYear: 2026, location: 'Onbekend', description: 'Zonder object en klant', isTaken: false },
+  });
+
   // Planning 2026: vandaag en overmorgen, met de objecten die nog open staan.
   // Ten opzichte van vandaag, zodat het startscherm Vandaag altijd een
   // monsterdag laat zien. Middernacht in de eigen tijdzone, zoals de API opslaat.
@@ -213,6 +285,11 @@ export async function vulMetNepdata(prisma: PrismaClient) {
       { planId: dag2.id, objectId: objecten[5].id, orderIndex: 1, plannedMinutes: 45 },
     ],
   });
+  // Over een week: de werkplaats van de tweede klant.
+  const dag3 = await prisma.samplePlan.create({
+    data: { date: dagVanaf(7), analysisYear: 2026, notes: 'Intern: sleutel bij de receptie' },
+  });
+  await prisma.samplePlanStop.create({ data: { planId: dag3.id, objectId: werkplaats.id, orderIndex: 0, plannedMinutes: 60 } });
 
   // Acquisitie: een actie die te laat is, een voor vandaag en een voor later.
   await prisma.prospect.createMany({
@@ -230,6 +307,9 @@ export async function vulMetNepdata(prisma: PrismaClient) {
     werkplaats: werkplaats.id,
     installaties: installaties.map((x) => x.id),
     monsters,
+    tweedeMonsters,
+    losMonster: losMonster.id,
+    zonderKlant: zonderKlant.id,
     verwijderd: verwijderd.id,
   };
 }

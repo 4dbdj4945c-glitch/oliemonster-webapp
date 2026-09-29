@@ -19,6 +19,8 @@ export async function GET() {
       username: gebruiker.username,
       role: gebruiker.role,
       viewYear: gebruiker.viewYear,
+      klantId: gebruiker.klantId,
+      portaalWeergave: gebruiker.portaalWeergave,
       isLoggedIn: true,
       requiresPasswordChange: gebruiker.requiresPasswordChange,
     });

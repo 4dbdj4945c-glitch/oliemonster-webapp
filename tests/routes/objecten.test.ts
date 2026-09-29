@@ -50,6 +50,9 @@ describe('objecten', () => {
 
   it('verwijderen weigert zolang er installaties op staan', async () => {
     const id = String(ids.werkplaats);
+    // De werkplaats heeft sinds fase 3 ook monsters; die eerst weg, dan blijven de installaties over.
+    await prisma.sampleAttempt.deleteMany({ where: { oilSample: { objectId: ids.werkplaats } } });
+    await prisma.oilSample.deleteMany({ where: { objectId: ids.werkplaats } });
     const res = await verwijderObject(verzoek(`/api/sample-objects/${id}`, { method: 'DELETE' }), metParams({ id }));
     expect(res.status).toBe(400);
     expect((await res.json()).error).toMatch(/installaties/);

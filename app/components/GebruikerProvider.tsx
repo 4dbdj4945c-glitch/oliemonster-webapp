@@ -17,6 +17,9 @@ export interface IngelogdeGebruiker {
   username: string;
   role: string;
   viewYear: number | null;
+  /** Alleen bij de rol alleen lezen: zijn klant. */
+  klantId: number | null;
+  portaalWeergave: string;
   requiresPasswordChange: boolean;
   isLoggedIn: true;
 }

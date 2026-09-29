@@ -8,6 +8,8 @@ const maak = (role: string, viewYear: number | null = null, requiresPasswordChan
   username: role,
   role,
   viewYear: effectiefKijkjaar(role, viewYear),
+  klantId: null,
+  portaalWeergave: 'klassiek',
   requiresPasswordChange,
 });
 
@@ -145,5 +147,25 @@ describe('paginaBesluit (dashboard)', () => {
     }
     expect(paginaBesluit(gebruiker, '/dashboard/oliemonsters/2026')).toBeNull();
     expect(paginaBesluit(gebruiker, '/dashboard/objecten')).toBeNull();
+  });
+});
+
+describe('paginaBesluit (klantportaal)', () => {
+  const portaal = { ...maak('alleen_lezen', 2026), klantId: 7, portaalWeergave: 'klantportaal' as const };
+  it('een kijker met klantportaal komt alleen op /dashboard', () => {
+    expect(paginaBesluit(portaal, '/dashboard')).toBeNull();
+    for (const pad of ['/dashboard/oliemonsters/2026', '/dashboard/oliemonsters/2025', '/dashboard/klanten', '/dashboard/admin']) {
+      expect(paginaBesluit(portaal, pad)).toBe('/dashboard');
+    }
+  });
+  it('klantportaal zonder klant valt terug op klassiek', () => {
+    const zonderKlant = { ...portaal, klantId: null };
+    expect(paginaBesluit(zonderKlant, '/dashboard/oliemonsters/2026')).toBeNull();
+    expect(paginaBesluit(zonderKlant, '/dashboard')).toBe('/dashboard/oliemonsters/2026');
+  });
+  it('de klassieke kijker met een klant blijft op zijn jaarpagina', () => {
+    const klassiek = { ...kijker2025, klantId: 7 };
+    expect(paginaBesluit(klassiek, '/dashboard/oliemonsters/2025')).toBeNull();
+    expect(paginaBesluit(klassiek, '/dashboard')).toBe('/dashboard/oliemonsters/2025');
   });
 });

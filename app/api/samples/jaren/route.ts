@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { apiRoute } from '@/lib/apiRoute';
-import { actiefFilter } from '@/lib/verwijderdeMonsters';
+import { monsterFilter } from '@/lib/afscherming';
 
 // GET - De analysejaren met monsters, met per jaar het aantal en hoeveel er
 // genomen zijn (geannuleerde tellen niet als genomen). Voor de jaarkeuze op de
@@ -10,10 +10,8 @@ import { actiefFilter } from '@/lib/verwijderdeMonsters';
 export const GET = apiRoute(
   { rol: 'alleen_lezen', module: 'oliemonsters', fout: 'Fout bij ophalen van de jaren' },
   async (_request, _context, sessie) => {
-    const where = {
-      ...(sessie.viewYear !== null ? { analysisYear: sessie.viewYear } : {}),
-      ...(await actiefFilter()),
-    };
+    // Kijkjaar en klant (lib/afscherming.ts): een kijker telt alleen wat hij mag zien.
+    const where = await monsterFilter(sessie);
     const [totaal, genomen] = await Promise.all([
       prisma.oilSample.groupBy({ by: ['analysisYear'], where, _count: { _all: true } }),
       prisma.oilSample.groupBy({

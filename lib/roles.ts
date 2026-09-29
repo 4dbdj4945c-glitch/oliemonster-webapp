@@ -71,3 +71,37 @@ export function magJaarZien(
   if (viewYear === null || viewYear === undefined) return true;
   return viewYear === jaar;
 }
+
+// ------------------------------------------------------------------
+// Weergave van een kijker (User.portaalWeergave)
+// ------------------------------------------------------------------
+
+/** De oude monsterlijst met de navy balk, zoals de Mourik-kijker hem kent. */
+export const WEERGAVE_KLASSIEK = 'klassiek';
+/** Het klantportaal: voortgang, stand per object, planning, foto's en rapport. */
+export const WEERGAVE_KLANTPORTAAL = 'klantportaal';
+export const WEERGAVEN = [WEERGAVE_KLASSIEK, WEERGAVE_KLANTPORTAAL] as const;
+export type PortaalWeergave = (typeof WEERGAVEN)[number];
+
+export const WEERGAVE_LABELS: Record<PortaalWeergave, string> = {
+  klassiek: 'Klassiek (monsterlijst)',
+  klantportaal: 'Klantportaal',
+};
+
+/** Een onbekende of lege waarde telt als klassiek: dan verandert er niets. */
+export function leesWeergave(waarde: string | null | undefined): PortaalWeergave {
+  return waarde === WEERGAVE_KLANTPORTAAL ? WEERGAVE_KLANTPORTAAL : WEERGAVE_KLASSIEK;
+}
+
+/**
+ * Krijgt deze gebruiker het klantportaal? Alleen een kijker (rol alleen lezen)
+ * met een klant en de weergave klantportaal. Zonder klant valt hij terug op de
+ * klassieke weergave, want dan is er geen klant om te tonen.
+ */
+export function krijgtKlantportaal(g: {
+  role?: string | null;
+  klantId?: number | null;
+  portaalWeergave?: string | null;
+}): boolean {
+  return isAlleenLezen(g.role) && !!g.klantId && leesWeergave(g.portaalWeergave) === WEERGAVE_KLANTPORTAAL;
+}

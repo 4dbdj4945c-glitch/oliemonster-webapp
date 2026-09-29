@@ -14,6 +14,7 @@ import {
   SAMPLE_WENSEN2_LEEG,
 } from '@/lib/planningApi';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
+import { monsterFilter } from '@/lib/afscherming';
 
 const LijstQuery = z.object({
   search: z.string().max(200).optional(),
@@ -28,14 +29,14 @@ export const GET = apiRoute(
     const query = leesQuery(request, LijstQuery);
     const search = query.search?.trim() || '';
     // Heeft deze gebruiker een eigen kijkjaar, dan geldt dat jaar en niets
-    // anders, ongeacht wat er in de query staat. Dat wordt hier serverside
-    // afgedwongen en niet alleen in de schermen. null = alle jaren.
-    const eigenJaar = session.viewYear;
-    const year = eigenJaar !== null ? eigenJaar : query.year ? jaarSchema.parse(query.year) : null;
-
+    // anders, ongeacht wat er in de query staat; hoort hij bij een klant, dan
+    // alleen de monsters van die klant. Dat wordt hier serverside afgedwongen
+    // (lib/afscherming.ts) en niet alleen in de schermen.
+    //
     // Verwijderde monsters (prullenbak) ziet niemand in de lijst, ook de rol
     // alleen lezen niet; alleen een admin ziet ze via /api/samples/verwijderd.
-    const yearFilter = { ...(year !== null ? { analysisYear: year } : {}), ...(await actiefFilter()) };
+    const gevraagdJaar = query.year ? jaarSchema.parse(query.year) : null;
+    const yearFilter = await monsterFilter(session, gevraagdJaar);
 
     const whereClause = search
       ? {

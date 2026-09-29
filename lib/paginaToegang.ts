@@ -6,21 +6,25 @@
 //
 // - niet ingelogd: naar /login
 // - moet eerst een wachtwoord instellen: naar /set-password
-// - rol alleen lezen: alleen de oliemonsterpagina van zijn kijkjaar
-//   (/dashboard/oliemonsters/2025). Mag hij alle jaren zien, dan het dashboard
-//   en elke jaarpagina.
+// - rol alleen lezen, weergave klassiek: alleen de oliemonsterpagina van zijn
+//   kijkjaar (/dashboard/oliemonsters/2025). Mag hij alle jaren zien, dan het
+//   dashboard en elke jaarpagina.
+// - rol alleen lezen, weergave klantportaal: alleen /dashboard, het klantportaal.
+//   Een oud adres (jaarpagina) stuurt daarheen.
 // - elke andere pagina: alleen als de rol in het register bij die module staat,
 //   anders naar /dashboard
 //
 // Geen server-imports hier: dit bestand draait ook in de browser.
 
-import { isAlleenLezen } from './roles';
+import { isAlleenLezen, krijgtKlantportaal } from './roles';
 import { jaarUitPad, magModule, moduleVoorPad, oliemonsterPad } from './modules';
 
 export interface PaginaGebruiker {
   role: string;
   viewYear: number | null;
   requiresPasswordChange: boolean;
+  klantId?: number | null;
+  portaalWeergave?: string | null;
 }
 
 /** De oliemonsterpagina van een kijkjaar. Elk jaar heeft een pagina. */
@@ -44,6 +48,10 @@ export function paginaBesluit(gebruiker: PaginaGebruiker | null, pad: string): s
   if (gebruiker.requiresPasswordChange) return '/set-password';
 
   const schoon = pad.replace(/\/+$/, '') || '/';
+
+  if (krijgtKlantportaal(gebruiker)) {
+    return schoon === '/dashboard' ? null : '/dashboard';
+  }
 
   if (isAlleenLezen(gebruiker.role)) {
     const jaar = jaarUitPad(schoon);

@@ -11,7 +11,10 @@
 // - niet ingelogd, of de gebruiker bestaat niet meer: 401
 // - moet eerst een wachtwoord instellen: 403 (proxy.ts dwingt dat ook af)
 // - de rol alleen lezen mag UITSLUITEND lezen in de module oliemonsters, en
-//   alleen de monsters van zijn eigen kijkjaar (sessie.viewYear)
+//   alleen de monsters van zijn eigen kijkjaar (sessie.viewYear) en, als hij
+//   bij een klant hoort (sessie.klantId), alleen die van zijn klant. Het filter
+//   daarvoor staat in lib/afscherming.ts; elke route die een kijker toelaat
+//   gebruikt het.
 // - rol 'admin' in de opties: alleen een admin
 //
 // De auth-routes zelf (inloggen, uitloggen, sessie, wachtwoord instellen,
@@ -22,7 +25,14 @@ import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
 import { prisma } from './prisma';
 import { sessionOptions, SessionData } from './session';
-import { isAlleenLezen, OUD_KIJKJAAR, ROLE_ADMIN, ROLE_VIEWER_OIL2025_OUD } from './roles';
+import {
+  isAlleenLezen,
+  leesWeergave,
+  OUD_KIJKJAAR,
+  ROLE_ADMIN,
+  ROLE_VIEWER_OIL2025_OUD,
+  type PortaalWeergave,
+} from './roles';
 import { tabelOntbreekt } from './kolommen';
 
 export async function haalSessie() {
@@ -66,6 +76,14 @@ export interface Gebruiker {
   role: string;
   /** Het analysejaar dat deze gebruiker mag zien; null = alle jaren. */
   viewYear: number | null;
+  /**
+   * Alleen bij de rol alleen lezen: de klant waarvan hij de gegevens mag zien.
+   * null = geen afscherming per klant (het gedrag van voor fase 3). Bij admin
+   * en gebruiker altijd null: die zien alles.
+   */
+  klantId: number | null;
+  /** Klassiek of klantportaal; alleen van belang bij de rol alleen lezen. */
+  portaalWeergave: PortaalWeergave;
   requiresPasswordChange: boolean;
 }
 
@@ -99,19 +117,33 @@ export async function haalGebruiker(session: SessionData): Promise<Gebruiker | n
       : null;
   if (!where) return null;
 
-  let rij: { id: number; username: string; role: string; viewYear?: number | null; requiresPasswordChange: boolean } | null;
-  try {
-    rij = await prisma.user.findUnique({
-      where,
-      select: { id: true, username: true, role: true, viewYear: true, requiresPasswordChange: true },
-    });
-  } catch (error) {
-    // Kolom viewYear staat er nog niet (db nog niet bij): zonder kijkjaar verder.
-    if (!tabelOntbreekt(error)) throw error;
-    rij = await prisma.user.findUnique({
-      where,
-      select: { id: true, username: true, role: true, requiresPasswordChange: true },
-    });
+  type Rij = {
+    id: number;
+    username: string;
+    role: string;
+    viewYear?: number | null;
+    klantId?: number | null;
+    portaalWeergave?: string | null;
+    requiresPasswordChange: boolean;
+  };
+  const basis = { id: true, username: true, role: true, requiresPasswordChange: true } as const;
+  // Van nieuw naar oud: staat een kolom er nog niet (database nog niet bij),
+  // dan zonder die kolom verder. klantId en portaalWeergave horen samen bij de
+  // migratie klantportaal (die ook OilSample.klantId aanlegt): zonder die
+  // migratie geldt het oude gedrag, alleen het kijkjaar.
+  const keuzes = [
+    { ...basis, viewYear: true, klantId: true, portaalWeergave: true },
+    { ...basis, viewYear: true },
+    basis,
+  ];
+  let rij: Rij | null = null;
+  for (const [i, select] of keuzes.entries()) {
+    try {
+      rij = (await prisma.user.findUnique({ where, select })) as Rij | null;
+      break;
+    } catch (error) {
+      if (!tabelOntbreekt(error) || i === keuzes.length - 1) throw error;
+    }
   }
   if (!rij) return null;
   return {
@@ -119,6 +151,8 @@ export async function haalGebruiker(session: SessionData): Promise<Gebruiker | n
     username: rij.username,
     role: rij.role,
     viewYear: effectiefKijkjaar(rij.role, rij.viewYear),
+    klantId: isAlleenLezen(rij.role) ? rij.klantId ?? null : null,
+    portaalWeergave: leesWeergave(rij.portaalWeergave),
     requiresPasswordChange: rij.requiresPasswordChange,
   };
 }
