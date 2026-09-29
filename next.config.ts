@@ -3,7 +3,17 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
-  
+
+  // Oude adressen van de oliemonsterpagina's blijven werken. /dashboard/oliemonsters
+  // was de pagina van 2025 (daar landt de Mourik-kijker), /dashboard/oliemonsters2026
+  // die van 2026. Tijdelijk (307), zodat een browser het niet voorgoed onthoudt.
+  async redirects() {
+    return [
+      { source: '/dashboard/oliemonsters', destination: '/dashboard/oliemonsters/2025', permanent: false },
+      { source: '/dashboard/oliemonsters2026', destination: '/dashboard/oliemonsters/2026', permanent: false },
+    ];
+  },
+
   // Headers configuratie voor iframe embedding
   async headers() {
     return [

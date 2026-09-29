@@ -2163,8 +2163,8 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
 /* ============ Oliemonsters: tikbare status en foutmeldingen ============
    De hoofdhandeling in de monsterlijst is een monster op genomen of niet genomen
    zetten. Dat is één tik op de statuscel, zoals een straat afvinken bij de
-   controlerondes. Staat hier en niet in de pagina, zodat beide jaren (2025 en
-   2026) dezelfde stijl gebruiken. */
+   controlerondes. Staat hier en niet in de pagina, zodat elk jaar dezelfde
+   stijl gebruikt. */
 
 .status-cel {
   display: inline-flex;
@@ -2268,6 +2268,60 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   }
   .laadfout .btn {
     flex: 1 1 auto;
+  }
+}
+
+/* ============ Oliemonsters: filters boven de lijst ============
+   Op de telefoon twee kolommen met het label boven het veld, op desktop een rij
+   met de labels naast de velden (component MonsterFilters). */
+
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 12px;
+}
+.filter-veld {
+  min-width: 0;
+}
+/* Knop over de volle breedte van het filterraster: op de telefoon past hij
+   niet in een kolom van de helft. */
+.filter-veld-breed {
+  grid-column: 1 / -1;
+}
+.filter-veld-breed .btn {
+  width: 100%;
+  min-height: 44px;
+}
+.filter-label {
+  margin: 0 0 5px;
+}
+@media (min-width: 641px) {
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+  }
+  .filter-veld {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .filter-veld:nth-child(2) {
+    margin-left: 8px;
+  }
+  .filter-label {
+    margin: 0;
+  }
+  .filter-label-mobiel {
+    display: none;
+  }
+  .filter-veld-breed .btn {
+    width: auto;
+    min-height: 0;
+  }
+  .filter-select {
+    width: auto;
   }
 }
 
