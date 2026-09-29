@@ -1,7 +1,73 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { unsealData } from 'iron-session';
+import { herkomstFout } from './lib/herkomst';
+import { sessionOptions, sessieSleutel, SessionData } from './lib/session';
 
-export function proxy(request: NextRequest) {
+/**
+ * Routes die een sessie mag gebruiken die nog een wachtwoord moet instellen.
+ * Alle andere API-routes weigeren zo'n sessie, ook als ze zelf (nog) niet via
+ * lib/toegang.ts controleren.
+ */
+const ROUTES_ZONDER_WACHTWOORD = new Set([
+  '/api/auth/login',
+  '/api/auth/logout',
+  '/api/auth/session',
+  '/api/auth/set-password',
+  '/api/auth/uitnodiging',
+]);
+
+function eigenOriginVan(request: NextRequest): string {
+  const host = request.headers.get('host') || request.nextUrl.host;
+  const proto =
+    request.headers.get('x-forwarded-proto')?.split(',')[0].trim() ||
+    request.nextUrl.protocol.replace(':', '');
+  return `${proto}://${host}`;
+}
+
+/** true als de cookie een sessie is die eerst een wachtwoord moet instellen. */
+async function moetEerstWachtwoord(request: NextRequest): Promise<boolean> {
+  const cookie = request.cookies.get(sessionOptions.cookieName)?.value;
+  if (!cookie) return false;
+  let sleutel: string;
+  try {
+    sleutel = sessieSleutel();
+  } catch {
+    // Geen sleutel in productie: de route zelf faalt dan al met een duidelijke fout.
+    return false;
+  }
+  try {
+    const data = await unsealData<SessionData>(cookie, { password: sleutel });
+    return Boolean(data?.isLoggedIn && data.requiresPasswordChange);
+  } catch {
+    return false;
+  }
+}
+
+export async function proxy(request: NextRequest) {
+  const pad = request.nextUrl.pathname;
+
+  if (pad.startsWith('/api/')) {
+    // CSRF: niet-GET-verzoeken moeten van de portal zelf komen en JSON zijn.
+    const fout = herkomstFout({
+      method: request.method,
+      pad,
+      eigenOrigin: eigenOriginVan(request),
+      headers: request.headers,
+    });
+    if (fout) {
+      return NextResponse.json({ error: fout.error }, { status: fout.status });
+    }
+
+    // Zolang het wachtwoord nog ingesteld moet worden: alleen dat.
+    if (!ROUTES_ZONDER_WACHTWOORD.has(pad) && (await moetEerstWachtwoord(request))) {
+      return NextResponse.json(
+        { error: 'Stel eerst je wachtwoord in.', requiresPasswordChange: true },
+        { status: 403 }
+      );
+    }
+  }
+
   const response = NextResponse.next();
 
   // Haal het origin op van het verzoek
