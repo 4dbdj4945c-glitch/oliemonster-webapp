@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import { apiFetch } from '@/lib/api';
 import { searchPlaces, getStreets, PlaceHit, StreetHit } from '@/lib/pdok';
 import type { MapStreet } from '@/app/components/RouteMap';
-import { AppShell, NavButton, Icon } from '@/app/components/ui';
+import { AppShell, Icon } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 
@@ -498,11 +498,9 @@ export default function ControleRondesPage() {
     <AppShell
       title="Controlerondes"
       user={user}
-      rightActions={
-        view !== 'list' && (
-          <NavButton icon={<Icon name="arrow-left" size={16} />} onClick={() => { stopGps(); setView('list'); loadRounds(); }}>Rondes</NavButton>
-        )
-      }
+      // Een ronde rijden is veldwerk: op de telefoon geen onderbalk, want de
+      // ronde heeft zijn eigen balk onderaan. Terug gaat via de link hieronder.
+      veld={view === 'detail'}
     >
       {/* Alleen pagina-lay-out; kaarten, knoppen, velden en badges komen uit globals.css.
           Mobiel (tot 640px) en gestapelde kolommen (tot 760px) staan onderaan in de media queries. */}
@@ -614,6 +612,18 @@ export default function ControleRondesPage() {
         }
       `}</style>
 
+      {/* Terug naar de lijst: binnen de module, links boven de inhoud */}
+      {view !== 'list' && (
+        <button
+          type="button"
+          className="btn-link terug-link"
+          onClick={() => { stopGps(); setView('list'); loadRounds(); }}
+        >
+          <Icon name="arrow-left" size={16} />
+          Rondes
+        </button>
+      )}
+
       {/* ============ LIJST ============ */}
       {view === 'list' && (
         <>
@@ -654,7 +664,7 @@ export default function ControleRondesPage() {
                         {rondeStatus(klaar, r.doneCount > 0)}
                         {r.doneCount}/{r.streetsCount} straten gereden
                       </span>
-                      {r.routeDistance ? <span>{(r.routeDistance / 1000).toFixed(1)} km</span> : null}
+                      {r.routeDistance ? <span>{(r.routeDistance / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })} km</span> : null}
                     </div>
                   </div>
                 );
@@ -839,7 +849,7 @@ export default function ControleRondesPage() {
               <h1 className="page-title">{detail.name}</h1>
               <p className="page-subtitle">
                 {detail.place}
-                {detail.routeDistance ? `, ${(detail.routeDistance / 1000).toFixed(1)} km route` : ''}
+                {detail.routeDistance ? `, ${(detail.routeDistance / 1000).toLocaleString('nl-NL', { maximumFractionDigits: 1 })} km route` : ''}
                 {detail.notes ? `, ${detail.notes}` : ''}
               </p>
             </div>
