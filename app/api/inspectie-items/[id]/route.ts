@@ -17,7 +17,7 @@ import { nlDag } from '@/lib/klantOpdracht';
 async function actiefItem(id: number) {
   const item = await prisma.inspectieItem.findFirst({
     where: { id, deletedAt: null, inspectie: { deletedAt: null } },
-    select: { id: true, inspectieId: true, titel: true, fotoUrl: true, gerepareerdOp: true },
+    select: { id: true, inspectieId: true, titel: true, fotoUrl: true, gerepareerdOp: true, oordeel: true, waarden: true },
   });
   if (!item) throw new ApiFout(404, 'Bevinding niet gevonden');
   return item;
@@ -30,7 +30,7 @@ export const PUT = apiRoute({ rol: 'admin', module: 'inspecties', fout: 'Fout bi
   const sjabloon = inspectie.sjabloon as SjabloonSleutel;
   const s = sjabloonVan(sjabloon);
   const invoer = await leesJson(request, ItemWijzigingSchema);
-  const { waarden } = controleerItem(sjabloon, invoer);
+  const { waarden } = controleerItem(sjabloon, invoer, item);
   await controleerInstallatie(invoer.installatieId, inspectie.klantId);
 
   const data: Record<string, unknown> = {};

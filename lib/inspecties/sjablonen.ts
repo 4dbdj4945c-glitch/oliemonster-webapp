@@ -87,7 +87,11 @@ export interface Sjabloon {
     /** Een bevinding hoort bij een arbeidsmiddel uit de installaties. */
     kiesInstallatie: boolean;
   };
-  oordeel: { label: string; keuzes: Keuze[]; standaard: string };
+  /**
+   * `standaard` is het oordeel van een nieuwe bevinding. null = geen: je moet
+   * zelf kiezen (arbeidsmiddelen, zodat er nooit vanzelf In orde in een rapport staat).
+   */
+  oordeel: { label: string; keuzes: Keuze[]; standaard: string | null };
   /** Getallen per bevinding, in `waarden`. */
   meetwaarden: GetalVeld[];
   checklist: ChecklistPunt[];
@@ -220,11 +224,14 @@ const ARBEIDSMIDDELEN: Sjabloon = {
   },
   oordeel: {
     label: 'Uitslag',
-    standaard: 'in-orde',
+    standaard: null,
     keuzes: [
       { waarde: 'in-orde', label: 'In orde', badge: 'badge-success', icoon: 'status-taken' },
       { waarde: 'actie-nodig', label: 'Actie nodig', badge: 'badge-warning', icoon: 'alert-warning' },
       { waarde: 'buiten-gebruik', label: 'Buiten gebruik', badge: 'badge-danger', icoon: 'status-cancelled' },
+      // Bewust overgeslagen (niet bereikbaar, niet in bedrijf): staat in het
+      // rapport apart, buiten de verklaring van art. 7.4a.
+      { waarde: 'niet-gecontroleerd', label: 'Niet gecontroleerd', badge: 'badge-gray', icoon: 'status-round-open' },
     ],
   },
   meetwaarden: [
@@ -296,10 +303,28 @@ export function leesGetal(w: unknown): number | null {
   return NaN;
 }
 
+/** Een of meer velden kloppen niet. `velden` heeft per veld de melding, `message` is de eerste. */
 export class WaardeFout extends Error {
-  constructor(public veld: string, melding: string) {
+  public velden: Record<string, string>;
+  constructor(public veld: string, melding: string, velden?: Record<string, string>) {
     super(melding);
+    this.velden = velden ?? { [veld]: melding };
   }
+}
+
+/** Werk uitvoeren per veld en alle fouten samen melden, niet één per keer. */
+function verzamel(stappen: (() => void)[]) {
+  const velden: Record<string, string> = {};
+  for (const stap of stappen) {
+    try {
+      stap();
+    } catch (e) {
+      if (!(e instanceof WaardeFout)) throw e;
+      Object.assign(velden, e.velden);
+    }
+  }
+  const namen = Object.keys(velden);
+  if (namen.length > 0) throw new WaardeFout(namen[0], velden[namen[0]], velden);
 }
 
 function leesGetalVeld(v: GetalVeld, ruw: unknown): number | null {
@@ -337,19 +362,36 @@ export function leesInstellingen(sjabloon: Sjabloon, ruw: unknown): Instellingen
 export function leesWaarden(sjabloon: Sjabloon, ruw: unknown): Waarden {
   const bron = (ruw && typeof ruw === 'object' ? ruw : {}) as Record<string, unknown>;
   const uit: Waarden = {};
-  for (const v of sjabloon.meetwaarden) uit[v.sleutel] = leesGetalVeld(v, bron[v.sleutel]);
-  if (sjabloon.checklist.length > 0) {
-    const lijst = (bron.checklist && typeof bron.checklist === 'object' ? bron.checklist : {}) as Record<string, unknown>;
-    const checklist: Record<string, ChecklistAntwoord> = {};
-    for (const p of sjabloon.checklist) {
+  const stappen: (() => void)[] = sjabloon.meetwaarden.map((v) => () => {
+    uit[v.sleutel] = leesGetalVeld(v, bron[v.sleutel]);
+  });
+  const checklist: Record<string, ChecklistAntwoord> = {};
+  const lijst = (bron.checklist && typeof bron.checklist === 'object' ? bron.checklist : {}) as Record<string, unknown>;
+  for (const p of sjabloon.checklist) {
+    stappen.push(() => {
       const a = lijst[p.sleutel];
-      if (a === undefined || a === null || a === '') continue;
+      if (a === undefined || a === null || a === '') return;
       if (a !== 'goed' && a !== 'niet-goed' && a !== 'nvt') throw new WaardeFout(`checklist.${p.sleutel}`, `${p.label}: kies goed, niet goed of n.v.t.`);
       checklist[p.sleutel] = a;
-    }
-    uit.checklist = checklist;
+    });
   }
+  verzamel(stappen);
+  if (sjabloon.checklist.length > 0) uit.checklist = checklist;
   return uit;
+}
+
+/**
+ * Mag dit oordeel bij deze waarden? In orde kan bij een sjabloon met een
+ * checklist pas als elk controlepunt beantwoord is en er geen op niet goed
+ * staat. null = in orde, anders de melding.
+ */
+export function oordeelFout(sjabloon: Sjabloon, oordeel: string | null | undefined, waarden: unknown): string | null {
+  if (oordeel !== 'in-orde' || sjabloon.checklist.length === 0) return null;
+  const c = checklistVan(waarden);
+  const open = sjabloon.checklist.filter((p) => !c[p.sleutel]).length;
+  if (open > 0) return `In orde kan pas als alle controlepunten zijn beantwoord. Nog ${open} ${open === 1 ? 'punt' : 'punten'} open.`;
+  if (sjabloon.checklist.some((p) => c[p.sleutel] === 'niet-goed')) return 'Een controlepunt staat op niet goed. Kies Actie nodig of Buiten gebruik.';
+  return null;
 }
 
 /** Een getal uit de waarden, of null. */

@@ -9,6 +9,7 @@ import {
   plusMaanden,
   sjabloonVan,
   verklaringArbeidsmiddelen,
+  oordeelFout,
   WaardeFout,
 } from '@/lib/inspecties/sjablonen';
 import { berekenLek, energiePerM3, lekInstellingen, lekTotalen, uitkomstTekst, volgendeInspectie } from '@/lib/inspecties/rekenen';
@@ -16,7 +17,7 @@ import { berekenLek, energiePerM3, lekInstellingen, lekTotalen, uitkomstTekst, v
 describe('sjablonen', () => {
   it('elk sjabloon heeft oordelen met een standaard, en unieke veldnamen', () => {
     for (const s of Object.values(SJABLONEN)) {
-      expect(s.oordeel.keuzes.map((k) => k.waarde)).toContain(s.oordeel.standaard);
+      if (s.oordeel.standaard !== null) expect(s.oordeel.keuzes.map((k) => k.waarde)).toContain(s.oordeel.standaard);
       const namen = [...s.meetwaarden.map((v) => v.sleutel), ...s.instellingen.map((v) => v.sleutel)];
       expect(new Set(namen).size).toBe(namen.length);
     }
@@ -40,6 +41,28 @@ describe('sjablonen', () => {
     });
     expect(() => leesWaarden(s, { checklist: { slangen: 'misschien' } })).toThrow(WaardeFout);
     expect(() => leesWaarden(sjabloonVan('persluchtlekken'), { verliesLpm: -3 })).toThrow(WaardeFout);
+  });
+
+  it('arbeidsmiddelen: geen standaarduitslag, In orde alleen met een volledige checklist zonder niet goed', () => {
+    const s = sjabloonVan('arbeidsmiddelen');
+    expect(s.oordeel.standaard).toBeNull();
+    const alles = Object.fromEntries(s.checklist.map((p) => [p.sleutel, 'goed']));
+    expect(oordeelFout(s, 'in-orde', {})).toMatch(/Nog 10 punten open/);
+    expect(oordeelFout(s, 'in-orde', { checklist: { ...alles, olie: undefined } })).toMatch(/Nog 1 punt open/);
+    expect(oordeelFout(s, 'in-orde', { checklist: { ...alles, filters: 'nvt' } })).toBeNull();
+    expect(oordeelFout(s, 'in-orde', { checklist: { ...alles, lekkage: 'niet-goed' } })).toMatch(/niet goed/);
+    expect(oordeelFout(s, 'actie-nodig', {})).toBeNull();
+    expect(oordeelFout(sjabloonVan('persluchtlekken'), 'hoog', {})).toBeNull();
+  });
+
+  it('alle foute velden tegelijk, niet één per keer', () => {
+    try {
+      leesWaarden(sjabloonVan('persluchtlekken'), { db: -5, verliesLpm: 'abc' });
+      throw new Error('geen fout');
+    } catch (e) {
+      expect(e).toBeInstanceOf(WaardeFout);
+      expect(Object.keys((e as WaardeFout).velden).sort()).toEqual(['db', 'verliesLpm']);
+    }
   });
 
   it('luchtketel: boven 2.500 liter of vanaf 30 bar een doorverwijzing', () => {

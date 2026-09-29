@@ -29,6 +29,7 @@ import {
   getal,
   leesGetal,
   luchtketelWaarschuwing,
+  oordeelFout,
   sjabloonVan,
   type ChecklistAntwoord,
 } from '@/lib/inspecties/sjablonen';
@@ -65,7 +66,7 @@ function beginVelden(inspectie: Inspectie, item: Bevinding | null): Velden {
   return {
     titel: item?.titel ?? (s.item.kiesInstallatie ? '' : volgendLabel(inspectie.items)),
     locatie: item?.locatie ?? '',
-    oordeel: item?.oordeel ?? s.oordeel.standaard,
+    oordeel: item?.oordeel ?? s.oordeel.standaard ?? '',
     notitie: item?.notitie ?? '',
     meet,
     checklist: item ? { ...checklistVan(item.waarden) } : {},
@@ -116,13 +117,20 @@ export default function BevindingVenster({
     : null;
 
   const opslaan = async (sluiten: boolean) => {
-    setBezig(true);
     setFout('');
     setVeldFouten({});
+    // In orde pas als de hele checklist is beantwoord (ook offline, vóór de wachtrij).
+    const oordeelMelding = oordeelFout(s, velden.oordeel || null, { checklist: velden.checklist });
+    if (oordeelMelding) {
+      setVeldFouten({ oordeel: oordeelMelding });
+      setFout(oordeelMelding);
+      return;
+    }
+    setBezig(true);
     const body = {
       titel: velden.titel,
       locatie: velden.locatie,
-      oordeel: velden.oordeel,
+      oordeel: velden.oordeel || null,
       notitie: velden.notitie,
       waarden: { ...velden.meet, ...(s.checklist.length ? { checklist: velden.checklist } : {}) },
       ...(s.reparatie ? { gerepareerd: velden.gerepareerd, gerepareerdOp: velden.gerepareerd ? velden.gerepareerdOp || null : null } : {}),
@@ -354,7 +362,7 @@ export default function BevindingVenster({
 
         <fieldset className="insp-keuze">
           <legend className="label">{s.oordeel.label}</legend>
-          <div className="keuzeknoppen">
+          <div className={`keuzeknoppen${s.oordeel.keuzes.length > 3 ? ' keuzeknoppen-vier' : ''}`}>
             {s.oordeel.keuzes.map((k) => (
               <button
                 key={k.waarde}
@@ -368,6 +376,11 @@ export default function BevindingVenster({
               </button>
             ))}
           </div>
+          {veldFouten.oordeel ? (
+            <p className="veld-fout">{veldFouten.oordeel}</p>
+          ) : (
+            s.oordeel.standaard === null && !velden.oordeel && <p className="hint">Nog geen uitslag. In orde kan als alle controlepunten zijn beantwoord; sla je dit arbeidsmiddel over, kies dan Niet gecontroleerd.</p>
+          )}
         </fieldset>
 
         {!lekken && metingen}

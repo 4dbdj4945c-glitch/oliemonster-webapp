@@ -120,13 +120,14 @@ export interface ArbeidsmiddelTelling {
   'in-orde': number;
   'actie-nodig': number;
   'buiten-gebruik': number;
+  'niet-gecontroleerd': number;
   zonderUitslag: number;
 }
 
 export function arbeidsmiddelTelling(items: { oordeel: string | null }[]): ArbeidsmiddelTelling {
-  const t: ArbeidsmiddelTelling = { aantal: items.length, 'in-orde': 0, 'actie-nodig': 0, 'buiten-gebruik': 0, zonderUitslag: 0 };
+  const t: ArbeidsmiddelTelling = { aantal: items.length, 'in-orde': 0, 'actie-nodig': 0, 'buiten-gebruik': 0, 'niet-gecontroleerd': 0, zonderUitslag: 0 };
   for (const i of items) {
-    if (i.oordeel === 'in-orde' || i.oordeel === 'actie-nodig' || i.oordeel === 'buiten-gebruik') t[i.oordeel] += 1;
+    if (i.oordeel === 'in-orde' || i.oordeel === 'actie-nodig' || i.oordeel === 'buiten-gebruik' || i.oordeel === 'niet-gecontroleerd') t[i.oordeel] += 1;
     else t.zonderUitslag += 1;
   }
   return t;
@@ -178,6 +179,8 @@ export function uitkomstTekst(sjabloon: SjabloonSleutel, items: SamenvatItem[], 
   if (t['in-orde']) delen.push(`${t['in-orde']} in orde`);
   if (t['actie-nodig']) delen.push(`${t['actie-nodig']} actie nodig`);
   if (t['buiten-gebruik']) delen.push(`${t['buiten-gebruik']} buiten gebruik`);
+  if (t['niet-gecontroleerd']) delen.push(`${t['niet-gecontroleerd']} niet gecontroleerd`);
+  if (t.zonderUitslag) delen.push(`${t.zonderUitslag} zonder uitslag`);
   return delen.join(', ');
 }
 

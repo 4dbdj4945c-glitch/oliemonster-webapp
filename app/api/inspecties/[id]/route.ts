@@ -6,6 +6,7 @@ import { apiRoute, ApiFout, leesId, leesJson } from '@/lib/apiRoute';
 import { inspectieNummer, leesInstellingen, sjabloonVan } from '@/lib/inspecties/sjablonen';
 import {
   InspectieWijzigingSchema,
+  afrondFout,
   alsDag,
   controleerInstallatie,
   dagAlsDatum,
@@ -44,6 +45,10 @@ export const PUT = apiRoute({ rol: 'admin', module: 'inspecties', fout: 'Fout bi
     // Samenvoegen met wat er staat: een scherm mag één instelling tegelijk sturen.
     const oud = (huidig.instellingen && typeof huidig.instellingen === 'object' ? huidig.instellingen : {}) as Record<string, unknown>;
     data.instellingen = metWaardeFout(() => leesInstellingen(s, { ...oud, ...invoer.instellingen }));
+  }
+  if (invoer.status === 'afgerond' && huidig.status !== 'afgerond') {
+    const melding = afrondFout(huidig);
+    if (melding) throw new ApiFout(400, melding);
   }
   if (invoer.status !== undefined && invoer.status !== huidig.status) {
     data.status = invoer.status;

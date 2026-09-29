@@ -9,7 +9,8 @@ import { ItemSchema, alsDag, controleerInstallatie, controleerItem, dagAlsDatum,
 
 /*
   POST /api/inspecties/[id]/items - een bevinding toevoegen (admin): een lek of
-  een arbeidsmiddel. Zonder oordeel het standaardoordeel van het sjabloon;
+  een arbeidsmiddel. Zonder oordeel het standaardoordeel van het sjabloon (bij
+  arbeidsmiddelen geen: dan zonder uitslag, In orde kies je zelf);
   zonder volgende datum (arbeidsmiddelen) een jaar na de inspectie.
   Geeft de hele inspectie terug, met de nieuwe totalen. Met de header
   Idempotentie-Sleutel (de offline wachtrij) maar één keer (lib/idempotentie.ts).

@@ -23,6 +23,7 @@ import {
   leesInstellingen,
   leesWaarden,
   luchtketelWaarschuwing,
+  oordeelFout,
   sjabloonVan,
   type SjabloonSleutel,
 } from './sjablonen';
@@ -104,19 +105,45 @@ export function metWaardeFout<T>(werk: () => T): T {
   try {
     return werk();
   } catch (e) {
-    if (e instanceof WaardeFout) throw new ApiFout(400, e.message, { velden: { [e.veld]: e.message } });
+    if (e instanceof WaardeFout) throw new ApiFout(400, e.message, { velden: e.velden });
     throw e;
   }
 }
 
-/** Controleert oordeel en waarden van een bevinding tegen het sjabloon. */
-export function controleerItem(sjabloon: SjabloonSleutel, invoer: z.output<typeof ItemWijzigingSchema>) {
+/**
+ * Controleert oordeel en waarden van een bevinding tegen het sjabloon. `huidig`
+ * is wat er nu staat (bij bijwerken), zodat In orde ook geweigerd wordt als
+ * alleen het oordeel of alleen de checklist meekomt.
+ */
+export function controleerItem(
+  sjabloon: SjabloonSleutel,
+  invoer: z.output<typeof ItemWijzigingSchema>,
+  huidig: { oordeel: string | null; waarden: unknown } | null = null
+) {
   const s = sjabloonVan(sjabloon);
   if (invoer.oordeel && !s.oordeel.keuzes.some((k) => k.waarde === invoer.oordeel)) {
     throw new ApiFout(400, `Kies een ${s.oordeel.label.toLowerCase()}`, { velden: { oordeel: `Kies een ${s.oordeel.label.toLowerCase()}` } });
   }
   const waarden = invoer.waarden === undefined ? undefined : metWaardeFout(() => leesWaarden(s, invoer.waarden));
+  const oordeel = invoer.oordeel !== undefined ? invoer.oordeel : huidig ? huidig.oordeel : s.oordeel.standaard;
+  const melding = oordeelFout(s, oordeel, waarden !== undefined ? waarden : huidig?.waarden);
+  if (melding) throw new ApiFout(400, melding, { velden: { oordeel: melding } });
   return { waarden };
+}
+
+/**
+ * Kan deze inspectie afgerond worden? Bij een sjabloon met een checklist moet
+ * elke bevinding een uitslag hebben die past bij de checklist; anders zou het
+ * rapport iets zeggen wat niet gecontroleerd is. null = ja, anders de melding.
+ */
+export function afrondFout(rij: Pick<InspectieRij, 'sjabloon' | 'items'>): string | null {
+  const s = sjabloonVan(rij.sjabloon);
+  if (s.checklist.length === 0) return null;
+  const zonder = rij.items.filter((i) => !i.oordeel).map((i) => i.titel);
+  if (zonder.length > 0) return `Kies eerst een uitslag voor ${zonder.join(', ')} (of Niet gecontroleerd).`;
+  const fout = rij.items.find((i) => oordeelFout(s, i.oordeel, i.waarden));
+  if (fout) return `${fout.titel}: ${oordeelFout(s, fout.oordeel, fout.waarden)}`;
+  return null;
 }
 
 /** Een installatie hoort bij hetzelfde object als de inspectie (of in elk geval bij dezelfde klant). */

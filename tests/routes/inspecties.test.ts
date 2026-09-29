@@ -88,6 +88,46 @@ describe('inspecties invullen (admin)', () => {
     expect(i.status).toBe(400);
   });
 
+  it('arbeidsmiddel: zonder uitslag, In orde pas met de hele checklist, afronden pas als alles een uitslag heeft', async () => {
+    await admin();
+    const res = await nieuw(verzoek('/api/inspecties', { body: { sjabloon: 'arbeidsmiddelen', objectId: ids.werkplaats, datum: '2026-10-01', uitvoerder: 'Roel' } }), undefined);
+    const { id } = await res.json();
+    const r = await nieuwItem(verzoek(`/api/inspecties/${id}/items`, { body: { titel: 'Hydraulische pers', waarden: { werkdrukBar: 200 } } }), p(id));
+    expect(r.status).toBe(201);
+    const { inspectie, itemId } = await r.json();
+    expect(inspectie.items[0].oordeel).toBeNull();
+    // Afronden kan niet zolang er een arbeidsmiddel zonder uitslag is.
+    const a = await wijzig(verzoek(`/api/inspecties/${id}`, { method: 'PUT', body: { status: 'afgerond' } }), p(id));
+    expect(a.status).toBe(400);
+    expect((await a.json()).error).toMatch(/uitslag voor Hydraulische pers/);
+    // In orde met een lege checklist mag niet, ook niet als alleen het oordeel meekomt.
+    const o = await wijzigItem(verzoek(`/api/inspectie-items/${itemId}`, { method: 'PUT', body: { oordeel: 'in-orde' } }), p(itemId));
+    expect(o.status).toBe(400);
+    expect((await o.json()).velden).toHaveProperty('oordeel');
+    const nieuwMetInOrde = await nieuwItem(verzoek(`/api/inspecties/${id}/items`, { body: { titel: 'Luchtketel', oordeel: 'in-orde', waarden: { ketelLiter: 3000 } } }), p(id));
+    expect(nieuwMetInOrde.status).toBe(400);
+    // Met de hele checklist wel, en dan kan hij af.
+    const checklist = Object.fromEntries(['slangen', 'lekkage', 'leidingen', 'beveiliging', 'manometer', 'bediening', 'afscherming', 'olie', 'filters', 'markering'].map((k) => [k, 'goed']));
+    const g = await wijzigItem(verzoek(`/api/inspectie-items/${itemId}`, { method: 'PUT', body: { oordeel: 'in-orde', waarden: { werkdrukBar: 200, checklist } } }), p(itemId));
+    expect(g.status).toBe(200);
+    // Een arbeidsmiddel bewust overslaan: Niet gecontroleerd, dan kan het ook af.
+    const ng = await nieuwItem(verzoek(`/api/inspecties/${id}/items`, { body: { titel: 'Luchtketel hal 3', oordeel: 'niet-gecontroleerd', waarden: { ketelLiter: 3000 } } }), p(id));
+    expect(ng.status).toBe(201);
+    expect((await ng.json()).inspectie.uitkomst).toBe('2 arbeidsmiddelen, 1 in orde, 1 niet gecontroleerd');
+    expect((await wijzig(verzoek(`/api/inspecties/${id}`, { method: 'PUT', body: { status: 'afgerond' } }), p(id))).status).toBe(200);
+    const pdf = await rapport(verzoek(`/api/inspecties/${id}/rapport`), p(id));
+    expect(pdf.status).toBe(200);
+    bewaar('inspectie-arbeidsmiddelen-niet-gecontroleerd.pdf', Buffer.from(await pdf.arrayBuffer()));
+  });
+
+  it('meerdere foute velden komen in één keer terug', async () => {
+    await admin();
+    const id = ids.inspecties.conceptTweede;
+    const r = await nieuwItem(verzoek(`/api/inspecties/${id}/items`, { body: { titel: 'x', waarden: { db: -5, verliesLpm: 'abc' } } }), p(id));
+    expect(r.status).toBe(400);
+    expect(Object.keys((await r.json()).velden).sort()).toEqual(['db', 'verliesLpm']);
+  });
+
   it('een object zonder klant kan geen inspectie krijgen', async () => {
     await admin();
     const los = await prisma.sampleObject.create({ data: { name: 'Zonder klant' } });

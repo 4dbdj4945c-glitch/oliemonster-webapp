@@ -413,6 +413,8 @@ function Regel({ insp, item, onOpen }: { insp: Inspectie; item: Bevinding; onOpe
         <span className="badge badge-success"><Icon name="check" size={16} />Gerepareerd</span>
       ) : oordeel ? (
         <span className={`badge ${oordeel.badge}`}><Icon name={oordeel.icoon} size={16} />{oordeel.label}</span>
+      ) : !lek ? (
+        <span className="badge badge-gray"><Icon name="status-round-open" size={16} />Nog geen uitslag</span>
       ) : null}
     </>
   );

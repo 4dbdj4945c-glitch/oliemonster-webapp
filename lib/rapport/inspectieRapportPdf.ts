@@ -59,6 +59,7 @@ const OORDEEL_TEKST: Record<string, RGB> = {
   'in-orde': GROEN_TEKST,
   'actie-nodig': AMBER_TEKST,
   'buiten-gebruik': ROOD_TEKST,
+  'niet-gecontroleerd': GRIJS_500,
   hoog: AMBER_TEKST,
   middel: [29, 78, 216],
   laag: GRIJS_500,
@@ -278,8 +279,30 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
       [nl(t['in-orde']), 'in orde'],
       [nl(t['actie-nodig']), 'actie nodig'],
       [nl(t['buiten-gebruik']), 'buiten gebruik'],
+      ...(t['niet-gecontroleerd'] + t.zonderUitslag > 0 ? ([[nl(t['niet-gecontroleerd'] + t.zonderUitslag), 'niet gecontroleerd']] as [string, string][]) : []),
     ]);
-    kader(s.rapport.verklaring!(instellingen), GRIJS_50, GRIJS_200, GRIJS_700);
+    // De verklaring geldt alleen voor wat echt gecontroleerd is. Wat bewust is
+    // overgeslagen (of nog geen uitslag heeft), staat er los onder.
+    const gecontroleerd = rij.items.filter((i) => i.oordeel && i.oordeel !== 'niet-gecontroleerd');
+    const nietGecontroleerd = rij.items.filter((i) => !i.oordeel || i.oordeel === 'niet-gecontroleerd');
+    if (gecontroleerd.length > 0) {
+      kader(
+        `${s.rapport.verklaring!(instellingen)} Deze verklaring geldt voor: ${gecontroleerd.map((i) => i.titel).join(', ')}.`,
+        GRIJS_50,
+        GRIJS_200,
+        GRIJS_700
+      );
+    }
+    if (nietGecontroleerd.length > 0) {
+      kader(
+        `Niet gecontroleerd: ${nietGecontroleerd.map((i) => i.titel).join(', ')}. ${
+          nietGecontroleerd.length === 1 ? 'Dit arbeidsmiddel is' : 'Deze arbeidsmiddelen zijn'
+        } bij deze inspectie niet geïnspecteerd; de verklaring ${gecontroleerd.length > 0 ? 'hierboven ' : 'van art. 7.4a Arbobesluit '}geldt er niet voor.`,
+        AMBER_VLAK,
+        [253, 186, 116],
+        AMBER_TEKST
+      );
+    }
     for (const i of rij.items) {
       const w = luchtketelWaarschuwing(i.waarden);
       if (w) kader(`${i.titel}: ${w}`, AMBER_VLAK, [253, 186, 116], AMBER_TEKST);
@@ -319,6 +342,10 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
     // Checklist per arbeidsmiddel
     for (const i of rij.items) {
       kop(`${i.titel}: ${oordeelVan(s, i.oordeel)?.label ?? 'zonder uitslag'}`);
+      if (!i.oordeel || i.oordeel === 'niet-gecontroleerd') {
+        alinea(i.notitie ? `Niet gecontroleerd. ${i.notitie}` : 'Niet gecontroleerd bij deze inspectie.', GRIJS_500);
+        continue;
+      }
       const c = checklistVan(i.waarden);
       const meet = s.meetwaarden
         .map((v) => (getal(i.waarden, v.sleutel) !== null ? [`${v.label}`, `${nl(getal(i.waarden, v.sleutel)!, v.decimalen)} ${v.eenheid ?? ''}`.trim()] : null))

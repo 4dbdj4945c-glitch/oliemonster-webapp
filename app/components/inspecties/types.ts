@@ -68,6 +68,7 @@ export interface ArbeidsmiddelTotalenJson {
   'in-orde': number;
   'actie-nodig': number;
   'buiten-gebruik': number;
+  'niet-gecontroleerd': number;
   zonderUitslag: number;
 }
 

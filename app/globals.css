@@ -5067,6 +5067,8 @@ div.veld-lijst-regel { cursor: default; }
 .keuzeknop.on-buiten-gebruik { border-color: var(--rood-tekst); background: var(--rood-light); color: var(--rood-tekst); }
 .keuzeknop.on-middel { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }
 .keuzeknoppen-klein .keuzeknop { min-height: 44px; font-size: 14px; }
+/* Vier keuzes (uitslag arbeidsmiddel): twee bij twee, zodat de woorden passen */
+.keuzeknoppen-vier { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
 
 .insp-checklist-kop { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .insp-checklist-kop legend.label { margin: 0; float: left; }
