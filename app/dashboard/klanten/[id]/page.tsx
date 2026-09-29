@@ -1,10 +1,15 @@
 'use client';
 
-// Klantscherm (alleen admin): gegevens, contactpersonen, objecten met hun
-// installaties en wie er voor deze klant meekijkt. Functioneel en eenvoudig; het
-// klantdossier met tijdlijn komt in fase 3.
+// Klantdossier (alleen admin, ontwerp portaal-plan/04-ontwerp/ontwerp-klantdossier-*):
+// kop met de klant, Mail opstellen, Rapport maken en Klantportaal bekijken,
+// kerncijfers, en drie tabs:
+// - Objecten en installaties: per object en installatie een tijdlijn van
+//   monsters (status en foto's), niet bereikbaar, annuleringen (DossierTijdlijn).
+//   Filter op jaar.
+// - Contactpersonen, met Mail opstellen per persoon.
+// - Gegevens: adres, logo, meekijkers, objecten koppelen en verwijderen.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
 import { AppShell, Icon, Laden } from '@/app/components/ui';
@@ -14,18 +19,21 @@ import VeiligVerwijderBlok from '@/app/components/VeiligVerwijderBlok';
 import KlantFormulier from '@/app/components/klanten/KlantFormulier';
 import ContactpersoonFormulier from '@/app/components/klanten/ContactpersoonFormulier';
 import InstallatieFormulier from '@/app/components/klanten/InstallatieFormulier';
+import DossierTijdlijn, { type DossierKeuze } from '@/app/components/klanten/DossierTijdlijn';
 import {
   adresTekst,
-  typeTekst,
   type Contactpersoon,
+  type Dossier,
   type KlantDetail,
   type KlantObject,
   type ObjectKeuze,
 } from '@/app/components/klanten/types';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
-import { installatieSoortIcoon, installatieSoortLabel } from '@/lib/installaties';
 import { objectTypeIcoon, objectTypeLabel } from '@/lib/sampleObjects';
-import { ROLE_LABELS } from '@/lib/roles';
+import { ROLE_LABELS, WEERGAVE_LABELS, leesWeergave } from '@/lib/roles';
+import { mailOpstellenAdres } from '@/lib/mailOpstellen';
+
+type Tab = 'dossier' | 'contact' | 'gegevens';
 
 export default function KlantPagina() {
   const user = useGebruiker();
@@ -42,6 +50,13 @@ export default function KlantPagina() {
   const [bezig, setBezig] = useState(false);
   const [ongedaan, setOngedaan] = useState<OngedaanInhoud | null>(null);
   const [verwijderd, setVerwijderd] = useState(false);
+  const [tab, setTab] = useState<Tab>('dossier');
+  const [dossier, setDossier] = useState<Dossier | null>(null);
+  const [dossierFout, setDossierFout] = useState('');
+  const [jaar, setJaar] = useState<number | null>(null);
+  const [jaarGekozen, setJaarGekozen] = useState(false);
+  const [keuze, setKeuze] = useState<DossierKeuze | null>(null);
+  const [logoBezig, setLogoBezig] = useState(false);
 
   const laad = useCallback(async () => {
     try {
@@ -59,9 +74,97 @@ export default function KlantPagina() {
   }, [id]);
 
   useEffect(() => {
-     
     laad();
   }, [laad]);
+
+  // Het dossier van één jaar (of alle jaren). De eerste keer het jongste jaar
+  // met monsters; daarna wat Roel kiest.
+  const laadDossier = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/klanten/${id}/dossier${jaar ? `?jaar=${jaar}` : ''}`);
+      if (!res.ok) {
+        setDossierFout(await foutTekst(res, 'Het dossier kon niet worden opgehaald.'));
+        return;
+      }
+      const d: Dossier = await res.json();
+      if (!jaarGekozen && jaar === null && d.jaren.length > 0) {
+        setJaarGekozen(true);
+        setJaar(d.jaren[0].jaar);
+        return;
+      }
+      setDossier(d);
+      setDossierFout('');
+    } catch {
+      setDossierFout(GEEN_VERBINDING);
+    }
+  }, [id, jaar, jaarGekozen]);
+
+  useEffect(() => {
+    laadDossier();
+  }, [laadDossier]);
+
+  // Zonder keuze: het eerste object.
+  const gekozen: DossierKeuze | null =
+    keuze ?? (dossier?.objecten[0] ? { soort: 'object', id: dossier.objecten[0].id } : dossier?.heeftLosseMonsters ? { soort: 'los' } : null);
+
+  const kerncijfers = useMemo(() => {
+    if (!dossier) return null;
+    const perMonster = new Map<number, string>();
+    for (const m of dossier.momenten) {
+      const oud = perMonster.get(m.monsterId);
+      if (m.soort === 'monster' || !oud) perMonster.set(m.monsterId, m.soort);
+      if (m.soort === 'geannuleerd') perMonster.set(m.monsterId, 'geannuleerd');
+    }
+    const soorten = [...perMonster.values()];
+    const volgende = dossier.momenten
+      .filter((m) => m.soort === 'open' && m.gepland && m.datum)
+      .map((m) => m.datum!)
+      .sort()[0] ?? null;
+    return {
+      installaties: dossier.objecten.reduce((som, o) => som + o.installaties.length, 0),
+      genomen: soorten.filter((x) => x === 'monster').length,
+      teNemen: soorten.filter((x) => x !== 'geannuleerd').length,
+      nietBereikbaar: dossier.momenten.filter((m) => m.soort === 'niet-bereikbaar').length,
+      volgende,
+    };
+  }, [dossier]);
+
+  const uploadLogo = async (bestand: File) => {
+    setLogoBezig(true);
+    try {
+      const form = new FormData();
+      form.append('photo', bestand);
+      const res = await fetch(`/api/klanten/${id}/logo`, { method: 'POST', body: form });
+      if (!res.ok) {
+        setFout(await foutTekst(res, 'Het logo is niet opgeslagen.'));
+        return;
+      }
+      setMelding('Het logo is opgeslagen.');
+      await laad();
+    } catch {
+      setFout(GEEN_VERBINDING);
+    } finally {
+      setLogoBezig(false);
+    }
+  };
+
+  const verwijderLogo = async () => {
+    if (!confirm('Het logo van deze klant verwijderen? Het klantportaal en het rapport tonen dan de naam.')) return;
+    setLogoBezig(true);
+    try {
+      const res = await fetch(`/api/klanten/${id}/logo`, { method: 'DELETE' });
+      if (!res.ok) {
+        setFout(await foutTekst(res, 'Het logo is niet verwijderd.'));
+        return;
+      }
+      setMelding('Het logo is verwijderd.');
+      await laad();
+    } catch {
+      setFout(GEEN_VERBINDING);
+    } finally {
+      setLogoBezig(false);
+    }
+  };
 
   // Object aan deze klant koppelen of ervan loskoppelen (PUT op het object).
   const zetKlantVanObject = async (objectId: number, klantId: number | null, tekst: string) => {
@@ -145,6 +248,12 @@ export default function KlantPagina() {
   }
 
   const kanKoppelen = alleObjecten.filter((o) => o.klantId !== klant?.id);
+  // Mail opstellen in de kop: de eerste contactpersoon met een e-mailadres.
+  const eersteContact = klant?.contactpersonen.find((p) => p.email) ?? klant?.contactpersonen[0] ?? null;
+  const rapportJaar = dossier?.jaar ?? dossier?.jaren[0]?.jaar ?? null;
+  const klantSinds = klant ? new Date(klant.prospect?.klantSindsOp ?? klant.createdAt) : null;
+  const kortDag = (dag: string) =>
+    new Date(`${dag}T12:00:00`).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' });
 
   return (
     <AppShell title="Klanten" wide user={user}>
@@ -154,95 +263,181 @@ export default function KlantPagina() {
         fout ? null : <Laden regels={2} />
       ) : (
         <>
-          <div className="beheer-kop">
-            <div>
-              <h1 className="page-title">{klant.naam}</h1>
-              <p className="page-subtitle">{adresTekst(klant) || 'Nog geen adres.'}</p>
+          {/* ---------- Kop met kerncijfers ---------- */}
+          <section className="card dossier-kop">
+            <div className="dossier-kop-boven">
+              <div className="dossier-kop-tekst">
+                <h1 className="page-title">{klant.naam}</h1>
+                <div className="dossier-meta">
+                  {adresTekst(klant) && (
+                    <span><Icon name="map-pin" size={16} />{adresTekst(klant)}</span>
+                  )}
+                  {eersteContact && (
+                    <span><Icon name="user" size={16} />{eersteContact.naam}{eersteContact.functie ? `, ${eersteContact.functie}` : ''}</span>
+                  )}
+                  {klantSinds && (
+                    <span>
+                      <Icon name="handshake" size={16} />
+                      Klant sinds {klantSinds.toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="dossier-kop-knoppen">
+                <a
+                  className="btn"
+                  href={mailOpstellenAdres({ email: eersteContact?.email, naam: eersteContact?.naam, bedrijf: klant.naam })}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  <Icon name="mail" size={16} />
+                  Mail opstellen
+                </a>
+                {rapportJaar ? (
+                  <a className="btn" href={`/api/rapport?jaar=${rapportJaar}&klantId=${klant.id}`} download>
+                    <Icon name="file-pdf" size={16} />
+                    Rapport {rapportJaar} maken
+                  </a>
+                ) : (
+                  <button type="button" className="btn" disabled title="Nog geen monsters">
+                    <Icon name="file-pdf" size={16} />
+                    Rapport maken
+                  </button>
+                )}
+                <button type="button" className="btn" onClick={() => router.push(`/dashboard/klanten/${klant.id}/portaal`)}>
+                  <Icon name="external-link" size={16} />
+                  Klantportaal bekijken
+                </button>
+              </div>
             </div>
-            <div className="knoppenrij beheer-knoppen">
-              <button type="button" className="btn" onClick={() => setBewerken(true)}>
-                <Icon name="pencil" size={16} />
-                Gegevens bewerken
-              </button>
-            </div>
-          </div>
+            {kerncijfers && (
+              <div className="dossier-kerncijfers getallen">
+                <div>
+                  <b>{kerncijfers.installaties}</b>
+                  <span>{kerncijfers.installaties === 1 ? 'installatie' : 'installaties'} op {klant.objecten.length} {klant.objecten.length === 1 ? 'object' : 'objecten'}</span>
+                </div>
+                <div>
+                  <b>{kerncijfers.genomen} van {kerncijfers.teNemen}</b>
+                  <span>monsters genomen{dossier?.jaar ? ` in ${dossier.jaar}` : ''}</span>
+                </div>
+                <div>
+                  <b>{kerncijfers.volgende ? kortDag(kerncijfers.volgende) : 'geen'}</b>
+                  <span>volgende monsterdag</span>
+                </div>
+                <div>
+                  <b>{kerncijfers.nietBereikbaar}</b>
+                  <span>niet bereikbaar, staat nog open</span>
+                </div>
+              </div>
+            )}
+          </section>
 
           {melding && (
             <div className="alert alert-success" role="status" style={{ marginBottom: '16px' }}>{melding}</div>
           )}
 
-          <div className="beheer-grid">
-            <div className="beheer-kolom">
-              {/* Gegevens */}
-              <section className="card beheer-kaart">
-                <h2 className="section-label">Gegevens</h2>
-                <dl className="gegevens-lijst">
-                  <dt>Adres</dt>
-                  <dd>{adresTekst(klant) || '-'}</dd>
-                  <dt>KvK-nummer</dt>
-                  <dd>{klant.kvkNummer || '-'}</dd>
-                  {klant.notities && (
-                    <>
-                      <dt>Notities</dt>
-                      <dd className="gegevens-notitie">{klant.notities}</dd>
-                    </>
-                  )}
-                  {klant.prospect && (
-                    <>
-                      <dt>Acquisitie</dt>
-                      <dd>
-                        <a className="btn-link" href="/dashboard/acquisitie">
-                          <Icon name="module-acquisitie" size={16} />
-                          Klant geworden via de acquisitie
-                          {klant.prospect.klantSindsOp ? `, ${new Date(klant.prospect.klantSindsOp).toLocaleDateString('nl-NL')}` : ''}
-                        </a>
-                      </dd>
-                    </>
-                  )}
-                  <dt>Kijkt mee</dt>
-                  <dd>
-                    {klant.gebruikers.length === 0
-                      ? 'Niemand'
-                      : klant.gebruikers
-                          .map((g) => `${g.username} (${ROLE_LABELS[g.role] ?? g.role}${g.viewYear ? `, ${g.viewYear}` : ''})`)
-                          .join(', ')}
-                  </dd>
-                </dl>
-              </section>
+          {/* ---------- Tabs ---------- */}
+          <div className="dossier-tabbalk">
+            <div className="dossier-tabs" role="tablist" aria-label="Klantdossier">
+              {([
+                ['dossier', 'Objecten en installaties', klant.objecten.length],
+                ['contact', 'Contactpersonen', klant.contactpersonen.length],
+                ['gegevens', 'Gegevens', null],
+              ] as const).map(([sleutel, naam, aantal]) => (
+                <button
+                  key={sleutel}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === sleutel}
+                  className={tab === sleutel ? 'on' : ''}
+                  onClick={() => setTab(sleutel)}
+                >
+                  {naam}
+                  {aantal !== null && <small>{aantal}</small>}
+                </button>
+              ))}
+            </div>
+            {tab === 'dossier' && dossier && dossier.jaren.length > 0 && (
+              <label className="dossier-jaar">
+                <span className="label">Jaar</span>
+                <select
+                  className="select"
+                  value={jaar ?? ''}
+                  onChange={(e) => {
+                    setJaarGekozen(true);
+                    setJaar(e.target.value ? Number(e.target.value) : null);
+                  }}
+                >
+                  {dossier.jaren.map((j) => (
+                    <option key={j.jaar} value={j.jaar}>{j.jaar}</option>
+                  ))}
+                  <option value="">Alle jaren</option>
+                </select>
+              </label>
+            )}
+          </div>
 
-              {/* Contactpersonen */}
-              <section className="card beheer-kaart">
-                <div className="beheer-kaart-kop">
-                  <h2 className="section-label">Contactpersonen</h2>
-                  <button type="button" className="btn btn-sm" onClick={() => setContact({ persoon: null })}>
-                    <Icon name="user-plus" size={16} />
-                    Toevoegen
-                  </button>
-                </div>
-                {klant.contactpersonen.length === 0 ? (
-                  <p className="hint">Nog geen contactpersonen.</p>
-                ) : (
-                  <ul className="beheer-lijst">
-                    {klant.contactpersonen.map((p) => (
-                      <li key={p.id} className="beheer-lijst-regel">
-                        <div className="beheer-lijst-tekst">
-                          <strong>{p.naam}</strong>
-                          {p.functie && <span className="beheer-bijzaak">{p.functie}</span>}
-                          <span className="beheer-contact">
-                            {p.email && (
-                              <a href={`mailto:${p.email}`} className="btn-link">
-                                <Icon name="mail" size={16} />
-                                {p.email}
-                              </a>
-                            )}
-                            {p.telefoon && (
-                              <a href={`tel:${p.telefoon.replace(/\s/g, '')}`} className="btn-link">
-                                <Icon name="phone" size={16} />
-                                {p.telefoon}
-                              </a>
-                            )}
-                          </span>
-                        </div>
+          {tab === 'dossier' && (
+            <>
+              {dossierFout && <LaadFout melding={dossierFout} onOpnieuw={laadDossier} />}
+              {!dossier ? (
+                dossierFout ? null : <Laden regels={3} soort="lijst" />
+              ) : (
+                <DossierTijdlijn
+                  dossier={dossier}
+                  keuze={gekozen}
+                  onKies={setKeuze}
+                  onNieuweInstallatie={(o) =>
+                    setNieuweInstallatie({ id: o.id, name: o.name, objectType: o.objectType, region: o.region, address: o.address, aantalMonsters: 0, installaties: [] })
+                  }
+                />
+              )}
+            </>
+          )}
+
+          {tab === 'contact' && (
+            <section className="card beheer-kaart">
+              <div className="beheer-kaart-kop">
+                <h2 className="section-label">Contactpersonen</h2>
+                <button type="button" className="btn btn-sm" onClick={() => setContact({ persoon: null })}>
+                  <Icon name="user-plus" size={16} />
+                  Toevoegen
+                </button>
+              </div>
+              {klant.contactpersonen.length === 0 ? (
+                <p className="hint">Nog geen contactpersonen.</p>
+              ) : (
+                <ul className="beheer-lijst">
+                  {klant.contactpersonen.map((p) => (
+                    <li key={p.id} className="beheer-lijst-regel">
+                      <div className="beheer-lijst-tekst">
+                        <strong>{p.naam}</strong>
+                        {p.functie && <span className="beheer-bijzaak">{p.functie}</span>}
+                        <span className="beheer-contact">
+                          {p.email && (
+                            <a href={`mailto:${p.email}`} className="btn-link">
+                              <Icon name="mail" size={16} />
+                              {p.email}
+                            </a>
+                          )}
+                          {p.telefoon && (
+                            <a href={`tel:${p.telefoon.replace(/\s/g, '')}`} className="btn-link">
+                              <Icon name="phone" size={16} />
+                              {p.telefoon}
+                            </a>
+                          )}
+                        </span>
+                      </div>
+                      <div className="rij-knoppen">
+                        <a
+                          className="btn btn-sm"
+                          href={mailOpstellenAdres({ email: p.email, naam: p.naam, bedrijf: klant.naam })}
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          <Icon name="module-email" size={16} />
+                          Mail opstellen
+                        </a>
                         <button
                           type="button"
                           className="icon-btn"
@@ -253,122 +448,182 @@ export default function KlantPagina() {
                           <Icon name="pencil" size={16} />
                           <span className="alleen-mobiel">Bewerken</span>
                         </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
 
-            <div className="beheer-kolom">
-              {/* Objecten met installaties */}
-              <section className="card beheer-kaart">
-                <h2 className="section-label">Objecten en installaties</h2>
-                {klant.objecten.length === 0 && <p className="hint">Nog geen objecten bij deze klant.</p>}
-                {klant.objecten.map((o) => (
-                  <div key={o.id} className="object-blok">
-                    <div className="object-blok-kop">
-                      <span className="beheer-naam" title={objectTypeLabel(o.objectType)}>
-                        <Icon name={objectTypeIcoon(o.objectType)} size={16} />
-                        {o.name}
-                      </span>
-                      <span className="beheer-bijzaak">
-                        {o.aantalMonsters} {o.aantalMonsters === 1 ? 'monster' : 'monsters'}
-                      </span>
+          {tab === 'gegevens' && (
+            <>
+              <div className="beheer-grid">
+                <div className="beheer-kolom">
+                  <section className="card beheer-kaart">
+                    <div className="beheer-kaart-kop">
+                      <h2 className="section-label">Gegevens</h2>
+                      <button type="button" className="btn btn-sm" onClick={() => setBewerken(true)}>
+                        <Icon name="pencil" size={16} />
+                        Bewerken
+                      </button>
                     </div>
-                    {o.installaties.length > 0 && (
-                      <ul className="beheer-lijst">
-                        {o.installaties.map((i) => (
-                          <li key={i.id} className="beheer-lijst-regel">
-                            <a
-                              href={`/dashboard/installaties/${i.id}`}
-                              className="beheer-lijst-tekst beheer-lijst-link"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                router.push(`/dashboard/installaties/${i.id}`);
-                              }}
-                            >
-                              <strong className="beheer-naam">
-                                <Icon name={installatieSoortIcoon(i.soort)} size={16} />
-                                {i.naam}
-                              </strong>
-                              <span className="beheer-bijzaak">
-                                {installatieSoortLabel(i.soort)}
-                                {typeTekst(i) ? `, ${typeTekst(i)}` : ''}
-                              </span>
+                    <dl className="gegevens-lijst">
+                      <dt>Adres</dt>
+                      <dd>{adresTekst(klant) || '-'}</dd>
+                      <dt>KvK-nummer</dt>
+                      <dd>{klant.kvkNummer || '-'}</dd>
+                      {klant.notities && (
+                        <>
+                          <dt>Notities</dt>
+                          <dd className="gegevens-notitie">{klant.notities}</dd>
+                        </>
+                      )}
+                      {klant.prospect && (
+                        <>
+                          <dt>Acquisitie</dt>
+                          <dd>
+                            <a className="btn-link" href="/dashboard/acquisitie">
+                              <Icon name="module-acquisitie" size={16} />
+                              Klant geworden via de acquisitie
+                              {klant.prospect.klantSindsOp ? `, ${new Date(klant.prospect.klantSindsOp).toLocaleDateString('nl-NL')}` : ''}
                             </a>
-                            <span className="badge badge-gray code-badge">{i.code}</span>
-                          </li>
-                        ))}
-                      </ul>
+                          </dd>
+                        </>
+                      )}
+                      <dt>Kijkt mee</dt>
+                      <dd>
+                        {klant.gebruikers.length === 0
+                          ? 'Niemand'
+                          : klant.gebruikers
+                              .map(
+                                (g) =>
+                                  `${g.username} (${ROLE_LABELS[g.role] ?? g.role}${g.viewYear ? `, ${g.viewYear}` : ''}, ${WEERGAVE_LABELS[leesWeergave(g.portaalWeergave)].toLowerCase()})`
+                              )
+                              .join(', ')}
+                      </dd>
+                    </dl>
+                    <p className="hint">Wie meekijkt en hoe, stel je in bij Instellingen, Gebruikers.</p>
+                  </section>
+
+                  <section className="card beheer-kaart">
+                    <h2 className="section-label">Logo</h2>
+                    {klant.logoUrl ? (
+                      <img src={klant.logoUrl} alt={`Logo van ${klant.naam}`} className="dossier-logo" />
+                    ) : (
+                      <p className="hint">Nog geen logo. Het klantportaal en het rapport tonen dan de naam.</p>
                     )}
-                    <div className="knoppenrij object-blok-knoppen">
-                      <button type="button" className="btn btn-sm" onClick={() => setNieuweInstallatie(o)}>
-                        <Icon name="plus" size={16} />
-                        Installatie toevoegen
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-ghost"
-                        disabled={bezig}
-                        onClick={() => {
-                          if (confirm(`${o.name} loskoppelen van ${klant.naam}?\n\nHet object, de monsters en de installaties blijven bestaan; het object hoort daarna bij geen klant.`)) {
-                            zetKlantVanObject(o.id, null, `${o.name} hoort niet meer bij ${klant.naam}.`);
-                          }
-                        }}
-                      >
-                        Loskoppelen
-                      </button>
+                    <div className="knoppenrij" style={{ marginTop: '10px' }}>
+                      <label className={`btn btn-sm${logoBezig ? ' is-bezig' : ''}`}>
+                        <Icon name="image-upload" size={16} />
+                        {logoBezig ? 'Bezig...' : klant.logoUrl ? 'Ander logo' : 'Logo toevoegen'}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          style={{ display: 'none' }}
+                          disabled={logoBezig}
+                          onChange={(e) => {
+                            const bestand = e.target.files?.[0];
+                            if (bestand) uploadLogo(bestand);
+                            e.target.value = '';
+                          }}
+                        />
+                      </label>
+                      {klant.logoUrl && (
+                        <button type="button" className="btn btn-sm btn-ghost" onClick={verwijderLogo} disabled={logoBezig}>
+                          <Icon name="image-remove" size={16} />
+                          Logo verwijderen
+                        </button>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  </section>
+                </div>
 
-                {kanKoppelen.length > 0 && (
-                  <div className="object-koppelen">
-                    <label className="label" htmlFor="koppel-object">Bestaand object koppelen</label>
-                    <div className="object-koppelen-rij">
-                      <select id="koppel-object" className="select" value={koppelObject} onChange={(e) => setKoppelObject(e.target.value)}>
-                        <option value="">Kies een object</option>
-                        {kanKoppelen.map((o) => (
-                          <option key={o.id} value={String(o.id)}>
-                            {o.name}{o.klant ? ` (nu bij ${o.klant.naam})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        className="btn"
-                        disabled={!koppelObject || bezig}
-                        onClick={() => {
-                          const o = kanKoppelen.find((x) => String(x.id) === koppelObject);
-                          if (o) zetKlantVanObject(o.id, klant.id, `${o.name} hoort nu bij ${klant.naam}.`);
-                        }}
-                      >
-                        <Icon name="plus" size={16} />
-                        Koppelen
-                      </button>
-                    </div>
-                    <p className="hint">Een nieuw object maak je aan bij Beheer, Objecten.</p>
-                  </div>
-                )}
-              </section>
-            </div>
-          </div>
+                <div className="beheer-kolom">
+                  <section className="card beheer-kaart">
+                    <h2 className="section-label">Objecten</h2>
+                    {klant.objecten.length === 0 && <p className="hint">Nog geen objecten bij deze klant.</p>}
+                    {klant.objecten.map((o) => (
+                      <div key={o.id} className="object-blok">
+                        <div className="object-blok-kop">
+                          <span className="beheer-naam" title={objectTypeLabel(o.objectType)}>
+                            <Icon name={objectTypeIcoon(o.objectType)} size={16} />
+                            {o.name}
+                          </span>
+                          <span className="beheer-bijzaak">
+                            {o.aantalMonsters} {o.aantalMonsters === 1 ? 'monster' : 'monsters'}, {o.installaties.length}{' '}
+                            {o.installaties.length === 1 ? 'installatie' : 'installaties'}
+                          </span>
+                        </div>
+                        <div className="knoppenrij object-blok-knoppen">
+                          <button type="button" className="btn btn-sm" onClick={() => setNieuweInstallatie(o)}>
+                            <Icon name="plus" size={16} />
+                            Installatie toevoegen
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            disabled={bezig}
+                            onClick={() => {
+                              if (confirm(`${o.name} loskoppelen van ${klant.naam}?\n\nHet object, de monsters en de installaties blijven bestaan; het object hoort daarna bij geen klant.`)) {
+                                zetKlantVanObject(o.id, null, `${o.name} hoort niet meer bij ${klant.naam}.`);
+                              }
+                            }}
+                          >
+                            Loskoppelen
+                          </button>
+                        </div>
+                      </div>
+                    ))}
 
-          <VeiligVerwijderBlok
-            id={`klant-${klant.id}`}
-            kop="Klant verwijderen"
-            uitleg={
-              <p style={{ margin: 0 }}>
-                {klant.naam} verdwijnt uit de lijst, met {klant.contactpersonen.length === 1 ? 'de contactpersoon' : `de ${klant.contactpersonen.length} contactpersonen`}.
-                Dat kan alleen als er geen objecten en geen meekijkers meer aan hangen. De gegevens blijven bewaard en
-                direct daarna kun je het ongedaan maken.
-              </p>
-            }
-            bevestig={klant.naam}
-            knop={`${klant.naam} verwijderen`}
-            onVerwijder={verwijderKlant}
-          />
+                    {kanKoppelen.length > 0 && (
+                      <div className="object-koppelen">
+                        <label className="label" htmlFor="koppel-object">Bestaand object koppelen</label>
+                        <div className="object-koppelen-rij">
+                          <select id="koppel-object" className="select" value={koppelObject} onChange={(e) => setKoppelObject(e.target.value)}>
+                            <option value="">Kies een object</option>
+                            {kanKoppelen.map((o) => (
+                              <option key={o.id} value={String(o.id)}>
+                                {o.name}{o.klant ? ` (nu bij ${o.klant.naam})` : ''}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="btn"
+                            disabled={!koppelObject || bezig}
+                            onClick={() => {
+                              const o = kanKoppelen.find((x) => String(x.id) === koppelObject);
+                              if (o) zetKlantVanObject(o.id, klant.id, `${o.name} hoort nu bij ${klant.naam}.`);
+                            }}
+                          >
+                            <Icon name="plus" size={16} />
+                            Koppelen
+                          </button>
+                        </div>
+                        <p className="hint">Een nieuw object maak je aan bij Beheer, Objecten.</p>
+                      </div>
+                    )}
+                  </section>
+                </div>
+              </div>
+
+              <VeiligVerwijderBlok
+                id={`klant-${klant.id}`}
+                kop="Klant verwijderen"
+                uitleg={
+                  <p style={{ margin: 0 }}>
+                    {klant.naam} verdwijnt uit de lijst, met {klant.contactpersonen.length === 1 ? 'de contactpersoon' : `de ${klant.contactpersonen.length} contactpersonen`}.
+                    Dat kan alleen als er geen objecten en geen meekijkers meer aan hangen. De gegevens blijven bewaard en
+                    direct daarna kun je het ongedaan maken.
+                  </p>
+                }
+                bevestig={klant.naam}
+                knop={`${klant.naam} verwijderen`}
+                onVerwijder={verwijderKlant}
+              />
+            </>
+          )}
 
           {bewerken && (
             <KlantFormulier
@@ -412,6 +667,7 @@ export default function KlantPagina() {
                 setNieuweInstallatie(null);
                 setMelding(`${i.naam} is toegevoegd, met code ${i.code}.`);
                 laad();
+                laadDossier();
               }}
             />
           )}

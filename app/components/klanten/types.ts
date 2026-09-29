@@ -53,9 +53,12 @@ export interface KlantObject {
 }
 
 export interface KlantDetail extends Klant {
+  /** Via de fotoroute (/api/fotos/klantlogo/...), of null. */
+  logoUrl: string | null;
+  createdAt: string;
   contactpersonen: Contactpersoon[];
   objecten: KlantObject[];
-  gebruikers: { id: number; username: string; role: string; viewYear: number | null }[];
+  gebruikers: { id: number; username: string; role: string; viewYear: number | null; portaalWeergave?: string }[];
   prospect: { id: number; bedrijfsnaam: string; klantSindsOp: string | null } | null;
 }
 
@@ -76,4 +79,48 @@ export function typeTekst(i: Pick<InstallatieKort, 'merk' | 'typenummer' | 'bouw
 export function adresTekst(k: Pick<Klant, 'adres' | 'postcode' | 'plaats'>): string {
   const plaats = [k.postcode, k.plaats].filter(Boolean).join(' ');
   return [k.adres, plaats].filter(Boolean).join(', ');
+}
+
+// ------------------------------------------------------------------
+// Klantdossier (GET /api/klanten/[id]/dossier, lib/klantDossier.ts)
+// ------------------------------------------------------------------
+
+export type MomentSoort = 'monster' | 'poging' | 'niet-bereikbaar' | 'geannuleerd' | 'open';
+
+export interface Moment {
+  sleutel: string;
+  soort: MomentSoort;
+  datum: string | null;
+  monsterId: number;
+  oNumber: string;
+  jaar: number;
+  objectId: number | null;
+  installatieId: number | null;
+  titel: string;
+  tekst: string | null;
+  gepland?: boolean;
+  fotos: { url: string; label: string }[];
+  door: string | null;
+}
+
+export interface DossierInstallatie extends InstallatieKort {
+  serienummer: string | null;
+  fotoUrl: string | null;
+}
+
+export interface DossierObject {
+  id: number;
+  name: string;
+  objectType: string | null;
+  region: string | null;
+  address: string | null;
+  installaties: DossierInstallatie[];
+}
+
+export interface Dossier {
+  jaren: { jaar: number; totaal: number }[];
+  jaar: number | null;
+  objecten: DossierObject[];
+  heeftLosseMonsters: boolean;
+  momenten: Moment[];
 }

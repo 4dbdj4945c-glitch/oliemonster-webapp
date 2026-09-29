@@ -219,7 +219,7 @@ export async function haalOpdracht(klantId: number, jaar: number, nu = new Date(
     perObject.set(sleutel, o);
   }
   const objecten = [...perObject.values()]
-    .map(({ laatsteDatum: _weg, ...o }) => o)
+    .map((o) => ({ id: o.id, naam: o.naam, objectType: o.objectType, telling: o.telling, volgendBezoek: o.volgendBezoek, laatsteFotoMonster: o.laatsteFotoMonster }))
     .sort((a, b) => (a.id === null ? 1 : b.id === null ? -1 : a.naam.localeCompare(b.naam, 'nl')));
 
   const bijgewerktOp = ruw.reduce<Date | null>((max, m) => (!max || m.updatedAt > max ? m.updatedAt : max), null);

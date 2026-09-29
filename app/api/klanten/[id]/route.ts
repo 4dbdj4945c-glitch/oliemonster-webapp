@@ -5,6 +5,7 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { apiRoute, ApiFout, leesId, leesJson } from '@/lib/apiRoute';
 import { controleerKlantnaam, KlantWijzigingSchema } from '@/lib/klanten';
+import { klantLogoAdres } from '@/lib/fotoAdres';
 
 const OPTIES = { rol: 'admin', module: 'klanten' } as const;
 
@@ -43,13 +44,15 @@ export const GET = apiRoute({ ...OPTIES, fout: 'Fout bij ophalen van de klant' }
     prisma.user.findMany({
       where: { klantId: id },
       orderBy: { username: 'asc' },
-      select: { id: true, username: true, role: true, viewYear: true },
+      select: { id: true, username: true, role: true, viewYear: true, portaalWeergave: true },
     }),
     prisma.prospect.findUnique({ where: { klantId: id }, select: { id: true, bedrijfsnaam: true, klantSindsOp: true } }),
   ]);
 
   return NextResponse.json({
     ...klant,
+    // Het logo via de fotoroute, zoals alle beelden (lib/fotoAdres.ts).
+    logoUrl: klantLogoAdres(klant),
     contactpersonen,
     objecten: objecten.map(({ _count, ...o }) => ({ ...o, aantalMonsters: _count.samples })),
     gebruikers,
@@ -74,7 +77,7 @@ export const PUT = apiRoute({ ...OPTIES, fout: 'Fout bij bijwerken van de klant'
     details: { id, naam: klant.naam, velden: Object.keys(data) },
     request,
   });
-  return NextResponse.json(klant);
+  return NextResponse.json({ ...klant, logoUrl: klantLogoAdres(klant) });
 });
 
 const VerwijderSchema = z.object({ bevestigNaam: z.string().optional() });

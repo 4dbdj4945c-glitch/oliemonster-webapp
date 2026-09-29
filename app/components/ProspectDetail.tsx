@@ -1,5 +1,6 @@
 'use client';
 
+import { mailOpstellenAdres } from '@/lib/mailOpstellen';
 import Laden from './ui/Laden';
 import { useCallback, useEffect, useState } from 'react';
 import Icon from './ui/Icon';
@@ -202,6 +203,15 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
             <Icon name="mail" size={16} />{prospect.email}
           </a>
         )}
+        {/* Mail opstellen in de e-mail editor, met naam, e-mail en bedrijf al ingevuld */}
+        <a
+          className="btn btn-sm"
+          href={mailOpstellenAdres({ email: prospect.email, naam: prospect.contactpersoon, bedrijf: prospect.bedrijfsnaam })}
+          target="_blank"
+          rel="noopener"
+        >
+          <Icon name="module-email" size={16} />Mail opstellen
+        </a>
         {prospect.telefoon && (
           <a className="btn btn-sm" href={`tel:${prospect.telefoon.replace(/\s/g, '')}`}>
             <Icon name="phone" size={16} />{prospect.telefoon}

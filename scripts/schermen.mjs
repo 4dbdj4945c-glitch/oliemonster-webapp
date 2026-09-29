@@ -7,6 +7,7 @@
 //   node scripts/schermen.mjs --seed             eerst npm run seed (wist ids_portal_dev)
 //   node scripts/schermen.mjs kijker:/dashboard/oliemonsters/2025 admin:/dashboard/klanten
 //   node scripts/schermen.mjs admin:/dashboard/planning/dag/{vandaag}   dagscherm van de monsterdag van vandaag
+//   node scripts/schermen.mjs admin:/dashboard/klanten/{kempen}          klantdossier ({mourik} of {kempen})
 //   node scripts/schermen.mjs "admin:/dashboard@.onderbalk button:nth-of-type(1)"   eerst klikken, dan alleen het scherm zelf
 // Gebruikers en wachtwoorden: prisma/nepdata.ts. Uitvoer: schermen/<naam>-<breedte>.png
 // (1440 en 390 breed) en per scherm of de pagina horizontaal overloopt.
@@ -73,6 +74,13 @@ await stuur('Network.enable');
 
 // {vandaag} in een pad: het id van de monsterdag van vandaag (nepdata zet er altijd een).
 async function vulIn(pad, cookie) {
+  // {mourik} of {kempen}: het id van die klant (alleen als admin).
+  for (const [, naam] of pad.matchAll(/\{(mourik|kempen)\}/g)) {
+    const klanten = await (await fetch(`${BASIS}/api/klanten`, { headers: { Cookie: `${cookie[0]}=${cookie[1]}` } })).json();
+    const k = klanten.find((x) => x.naam.toLowerCase().includes(naam));
+    if (!k) throw new Error(`Geen klant ${naam}. Draai met --seed.`);
+    pad = pad.replace(`{${naam}}`, String(k.id));
+  }
   if (!pad.includes('{vandaag}')) return pad;
   const nu = new Date();
   const res = await fetch(`${BASIS}/api/sample-plans?year=${nu.getFullYear()}`, { headers: { Cookie: `${cookie[0]}=${cookie[1]}` } });

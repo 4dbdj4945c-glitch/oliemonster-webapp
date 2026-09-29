@@ -9,7 +9,8 @@ import { POST as login } from '@/app/api/auth/login/route';
 import { GET as portaal } from '@/app/api/portaal/route';
 import { GET as rapport } from '@/app/api/rapport/route';
 import { haalOpdracht } from '@/lib/klantOpdracht';
-import { uitloggen, verzoek } from '../hulp/verzoek';
+import { GET as dossier } from '@/app/api/klanten/[id]/dossier/route';
+import { metParams, uitloggen, verzoek } from '../hulp/verzoek';
 
 let ids: Awaited<ReturnType<typeof vulMetNepdata>>;
 
@@ -121,5 +122,32 @@ describe('rapport als PDF', () => {
     expect(perNummer['K-2026-06'].reden).toBe('Compressor vervangen, nieuwe draait nog in');
     expect(perNummer['K-2026-05'].status).toBe('gepland');
     expect(perNummer['K-2026-07'].status).toBe('in-te-plannen');
+  });
+});
+
+describe('klantdossier', () => {
+  it('admin ziet per monster de momenten, met foto\'s via de fotoroute', async () => {
+    await inloggenAls('admin', 'admin123');
+    const id = String(ids.klanten.tweede);
+    const res = await dossier(verzoek(`/api/klanten/${id}/dossier?jaar=2026`), metParams({ id }));
+    expect(res.status).toBe(200);
+    const d = await res.json();
+    expect(d.jaren.map((j: { jaar: number }) => j.jaar)).toEqual([2026, 2025]);
+    const soorten = d.momenten.map((m: { oNumber: string; soort: string }) => `${m.oNumber} ${m.soort}`);
+    expect(soorten).toEqual(
+      expect.arrayContaining(['K-2026-01 monster', 'K-2026-04 niet-bereikbaar', 'K-2026-05 open', 'K-2026-06 geannuleerd', 'K-2026-07 open'])
+    );
+    // Niet bereikbaar en niet opnieuw gepland: geen dubbel open-moment.
+    expect(soorten).not.toContain('K-2026-04 open');
+    const genomen = d.momenten.find((m: { oNumber: string }) => m.oNumber === 'K-2026-01');
+    expect(genomen.fotos).toHaveLength(2);
+    for (const f of genomen.fotos) expect(f.url).toMatch(/^\/api\/fotos\/poging\//);
+    expect(d.momenten.find((m: { oNumber: string }) => m.oNumber === 'K-2026-05').gepland).toBe(true);
+  });
+
+  it('een kijker komt niet in het dossier, ook niet van zijn eigen klant', async () => {
+    await inloggenAls('kempen', 'kempen123');
+    const id = String(ids.klanten.tweede);
+    expect((await dossier(verzoek(`/api/klanten/${id}/dossier`), metParams({ id }))).status).toBe(403);
   });
 });

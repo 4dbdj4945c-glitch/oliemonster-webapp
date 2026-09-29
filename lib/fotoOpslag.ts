@@ -44,14 +44,15 @@ export function isBlobAdres(url: string): boolean {
 
 /** Hoe vaak wordt dit adres nog gebruikt, over alle tabellen met foto's. */
 export async function aantalVerwijzingen(url: string): Promise<number> {
-  const [monsters, pogingen, installaties] = await Promise.all([
+  const [monsters, pogingen, installaties, klanten] = await Promise.all([
     prisma.oilSample.count({
       where: { OR: [{ photoUrl: url }, { partPhotoUrl: url }, { unreachablePhotoUrl: url }] },
     }),
     prisma.sampleAttempt.count({ where: { OR: [{ photoUrl: url }, { partPhotoUrl: url }] } }),
     prisma.installatie.count({ where: { fotoUrl: url } }),
+    prisma.klant.count({ where: { logoUrl: url } }),
   ]);
-  return monsters + pogingen + installaties;
+  return monsters + pogingen + installaties + klanten;
 }
 
 /**
