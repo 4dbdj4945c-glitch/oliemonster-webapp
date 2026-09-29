@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import Icon from './ui/Icon';
 import LaadFout from './LaadFout';
+import OngedaanMelding, { type OngedaanInhoud } from './OngedaanMelding';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { objectTypeIcoon } from '@/lib/sampleObjects';
 import {
@@ -194,6 +195,8 @@ export default function PlanningPaneel({
   const [laden, setLaden] = useState(true);
   const [foutmelding, setFoutmelding] = useState('');
   const [melding, setMelding] = useState('');
+  // Na een object van een dag halen: tien seconden Ongedaan maken
+  const [ongedaan, setOngedaan] = useState<OngedaanInhoud | null>(null);
 
   const [weergave, setWeergave] = useState<'dagen' | 'dag' | 'tijd'>('dagen');
   const [dagId, setDagId] = useState<number | null>(null);
@@ -277,8 +280,20 @@ export default function PlanningPaneel({
     }
   };
 
+  // Een dag weghalen neemt alle stops mee, met hun volgorde en gemeten tijden.
+  // Daarom staat de knop niet meer naast Dag openen maar onderaan het dagscherm,
+  // en zegt de bevestiging wat er weggaat.
   const verwijderDag = async (d: PlanDag) => {
-    if (!confirm(`Dag ${datumAlsTekst(d.date)} uit de planning halen?\n\nDe monsters blijven gewoon bestaan.`)) return;
+    const gemeten = d.stops.filter((st) => st.startedAt || st.endedAt || st.isDone).length;
+    const tekst =
+      `Dag ${datumAlsTekst(d.date)} verwijderen?\n\n` +
+      (d.stops.length > 0
+        ? `Daarmee gaan ${d.stops.length} ${objectenWoord(d.stops.length)} van deze dag weg, met hun volgorde en de route` +
+          (gemeten > 0 ? `, en de afgevinkte bezoeken en gemeten tijden (${gemeten})` : '') +
+          '. Dat komt niet terug.\n\n'
+        : '') +
+      'De monsters zelf blijven bestaan en staan daarna weer bij de ongeplande objecten.';
+    if (!confirm(tekst)) return;
     try {
       const res = await fetch(`/api/sample-plans/${d.id}`, { method: 'DELETE' });
       if (!res.ok) {
@@ -340,7 +355,19 @@ export default function PlanningPaneel({
     }
   };
 
+  // Een object van een dag halen is klein en makkelijk opnieuw te doen: geen
+  // vraag vooraf, wel tien seconden Ongedaan maken. Alleen als er al gemeten of
+  // afgevinkt is, eerst een bevestiging, want die tijden komen niet terug.
   const verwijderStop = async (d: PlanDag, stop: PlanStop) => {
+    const gemeten = stop.startedAt || stop.endedAt || stop.isDone;
+    if (
+      gemeten &&
+      !confirm(
+        `${stop.object.name} van ${datumAlsTekst(d.date)} halen?\n\nDit bezoek is al gestart of afgevinkt. De gemeten tijd en het vinkje gaan verloren, ook als je het daarna terugzet.`
+      )
+    ) {
+      return;
+    }
     try {
       const res = await fetch(`/api/sample-plans/${d.id}/stops/${stop.id}`, { method: 'DELETE' });
       if (!res.ok) {
@@ -348,8 +375,47 @@ export default function PlanningPaneel({
         return;
       }
       await laadPlanning();
+      const volgorde = d.stops.map((st) => st.id);
+      setOngedaan({
+        sleutel: `stop-${stop.id}`,
+        tekst: `${stop.object.name} van ${datumAlsTekst(d.date)} gehaald`,
+        onOngedaan: () => zetStopTerug(d, stop, volgorde),
+      });
     } catch {
       setFoutmelding(GEEN_VERBINDING);
+    }
+  };
+
+  // Ongedaan maken: het object komt terug op dezelfde dag, met dezelfde monsters
+  // en inschatting. Stond de volgorde met de hand vast, dan ook weer op zijn plek.
+  const zetStopTerug = async (d: PlanDag, stop: PlanStop, volgorde: number[]): Promise<boolean> => {
+    try {
+      const res = await fetch(`/api/sample-plans/${d.id}/stops`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          objectId: stop.objectId,
+          sampleIds: stop.sampleIds,
+          plannedMinutes: stop.plannedMinutes,
+        }),
+      });
+      if (!res.ok) {
+        setFoutmelding(await foutTekst(res, `${stop.object.name} kon niet worden teruggezet.`));
+        return false;
+      }
+      const nieuw = await res.json().catch(() => null);
+      if (d.manualOrder && nieuw?.id && !nieuw.samengevoegd) {
+        await fetch(`/api/sample-plans/${d.id}/volgorde`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stopIds: volgorde.map((id) => (id === stop.id ? nieuw.id : id)) }),
+        });
+      }
+      await laadPlanning();
+      return true;
+    } catch {
+      setFoutmelding(GEEN_VERBINDING);
+      return false;
     }
   };
 
@@ -710,17 +776,6 @@ export default function PlanningPaneel({
                           <Icon name="gps-live" size={16} />
                           Dag openen
                         </button>
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            className="icon-btn icon-btn-danger icon-btn-verwijder"
-                            onClick={() => verwijderDag(d)}
-                            aria-label={`Dag ${datumAlsTekst(d.date)} verwijderen`}
-                            title="Dag verwijderen"
-                          >
-                            <Icon name="trash" size={16} />
-                          </button>
-                        )}
                       </div>
                     </div>
 
@@ -993,6 +1048,24 @@ export default function PlanningPaneel({
           </div>
           )}
 
+          {/* Dag verwijderen: apart, onderaan het dagscherm, niet naast Dag openen */}
+          {isAdmin && (
+            <section className="gevarenzone plan-dag-verwijderen">
+              <p className="gevarenzone-kop">
+                <Icon name="trash" size={16} />
+                Dag verwijderen
+              </p>
+              <p className="gevarenzone-tekst">
+                Haalt {datumAlsTekst(dag.date)} uit de planning, met de volgorde, de route en de gemeten tijden van
+                deze dag. De monsters blijven bestaan en komen weer bij de ongeplande objecten.
+              </p>
+              <button type="button" className="btn btn-sm btn-danger-soft" onClick={() => verwijderDag(dag)}>
+                <Icon name="trash" size={16} />
+                Dag verwijderen...
+              </button>
+            </section>
+          )}
+
           {/* Vaste balk onderaan op de telefoon, zoals bij de controlerondes */}
           <div className="plan-mobiel-balk">
             <div className="plan-mobiel-info">
@@ -1097,6 +1170,7 @@ export default function PlanningPaneel({
           </div>
         </div>
       )}
+      <OngedaanMelding melding={ongedaan} onSluit={() => setOngedaan(null)} />
     </div>
   );
 }
