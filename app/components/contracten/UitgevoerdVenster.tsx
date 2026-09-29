@@ -16,7 +16,7 @@ export default function UitgevoerdVenster({
 }: {
   taak: Taak | null;
   onClose: () => void;
-  onKlaar: (contract: Contract, taak: Taak, bron: string, volgendeOp: string) => void;
+  onKlaar: (contract: Contract, taak: Taak, bron: string, volgendeOp: string, doorgezet: boolean) => void;
 }) {
   const [datum, setDatum] = useState(vandaagNl());
   const [bezig, setBezig] = useState(false);
@@ -43,7 +43,7 @@ export default function UitgevoerdVenster({
         return;
       }
       const data = await res.json();
-      onKlaar(data.contract, taak, data.bron, data.volgendeOp);
+      onKlaar(data.contract, taak, data.bron, data.volgendeOp, data.doorgezet);
     } catch {
       setFout(GEEN_VERBINDING);
     } finally {
@@ -59,7 +59,7 @@ export default function UitgevoerdVenster({
       footer={
         <>
           <button type="button" className="btn" onClick={onClose} disabled={bezig}>Annuleren</button>
-          <button type="button" className="btn btn-primary" onClick={opslaan} disabled={bezig || !voorspelling}>
+          <button type="button" className="btn btn-primary" onClick={opslaan} disabled={bezig || !voorspelling || datum > vandaagNl()}>
             <Icon name="check" size={16} />
             {bezig ? 'Bezig...' : 'Vastleggen'}
           </button>
@@ -70,9 +70,13 @@ export default function UitgevoerdVenster({
         <>
           <div className="veld">
             <label className="label" htmlFor="uitgevoerd-datum">Uitgevoerd op</label>
-            <input id="uitgevoerd-datum" type="date" className="input" value={datum} onChange={(e) => setDatum(e.target.value)} />
+            <input id="uitgevoerd-datum" type="date" className="input" value={datum} max={vandaagNl()} onChange={(e) => setDatum(e.target.value)} />
           </div>
-          {voorspelling && (
+          {taak.laatstUitgevoerdOp && datum < taak.laatstUitgevoerdOp ? (
+            <p className="hint">Deze datum ligt voor de laatste uitvoering ({dagKort(taak.laatstUitgevoerdOp)}). Hij komt in de geschiedenis, maar de volgende keer blijft {dagKort(taak.volgendeOp)}.</p>
+          ) : datum > vandaagNl() ? (
+            <p className="veld-fout">Een uitvoering kan niet in de toekomst liggen.</p>
+          ) : voorspelling && (
             <p className="hint">
               {intervalTekst(taak.intervalMaanden).replace(/^e/, 'E')}: de volgende keer wordt {dagKort(voorspelling)}.
             </p>

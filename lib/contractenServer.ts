@@ -236,63 +236,91 @@ function isUniekFout(e: unknown): boolean {
 /**
  * Legt een uitvoering vast en zet de volgende datum door (vanaf de dag van de
  * uitvoering). Bestaat deze bron al voor deze taak, dan gebeurt er niets.
+ *
+ * Is de dag ouder dan de laatste uitvoering (een oude inspectie die nu pas
+ * wordt afgerond, of Uitgevoerd met een datum van vorig jaar), dan komt hij
+ * wel in de geschiedenis, maar schuift de taak niet terug: `vorigeOp` en
+ * `volgendeOp` zijn dan gelijk en zo'n regel verandert niets (`doorgezet` false).
+ *
+ * De taakregel wordt vergrendeld (FOR UPDATE), zodat twee uitvoeringen tegelijk
+ * elkaar niet overschrijven.
  */
 export async function registreerUitvoering(
   taakId: number,
   uitvoering: { datum: string; bron: string; door: string | null }
-): Promise<{ nieuw: boolean; volgendeOp: string }> {
+): Promise<{ nieuw: boolean; doorgezet: boolean; volgendeOp: string }> {
   try {
     return await prisma.$transaction(async (tx) => {
-      const taak = await tx.contractTaak.findUnique({ where: { id: taakId }, select: { volgendeOp: true, intervalMaanden: true } });
+      await tx.$queryRaw`SELECT "id" FROM "ContractTaak" WHERE "id" = ${taakId} FOR UPDATE`;
+      const taak = await tx.contractTaak.findUnique({
+        where: { id: taakId },
+        select: { volgendeOp: true, intervalMaanden: true, laatstUitgevoerdOp: true },
+      });
       if (!taak) throw new ApiFout(404, 'Taak niet gevonden');
       const bestaand = await tx.contractTaakUitvoering.findUnique({ where: { taakId_bron: { taakId, bron: uitvoering.bron } }, select: { id: true } });
-      if (bestaand) return { nieuw: false, volgendeOp: nlDag(taak.volgendeOp) };
-      const volgende = volgendeNaUitvoering(uitvoering.datum, taak.intervalMaanden);
+      if (bestaand) return { nieuw: false, doorgezet: false, volgendeOp: nlDag(taak.volgendeOp) };
+      const laatst = taak.laatstUitgevoerdOp ? nlDag(taak.laatstUitgevoerdOp) : null;
+      const doorzetten = laatst === null || uitvoering.datum >= laatst;
+      const volgende = doorzetten ? volgendeNaUitvoering(uitvoering.datum, taak.intervalMaanden) : nlDag(taak.volgendeOp);
       await tx.contractTaakUitvoering.create({
         data: {
           taakId,
           datum: dagAlsDatum(uitvoering.datum),
           bron: uitvoering.bron,
           vorigeOp: taak.volgendeOp,
-          volgendeOp: dagAlsDatum(volgende),
+          volgendeOp: doorzetten ? dagAlsDatum(volgende) : taak.volgendeOp,
           door: uitvoering.door,
         },
       });
-      await tx.contractTaak.update({
-        where: { id: taakId },
-        data: { volgendeOp: dagAlsDatum(volgende), laatstUitgevoerdOp: dagAlsDatum(uitvoering.datum) },
-      });
-      return { nieuw: true, volgendeOp: volgende };
+      if (doorzetten) {
+        await tx.contractTaak.update({
+          where: { id: taakId },
+          data: { volgendeOp: dagAlsDatum(volgende), laatstUitgevoerdOp: dagAlsDatum(uitvoering.datum) },
+        });
+      }
+      return { nieuw: true, doorgezet: doorzetten && nlDag(taak.volgendeOp) !== volgende, volgendeOp: volgende };
     });
   } catch (e) {
     // Twee verzoeken tegelijk met dezelfde bron: de ander was net eerder.
     if (isUniekFout(e)) {
       const t = await prisma.contractTaak.findUnique({ where: { id: taakId }, select: { volgendeOp: true } });
-      return { nieuw: false, volgendeOp: t ? nlDag(t.volgendeOp) : uitvoering.datum };
+      return { nieuw: false, doorgezet: false, volgendeOp: t ? nlDag(t.volgendeOp) : uitvoering.datum };
     }
     throw e;
   }
 }
 
+/** Heeft deze uitvoering de taak doorgezet (of alleen de geschiedenis aangevuld)? */
+function zetteDoor(u: { vorigeOp: Date; volgendeOp: Date }): boolean {
+  return u.vorigeOp.getTime() !== u.volgendeOp.getTime();
+}
+
 /**
- * Haalt een uitvoering weg en zet de datum terug, maar alleen als het de
- * laatste uitvoering van de taak is (anders klopt het terugzetten niet meer).
- * Geeft terug of er iets veranderde.
+ * Haalt een uitvoering weg. Een uitvoering die niets doorzette (een oude datum)
+ * kan altijd weg. Een die de taak doorzette alleen als het de laatste daarvan
+ * is: dan gaat de datum terug. Anders klopt terugzetten niet meer en gebeurt er
+ * niets. Geeft terug of het lukte.
  */
 export async function maakUitvoeringOngedaan(taakId: number, bron: string): Promise<boolean> {
   return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "id" FROM "ContractTaak" WHERE "id" = ${taakId} FOR UPDATE`;
     const alle = await tx.contractTaakUitvoering.findMany({
       where: { taakId },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      select: { id: true, bron: true, vorigeOp: true, datum: true },
+      select: { id: true, bron: true, vorigeOp: true, volgendeOp: true, datum: true },
     });
-    const laatste = alle[0];
-    if (!laatste || laatste.bron !== bron) return false;
-    await tx.contractTaakUitvoering.delete({ where: { id: laatste.id } });
-    await tx.contractTaak.update({
-      where: { id: taakId },
-      data: { volgendeOp: laatste.vorigeOp, laatstUitgevoerdOp: alle[1]?.datum ?? null },
-    });
+    const doel = alle.find((u) => u.bron === bron);
+    if (!doel) return false;
+    if (!zetteDoor(doel)) {
+      await tx.contractTaakUitvoering.delete({ where: { id: doel.id } });
+      return true;
+    }
+    const laatsteDoorgezet = alle.find(zetteDoor);
+    if (laatsteDoorgezet?.id !== doel.id) return false;
+    await tx.contractTaakUitvoering.delete({ where: { id: doel.id } });
+    const over = alle.filter((u) => u.id !== doel.id && zetteDoor(u));
+    const laatst = over.reduce<Date | null>((m, u) => (m === null || u.datum > m ? u.datum : m), null);
+    await tx.contractTaak.update({ where: { id: taakId }, data: { volgendeOp: doel.vorigeOp, laatstUitgevoerdOp: laatst } });
     return true;
   });
 }
@@ -391,4 +419,21 @@ export async function haalTePlannen() {
     .filter((i) => !i.stops.some((s) => !s.isDone && nlDag(s.plan.date) >= vandaag))
     .map((i) => ({ id: i.id, sjabloon: i.sjabloon, datum: nlDag(i.datum), klant: i.klant, object: i.object }));
   return { taken, inspecties };
+}
+
+/**
+ * Een taak of contract gaat weg: haal de taak van de komende planningsdagen
+ * (nog niet afgevinkt), anders blijft hij op de planning en in de agendafeed
+ * staan. Wat al gedaan is, blijft. Geeft het aantal weggehaalde stops.
+ */
+export async function haalTakenVanPlanning(taakIds: number[]): Promise<number> {
+  if (taakIds.length === 0) return 0;
+  const vandaag = vandaagNl();
+  const stops = await prisma.samplePlanStop.findMany({
+    where: { taakId: { in: taakIds }, isDone: false, startedAt: null },
+    select: { id: true, plan: { select: { date: true } } },
+  });
+  const weg = stops.filter((s) => nlDag(s.plan.date) >= vandaag).map((s) => s.id);
+  if (weg.length > 0) await prisma.samplePlanStop.deleteMany({ where: { id: { in: weg } } });
+  return weg.length;
 }

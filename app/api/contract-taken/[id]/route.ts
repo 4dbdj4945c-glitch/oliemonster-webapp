@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { apiRoute, ApiFout, leesId, leesJson } from '@/lib/apiRoute';
 import { dagAlsDatum } from '@/lib/inspecties/server';
-import { TaakWijzigingSchema, controleerPlek, haalContract } from '@/lib/contractenServer';
+import { TaakWijzigingSchema, controleerPlek, haalContract, haalTakenVanPlanning } from '@/lib/contractenServer';
 
 /*
   PUT    /api/contract-taken/[id] - taak wijzigen (admin). Geeft het contract terug.
@@ -51,6 +51,7 @@ export const DELETE = apiRoute({ rol: 'admin', module: 'contracten', fout: 'Fout
   const id = await leesId(context, 'Onbekende taak');
   const taak = await haalTaak(id);
   await prisma.contractTaak.update({ where: { id }, data: { deletedAt: new Date(), deletedBy: sessie.username } });
-  await createAuditLog({ userId: sessie.userId, username: sessie.username, action: AuditActions.DELETE_CONTRACT_TAAK, details: { id, zacht: true }, request });
+  const stopsWeg = await haalTakenVanPlanning([id]);
+  await createAuditLog({ userId: sessie.userId, username: sessie.username, action: AuditActions.DELETE_CONTRACT_TAAK, details: { id, zacht: true, stopsWeg }, request });
   return NextResponse.json(await haalContract(taak.contractId));
 });

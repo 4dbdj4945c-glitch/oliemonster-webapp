@@ -5,7 +5,7 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { apiRoute, ApiFout, leesId, leesJson } from '@/lib/apiRoute';
 import { dagAlsDatum } from '@/lib/inspecties/server';
 import { nlDag } from '@/lib/klantOpdracht';
-import { ContractWijzigingSchema, haalContract } from '@/lib/contractenServer';
+import { ContractWijzigingSchema, haalContract, haalTakenVanPlanning } from '@/lib/contractenServer';
 
 /*
   GET    /api/contracten/[id] - het contract met taken (beheerder en gebruiker)
@@ -53,11 +53,12 @@ export const DELETE = apiRoute({ rol: 'admin', module: 'contracten', fout: 'Fout
     throw new ApiFout(400, `Typ de naam van het contract (${huidig.naam}) over om het verwijderen te bevestigen.`);
   }
   await prisma.contract.update({ where: { id }, data: { deletedAt: new Date(), deletedBy: sessie.username } });
+  const vanPlanning = await haalTakenVanPlanning(huidig.taken.map((t) => t.id));
   await createAuditLog({
     userId: sessie.userId,
     username: sessie.username,
     action: AuditActions.DELETE_CONTRACT,
-    details: { id, naam: huidig.naam, taken: huidig.taken.length, zacht: true, op: nlDag(new Date()) },
+    details: { id, naam: huidig.naam, taken: huidig.taken.length, stopsWeg: vanPlanning, zacht: true, op: nlDag(new Date()) },
     request,
   });
   return NextResponse.json({ success: true, id });

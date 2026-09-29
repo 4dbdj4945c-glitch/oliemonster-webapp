@@ -6,6 +6,7 @@ import { foutAntwoord } from '@/lib/planningApi';
 import { schrijfSampleIds } from '@/lib/samplePlans';
 import { maakUitvoeringOngedaan, registreerUitvoering } from '@/lib/contractenServer';
 import { nlDag } from '@/lib/klantOpdracht';
+import { vandaagNl } from '@/lib/contracten';
 
 /**
  * PATCH - Een stop bijwerken (alleen admin): afvinken, starten, stoppen, de
@@ -79,13 +80,18 @@ export const PATCH = withAuth({ rol: 'admin', module: 'planning' }, async (
 
     // Een contracttaak die je op de dag afvinkt, is uitgevoerd op die dag: de
     // volgende datum schuift door. Weer open (Toch niet klaar): terug.
+    // Afvinken voor de planningsdag (een dag eerder gedaan): de werkelijke dag telt.
     let taak: { volgendeOp: string } | null = null;
+    let taakTerug: boolean | null = null;
     if (bestaand.taakId && typeof body.isDone === 'boolean' && body.isDone !== bestaand.isDone) {
       const bron = `stop-${sId}`;
       if (body.isDone) {
-        taak = await registreerUitvoering(bestaand.taakId, { datum: nlDag(bestaand.plan.date), bron, door: session.username || null });
+        const planDag = nlDag(bestaand.plan.date);
+        const vandaag = vandaagNl();
+        taak = await registreerUitvoering(bestaand.taakId, { datum: planDag > vandaag ? vandaag : planDag, bron, door: session.username || null });
       } else {
-        await maakUitvoeringOngedaan(bestaand.taakId, bron);
+        // Niet stil niets doen: zeg het als de taak niet terug kon (er kwam een latere uitvoering bij).
+        taakTerug = await maakUitvoeringOngedaan(bestaand.taakId, bron);
       }
     }
 
@@ -97,7 +103,7 @@ export const PATCH = withAuth({ rol: 'admin', module: 'planning' }, async (
       request,
     });
 
-    return NextResponse.json({ ...stop, ...(taak ? { volgendeOp: taak.volgendeOp } : {}) });
+    return NextResponse.json({ ...stop, ...(taak ? { volgendeOp: taak.volgendeOp } : {}), ...(taakTerug !== null ? { taakTerug } : {}) });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij bijwerken van de stop');
   }

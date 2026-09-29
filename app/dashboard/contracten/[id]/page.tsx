@@ -250,13 +250,15 @@ export default function ContractPagina() {
             key={`uitgevoerd-${uitgevoerd?.id ?? 'geen'}`}
             taak={uitgevoerd}
             onClose={() => setUitgevoerd(null)}
-            onKlaar={(c, taak, bron, volgendeOp) => {
+            onKlaar={(c, taak, bron, volgendeOp, doorgezet) => {
               setContract(c);
               setUitgevoerd(null);
               setMelding('');
               setOngedaan({
                 sleutel: bron,
-                tekst: `${taak.titel} uitgevoerd, de volgende keer is ${dagKort(volgendeOp)}`,
+                tekst: doorgezet
+                  ? `${taak.titel} uitgevoerd, de volgende keer is ${dagKort(volgendeOp)}`
+                  : `${taak.titel}: uitvoering vastgelegd, de volgende keer blijft ${dagKort(volgendeOp)}`,
                 onOngedaan: async () => {
                   const r = await fetch(`/api/contract-taken/${taak.id}/uitgevoerd`, {
                     method: 'DELETE',

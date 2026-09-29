@@ -83,10 +83,9 @@ export const POST = apiRoute(
       stopsSamengevoegd += 1;
     }
 
-    // Contracttaken, inspecties en dagrapporten horen voortaan bij het doelobject;
-    // anders houdt hun verwijzing het oude object vast.
+    // Contracttaken en dagrapporten horen voortaan bij het doelobject (de
+    // inspecties zijn hierboven al verhuisd); anders houdt hun verwijzing het oude object vast.
     await prisma.contractTaak.updateMany({ where: { objectId: vanId }, data: { objectId: naarId } });
-    await prisma.inspectie.updateMany({ where: { objectId: vanId }, data: { objectId: naarId } });
     await prisma.dagrapport.updateMany({ where: { objectId: vanId }, data: { objectId: naarId } });
 
     await prisma.sampleObject.delete({ where: { id: vanId } });

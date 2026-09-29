@@ -11,7 +11,7 @@ import { GET as contract, DELETE as wegContract } from '@/app/api/contracten/[id
 import { POST as herstelContract } from '@/app/api/contracten/[id]/herstellen/route';
 import { POST as nieuweTaak } from '@/app/api/contracten/[id]/taken/route';
 import { GET as taken } from '@/app/api/contract-taken/route';
-import { PUT as wijzigTaak } from '@/app/api/contract-taken/[id]/route';
+import { PUT as wijzigTaak, DELETE as wegTaak } from '@/app/api/contract-taken/[id]/route';
 import { POST as uitgevoerd, DELETE as nietUitgevoerd } from '@/app/api/contract-taken/[id]/uitgevoerd/route';
 import { PUT as wijzigInspectie } from '@/app/api/inspecties/[id]/route';
 import { PATCH as wijzigStop } from '@/app/api/sample-plans/[id]/stops/[stopId]/route';
@@ -103,17 +103,84 @@ describe('contracten en taken (admin)', () => {
   it('met de hand uitgevoerd en weer ongedaan', async () => {
     await admin();
     const voor = await volgende(ids.taken.olie);
-    const res = await uitgevoerd(verzoek(`/api/contract-taken/${ids.taken.olie}/uitgevoerd`, { body: { datum: '2026-10-05' } }), p(ids.taken.olie));
+    const dag = plusDagen(vandaagNl(), -1);
+    const res = await uitgevoerd(verzoek(`/api/contract-taken/${ids.taken.olie}/uitgevoerd`, { body: { datum: dag } }), p(ids.taken.olie));
     expect(res.status).toBe(200);
     const { bron, volgendeOp, contract: c } = await res.json();
-    expect(volgendeOp).toBe('2027-04-05');
-    expect(c.taken.find((t: { id: number }) => t.id === ids.taken.olie)).toMatchObject({ volgendeOp: '2027-04-05', laatstUitgevoerdOp: '2026-10-05' });
+    expect(volgendeOp).toBe(plusMaandenVast(dag, 6));
+    expect(c.taken.find((t: { id: number }) => t.id === ids.taken.olie)).toMatchObject({ volgendeOp: plusMaandenVast(dag, 6), laatstUitgevoerdOp: dag });
 
     const terug = await nietUitgevoerd(verzoek(`/api/contract-taken/${ids.taken.olie}/uitgevoerd`, { method: 'DELETE', body: { bron } }), p(ids.taken.olie));
     expect(terug.status).toBe(200);
     expect(await volgende(ids.taken.olie)).toBe(voor);
     // Nog een keer terug kan niet.
     expect((await nietUitgevoerd(verzoek(`/api/contract-taken/${ids.taken.olie}/uitgevoerd`, { method: 'DELETE', body: { bron } }), p(ids.taken.olie))).status).toBe(409);
+  });
+
+  it('een uitvoering met een oudere datum schuift de taak niet terug', async () => {
+    await admin();
+    // De lekkentaak is uitgevoerd door de inspectie van drie weken terug.
+    const voor = await prisma.contractTaak.findUniqueOrThrow({ where: { id: ids.taken.lekken } });
+    const oud = plusDagen(nlDag(voor.laatstUitgevoerdOp!), -40);
+    const res = await (await uitgevoerd(verzoek(`/api/contract-taken/${ids.taken.lekken}/uitgevoerd`, { body: { datum: oud } }), p(ids.taken.lekken))).json();
+    expect(res).toMatchObject({ nieuw: true, doorgezet: false, volgendeOp: nlDag(voor.volgendeOp) });
+    const na = await prisma.contractTaak.findUniqueOrThrow({ where: { id: ids.taken.lekken } });
+    expect(nlDag(na.volgendeOp)).toBe(nlDag(voor.volgendeOp));
+    expect(nlDag(na.laatstUitgevoerdOp!)).toBe(nlDag(voor.laatstUitgevoerdOp!));
+    // De oude regel kan weg zonder dat er iets verandert; de doorgezette uitvoering daarna nog steeds terug.
+    expect((await nietUitgevoerd(verzoek(`/api/contract-taken/${ids.taken.lekken}/uitgevoerd`, { method: 'DELETE', body: { bron: res.bron } }), p(ids.taken.lekken))).status).toBe(200);
+    expect(nlDag((await prisma.contractTaak.findUniqueOrThrow({ where: { id: ids.taken.lekken } })).volgendeOp)).toBe(nlDag(voor.volgendeOp));
+
+    // Zo ook een oude concept-inspectie die nu pas wordt afgerond.
+    const oudeInspectie = await prisma.inspectie.create({
+      data: { sjabloon: 'persluchtlekken', klantId: ids.klanten.tweede, objectId: ids.werkplaats, datum: new Date(`${oud}T12:00:00Z`), uitvoerder: 'Roel' },
+    });
+    await wijzigInspectie(verzoek(`/api/inspecties/${oudeInspectie.id}`, { method: 'PUT', body: { status: 'afgerond' } }), p(oudeInspectie.id));
+    expect(nlDag((await prisma.contractTaak.findUniqueOrThrow({ where: { id: ids.taken.lekken } })).volgendeOp)).toBe(nlDag(voor.volgendeOp));
+  });
+
+  it('Uitgevoerd: niet in de toekomst, en twee keer op dezelfde dag is één uitvoering', async () => {
+    await admin();
+    const t = ids.taken.olie;
+    const morgen = plusDagen(vandaagNl(), 1);
+    const toekomst = await uitgevoerd(verzoek(`/api/contract-taken/${t}/uitgevoerd`, { body: { datum: morgen } }), p(t));
+    expect(toekomst.status).toBe(400);
+    expect((await toekomst.json()).velden.datum).toBeTruthy();
+    const eerst = await (await uitgevoerd(verzoek(`/api/contract-taken/${t}/uitgevoerd`, { body: {} }), p(t))).json();
+    const nog = await (await uitgevoerd(verzoek(`/api/contract-taken/${t}/uitgevoerd`, { body: {} }), p(t))).json();
+    expect(eerst.nieuw).toBe(true);
+    expect(nog).toMatchObject({ nieuw: false, bron: eerst.bron, volgendeOp: eerst.volgendeOp });
+    expect(await prisma.contractTaakUitvoering.count({ where: { taakId: t } })).toBe(1);
+    // Tegelijk op twee verschillende dagen: allebei in de geschiedenis, geen van beide stil weg.
+    const [a, b] = await Promise.all([
+      uitgevoerd(verzoek(`/api/contract-taken/${t}/uitgevoerd`, { body: { datum: plusDagen(vandaagNl(), -3) } }), p(t)),
+      uitgevoerd(verzoek(`/api/contract-taken/${t}/uitgevoerd`, { body: { datum: plusDagen(vandaagNl(), -2) } }), p(t)),
+    ]);
+    expect([a.status, b.status]).toEqual([200, 200]);
+    expect(await prisma.contractTaakUitvoering.count({ where: { taakId: t } })).toBe(3);
+    expect(await volgende(t)).toBe(eerst.volgendeOp);
+  });
+
+  it('Taak klaar op een dag in de toekomst legt vandaag vast; Toch niet klaar zegt het als terugzetten niet kan', async () => {
+    await admin();
+    const dag = await prisma.samplePlan.findUniqueOrThrow({ where: { id: ids.dagen.volgendeWeek } });
+    const stop = await prisma.samplePlanStop.create({ data: { planId: dag.id, objectId: ids.werkplaats, taakId: ids.taken.olie, orderIndex: 5 } });
+    const par = metParams({ id: String(dag.id), stopId: String(stop.id) });
+    const r = await (await wijzigStop(verzoek(`/api/sample-plans/${dag.id}/stops/${stop.id}`, { method: 'PATCH', body: { isDone: true } }), par)).json();
+    expect(r.volgendeOp).toBe(plusMaandenVast(vandaagNl(), 6));
+    const u = await prisma.contractTaakUitvoering.findFirstOrThrow({ where: { bron: `stop-${stop.id}` } });
+    expect(nlDag(u.datum)).toBe(vandaagNl());
+    // Er komt daarna een latere uitvoering bij: de stop gaat open, de taak blijft doorgezet.
+    await prisma.contractTaakUitvoering.create({ data: { taakId: ids.taken.olie, datum: u.datum, bron: 'later', vorigeOp: u.volgendeOp, volgendeOp: new Date(u.volgendeOp.getTime() + 86400000) } });
+    const terug = await (await wijzigStop(verzoek(`/api/sample-plans/${dag.id}/stops/${stop.id}`, { method: 'PATCH', body: { isDone: false } }), par)).json();
+    expect(terug.taakTerug).toBe(false);
+  });
+
+  it('een verwijderde taak gaat van de komende planningsdagen af', async () => {
+    await admin();
+    expect(await prisma.samplePlanStop.count({ where: { id: ids.taakStop } })).toBe(1);
+    await wegTaak(verzoek(`/api/contract-taken/${ids.taken.compressor}`, { method: 'DELETE' }), p(ids.taken.compressor));
+    expect(await prisma.samplePlanStop.count({ where: { id: ids.taakStop } })).toBe(0);
   });
 
   it('status: verlopen, binnenkort en gepland; aandacht filtert', async () => {

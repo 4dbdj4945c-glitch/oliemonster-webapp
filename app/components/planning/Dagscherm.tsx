@@ -237,7 +237,11 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
         if (stop.soort === 'taak' && body.isDone === true && uitkomst?.volgendeOp) {
           setMelding(`${stopNaam(stop)} is klaar. De volgende keer staat op ${dagKort(uitkomst.volgendeOp)}.`);
         } else if (stop.soort === 'taak' && body.isDone === false) {
-          setMelding(`${stopNaam(stop)} staat weer open; de volgende datum is teruggezet.`);
+          setMelding(
+            uitkomst?.taakTerug === false
+              ? `${stopNaam(stop)} staat weer open, maar de volgende datum bleef staan: er is intussen een latere uitvoering vastgelegd. Kijk het na bij Contracten.`
+              : `${stopNaam(stop)} staat weer open; de volgende datum is teruggezet.`
+          );
         }
         setFoutmelding('');
         await laadDag();
