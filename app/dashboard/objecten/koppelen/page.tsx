@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useGebruiker } from '@/app/components/GebruikerProvider';
 import { useRouter } from 'next/navigation';
 import { AppShell, Icon } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { objectTypeIcoon, objectTypeLabel } from '@/lib/sampleObjects';
-import { isAlleenLezen, kijkersPagina } from '@/lib/roles';
 
 /*
   Locaties koppelen. Het veld locatie op een monster is het onderdeel op het
@@ -41,8 +41,7 @@ interface Regel {
 
 export default function KoppelenPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const user: User | null = useGebruiker();
   const [jaar, setJaar] = useState(2026);
   const [objecten, setObjecten] = useState<KoppelObject[]>([]);
   const [regels, setRegels] = useState<Regel[]>([]);
@@ -52,24 +51,6 @@ export default function KoppelenPage() {
   const [klaar, setKlaar] = useState('');
 
   const isAdmin = user?.role === 'admin';
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session');
-        const data = await res.json();
-        if (!data.isLoggedIn) { router.push('/login'); return; }
-        if (data.requiresPasswordChange) { router.push('/set-password'); return; }
-        // De beperkte kijker mag alleen Oliemonsters 2025 zien.
-        if (isAlleenLezen(data.role)) { router.replace(kijkersPagina(data.viewYear)); return; }
-        setUser(data);
-      } catch {
-        router.push('/login');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [router]);
 
   const laad = useCallback(async () => {
     try {
@@ -130,10 +111,6 @@ export default function KoppelenPage() {
       setBezig('');
     }
   };
-
-  if (loading) {
-    return <div className="laadscherm">Laden...</div>;
-  }
 
   const nogLos = regels.filter((r) => r.huidigeObjecten.length === 0).length;
   const zonderVoorstel = regels.filter(

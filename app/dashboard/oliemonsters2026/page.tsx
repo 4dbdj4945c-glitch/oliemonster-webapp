@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useGebruiker } from '@/app/components/GebruikerProvider';
 import PhotoModal, { type FotoInVenster } from '@/app/components/PhotoModal';
 import MonsterNemenModal, { type NeemDoel } from '@/app/components/MonsterNemenModal';
 import MonsterActiesModal from '@/app/components/MonsterActiesModal';
@@ -30,7 +30,7 @@ import {
 import PlanningPaneel from '@/app/components/PlanningPaneel';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
-import { isAlleenLezen, kijkersPagina, magJaarZien } from '@/lib/roles';
+import { isAlleenLezen } from '@/lib/roles';
 import { verkleinFoto } from '@/lib/fotoVerkleinen';
 
 interface User {
@@ -78,7 +78,7 @@ interface SampleObject {
 }
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const user: User | null = useGebruiker();
   const [samples, setSamples] = useState<OilSample[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -140,7 +140,6 @@ export default function DashboardPage() {
 
   const [copying, setCopying] = useState(false);
   const [copyMessage, setCopyMessage] = useState('');
-  const router = useRouter();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -157,7 +156,6 @@ export default function DashboardPage() {
   const [oNumberWarning, setONumberWarning] = useState('');
 
   useEffect(() => {
-    checkAuth();
     loadSettings();
   }, []);
 
@@ -185,35 +183,6 @@ export default function DashboardPage() {
       if (data.columns) setVisibleColumns(data.columns);
     } catch (error) {
       setFoutmelding(GEEN_VERBINDING);
-    }
-  };
-
-  const checkAuth = async () => {
-    try {
-      const response = await fetch('/api/auth/session');
-      const data = await response.json();
-
-      if (!data.isLoggedIn) {
-        router.push('/login');
-        return;
-      }
-
-      // Redirect naar set-password als wachtwoord moet worden ingesteld
-      if (data.requiresPasswordChange) {
-        router.push('/set-password');
-        return;
-      }
-
-      // Een kijker met een ander kijkjaar hoort hier niet; stuur hem naar zijn
-      // eigen jaar. De API weigert dat jaar ook serverside.
-      if (!magJaarZien(data.role, data.viewYear, 2026)) {
-        router.replace(kijkersPagina(data.viewYear));
-        return;
-      }
-
-      setUser(data);
-    } catch (error) {
-      router.push('/login');
     }
   };
 

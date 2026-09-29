@@ -68,7 +68,11 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  const response = NextResponse.next();
+  // Het pad voor app/dashboard/layout.tsx: een layout krijgt dat niet zelf mee.
+  // Altijd overschrijven, zodat een meegestuurde waarde niets doet.
+  const verzoekHeaders = new Headers(request.headers);
+  verzoekHeaders.set('x-ids-pad', pad);
+  const response = NextResponse.next({ request: { headers: verzoekHeaders } });
 
   // Haal het origin op van het verzoek
   const origin = request.headers.get('origin');

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useGebruiker } from '@/app/components/GebruikerProvider';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
@@ -17,7 +18,6 @@ import {
   raadKunstwerk,
   sorteerOpOfferte,
 } from '@/lib/sampleObjects';
-import { isAlleenLezen, kijkersPagina } from '@/lib/roles';
 
 const ObjectMap = dynamic(() => import('@/app/components/ObjectMap'), {
   ssr: false,
@@ -76,8 +76,7 @@ const leegFormulier = {
 
 export default function ObjectenPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const user: User | null = useGebruiker();
   const [objecten, setObjecten] = useState<SampleObject[]>([]);
   const [jaar, setJaar] = useState(2026);
   const [foutmelding, setFoutmelding] = useState('');
@@ -141,24 +140,6 @@ export default function ObjectenPage() {
   );
   const naamVan = (id: number | null) =>
     objecten.find((o) => o.id === id)?.name ?? 'het kunstwerk';
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/auth/session');
-        const data = await res.json();
-        if (!data.isLoggedIn) { router.push('/login'); return; }
-        if (data.requiresPasswordChange) { router.push('/set-password'); return; }
-        // De beperkte kijker mag alleen Oliemonsters 2025 zien.
-        if (isAlleenLezen(data.role)) { router.replace(kijkersPagina(data.viewYear)); return; }
-        setUser(data);
-      } catch {
-        router.push('/login');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [router]);
 
   useEffect(() => {
     if (user) laadObjecten();
@@ -478,10 +459,6 @@ export default function ObjectenPage() {
     }
     await laadObjecten();
   };
-
-  if (loading) {
-    return <div className="laadscherm">Laden...</div>;
-  }
 
   const totaalMinuten = objecten.reduce((n, o) => n + (o.estimatedMinutes ?? 0), 0);
 

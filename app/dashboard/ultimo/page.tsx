@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useGebruiker } from '@/app/components/GebruikerProvider';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import UltimoCommentsPanel from '@/app/components/UltimoCommentsPanel';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
-import { isAlleenLezen, kijkersPagina } from '@/lib/roles';
 
 interface User {
   userId: number;
@@ -30,7 +29,7 @@ interface UltimoTask {
 const emptyForm = { jobName: '', taskDescription: '', installation: '' };
 
 export default function UltimoPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const user: User | null = useGebruiker();
   const [tasks, setTasks] = useState<UltimoTask[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -43,12 +42,7 @@ export default function UltimoPage() {
   const [saving, setSaving] = useState(false);
   const [foutmelding, setFoutmelding] = useState('');
 
-  const router = useRouter();
   const isAdmin = user?.role === 'admin';
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -56,19 +50,6 @@ export default function UltimoPage() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, search]);
-
-  const checkAuth = async () => {
-    try {
-      const res = await fetch('/api/auth/session');
-      const data = await res.json();
-      if (!data.isLoggedIn) { router.push('/login'); return; }
-      if (data.requiresPasswordChange) { router.push('/set-password'); return; }
-      if (isAlleenLezen(data.role)) { router.replace(kijkersPagina(data.viewYear)); return; }
-      setUser(data);
-    } catch {
-      router.push('/login');
-    }
-  };
 
   const loadTasks = async () => {
     try {

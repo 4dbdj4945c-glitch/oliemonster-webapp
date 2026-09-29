@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useGebruiker } from '@/app/components/GebruikerProvider';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { AppShell, Icon } from '@/app/components/ui';
@@ -26,33 +26,16 @@ interface AuditLog {
 }
 
 export default function AuditLogsPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const user: User | null = useGebruiker();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionFilter, setActionFilter] = useState('');
   const [usernameFilter, setUsernameFilter] = useState('');
   const [foutmelding, setFoutmelding] = useState('');
-  const router = useRouter();
-
-  useEffect(() => { checkAuth(); }, []);
 
   useEffect(() => {
     if (user) loadLogs();
   }, [user, actionFilter, usernameFilter]);
-
-  const checkAuth = async () => {
-    try {
-      const response = await fetch('/api/auth/session');
-      const data = await response.json();
-      if (!data.isLoggedIn || data.role !== 'admin') {
-        router.push('/dashboard');
-        return;
-      }
-      setUser(data);
-    } catch {
-      router.push('/login');
-    }
-  };
 
   const loadLogs = async () => {
     try {

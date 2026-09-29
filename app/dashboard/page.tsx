@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useGebruiker } from '@/app/components/GebruikerProvider';
 import { useRouter } from 'next/navigation';
 import { isAlleenLezen, paginaVoorKijkjaar } from '@/lib/roles';
 import { actieStaatOpen, eindeVanVandaag } from '@/lib/prospects';
@@ -18,8 +19,7 @@ interface User {
 }
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const user: User | null = useGebruiker();
   const [stats, setStats] = useState({
     oilSamples2025: 0,
     oilSamplesTaken2025: 0,
@@ -37,37 +37,6 @@ export default function DashboardPage() {
   // een 0 zou betekenen dat er niets is, terwijl we het gewoon niet weten.
   const [mislukteModules, setMislukteModules] = useState<string[]>([]);
   const router = useRouter();
-
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
-    if (user) loadStats();
-  }, [user]);
-
-  const checkAuth = async () => {
-    try {
-      const response = await fetch('/api/auth/session');
-      const data = await response.json();
-      if (!data.isLoggedIn) { router.push('/login'); return; }
-      if (data.requiresPasswordChange) { router.push('/set-password'); return; }
-      // Kijker met een vast kijkjaar: stuur direct naar dat jaar. Mag hij alle
-      // jaren zien, dan blijft hij hier, maar ziet hij alleen de oliemonsters.
-      if (isAlleenLezen(data.role)) {
-        const pagina =
-          data.viewYear === null || data.viewYear === undefined
-            ? null
-            : paginaVoorKijkjaar(data.viewYear);
-        if (pagina) { router.replace(pagina); return; }
-      }
-      setUser(data);
-    } catch {
-      router.push('/login');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadStats = async () => {
     const mislukt: string[] = [];
@@ -142,16 +111,12 @@ export default function DashboardPage() {
     }
   };
 
+  useEffect(() => {
+    if (user) loadStats();
+  }, [user]);
+
   /** Toon de tellingen alleen als ze echt geladen zijn. */
   const geladen = (module: string) => !mislukteModules.includes(module);
-
-  if (loading) {
-    return (
-      <div className="laadscherm">
-        <p>Laden...</p>
-      </div>
-    );
-  }
 
   // Een kijker ziet alleen de oliemonstermodule: geen eigen modules van It's Done
   // Services en geen Ultimo. De API's weigeren hem daar ook.

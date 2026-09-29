@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useGebruiker } from '@/app/components/GebruikerProvider';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
@@ -48,7 +48,7 @@ const AVAILABLE_COLUMNS = [
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<TabType>('users');
-  const [sessionUser, setSessionUser] = useState<SessionUser | null>(null);
+  const sessionUser: SessionUser | null = useGebruiker();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -60,7 +60,6 @@ export default function AdminPage() {
   const [gebruikersGeladen, setGebruikersGeladen] = useState(false);
   const [linkVenster, setLinkVenster] = useState<LinkVoorGebruiker | null>(null);
   const [gekopieerd, setGekopieerd] = useState(false);
-  const router = useRouter();
 
   const [selectedColumns, setSelectedColumns] = useState<string[]>([
     'status', 'oNumber', 'sampleDate', 'location', 'description', 'oilType'
@@ -76,7 +75,6 @@ export default function AdminPage() {
   const [formError, setFormError] = useState('');
 
   useEffect(() => {
-    checkAuth();
     // Beheer > Kolommen aanpassen opent direct het tabblad Kolommen (?tab=columns).
     if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('tab') === 'columns') {
       setActiveTab('columns');
@@ -89,22 +87,6 @@ export default function AdminPage() {
       loadSettings();
     }
   }, [sessionUser]);
-
-  const checkAuth = async () => {
-    try {
-      const response = await fetch('/api/auth/session');
-      const data = await response.json();
-
-      if (!data.isLoggedIn || data.role !== 'admin') {
-        router.push('/dashboard');
-        return;
-      }
-
-      setSessionUser(data);
-    } catch {
-      router.push('/login');
-    }
-  };
 
   const loadUsers = async () => {
     try {

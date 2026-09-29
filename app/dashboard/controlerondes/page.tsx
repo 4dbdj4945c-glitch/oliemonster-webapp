@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useGebruiker } from '@/app/components/GebruikerProvider';
 import dynamic from 'next/dynamic';
 import { apiFetch } from '@/lib/api';
 import { searchPlaces, getStreets, PlaceHit, StreetHit } from '@/lib/pdok';
@@ -9,7 +9,6 @@ import type { MapStreet } from '@/app/components/RouteMap';
 import { AppShell, NavButton, Icon } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
-import { isAlleenLezen, kijkersPagina } from '@/lib/roles';
 
 const RouteMap = dynamic(() => import('@/app/components/RouteMap'), {
   ssr: false,
@@ -80,9 +79,7 @@ function haversine(aLat: number, aLng: number, bLat: number, bLng: number): numb
 }
 
 export default function ControleRondesPage() {
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const user: User | null = useGebruiker();
   const [view, setView] = useState<View>('list');
 
   // Lijst
@@ -121,23 +118,6 @@ export default function ControleRondesPage() {
   autoMarkRef.current = autoMark;
 
   // ---- Auth + init ----
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await apiFetch('/api/auth/session');
-        const data = await res.json();
-        if (!data.isLoggedIn) { router.push('/login'); return; }
-        if (data.requiresPasswordChange) { router.push('/set-password'); return; }
-        if (isAlleenLezen(data.role)) { router.replace(kijkersPagina(data.viewYear)); return; }
-        setUser(data);
-      } catch {
-        router.push('/login');
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [router]);
-
   useEffect(() => {
     if (user) loadRounds();
   }, [user]);
@@ -505,10 +485,6 @@ export default function ControleRondesPage() {
 
   // Gekozen straten in de wizard, in de volgorde van de stratenlijst.
   const gekozenStraten = wizardMapStreets.map((s) => s.street);
-
-  if (loading) {
-    return <div className="laadscherm">Laden…</div>;
-  }
 
   const gpsIcon = <Icon name="gps-live" />;
   const plusIcon = <Icon name="plus" />;

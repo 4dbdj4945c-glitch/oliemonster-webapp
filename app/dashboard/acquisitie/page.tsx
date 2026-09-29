@@ -1,13 +1,12 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useGebruiker } from '@/app/components/GebruikerProvider';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import ProspectDetail from '@/app/components/ProspectDetail';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import ProspectContactForm from '@/app/components/ProspectContactForm';
-import { isAlleenLezen } from '@/lib/roles';
 import {
   PROSPECT_STATUSSEN,
   STATUS_LABELS,
@@ -73,8 +72,7 @@ const leegFormulier = {
 type Formulier = typeof leegFormulier;
 
 export default function AcquisitiePage() {
-  const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const user: User | null = useGebruiker();
   const [prospects, setProspects] = useState<ProspectRegel[]>([]);
   const [laden, setLaden] = useState(true);
   const [laadFout, setLaadFout] = useState('');
@@ -104,22 +102,6 @@ export default function AcquisitiePage() {
   const [helpOpen, setHelpOpen] = useState(false);
 
   const isAdmin = user?.role === 'admin';
-
-  useEffect(() => {
-    const controleer = async () => {
-      try {
-        const res = await fetch('/api/auth/session');
-        const data = await res.json();
-        if (!data.isLoggedIn) { router.push('/login'); return; }
-        if (data.requiresPasswordChange) { router.push('/set-password'); return; }
-        if (isAlleenLezen(data.role)) { router.replace('/dashboard/oliemonsters'); return; }
-        setUser(data);
-      } catch {
-        router.push('/login');
-      }
-    };
-    controleer();
-  }, [router]);
 
   const laadProspects = useCallback(async () => {
     try {
