@@ -65,18 +65,24 @@ tabelregel en veld in de portal, dus dat is een eigen besluit en geen los foutje
 
 ## Bouwstenen
 
-- **Balk bovenaan**: `AppShell` (navy) regelt de hele balk zelf: links logo, "IDS Portal" en de
-  modulenaam (`title`), rechts Terug naar dashboard, het Beheer-menu (alleen admin: de modules uit
-  sectie Beheer van `lib/modules.ts`, dus Objecten, Audit logs, Kolommen aanpassen, Instellingen, en Afdrukken), een Help-knop (als de pagina `onHelp` meegeeft) en het
-  gebruikersmenu (avatar met initiaal, naam, rol en Uitloggen). Een pagina geeft `user` mee (anders haalt
-  de balk de sessie zelf op), optioneel `onPrint` (Beheer > Afdrukken, standaard `window.print()`) en
-  `rightActions` voor echt paginaspecifieke knoppen. Losse knoppen daarin: `NavButton` / `.nav-btn`
-  (doorschijnend wit, `.nav-btn-icoon` voor alleen een icoon), `.nav-btn-primary` (oranje, één per balk).
-  Uitklapmenu's: `.toolbar-menu > .toolbar-menu-paneel > .toolbar-menu-item` (`-danger`, `-scheiding`, `-kop`).
-  Op de telefoon (tot 640px) toont de balk alleen logo, modulenaam, `rightActions` en een hamburger
-  (`.toolbar-mobiel`); alle andere opties staan in het uitklappaneel `.toolbar-mobiel-paneel`
-  (kop met avatar en rol, Terug naar dashboard, Help, sectie Beheer, Uitloggen). Knoppen in de balk
-  kunnen een lange en korte tekst hebben (`<span class="lang">` / `<span class="kort">`). Het witte logo `header_logo.png` staat er zonder filter in.
+- **Schil** (`AppShell`, voor beheerder en gebruiker `ui/Schil.tsx`): één navigatie uit het
+  moduleregister (`navigatieVoor()` in `lib/modules.ts`). Desktop vanaf 900px: vaste navy zijbalk
+  (`.zijbalk`, 244px) met Vandaag en de secties Werk, Klanten, Rapportage en Beheer, onderaan het
+  gebruikersmenu (rol, Afdrukken, Uitloggen). Actief: `.zijbalk-item.on`, navy-mid vlak met oranje
+  streep links. Help en paginaknoppen (`rightActions`, `onHelp`) staan rechtsboven de inhoud
+  (`.schil-acties`, `.nav-btn` wordt daar wit met rand, `.nav-btn-primary` oranje).
+  Telefoon en tablet: navy kopbalk (`.schil-kop`: logo, modulenaam, paginaknoppen, Help, avatar) en
+  een vaste onderbalk (`.onderbalk`, 64px plus veilige zone) met Vandaag, Werk, Klanten en Meer.
+  Werk, Klanten en Meer openen een paneel boven de balk (`.onderbalk-paneel`, items `.paneel-item`
+  van 48px); Meer bevat Rapportage, Beheer, Help, Afdrukken en Uitloggen. Actieve tab: navy met een
+  lichtgrijze pil en een oranje stip, geen oranje vlak. Er is geen "Terug naar dashboard" meer; een
+  terugknop alleen binnen een module, links boven de inhoud (`.terug-link`).
+  `veld` op AppShell: veldscherm, op de telefoon zonder kop- en onderbalk (de pagina heeft een eigen
+  kop en actiebalk). De **kijker** (rol alleen lezen) krijgt de schil niet: die houdt de oude navy
+  balk (`KlassiekeBalk` in AppShell, `.toolbar`), pixel voor pixel gelijk. Niet aanpassen zonder de
+  kijker-screenshots te vergelijken.
+- **Uitklapmenu's**: `ToolbarMenu` en `MenuItem` uit `ui/Menu.tsx`,
+  `.toolbar-menu > .toolbar-menu-paneel > .toolbar-menu-item` (`-danger`, `-scheiding`, `-kop`).
 - **Fotovenster**: `PhotoModal` (`.foto-paneel`, `.foto-beeld`, `.foto-knop`), klein venster op desktop,
   beeldvullend op de telefoon. Krijgt een lijst foto's mee: een monster heeft er twee (het onderdeel en
   het monsterpotje), en dan komt er een keuzerij bij (`.foto-keuze`), op de telefoon onderin met
@@ -95,8 +101,39 @@ tabelregel en veld in de portal, dus dat is een eigen besluit en geen los foutje
   (met `role="alert"`, `.laadfout-tekst` links en een knop Opnieuw proberen rechts) boven de lijst.
 - **Tikbare status**: `.status-knop` om een statusbadge in een tabelrij, voor de hoofdhandeling van
   een lijst (op de telefoon een volle knop van 44px bovenaan de kaart).
-- **Modal**: component `Modal` (grijze kopbalk, witte romp, voettekst met knoppen).
-- **Leeg / laden**: `.leeg`, `.laden`, `.laadscherm`.
+- **Modal**: component `Modal` (grijze kopbalk met kruisje, witte romp, voettekst met knoppen). Een
+  eigen venster gebruikt `useVenster(open, onClose)` uit `app/components/ui`: `role="dialog"`,
+  focus naar binnen en erin houden, Escape sluit alleen het bovenste venster, focus terug bij sluiten.
+  Fouten bij een veld onder het veld (`.veld-fout`, veld `.input-fout`), niet als browsertooltip.
+  Hoofdknop altijd rechts in de voet, Annuleren links ervan.
+- **Leeg, laden, fout** (in alle modules gelijk):
+  - Laden: component `Laden` uit `app/components/ui` (`.skelet`, soort `kaarten`, `lijst` of `tegels`)
+    binnen de schil, onder de paginatitel. Nooit een 0 of een lege lijst zolang het er nog niet is.
+    `.laadscherm` (volledig scherm) alleen nog voor de kijker en het wachtwoordscherm.
+  - Leeg: `.leeg` met een icoon van 32 en een zin wat je kunt doen.
+  - Fout: `LaadFout` boven de lijst, en dan geen lege staat, geen tellingen en geen knoppen die iets
+    aanmaken of importeren.
+  - Geen verbinding: `GeenVerbinding` (`.geen-verbinding`, amber) op het veldscherm en in Monster nemen.
+- **Paginakop**: `.paginakop` (titel en subtitel links, knoppen of keuze rechts in `.paginakop-knoppen`).
+- **Sectiekop**: `.sectiekop` met een `h2` van 15/700 navy in gewone schrijfwijze, rechts een link of
+  `small`. `.section-label` (blauwe kapitalen) blijft voor kleine groepen en tabelkoppen.
+- **Rijen in een kaart**: `ul.card.rijen > li.rij` met `.icoonvak`, `.rij-tekst` en `.rij-knoppen`.
+- **Kengetallen**: `.kengetallen > .kengetal` (getal 28/800, woord eronder), zonder tegels.
+- **Voortgang**: `.voortgang-balk > i.voortgang-genomen + i.voortgang-gepland` (groen, blauw).
+- **Filterchips**: `.filterchips > button.filterchip(.on)` met `.filterchip-aantal`.
+- **Vandaag** (`app/components/vandaag/Vandaag.tsx`, getallen in `lib/vandaag.ts`): monsterdag als één
+  grote kaart (`.monsterdag`, oranje streep links, Start dag de enige oranje knop), Acties, Deze week
+  (`.week`), Openstaande monsters en Voortgang. Blokken zonder module (keuringen, contracten,
+  rapporten) staan er pas als die module er is.
+- **Veldscherm** (`app/components/planning/Dagscherm.tsx`, `/dashboard/planning/dag/[id]`): eigen kop
+  (`.veld-kop`, op de telefoon navy), voortgang, één grote kaart (`.veld-kaart`, 2px navy rand,
+  o-nummer 32/800, gegevens 17px), knoppen van 60px twee naast elkaar (`.veld-knoppen > .veld-knop`,
+  rand `--grijs-400`), lijsten met regels van 64px (`.veld-lijst-regel`) en onderaan in duimbereik
+  de enige oranje knop Monster nemen (`.veld-actiebalk`, 64px, op de telefoon vast binnen de veilige zone).
+- **Monsterlijst op de telefoon** (niet voor de kijker): `MonsterTabel compact` en
+  `.monsterlijst-compact` om de lijst. Per monster drie regels (o-nummer en status, plek en
+  omschrijving, object en datum) en rechts Nemen en Meer; een tik op de kaart opent het monster.
+  Zoekveld plakt bovenaan, filters achter de knop Filter, tellingen als filterchips, PDF via Meer.
 - **Filters boven een lijst**: `.filters > .filter-veld` (label `.filter-label`, veld `.filter-select`,
   brede knop `.filter-veld-breed`), op de telefoon twee kolommen (component `MonsterFilters`).
 - **Beheerschermen** (Klanten, Installaties): kop `.beheer-kop` met `.beheer-knoppen`, terug `.terug-link`,
@@ -109,6 +146,25 @@ tabelregel en veld in de portal, dus dat is een eigen besluit en geen los foutje
   `FotoKiezer` (`.foto-kiezer`, twee naast elkaar in `.veldwerk-fotos`, op de telefoon onder elkaar):
   één groot tikvlak dat op de telefoon meteen de camera opent. Bedoeld voor werken met handschoenen aan.
 
+## Kleur per scherm
+
+- **Oranje** is één ding per scherm: de hoofdknop (Start dag, Monster nemen in het veldscherm, Nieuw
+  monster), of de streep van wat nu aan de beurt is. Nooit acht keer in een lijst: in de monsterlijst
+  is Monster nemen wit met rand.
+- **Blauw** alleen voor links, focus en informatieve badges. Geen blauwe knopvullingen (`.btn-blue`
+  bestaat nog, maar wordt niet meer gebruikt). Tweede acties wit met rand (`.btn`).
+- **Rood** alleen voor te laat, fout, Niet genomen en verwijderen (`.tekst-te-laat`).
+- Focus: `:focus-visible` geeft knoppen een blauwe rand van 2px.
+
+## Woorden
+
+- Status van een monster: Genomen, Niet genomen, Niet bereikbaar, Geannuleerd (`lib/sampleStatus.ts`),
+  overal hetzelfde, ook in het dagscherm.
+- Opslaan heet Opslaan (niet Bijwerken), tenzij de handeling een eigen werkwoord heeft (Toevoegen,
+  Opslaan als genomen, Vastleggen).
+- Rollen: Beheerder, Gebruiker, Alleen lezen. Audit logs heet Logboek.
+- Getallen en afstanden via `toLocaleString('nl-NL')`: 12,4 km, niet 12.4 km.
+
 ## Iconen
 
 Eén set voor de hele portal, via `<Icon name="..." />` uit `app/components/ui` (bron en voorstel:
@@ -120,7 +176,7 @@ Eén set voor de hele portal, via `<Icon name="..." />` uit `app/components/ui` 
 - **Kleur**: via de container. Grijs-700 of grijs-500 op wit, wit op navy. Nooit oranje in een icoon (2,8:1 op wit), nooit twee kleuren.
   Status- en verwijdericonen nemen de functionele kleur van hun badge, tegel of knop over (groen-tekst, rood-tekst, blauw);
   rood alleen voor Niet genomen en verwijderen. Stattegels: `.stat-card-icoon.is-genomen` / `.is-niet-genomen`, geen inline kleur.
-- **Actief**: niet met een gevuld icoon, maar via de container: navy vlak met wit icoon, of een oranje streep links (`border-left: 3px solid var(--oranje)`). Die klasse bestaat nog niet; maak hem pas als een menu een actieve staat krijgt.
+- **Actief**: niet met een gevuld icoon, maar via de container: navy vlak met wit icoon en een oranje streep links (`.zijbalk-item.on`, `.paneel-item.on`), of in de onderbalk een grijze pil met een oranje stip (`.onderbalk-tab.on`).
 - **Status**: altijd icoon plus woord. Genomen `status-taken` (groen), Niet genomen `status-not-taken` (rood),
   Niet bereikbaar `alert-warning` (`badge-warning`, `--geel-tekst`), Gepland `status-planned` (blauw, `badge-info`),
   Geannuleerd `status-cancelled` (grijs). Rondes: `status-round-open/-busy/-done`.
@@ -159,7 +215,8 @@ Eén set voor de hele portal, via `<Icon name="..." />` uit `app/components/ui` 
 
 De portal wordt op de telefoon gebruikt (PWA). Onder 640px regelt `globals.css` automatisch:
 velden 16px hoog 44px (geen inzoomen op iOS), knoppen minimaal 44px, modals als onderpaneel
-met vaste kop en voet, de balk bovenaan met een horizontaal scrollende knoppenrij.
+met vaste kop en voet. Onder 900px staat de navigatie onderaan (`.onderbalk`); iets dat vast
+onderaan staat (Ongedaan maken) schuift erboven.
 
 Per pagina hoort:
 - **Tabellen** krijgen `class="table table-kaarten"` en elke `<td>` een `data-label="Kolomnaam"`.

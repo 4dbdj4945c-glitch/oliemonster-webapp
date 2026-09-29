@@ -186,6 +186,10 @@ de laatste poging. Ze worden alleen via `wijzigLaatstePoging`
 - `POST /api/samples/[id]/herstellen` - Monster terugzetten uit de prullenbak (admin only)
 - `POST /api/samples/[id]/afname-ongedaan` - Laatste monstername terug naar niet genomen (admin only)
 
+### Planning
+- `GET /api/sample-plans?year=` - Alle dagen van een jaar met stops, monsters en tijden, plus de objecten (met klant)
+- `GET /api/sample-plans/[id]` - Eén dag, voor het dagscherm (zelfde getallen, uit `haalPlanning`)
+
 ### Klanten en installaties (alleen admin)
 - `GET/POST /api/klanten`, `GET/PUT/DELETE /api/klanten/[id]` (DELETE zacht, body `{ bevestigNaam }`), `POST /api/klanten/[id]/herstellen`
 - `POST /api/klanten/[id]/contactpersonen`, `PUT/DELETE /api/contactpersonen/[id]`, `POST /api/contactpersonen/[id]/herstellen`
@@ -260,7 +264,12 @@ uitvoer in `schermen/`):
 ```bash
 node scripts/schermen.mjs --seed                                   # standaardset
 node scripts/schermen.mjs kijker:/dashboard/oliemonsters/2025 admin:/dashboard/klanten
+node scripts/schermen.mjs admin:/dashboard/planning/dag/{vandaag}            # dagscherm van vandaag
+node scripts/schermen.mjs "admin:/dashboard@.onderbalk button:nth-of-type(1)"  # eerst klikken (menu open)
 ```
+
+De nepdata zet de planning ten opzichte van vandaag (een monsterdag vandaag en
+overmorgen) en drie prospects met acties, zodat Vandaag altijd iets laat zien.
 
 De tests in `tests/db` en `tests/routes` wissen `ids_portal_test` en vullen hem
 met `prisma/nepdata.ts`. Een andere testdatabase kan via `TEST_DATABASE_URL`.
@@ -270,8 +279,16 @@ de migratiecontrole, de tests (met een eigen PostgreSQL) en de build.
 ## Toegang
 
 - Moduleregister: `lib/modules.ts` (naam, icoon, route, sectie Werk, Klanten,
-  Rapportage of Beheer, rollen). Bron voor de dashboardtegels, het Beheer-menu
-  en de paginatoegang. Een nieuwe module: daar toevoegen.
+  Rapportage of Beheer, rollen). Bron voor de navigatie (zijbalk en onderbalk,
+  `navigatieVoor()`), de dashboardtegels van de kijker en de paginatoegang. Een
+  nieuwe module: daar toevoegen, dan staat hij vanzelf in het menu.
+- Startscherm `/dashboard`: voor beheerder en gebruiker Vandaag (monsterdag,
+  acties, deze week, openstaande monsters, voortgang; `lib/vandaag.ts`), voor de
+  kijker het oude dashboard met tegels per jaar.
+- Planning: `/dashboard/planning?jaar=2026` (ook als tab op de oliemonsterpagina),
+  het dagscherm (veldscherm) van een dag op `/dashboard/planning/dag/[id]`.
+- De kijker (rol alleen lezen) houdt de oude navy balk en ziet geen navigatie,
+  geen Vandaag en geen compacte lijst; zijn klantportaal komt later.
 - API-routes: `export const GET = apiRoute({ rol, module, fout }, async (request, context, sessie) => ...)`
   uit `lib/apiRoute.ts`. Dat is `withAuth` (lib/toegang.ts) plus invoer met zod
   (`leesJson`, `leesQuery`, `leesId`) en één foutvorm: `{ error, velden? }`,
