@@ -14,7 +14,11 @@ model User {
   id                     Int      @id @default(autoincrement())
   username               String   @unique
   password               String?  // Optioneel - null als wachtwoord nog niet gezet is
-  role                   String   // "admin" of "user"
+  role                   String   // "admin", "user" of "alleen_lezen" (zie lib/roles.ts)
+  // Alleen voor de rol "alleen lezen": welk analysejaar deze gebruiker mag zien.
+  // Leeg betekent alle jaren. Wordt serverside afgedwongen in de monsterroutes,
+  // niet alleen in de schermen.
+  viewYear               Int?
   requiresPasswordChange Boolean  @default(true)  // Moet gebruiker wachtwoord instellen?
   createdAt              DateTime @default(now())
 }
@@ -30,7 +34,8 @@ model OilSample {
   remarks      String?           // cache: opmerking van de meest recente poging
   isTaken      Boolean           // of er een geldig genomen monster is (true = groen, false = rood)
   isDisabled   Boolean  @default(false)  // monster is geannuleerd/niet nodig (grijze status)
-  photoUrl     String?           // cache: foto van de meest recente poging
+  photoUrl     String?           // cache: foto van het monsterpotje, van de meest recente poging
+  partPhotoUrl String?           // cache: foto van het onderdeel waar het monster vandaan komt
   objectId     Int?              // object waar dit monster bij hoort (planning); location blijft bestaan
   // Annuleren met reden. Deze velden blijven buiten de synchronisatie met de
   // pogingen (lib/sampleAttempts.ts), anders worden ze overschreven zodra er
@@ -39,6 +44,18 @@ model OilSample {
   cancelledAt       DateTime?        // wanneer geannuleerd
   cancelledBy       String?          // gebruikersnaam
   cancelReasonInPdf Boolean @default(true)  // reden meenemen in de PDF voor de klant
+  // Niet bereikbaar: de locatie was door afzetting, andere werkzaamheden of
+  // begroeiing niet te bereiken. Dit is iets anders dan geannuleerd: het monster
+  // blijft openstaan (isDisabled blijft false) en blijft dus meetellen in de
+  // planning, want het moet waarschijnlijk alsnog gebeuren. Net als bij het
+  // annuleren blijven deze velden buiten de synchronisatie met de pogingen
+  // (lib/sampleAttempts.ts), zodat een hermonstering ze niet overschrijft.
+  isUnreachable       Boolean  @default(false)  // staat nu als niet bereikbaar te boek
+  unreachableReason   String?          // reden uit de vaste lijst, of de toelichting bij "anders"
+  unreachableNote     String?          // korte omschrijving van de situatie
+  unreachablePhotoUrl String?          // eigen foto als bewijs
+  unreachableAt       DateTime?        // wanneer vastgelegd
+  unreachableBy       String?          // gebruikersnaam
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -145,7 +162,8 @@ model SampleAttempt {
   id           Int       @id @default(autoincrement())
   oilSampleId  Int
   sampleDate   DateTime?            // datum afname; null = gepland maar nog niet genomen
-  photoUrl     String?              // foto bewijsvoering voor deze poging
+  photoUrl     String?              // foto van het monsterpotje bij deze poging
+  partPhotoUrl String?              // foto van het onderdeel waar het monster vandaan komt
   remarks      String?              // opmerkingen specifiek voor deze poging
   isTaken      Boolean   @default(false)  // of deze poging daadwerkelijk is afgenomen
   createdAt    DateTime  @default(now())

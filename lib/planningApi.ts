@@ -3,20 +3,17 @@
 // staan. Zelfde patroon als lib/prospectApi.ts (module Acquisitie).
 
 import { NextResponse } from 'next/server';
-import { tabelOntbreekt } from './prospectApi';
+import { maakFoutAntwoord } from './kolommen';
 
-export { haalSessie, toegangsFout, tabelOntbreekt } from './prospectApi';
+export { haalSessie, toegangsFout } from './toegang';
+export { tabelOntbreekt } from './kolommen';
 
 export const TABEL_ONTBREEKT_PLANNING =
   'De tabellen van de planningsmodule staan nog niet in de database. Draai ./db-push-planning.sh in de projectmap en ververs deze pagina.';
 
 /** Standaard foutantwoord: 503 met uitleg als de tabel ontbreekt, anders 500. */
 export function foutAntwoord(error: unknown, melding: string): NextResponse {
-  if (tabelOntbreekt(error)) {
-    return NextResponse.json({ error: TABEL_ONTBREEKT_PLANNING, tabelOntbreekt: true }, { status: 503 });
-  }
-  console.error(melding, error);
-  return NextResponse.json({ error: melding }, { status: 500 });
+  return maakFoutAntwoord(error, melding, TABEL_ONTBREEKT_PLANNING);
 }
 
 /**
@@ -39,4 +36,19 @@ export const SAMPLE_BASIS_SELECT = {
   photoUrl: true,
   createdAt: true,
   updatedAt: true,
+} as const;
+
+/**
+ * De velden die OilSample had ná de planningsmodule, maar vóór wensenronde 2.
+ * Zolang ./db-push-wensen2.sh nog niet gedraaid is, bestaan partPhotoUrl en de
+ * velden van Niet bereikbaar niet; met deze select blijven het object en de
+ * annuleervelden wel zichtbaar, in plaats van dat de hele kolom Object wegvalt.
+ */
+export const SAMPLE_PLANNING_SELECT = {
+  ...SAMPLE_BASIS_SELECT,
+  objectId: true,
+  cancelReason: true,
+  cancelledAt: true,
+  cancelledBy: true,
+  cancelReasonInPdf: true,
 } as const;

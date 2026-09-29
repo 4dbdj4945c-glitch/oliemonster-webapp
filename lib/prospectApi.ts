@@ -3,51 +3,20 @@
 // in de database staan (dan is `prisma db push` nog niet gedraaid).
 
 import { NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
-import { sessionOptions, SessionData } from './session';
-import { isOilViewer2025 } from './roles';
 import { isProspectStatus, BENADER_KANALEN } from './prospects';
+import { maakFoutAntwoord } from './kolommen';
 
-export async function haalSessie(): Promise<SessionData> {
-  const cookieStore = await cookies();
-  return getIronSession<SessionData>(cookieStore, sessionOptions);
-}
-
-/**
- * Geeft een foutantwoord terug als de gebruiker niet mag, anders null.
- * `adminNodig` zet je op true bij alles wat schrijft.
- */
-export function toegangsFout(session: SessionData, adminNodig: boolean): NextResponse | null {
-  if (!session.isLoggedIn) {
-    return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-  }
-  if (isOilViewer2025(session.role)) {
-    return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
-  }
-  if (adminNodig && session.role !== 'admin') {
-    return NextResponse.json({ error: 'Alleen admins kunnen dit wijzigen' }, { status: 403 });
-  }
-  return null;
-}
+// De sessie- en rolcontrole staat in lib/toegang.ts, omdat elke module die deelt.
+// Hier blijven ze exporteren, zodat de bestaande routes ongewijzigd blijven werken.
+export { haalSessie, toegangsFout } from './toegang';
+export { tabelOntbreekt } from './kolommen';
 
 export const TABEL_ONTBREEKT =
   'De acquisitietabellen staan nog niet in de database. Draai ./db-push-acquisitie.sh in de projectmap en ververs deze pagina.';
 
-/** Herkent de Prisma-fout die je krijgt als de tabel nog niet bestaat. */
-export function tabelOntbreekt(error: unknown): boolean {
-  const e = error as { code?: string; message?: string };
-  if (e?.code === 'P2021' || e?.code === 'P2022') return true;
-  return typeof e?.message === 'string' && /does not exist in the current database|relation ".*" does not exist/i.test(e.message);
-}
-
 /** Standaard foutantwoord: 503 met uitleg als de tabel ontbreekt, anders 500. */
 export function foutAntwoord(error: unknown, melding: string): NextResponse {
-  if (tabelOntbreekt(error)) {
-    return NextResponse.json({ error: TABEL_ONTBREEKT, tabelOntbreekt: true }, { status: 503 });
-  }
-  console.error(melding, error);
-  return NextResponse.json({ error: melding }, { status: 500 });
+  return maakFoutAntwoord(error, melding, TABEL_ONTBREEKT);
 }
 
 /* ---------- Velden uit een request-body halen ---------- */
