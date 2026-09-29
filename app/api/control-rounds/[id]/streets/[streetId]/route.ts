@@ -3,6 +3,7 @@ import { getIronSession } from 'iron-session';
 import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
+import { isAlleenLezen } from '@/lib/roles';
 
 // PATCH - Straat markeren als gereden/nog te rijden. Body: { isDone: boolean }
 // Bewust geen audit-log per straat (te veel ruis tijdens het rijden).
@@ -16,6 +17,10 @@ export async function PATCH(
 
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+    // De rol alleen lezen komt alleen in de oliemonstermodule, niet hier.
+    if (isAlleenLezen(session.role)) {
+      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
     }
 
     const { id, streetId } = await params;

@@ -77,10 +77,14 @@ export async function syncLatestAttemptToSample(oilSampleId: number) {
   } catch (error) {
     if (!tabelOntbreekt(error)) throw error;
     // Kolom partPhotoUrl staat er nog niet: de rest wel bijwerken.
-    const { partPhotoUrl: _weg, ...zonderTweedeFoto } = data;
     await prisma.oilSample.update({
       where: { id: oilSampleId },
-      data: zonderTweedeFoto,
+      data: {
+        sampleDate: data.sampleDate,
+        photoUrl: data.photoUrl,
+        remarks: data.remarks,
+        isTaken: data.isTaken,
+      },
       select: { id: true },
     });
   }

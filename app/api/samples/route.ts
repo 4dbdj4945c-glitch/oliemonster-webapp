@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
-import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { isAlleenLezen } from '@/lib/roles';
+import { haalSessie, kijkjaar, leesToegangsFout, toegangsFout } from '@/lib/toegang';
 import {
   tabelOntbreekt,
   SAMPLE_BASIS_SELECT,
@@ -16,19 +13,19 @@ import {
 
 // GET - Lijst van alle samples (met optionele zoekfunctie en analysisYear-filter)
 export async function GET(request: NextRequest) {
+  // De monsterlijst is het enige dat de rol alleen lezen mag ophalen.
+  const session = await haalSessie();
+  const fout = leesToegangsFout(session);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
-    // De beperkte kijker mag uitsluitend 2025 zien; forceer dat serverside,
-    // ongeacht welk jaar er in de query staat.
-    const year = isAlleenLezen(session.role) ? '2025' : searchParams.get('year');
+    // Heeft deze gebruiker een eigen kijkjaar, dan geldt dat jaar en niets
+    // anders, ongeacht wat er in de query staat. Dat wordt hier serverside
+    // afgedwongen en niet alleen in de schermen. null = alle jaren.
+    const eigenJaar = await kijkjaar(session);
+    const year = eigenJaar !== null ? String(eigenJaar) : searchParams.get('year');
 
     const yearFilter = year ? { analysisYear: parseInt(year) } : {};
 
@@ -97,18 +94,11 @@ export async function GET(request: NextRequest) {
 
 // POST - Nieuw sample toevoegen (alleen admin)
 export async function POST(request: NextRequest) {
+  const session = await haalSessie();
+  const fout = toegangsFout(session, true);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen monsters toevoegen' }, { status: 403 });
-    }
-
     const body = await request.json();
     const { oNumber, sampleDate, location, description, oilType, remarks, isTaken, analysisYear, objectId } = body;
 

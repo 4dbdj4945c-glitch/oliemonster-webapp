@@ -1,60 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
-import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
-import { ALLOWED_ROLES } from '@/lib/roles';
+import { createAuditLog, AuditActions } from '@/lib/auditLog';
+import { haalSessie, toegangsFout } from '@/lib/toegang';
+import { ALLOWED_ROLES, leesViewYear } from '@/lib/roles';
+import { tabelOntbreekt, foutAntwoordWensen2 } from '@/lib/kolommen';
 
 // GET - Lijst van alle gebruikers (alleen admin)
 export async function GET(request: NextRequest) {
+  const session = await haalSessie();
+  const fout = toegangsFout(session, true);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
+    const basis = {
+      id: true,
+      username: true,
+      role: true,
+      requiresPasswordChange: true,
+      createdAt: true,
+    } as const;
+    const volgorde = { createdAt: 'desc' as const };
 
-    if (!session.isLoggedIn || session.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Geen toegang' },
-        { status: 403 }
-      );
+    // Zolang ./db-push-wensen2.sh nog niet gedraaid is bestaat viewYear niet;
+    // dan laten we het jaar leeg in plaats van de pagina te laten vallen.
+    try {
+      const users = await prisma.user.findMany({
+        select: { ...basis, viewYear: true },
+        orderBy: volgorde,
+      });
+      return NextResponse.json(users);
+    } catch (error) {
+      if (!tabelOntbreekt(error)) throw error;
+      const oud = await prisma.user.findMany({ select: basis, orderBy: volgorde });
+      return NextResponse.json(oud.map((u) => ({ ...u, viewYear: null })));
     }
-
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        username: true,
-        role: true,
-        requiresPasswordChange: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-
-    return NextResponse.json(users);
   } catch (error) {
-    console.error('Error fetching users:', error);
-    return NextResponse.json(
-      { error: 'Fout bij ophalen gebruikers' },
-      { status: 500 }
-    );
+    return foutAntwoordWensen2(error, 'Fout bij ophalen gebruikers');
   }
 }
 
 // POST - Nieuwe gebruiker aanmaken (alleen admin)
 export async function POST(request: NextRequest) {
+  const session = await haalSessie();
+  const fout = toegangsFout(session, true);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn || session.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Geen toegang' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { username, role } = body;
 
@@ -66,47 +57,42 @@ export async function POST(request: NextRequest) {
     }
 
     if (!ALLOWED_ROLES.includes(role)) {
-      return NextResponse.json(
-        { error: 'Ongeldige rol' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Ongeldige rol' }, { status: 400 });
+    }
+
+    const jaar = leesViewYear(body.viewYear, role);
+    if ('fout' in jaar) {
+      return NextResponse.json({ error: jaar.fout }, { status: 400 });
     }
 
     // Check of gebruikersnaam al bestaat
-    const existingUser = await prisma.user.findUnique({
-      where: { username },
-    });
-
+    const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser) {
-      return NextResponse.json(
-        { error: 'Gebruikersnaam bestaat al' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Gebruikersnaam bestaat al' }, { status: 400 });
     }
 
-    // Maak gebruiker aan zonder wachtwoord
-    // Gebruiker moet bij eerste login zelf wachtwoord instellen
+    // Maak gebruiker aan zonder wachtwoord; die stelt die zelf in bij de eerste login.
     const newUser = await prisma.user.create({
       data: {
         username,
-        password: null,  // Geen wachtwoord - moet worden ingesteld bij eerste login
+        password: null,
         role,
+        viewYear: jaar.viewYear,
         requiresPasswordChange: true,
       },
-      select: {
-        id: true,
-        username: true,
-        role: true,
-        createdAt: true,
-      },
+      select: { id: true, username: true, role: true, viewYear: true, createdAt: true },
+    });
+
+    await createAuditLog({
+      userId: session.userId,
+      username: session.username || 'unknown',
+      action: AuditActions.CREATE_USER,
+      details: { id: newUser.id, gebruiker: username, rol: role, kijkjaar: jaar.viewYear },
+      request,
     });
 
     return NextResponse.json(newUser, { status: 201 });
   } catch (error) {
-    console.error('Error creating user:', error);
-    return NextResponse.json(
-      { error: 'Fout bij aanmaken gebruiker' },
-      { status: 500 }
-    );
+    return foutAntwoordWensen2(error, 'Fout bij aanmaken gebruiker');
   }
 }

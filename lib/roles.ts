@@ -39,3 +39,32 @@ export function isAlleenLezen(role?: string | null): boolean {
  * mochten zien.
  */
 export const OUD_KIJKJAAR = 2025;
+
+/**
+ * Leest het kijkjaar van een gebruiker uit een request-body. Alleen de rol
+ * alleen lezen heeft er iets aan: bij een andere rol wordt het leeggemaakt,
+ * zodat er geen jaar blijft hangen dat niemand ziet. Leeg = alle jaren.
+ */
+export function leesViewYear(
+  waarde: unknown,
+  role: string
+): { viewYear: number | null } | { fout: string } {
+  if (role !== ROLE_ALLEEN_LEZEN) return { viewYear: null };
+  if (waarde === undefined || waarde === null || waarde === '') return { viewYear: null };
+  const jaar = typeof waarde === 'number' ? waarde : parseInt(String(waarde), 10);
+  if (Number.isNaN(jaar) || jaar < 2000 || jaar > 2100) {
+    return { fout: 'Vul een analysejaar in tussen 2000 en 2100, of laat het leeg voor alle jaren' };
+  }
+  return { viewYear: jaar };
+}
+
+/**
+ * Bij welke pagina hoort een kijkjaar? Er zijn twee modulepagina's, voor 2025 en
+ * 2026. Een ander jaar heeft nog geen pagina; dan krijgt de kijker een melding
+ * in plaats van een doorverwijzing naar een jaar dat hij niet mag zien.
+ */
+export function paginaVoorKijkjaar(jaar: number): string | null {
+  if (jaar === 2025) return '/dashboard/oliemonsters';
+  if (jaar === 2026) return '/dashboard/oliemonsters2026';
+  return null;
+}

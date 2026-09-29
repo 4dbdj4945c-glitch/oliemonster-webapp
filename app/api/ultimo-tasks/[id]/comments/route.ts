@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
+import { isAlleenLezen } from '@/lib/roles';
 import { syncLatestCommentToTask } from '@/lib/ultimoTasks';
 
 // GET - Alle opmerkingen voor een taak (nieuwste eerst)
@@ -17,6 +18,10 @@ export async function GET(
 
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+    // De rol alleen lezen komt alleen in de oliemonstermodule, niet hier.
+    if (isAlleenLezen(session.role)) {
+      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
     }
 
     const { id } = await params;
@@ -48,6 +53,10 @@ export async function POST(
 
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+    // De rol alleen lezen komt alleen in de oliemonstermodule, niet hier.
+    if (isAlleenLezen(session.role)) {
+      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
     }
 
     if (session.role !== 'admin') {

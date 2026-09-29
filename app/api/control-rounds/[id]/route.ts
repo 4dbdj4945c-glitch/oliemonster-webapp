@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
+import { isAlleenLezen } from '@/lib/roles';
 
 // GET - Eén ronde met alle straten in rijvolgorde.
 export async function GET(
@@ -16,6 +17,10 @@ export async function GET(
 
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+    // De rol alleen lezen komt alleen in de oliemonstermodule, niet hier.
+    if (isAlleenLezen(session.role)) {
+      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
     }
 
     const { id } = await params;
@@ -46,6 +51,10 @@ export async function PATCH(
 
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+    // De rol alleen lezen komt alleen in de oliemonstermodule, niet hier.
+    if (isAlleenLezen(session.role)) {
+      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
     }
 
     const { id } = await params;
@@ -91,6 +100,10 @@ export async function DELETE(
 
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+    // De rol alleen lezen komt alleen in de oliemonstermodule, niet hier.
+    if (isAlleenLezen(session.role)) {
+      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
     }
 
     const { id } = await params;

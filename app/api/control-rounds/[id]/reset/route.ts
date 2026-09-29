@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
+import { isAlleenLezen } from '@/lib/roles';
 
 // POST - Voortgang van een ronde resetten: alle straten weer op "nog te rijden".
 export async function POST(
@@ -16,6 +17,10 @@ export async function POST(
 
     if (!session.isLoggedIn) {
       return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
+    }
+    // De rol alleen lezen komt alleen in de oliemonstermodule, niet hier.
+    if (isAlleenLezen(session.role)) {
+      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
     }
 
     const { id } = await params;

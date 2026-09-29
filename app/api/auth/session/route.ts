@@ -1,21 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
-import { sessionOptions, SessionData, defaultSession } from '@/lib/session';
-import { cookies } from 'next/headers';
+import { defaultSession } from '@/lib/session';
+import { haalSessie, kijkjaar } from '@/lib/toegang';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-    
+    const session = await haalSessie();
+
     if (!session.isLoggedIn) {
       return NextResponse.json(defaultSession);
     }
+
+    // Het kijkjaar komt uit de database en niet uit de cookie, zodat een
+    // wijziging in het gebruikersbeheer direct geldt. null = alle jaren.
+    const viewYear = await kijkjaar(session);
 
     return NextResponse.json({
       userId: session.userId,
       username: session.username,
       role: session.role,
+      viewYear,
       isLoggedIn: session.isLoggedIn,
       requiresPasswordChange: session.requiresPasswordChange || false,
     });
