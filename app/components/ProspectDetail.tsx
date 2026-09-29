@@ -110,7 +110,12 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
 
   const verwijder = async () => {
     if (!prospect) return;
-    if (!confirm(`${prospect.bedrijfsnaam} en alle contactmomenten verwijderen?`)) return;
+    const n = prospect.contactmomenten.length;
+    if (!confirm(
+      `${prospect.bedrijfsnaam} verwijderen?\n\n` +
+        (n > 0 ? `Daarmee verdwijnen ook ${n === 1 ? 'het contactmoment' : `alle ${n} contactmomenten`} uit de tijdlijn. ` : '') +
+        'Dit kan niet ongedaan worden gemaakt. Wil je het alleen uit beeld, kies dan Naar archief.'
+    )) return;
     const res = await fetch(`/api/prospects/${prospectId}`, { method: 'DELETE' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -121,7 +126,9 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
   };
 
   const verwijderContactmoment = async (moment: ContactmomentRegel) => {
-    if (!confirm('Dit contactmoment verwijderen?')) return;
+    if (!confirm(
+      `Contactmoment van ${datumNL(moment.datum)} (${KANAAL_LABELS[moment.kanaal]}) verwijderen?\n\n"${moment.samenvatting}"\n\nDit kan niet ongedaan worden gemaakt.`
+    )) return;
     const res = await fetch(`/api/prospects/${prospectId}/contactmomenten/${moment.id}`, { method: 'DELETE' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -308,10 +315,24 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
             <button type="button" className="btn" onClick={() => bewaar({ archief: !prospect.archief })} disabled={bezig}>
               <Icon name="archive" size={16} />{prospect.archief ? 'Uit archief halen' : 'Naar archief'}
             </button>
-            <button type="button" className="btn btn-danger-soft" onClick={verwijder}>
-              <Icon name="trash" size={16} />Verwijderen
-            </button>
           </div>
+        )}
+        {/* Verwijderen: apart, niet naast Opslaan en Naar archief */}
+        {isAdmin && (
+          <section className="gevarenzone">
+            <p className="gevarenzone-kop">
+              <Icon name="trash" size={16} />
+              Prospect verwijderen
+            </p>
+            <p className="gevarenzone-tekst">
+              Haalt {prospect.bedrijfsnaam} weg met de hele tijdlijn. Dit kan niet ongedaan worden gemaakt. Alleen uit
+              beeld? Gebruik Naar archief.
+            </p>
+            <button type="button" className="btn btn-sm btn-danger-soft" onClick={verwijder}>
+              <Icon name="trash" size={16} />
+              Prospect verwijderen...
+            </button>
+          </section>
         )}
       </div>
 
