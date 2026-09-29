@@ -3014,3 +3014,138 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
     min-height: 44px;
   }
 }
+
+/* ============ Veilig verwijderen ============ */
+
+/* Gevarenzone onderaan het bewerkvenster: het enige plekje waar een heel monster
+   weg kan. Afgescheiden door een rode rand en ruimte erboven. */
+.gevarenzone {
+  margin-top: 20px;
+  padding: 14px;
+  border: 1px solid #FECACA;
+  border-radius: var(--radius);
+  background: var(--rood-light);
+}
+.gevarenzone-kop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--rood-tekst);
+}
+.gevarenzone-tekst {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--grijs-700);
+}
+.gevarenzone-bevestig {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.gevarenzone-knoppen {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* Afname ongedaan maken: neutraal blok in het bewerkvenster */
+.afname-blok {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius);
+  background: var(--grijs-50);
+}
+.afname-blok p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--grijs-700);
+}
+.afname-lijst {
+  margin: 0 0 12px;
+  padding-left: 20px;
+  color: var(--navy);
+}
+
+/* Herstelhulp bij Nieuw monster: melding met een knop ernaast */
+.herstel-hulp {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  font-size: 13px;
+}
+
+/* Melding met Ongedaan maken, onderin het scherm. Navy vlak, witte tekst. */
+.ongedaan-melding {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 10px 10px 10px 16px;
+  border-radius: var(--radius);
+  background: var(--navy);
+  color: var(--wit);
+  box-shadow: var(--shadow-lg);
+  font-size: 14px;
+}
+.ongedaan-melding-tekst {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.ongedaan-melding-knoppen {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.ongedaan-melding-sluit {
+  color: var(--wit);
+}
+.ongedaan-melding-sluit:hover:not(:disabled) {
+  background: var(--navy-mid);
+  color: var(--wit);
+}
+
+@media (max-width: 640px) {
+  .ongedaan-melding {
+    left: 16px;
+    right: 16px;
+    transform: none;
+    max-width: none;
+    bottom: max(16px, calc(env(safe-area-inset-bottom) + 12px));
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+  .ongedaan-melding .btn,
+  .ongedaan-melding .icon-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .herstel-hulp .btn,
+  .gevarenzone .btn,
+  .afname-blok .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}
