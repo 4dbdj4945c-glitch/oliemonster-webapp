@@ -407,7 +407,7 @@ export default function AdminPage() {
                             )}
                             {user.requiresPasswordChange && (
                               <span className="hint" style={{ display: 'block', marginTop: '4px' }}>
-                                Nog geen wachtwoord ingesteld
+                                Moet nog een wachtwoord instellen
                               </span>
                             )}
                           </td>
