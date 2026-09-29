@@ -289,7 +289,10 @@ export async function vulMetNepdata(prisma: PrismaClient) {
   const dag3 = await prisma.samplePlan.create({
     data: { date: dagVanaf(7), analysisYear: 2026, notes: 'Intern: sleutel bij de receptie' },
   });
-  await prisma.samplePlanStop.create({ data: { planId: dag3.id, objectId: werkplaats.id, orderIndex: 0, plannedMinutes: 60 } });
+  // Alleen K-2026-05: het niet bereikbare monster staat nog niet opnieuw op de planning.
+  await prisma.samplePlanStop.create({
+    data: { planId: dag3.id, objectId: werkplaats.id, orderIndex: 0, plannedMinutes: 60, sampleIds: JSON.stringify([tweedeMonsters[2026][4]]) },
+  });
 
   // Acquisitie: een actie die te laat is, een voor vandaag en een voor later.
   await prisma.prospect.createMany({

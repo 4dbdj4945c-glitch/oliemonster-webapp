@@ -4,6 +4,14 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
 
+  // Het rapport (GET /api/rapport) leest de Inter-bestanden van de schijf; die
+  // moeten dus mee in de serverfunctie. jsPDF en sharp niet bundelen maar als
+  // gewone Node-pakketten laden (jsPDF kiest dan zijn Node-versie).
+  outputFileTracingIncludes: {
+    '/api/rapport': ['./lib/rapport/fonts/**'],
+  },
+  serverExternalPackages: ['jspdf', 'jspdf-autotable', 'sharp'],
+
   // Oude adressen van de oliemonsterpagina's blijven werken. /dashboard/oliemonsters
   // was de pagina van 2025 (daar landt de Mourik-kijker), /dashboard/oliemonsters2026
   // die van 2026. Tijdelijk (307), zodat een browser het niet voorgoed onthoudt.
