@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { isAlleenLezen } from '@/lib/roles';
+import { haalSessie, toegangsFout } from '@/lib/toegang';
+import { tabelOntbreekt } from '@/lib/kolommen';
 
 /**
  * PATCH - Zet een monster met één handeling op genomen of niet genomen.
@@ -28,21 +26,12 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // De rol alleen lezen mag niets wijzigen, ook niet via de API.
+  const session = await haalSessie();
+  const fout = toegangsFout(session, true);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-    // De beperkte kijker mag niets wijzigen, ook niet via de API.
-    if (isAlleenLezen(session.role)) {
-      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
-    }
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen de status wijzigen' }, { status: 403 });
-    }
-
     const { id } = await params;
     const sampleId = parseInt(id);
     if (Number.isNaN(sampleId)) {
@@ -55,10 +44,17 @@ export async function PATCH(
     }
     const isTaken: boolean = body.isTaken;
 
-    const sample = await prisma.oilSample.findUnique({
-      where: { id: sampleId },
-      select: { id: true, oNumber: true, isTaken: true, isDisabled: true, analysisYear: true, sampleDate: true },
-    });
+    const basis = { id: true, oNumber: true, isTaken: true, isDisabled: true, analysisYear: true, sampleDate: true } as const;
+    let sample: { id: number; oNumber: string; isTaken: boolean; isDisabled: boolean; analysisYear: number; sampleDate: Date | null; isUnreachable?: boolean } | null;
+    try {
+      sample = await prisma.oilSample.findUnique({
+        where: { id: sampleId },
+        select: { ...basis, isUnreachable: true },
+      });
+    } catch (error) {
+      if (!tabelOntbreekt(error)) throw error;
+      sample = await prisma.oilSample.findUnique({ where: { id: sampleId }, select: basis });
+    }
     if (!sample) {
       return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
     }
@@ -93,11 +89,39 @@ export async function PATCH(
         select: { id: true },
       });
     }
-    await prisma.oilSample.update({
-      where: { id: sampleId },
-      data: { isTaken, sampleDate },
-      select: { id: true },
-    });
+    // Een genomen monster is niet meer onbereikbaar: die registratie gaat eruit,
+    // anders houdt het monster twee statussen tegelijk. De reden blijft in het
+    // logboek staan.
+    const wasOnbereikbaar = sample.isUnreachable === true;
+    const wisOnbereikbaar = isTaken && wasOnbereikbaar;
+    try {
+      await prisma.oilSample.update({
+        where: { id: sampleId },
+        data: {
+          isTaken,
+          sampleDate,
+          ...(wisOnbereikbaar
+            ? {
+                isUnreachable: false,
+                unreachableReason: null,
+                unreachableNote: null,
+                unreachablePhotoUrl: null,
+                unreachableAt: null,
+                unreachableBy: null,
+              }
+            : {}),
+        },
+        select: { id: true },
+      });
+    } catch (error) {
+      if (!tabelOntbreekt(error)) throw error;
+      // Kolommen van Niet bereikbaar staan er nog niet: alleen de status zetten.
+      await prisma.oilSample.update({
+        where: { id: sampleId },
+        data: { isTaken, sampleDate },
+        select: { id: true },
+      });
+    }
 
     await createAuditLog({
       userId: session.userId,
@@ -111,6 +135,7 @@ export async function PATCH(
         naar: isTaken ? 'genomen' : 'niet genomen',
         vorigeDatum: bestaandeDatum,
         nieuweDatum: sampleDate,
+        onbereikbaarGewist: wisOnbereikbaar,
       },
       request,
     });

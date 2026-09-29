@@ -52,3 +52,41 @@ export const SAMPLE_PLANNING_SELECT = {
   cancelledBy: true,
   cancelReasonInPdf: true,
 } as const;
+
+/**
+ * Alle velden van OilSample, inclusief die van wensenronde 2: de tweede foto en
+ * de status Niet bereikbaar. Bewust een select en geen include zonder select:
+ * een gewone findMany vraagt alle kolommen op en loopt stuk zodra er één nog
+ * niet in de database staat.
+ */
+export const SAMPLE_VOL_SELECT = {
+  ...SAMPLE_PLANNING_SELECT,
+  partPhotoUrl: true,
+  isUnreachable: true,
+  unreachableReason: true,
+  unreachableNote: true,
+  unreachablePhotoUrl: true,
+  unreachableAt: true,
+  unreachableBy: true,
+} as const;
+
+/** De standaardwaarden van de velden uit de planningsmodule, voor de terugval. */
+export const SAMPLE_PLANNING_LEEG = {
+  objectId: null,
+  object: null,
+  cancelReason: null,
+  cancelledAt: null,
+  cancelledBy: null,
+  cancelReasonInPdf: true,
+} as const;
+
+/** De standaardwaarden van de velden uit wensenronde 2, voor de terugval. */
+export const SAMPLE_WENSEN2_LEEG = {
+  partPhotoUrl: null,
+  isUnreachable: false,
+  unreachableReason: null,
+  unreachableNote: null,
+  unreachablePhotoUrl: null,
+  unreachableAt: null,
+  unreachableBy: null,
+} as const;

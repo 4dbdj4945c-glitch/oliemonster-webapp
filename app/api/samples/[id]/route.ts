@@ -1,34 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
-import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { SAMPLE_BASIS_SELECT } from '@/lib/planningApi';
+import { haalSessie, toegangsFout } from '@/lib/toegang';
+import { tabelOntbreekt } from '@/lib/kolommen';
 
 // PUT - Update sample (alleen admin)
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await haalSessie();
+  const fout = toegangsFout(session, true);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json(
-        { error: 'Niet geautoriseerd' },
-        { status: 401 }
-      );
-    }
-
-    if (session.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Alleen admins kunnen monsters bewerken' },
-        { status: 403 }
-      );
-    }
-
     const { id } = await params;
     const body = await request.json();
     const { oNumber, sampleDate, location, description, oilType, remarks, isTaken, objectId } = body;
@@ -77,21 +63,47 @@ export async function PUT(
       );
     }
 
-    const sample = await prisma.oilSample.update({
-      where: { id: parseInt(id) },
-      data: {
-        oNumber,
-        sampleDate: sampleDate ? new Date(sampleDate) : null,
-        location,
-        description,
-        oilType: oilType || null,
-        remarks: remarks || null,
-        isTaken,
-        // Alleen meesturen als de pagina een object koos, zie de POST-route.
-        ...(objectId === undefined ? {} : { objectId: gelezenObjectId }),
-      },
-      select: SAMPLE_BASIS_SELECT,
-    });
+    const gegevens = {
+      oNumber,
+      sampleDate: sampleDate ? new Date(sampleDate) : null,
+      location,
+      description,
+      oilType: oilType || null,
+      remarks: remarks || null,
+      isTaken,
+      // Alleen meesturen als de pagina een object koos, zie de POST-route.
+      ...(objectId === undefined ? {} : { objectId: gelezenObjectId }),
+    };
+
+    // Zet je hier op genomen, dan is het monster niet meer onbereikbaar. Zelfde
+    // regel als in de statusroute, zodat een monster nooit twee statussen heeft.
+    let sample;
+    try {
+      sample = await prisma.oilSample.update({
+        where: { id: parseInt(id) },
+        data: {
+          ...gegevens,
+          ...(isTaken
+            ? {
+                isUnreachable: false,
+                unreachableReason: null,
+                unreachableNote: null,
+                unreachablePhotoUrl: null,
+                unreachableAt: null,
+                unreachableBy: null,
+              }
+            : {}),
+        },
+        select: SAMPLE_BASIS_SELECT,
+      });
+    } catch (error) {
+      if (!tabelOntbreekt(error)) throw error;
+      sample = await prisma.oilSample.update({
+        where: { id: parseInt(id) },
+        data: gegevens,
+        select: SAMPLE_BASIS_SELECT,
+      });
+    }
 
     await createAuditLog({
       userId: session.userId,
@@ -116,24 +128,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const session = await haalSessie();
+  const fout = toegangsFout(session, true);
+  if (fout) return fout;
+
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json(
-        { error: 'Niet geautoriseerd' },
-        { status: 401 }
-      );
-    }
-
-    if (session.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Alleen admins kunnen monsters verwijderen' },
-        { status: 403 }
-      );
-    }
-
     const { id } = await params;
 
     // Haal sample op voor logging

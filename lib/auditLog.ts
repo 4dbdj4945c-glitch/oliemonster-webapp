@@ -52,6 +52,12 @@ export const AuditActions = {
   SET_SAMPLE_STATUS: 'SET_SAMPLE_STATUS',
   CANCEL_SAMPLE: 'CANCEL_SAMPLE',
   UNCANCEL_SAMPLE: 'UNCANCEL_SAMPLE',
+  // Niet bereikbaar: het monster blijft openstaan en telt mee in de planning,
+  // dus dit is bewust een eigen actie en niet een variant van annuleren.
+  SET_SAMPLE_UNREACHABLE: 'SET_SAMPLE_UNREACHABLE',
+  CLEAR_SAMPLE_UNREACHABLE: 'CLEAR_SAMPLE_UNREACHABLE',
+  // Knop Monster nemen: datum, type olie, opmerking en beide foto's in één keer.
+  TAKE_SAMPLE: 'TAKE_SAMPLE',
   DELETE_SAMPLE: 'DELETE_SAMPLE',
   COPY_SAMPLES: 'COPY_SAMPLES',
   VIEW_SAMPLES: 'VIEW_SAMPLES',

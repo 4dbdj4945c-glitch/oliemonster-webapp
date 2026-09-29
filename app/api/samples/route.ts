@@ -5,7 +5,14 @@ import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { isAlleenLezen } from '@/lib/roles';
-import { tabelOntbreekt, SAMPLE_BASIS_SELECT } from '@/lib/planningApi';
+import {
+  tabelOntbreekt,
+  SAMPLE_BASIS_SELECT,
+  SAMPLE_PLANNING_SELECT,
+  SAMPLE_VOL_SELECT,
+  SAMPLE_PLANNING_LEEG,
+  SAMPLE_WENSEN2_LEEG,
+} from '@/lib/planningApi';
 
 // GET - Lijst van alle samples (met optionele zoekfunctie en analysisYear-filter)
 export async function GET(request: NextRequest) {
@@ -40,35 +47,39 @@ export async function GET(request: NextRequest) {
         }
       : yearFilter;
 
-    // Met het object erbij. Zolang ./db-push-planning.sh nog niet gedraaid is,
-    // bestaan objectId en de annuleervelden niet in de database; dan halen we
-    // alleen de oude velden op, zodat de lijst gewoon blijft werken.
+    // Alles erbij: het object, de tweede foto en de velden van Niet bereikbaar.
+    // Draait een van de db-push-scripts nog niet, dan bestaan die kolommen nog
+    // niet in de database. Daarom vallen we in twee stappen terug, zodat er
+    // telkens zo veel mogelijk blijft werken: eerst zonder de velden van
+    // wensenronde 2, daarna zonder die van de planning.
+    const extra = {
+      _count: { select: { attempts: true } },
+      object: { select: { id: true, name: true, objectType: true } },
+    } as const;
+    const zoek = { where: whereClause, orderBy: { sampleDate: 'desc' as const } };
+
     let samples;
     try {
       samples = await prisma.oilSample.findMany({
-        where: whereClause,
-        orderBy: { sampleDate: 'desc' },
-        include: {
-          _count: { select: { attempts: true } },
-          object: { select: { id: true, name: true, objectType: true } },
-        },
+        ...zoek,
+        select: { ...SAMPLE_VOL_SELECT, ...extra },
       });
     } catch (error) {
       if (!tabelOntbreekt(error)) throw error;
-      const oud = await prisma.oilSample.findMany({
-        where: whereClause,
-        orderBy: { sampleDate: 'desc' },
-        select: { ...SAMPLE_BASIS_SELECT, _count: { select: { attempts: true } } },
-      });
-      samples = oud.map((s) => ({
-        ...s,
-        objectId: null,
-        object: null,
-        cancelReason: null,
-        cancelledAt: null,
-        cancelledBy: null,
-        cancelReasonInPdf: true,
-      }));
+      try {
+        const zonderWensen2 = await prisma.oilSample.findMany({
+          ...zoek,
+          select: { ...SAMPLE_PLANNING_SELECT, ...extra },
+        });
+        samples = zonderWensen2.map((s) => ({ ...s, ...SAMPLE_WENSEN2_LEEG }));
+      } catch (tweede) {
+        if (!tabelOntbreekt(tweede)) throw tweede;
+        const oud = await prisma.oilSample.findMany({
+          ...zoek,
+          select: { ...SAMPLE_BASIS_SELECT, _count: { select: { attempts: true } } },
+        });
+        samples = oud.map((s) => ({ ...s, ...SAMPLE_PLANNING_LEEG, ...SAMPLE_WENSEN2_LEEG }));
+      }
     }
 
     // Exposeer attemptsCount als top-level veld voor de UI.
