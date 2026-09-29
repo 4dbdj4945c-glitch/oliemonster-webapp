@@ -1,3 +1,5 @@
+import { haalGebruiker } from '@/lib/toegang';
+import { startpagina } from '@/lib/paginaToegang';
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import bcrypt from 'bcryptjs';
@@ -140,8 +142,14 @@ export async function POST(request: NextRequest) {
       request,
     });
 
+    // De startpagina meteen meegeven, zodat het scherm er in één keer heen gaat
+    // (volledige paginalading, zie app/login/page.tsx).
+    const gebruiker = await haalGebruiker({ isLoggedIn: true, userId: user.id });
+    const start = user.requiresPasswordChange ? '/set-password' : gebruiker ? startpagina(gebruiker) : '/dashboard';
+
     return NextResponse.json({
       success: true,
+      startpagina: start,
       requiresPasswordChange: user.requiresPasswordChange,
       user: {
         id: user.id,

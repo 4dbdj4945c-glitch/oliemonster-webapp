@@ -366,6 +366,12 @@ de migratiecontrole, de tests (met een eigen PostgreSQL) en de build.
   melding, 503 als de database nog niet bij is, anders 500. De gebruiker komt bij elke aanvraag uit de database, dus
   een verwijderde of teruggezette gebruiker verliest meteen zijn rechten. `rol` is
   `alleen_lezen` (ook de kijker, alleen in module `oliemonsters`), `user` of `admin`.
+- Na inloggen, wachtwoord instellen en de uitnodigingslink gaat het scherm met een
+  volledige paginalading (`window.location.assign`) naar de startpagina; de login-API geeft
+  die mee (`startpagina`, lib/paginaToegang.ts). Een client-navigatie (router.push) naar een
+  pagina waar de layout doorstuurt, liet de kijker op een leeg scherm staan. De layout stuurt
+  daarom bij een client-navigatie (Sec-Fetch-Dest niet `document`) door met `Doorsturen`
+  (volledige paginalading) en alleen bij een gewone paginalading met `redirect()`.
 - Pagina's: `app/dashboard/layout.tsx` controleert op de server sessie en rol en
   stuurt door; de regel staat in `lib/paginaToegang.ts` en leest het register.
   Een kijker komt alleen op `/dashboard/oliemonsters/<zijn jaar>`. Pagina's lezen de

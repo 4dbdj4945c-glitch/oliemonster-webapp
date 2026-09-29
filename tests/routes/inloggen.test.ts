@@ -46,3 +46,22 @@ describe('POST /api/auth/login', () => {
     expect(await (await sessie()).json()).toEqual({ isLoggedIn: false });
   });
 });
+
+describe('startpagina na inloggen', () => {
+  // Het inlogscherm gaat met een volledige paginalading naar deze pagina; een
+  // client-navigatie naar /dashboard liet de kijker op een leeg scherm staan.
+  const start = async (username: string, password: string) => {
+    uitloggen();
+    const res = await login(verzoek('/api/auth/login', { body: { username, password } }));
+    return (await res.json()).startpagina;
+  };
+  it('de klassieke kijker begint op zijn jaarpagina, ook met de oude rol', async () => {
+    expect(await start('kijker', 'kijker123')).toBe('/dashboard/oliemonsters/2025');
+    await prisma.user.update({ where: { username: 'kijker' }, data: { role: 'viewer_oil2025', viewYear: null } });
+    expect(await start('kijker', 'kijker123')).toBe('/dashboard/oliemonsters/2025');
+  });
+  it('de kijker met het klantportaal en de beheerder beginnen op /dashboard', async () => {
+    expect(await start('kempen', 'kempen123')).toBe('/dashboard');
+    expect(await start('admin', 'admin123')).toBe('/dashboard');
+  });
+});

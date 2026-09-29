@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import StorageAccessHandler from '@/app/components/StorageAccessHandler';
 import InstallButton from '@/app/components/InstallButton';
 
@@ -11,7 +10,6 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   useEffect(() => {
     const savedUsername = localStorage.getItem('rememberedUsername');
@@ -50,11 +48,11 @@ export default function LoginPage() {
         localStorage.removeItem('rememberedUsername');
       }
 
-      if (data.requiresPasswordChange) {
-        router.push('/set-password');
-      } else {
-        router.push('/dashboard');
-      }
+      // Een volledige paginalading, geen router.push: bij een client-navigatie
+      // naar /dashboard stuurt de layout op de server door (klassieke kijker naar
+      // zijn jaarpagina), en dan bleef het scherm leeg. Meteen naar de
+      // startpagina die de server teruggeeft.
+      window.location.assign(data.requiresPasswordChange ? '/set-password' : data.startpagina || '/dashboard');
     } catch {
       setError('Er is een fout opgetreden');
       setLoading(false);

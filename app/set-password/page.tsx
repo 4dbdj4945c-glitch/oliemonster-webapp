@@ -46,8 +46,9 @@ export default function SetPasswordPage() {
       const data = await response.json();
 
       if (!data.isLoggedIn || !data.requiresPasswordChange) {
-        // Redirect als gebruiker niet ingelogd is of geen wachtwoord hoeft te wijzigen
-        router.push('/dashboard');
+        // Niet ingelogd of geen wachtwoord nodig: een volledige paginalading, zodat
+        // de server doorstuurt naar de juiste startpagina (zie app/login/page.tsx).
+        window.location.assign('/dashboard');
         return;
       }
 
@@ -86,8 +87,9 @@ export default function SetPasswordPage() {
         return;
       }
 
-      // Redirect naar dashboard na succesvol instellen wachtwoord
-      router.push('/dashboard');
+      // Na het instellen (ook via de uitnodigingslink): volledige paginalading,
+      // de server stuurt door naar de juiste startpagina.
+      window.location.assign('/dashboard');
     } catch (error) {
       setError('Er is een fout opgetreden');
     }

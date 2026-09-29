@@ -42,6 +42,14 @@ export function kijkersPagina(viewYear?: number | null): string {
   return paginaVoorKijkjaar(viewYear);
 }
 
+/**
+ * Waar deze gebruiker na het inloggen begint: /dashboard, of de pagina waar
+ * /dashboard hem heen zou sturen (de jaarpagina van een klassieke kijker).
+ */
+export function startpagina(gebruiker: PaginaGebruiker): string {
+  return paginaBesluit(gebruiker, '/dashboard') ?? '/dashboard';
+}
+
 /** null als de pagina open mag, anders het pad waar de gebruiker heen moet. */
 export function paginaBesluit(gebruiker: PaginaGebruiker | null, pad: string): string | null {
   if (!gebruiker) return '/login';

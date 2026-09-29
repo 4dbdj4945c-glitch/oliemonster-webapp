@@ -11,17 +11,33 @@ import { redirect } from 'next/navigation';
 import { haalGebruiker, haalSessie } from '@/lib/toegang';
 import { paginaBesluit } from '@/lib/paginaToegang';
 import GebruikerProvider from '../components/GebruikerProvider';
+import Doorsturen from '../components/Doorsturen';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const kop = await headers();
+  // Een client-navigatie (router.push, Link) haalt de pagina op met fetch. Een
+  // redirect() op de server liet het scherm dan leeg (de kijker na het
+  // inloggen, en een oneindige reeks verzoeken); daarom dan doorsturen met een
+  // volledige paginalading. Next geeft de RSC-header niet door, dus kijken we
+  // naar Sec-Fetch-Dest: "document" is een gewone paginalading, dan blijft het
+  // een echte doorverwijzing van de server. Ontbreekt de header (geen browser),
+  // dan ook.
+  const bestemming = kop.get('sec-fetch-dest');
+  const clientNavigatie = bestemming !== null && bestemming !== 'document' && bestemming !== 'iframe';
+  const stuurDoor = (naar: string) => {
+    if (clientNavigatie) return <Doorsturen naar={naar} />;
+    redirect(naar);
+  };
+
   const gebruiker = await haalGebruiker(await haalSessie());
-  if (!gebruiker) redirect('/login');
-  if (gebruiker.requiresPasswordChange) redirect('/set-password');
+  if (!gebruiker) return stuurDoor('/login');
+  if (gebruiker.requiresPasswordChange) return stuurDoor('/set-password');
 
   // Zonder pad (zou niet moeten) alleen de controle hierboven; de provider
   // controleert de pagina dan in de browser.
-  const pad = (await headers()).get('x-ids-pad');
+  const pad = kop.get('x-ids-pad');
   const doel = pad ? paginaBesluit(gebruiker, pad) : null;
-  if (doel) redirect(doel);
+  if (doel) return stuurDoor(doel);
 
   return (
     <GebruikerProvider gebruiker={{ ...gebruiker, isLoggedIn: true }}>
