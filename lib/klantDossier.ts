@@ -21,7 +21,7 @@ import { haalOpdracht, jarenVanKlant, nlDag } from './klantOpdracht';
 import { INSPECTIE_SELECT } from './inspecties/server';
 import { inspectieNummer, oordeelVan, sjabloonVan, type SjabloonSleutel } from './inspecties/sjablonen';
 import { uitkomstTekst, volgendeInspectie } from './inspecties/rekenen';
-import { DAGRAPPORT_SELECT, dagrapportNummer } from './dagrapporten';
+import { DAGRAPPORT_DOSSIER_SELECT, dagrapportNummer } from './dagrapporten';
 
 export type MomentSoort = 'monster' | 'poging' | 'niet-bereikbaar' | 'geannuleerd' | 'open' | 'inspectie' | 'dagrapport';
 
@@ -230,7 +230,7 @@ export async function haalDossier(klantId: number, jaar: number | null) {
       ...(jaar !== null ? { datum: { gte: new Date(Date.UTC(jaar, 0, 1)), lt: new Date(Date.UTC(jaar + 1, 0, 1)) } } : {}),
     },
     orderBy: { datum: 'desc' },
-    select: DAGRAPPORT_SELECT,
+    select: DAGRAPPORT_DOSSIER_SELECT,
   });
   for (const r of dagrapporten) {
     const nummer = dagrapportNummer(r.id);

@@ -134,6 +134,30 @@ export const DAGRAPPORT_SELECT = {
 
 export type DagrapportRij = Prisma.DagrapportGetPayload<{ select: typeof DAGRAPPORT_SELECT }>;
 
+/**
+ * Voor lijsten (Dagrapporten, veldscherm, klantportaal): zonder de handtekening
+ * (tot 400 kB per rapport) en zonder de lange teksten. De handtekening komt
+ * alleen mee waar hij getoond of in de PDF gezet wordt (haalDagrapport).
+ */
+export const DAGRAPPORT_LIJST_SELECT = {
+  id: true,
+  klantId: true,
+  planId: true,
+  datum: true,
+  uitvoerder: true,
+  minuten: true,
+  status: true,
+  getekendDoor: true,
+  klant: { select: { id: true, naam: true } },
+  object: { select: { id: true, name: true } },
+  _count: { select: { fotos: true } },
+} satisfies Prisma.DagrapportSelect;
+
+export type DagrapportLijstRij = Prisma.DagrapportGetPayload<{ select: typeof DAGRAPPORT_LIJST_SELECT }>;
+
+/** Voor het klantdossier: de teksten en foto's wel, de handtekening niet. */
+export const { handtekening: _handtekening, ...DAGRAPPORT_DOSSIER_SELECT } = DAGRAPPORT_SELECT;
+
 export async function haalDagrapport(id: number, wie: Wie): Promise<DagrapportRij> {
   const rij = await prisma.dagrapport.findFirst({ where: { id, ...dagrapportFilter(wie) }, select: DAGRAPPORT_SELECT });
   if (!rij) throw new ApiFout(404, 'Dagrapport niet gevonden');
@@ -165,7 +189,7 @@ export function dagrapportAlsJson(rij: DagrapportRij) {
 export type DagrapportJson = ReturnType<typeof dagrapportAlsJson>;
 
 /** Een regel in een lijst: zonder handtekening en tekst. */
-export function dagrapportInLijst(rij: DagrapportRij) {
+export function dagrapportInLijst(rij: DagrapportLijstRij) {
   return {
     id: rij.id,
     nummer: dagrapportNummer(rij.id),
@@ -177,7 +201,7 @@ export function dagrapportInLijst(rij: DagrapportRij) {
     minuten: rij.minuten,
     status: rij.status,
     getekendDoor: rij.getekendDoor,
-    aantalFotos: rij.fotos.length,
+    aantalFotos: rij._count.fotos,
     pdf: `/api/dagrapporten/${rij.id}/pdf`,
   };
 }
@@ -186,7 +210,7 @@ export async function haalDagrapporten(wie: Wie, where: Prisma.DagrapportWhereIn
   const rijen = await prisma.dagrapport.findMany({
     where: { ...dagrapportFilter(wie), ...where },
     orderBy: [{ datum: 'desc' }, { id: 'desc' }],
-    select: DAGRAPPORT_SELECT,
+    select: DAGRAPPORT_LIJST_SELECT,
   });
   return rijen;
 }

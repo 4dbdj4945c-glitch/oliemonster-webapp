@@ -177,3 +177,16 @@ describe('grote PDF via de opslag', () => {
     }
   });
 });
+
+describe('handtekening alleen waar hij nodig is', () => {
+  it('lijsten, portaal en dossier halen hem niet op; het rapport zelf wel', async () => {
+    const { DAGRAPPORT_LIJST_SELECT, DAGRAPPORT_DOSSIER_SELECT } = await import('@/lib/dagrapporten');
+    expect(DAGRAPPORT_LIJST_SELECT).not.toHaveProperty('handtekening');
+    expect(DAGRAPPORT_DOSSIER_SELECT).not.toHaveProperty('handtekening');
+    await admin();
+    const l = await (await lijst(verzoek('/api/dagrapporten'), undefined)).json();
+    expect(JSON.stringify(l)).not.toContain('base64');
+    expect(l.find((r: { id: number }) => r.id === ids.dagrapporten.tweede).aantalFotos).toBe(2);
+    expect((await (await een(verzoek(`/api/dagrapporten/${ids.dagrapporten.tweede}`), p(ids.dagrapporten.tweede))).json()).handtekening).toMatch(/^data:image\/png;base64,/);
+  });
+});
