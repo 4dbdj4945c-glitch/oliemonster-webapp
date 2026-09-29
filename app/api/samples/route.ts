@@ -15,6 +15,7 @@ import {
 } from '@/lib/planningApi';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { monsterFilter } from '@/lib/afscherming';
+import { metMonsterFotos } from '@/lib/fotoAdres';
 
 const LijstQuery = z.object({
   search: z.string().max(200).optional(),
@@ -86,9 +87,10 @@ export const GET = apiRoute(
       }
     }
 
-    // attemptsCount als veld op het monster voor de schermen.
+    // attemptsCount als veld op het monster voor de schermen. De foto's gaan
+    // via /api/fotos/... (lib/fotoAdres.ts), nooit het echte opslagadres.
     const response = samples.map(({ _count, ...rest }) => ({
-      ...rest,
+      ...metMonsterFotos(rest),
       attemptsCount: _count.attempts,
     }));
 

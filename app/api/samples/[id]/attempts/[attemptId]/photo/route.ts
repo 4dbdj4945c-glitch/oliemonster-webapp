@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fotoAdres } from '@/lib/fotoAdres';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { syncLatestAttemptToSample } from '@/lib/sampleAttempts';
@@ -60,7 +61,7 @@ export const POST = apiRoute({ ...OPTIES, fout: 'Fout bij uploaden van foto' }, 
     request,
   });
 
-  return NextResponse.json({ photoUrl: url, soort });
+  return NextResponse.json({ photoUrl: fotoAdres('poging', aId, soort, url), soort });
 });
 
 // DELETE - Foto verwijderen van een poging

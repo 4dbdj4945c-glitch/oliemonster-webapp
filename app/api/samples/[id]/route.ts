@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { metMonsterFotos } from '@/lib/fotoAdres';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
@@ -106,7 +107,7 @@ export const PUT = apiRoute(
     if ((invoer.remarks ?? null) !== (huidig.remarks ?? null)) naarPoging.remarks = invoer.remarks ?? null;
     if (Object.keys(naarPoging).length > 0) await wijzigLaatstePoging(id, naarPoging);
 
-    const sample = await prisma.oilSample.findUniqueOrThrow({ where: { id }, select: SAMPLE_BASIS_SELECT });
+    const sample = metMonsterFotos(await prisma.oilSample.findUniqueOrThrow({ where: { id }, select: SAMPLE_BASIS_SELECT }));
 
     await createAuditLog({
       userId: session.userId,

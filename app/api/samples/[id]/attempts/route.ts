@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { metPogingFotos } from '@/lib/fotoAdres';
+import { geenFotoRoute } from '@/lib/fotoOpslag';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
@@ -24,7 +26,7 @@ export const GET = apiRoute(
         orderBy: volgorde,
         select: { ...ATTEMPT_BASIS_SELECT, partPhotoUrl: true },
       });
-      return NextResponse.json(attempts);
+      return NextResponse.json(attempts.map(metPogingFotos));
     } catch (error) {
       if (!tabelOntbreekt(error)) throw error;
       const oud = await prisma.sampleAttempt.findMany({
@@ -32,15 +34,15 @@ export const GET = apiRoute(
         orderBy: volgorde,
         select: ATTEMPT_BASIS_SELECT,
       });
-      return NextResponse.json(oud.map((a) => ({ ...a, partPhotoUrl: null })));
+      return NextResponse.json(oud.map((a) => metPogingFotos({ ...a, partPhotoUrl: null })));
     }
   }
 );
 
 const NieuwePogingSchema = z.object({
   sampleDate: optioneleDatum(),
-  photoUrl: optioneleTekst(2000),
-  partPhotoUrl: optioneleTekst(2000),
+  photoUrl: optioneleTekst(2000).refine(geenFotoRoute, { error: 'Onbekend fotoadres' }),
+  partPhotoUrl: optioneleTekst(2000).refine(geenFotoRoute, { error: 'Onbekend fotoadres' }),
   remarks: optioneleTekst(),
   isTaken: z.boolean().optional(),
 });
@@ -81,6 +83,6 @@ export const POST = apiRoute(
       request,
     });
 
-    return NextResponse.json(attempt, { status: 201 });
+    return NextResponse.json(metPogingFotos(attempt), { status: 201 });
   }
 );

@@ -2,6 +2,7 @@ import { prisma } from './prisma';
 import { PLANNING, geschatteMinuten } from './planningInstellingen';
 import { optimizePointRoute, LatLng } from './routePlanner';
 import { actiefFilter } from './verwijderdeMonsters';
+import { fotoAdres } from './fotoAdres';
 
 /**
  * Serverkant van de planning: de dagen met hun stops ophalen en er meteen de
@@ -122,8 +123,9 @@ export async function haalPlanning(analysisYear: number) {
       sampleDate: m.sampleDate,
       oilType: m.oilType,
       remarks: m.remarks,
-      photoUrl: m.photoUrl,
-      partPhotoUrl: m.partPhotoUrl,
+      // Via de fotoroute, nooit het echte opslagadres (lib/fotoAdres.ts).
+      photoUrl: fotoAdres('monster', m.id, 'potje', m.photoUrl),
+      partPhotoUrl: fotoAdres('monster', m.id, 'onderdeel', m.partPhotoUrl),
       isUnreachable: m.isUnreachable,
       unreachableReason: m.unreachableReason,
     });

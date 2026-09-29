@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fotoAdres } from '@/lib/fotoAdres';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { apiRoute, ApiFout, leesId } from '@/lib/apiRoute';
@@ -42,7 +43,7 @@ export const POST = apiRoute(
       details: { id, code: installatie.code, vervangen: installatie.fotoUrl },
       request,
     });
-    return NextResponse.json({ fotoUrl: url });
+    return NextResponse.json({ fotoUrl: fotoAdres('installatie', id, null, url) });
   }
 );
 

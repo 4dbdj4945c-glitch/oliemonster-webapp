@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { metInstallatieFoto } from '@/lib/fotoAdres';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
@@ -26,7 +27,7 @@ export const GET = apiRoute(
         _count: { select: { monsters: { where: { deletedAt: null } } } },
       },
     });
-    return NextResponse.json(installaties.map(({ _count, ...i }) => ({ ...i, aantalMonsters: _count.monsters })));
+    return NextResponse.json(installaties.map(({ _count, ...i }) => ({ ...metInstallatieFoto(i), aantalMonsters: _count.monsters })));
   }
 );
 
@@ -55,6 +56,6 @@ export const POST = apiRoute(
       details: { id: installatie.id, code: installatie.code, naam: installatie.naam, object: object.name },
       request,
     });
-    return NextResponse.json(installatie, { status: 201 });
+    return NextResponse.json(metInstallatieFoto(installatie), { status: 201 });
   }
 );

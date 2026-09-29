@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { metPogingFotos } from '@/lib/fotoAdres';
+import { geenFotoRoute } from '@/lib/fotoOpslag';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
@@ -23,8 +25,8 @@ async function leesPoging(context: unknown) {
 const PogingSchema = z
   .object({
     sampleDate: optioneleDatum(),
-    photoUrl: optioneleTekst(2000),
-    partPhotoUrl: optioneleTekst(2000),
+    photoUrl: optioneleTekst(2000).refine(geenFotoRoute, { error: 'Onbekend fotoadres' }),
+    partPhotoUrl: optioneleTekst(2000).refine(geenFotoRoute, { error: 'Onbekend fotoadres' }),
     remarks: optioneleTekst(),
     isTaken: z.boolean().optional(),
   })
@@ -63,7 +65,7 @@ export const PUT = apiRoute({ ...OPTIES, fout: 'Fout bij bijwerken van poging' }
     request,
   });
 
-  return NextResponse.json(attempt);
+  return NextResponse.json(metPogingFotos(attempt));
 });
 
 // DELETE - Poging verwijderen. De foto's blijven bewust in de opslag staan

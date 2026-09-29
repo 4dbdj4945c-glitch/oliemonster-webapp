@@ -7,6 +7,7 @@ import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
 import { bewaarFoto, ruimFotoOpAls } from '@/lib/fotoOpslag';
 import { apiRoute, ApiFout, leesId } from '@/lib/apiRoute';
+import { metMonsterFotos } from '@/lib/fotoAdres';
 
 /**
  * Niet bereikbaar: de locatie was door afzetting, andere werkzaamheden of
@@ -135,7 +136,7 @@ export const PATCH = apiRoute(
       request,
     });
 
-    return NextResponse.json(bijgewerkt);
+    return NextResponse.json(metMonsterFotos(bijgewerkt));
   }
 );
 

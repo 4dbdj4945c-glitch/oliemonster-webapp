@@ -8,6 +8,7 @@ import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
 import { bewaarFoto, ruimFotoOpAls } from '@/lib/fotoOpslag';
 import { wijzigLaatstePoging } from '@/lib/sampleAttempts';
 import { apiRoute, ApiFout, leesId } from '@/lib/apiRoute';
+import { fotoAdres } from '@/lib/fotoAdres';
 
 /*
   Foto's op het monster zelf. Er zijn er twee: het onderdeel waar het monster
@@ -67,7 +68,7 @@ export const POST = apiRoute(
       request,
     });
 
-    return NextResponse.json({ photoUrl: url, soort });
+    return NextResponse.json({ photoUrl: fotoAdres('monster', sampleId, soort, url), soort });
   }
 );
 

@@ -10,6 +10,7 @@ import { GET as jaren } from '@/app/api/samples/jaren/route';
 import { GET as sessie } from '@/app/api/auth/session/route';
 import { POST as nieuweGebruiker } from '@/app/api/users/route';
 import { PUT as wijzigGebruiker } from '@/app/api/users/[id]/route';
+import { GET as foto } from '@/app/api/fotos/[...pad]/route';
 import { metParams, uitloggen, verzoek } from '../hulp/verzoek';
 
 let ids: Awaited<ReturnType<typeof vulMetNepdata>>;
@@ -156,5 +157,64 @@ describe('gebruikersbeheer: klant en weergave', () => {
     const u = await prisma.user.findUniqueOrThrow({ where: { id: Number(id) } });
     expect(u.klantId).toBeNull();
     expect(u.portaalWeergave).toBe('klassiek');
+  });
+});
+
+describe("foto's via /api/fotos", () => {
+  const haal = (pad: string) => foto(verzoek(`/api/fotos/${pad}?v=1`), { params: Promise.resolve({ pad: pad.split('/') }) });
+
+  beforeEach(async () => {
+    // Een Mourik-monster en een Mourik-installatie met een foto, om zeker te
+    // weten dat een 404 door de afscherming komt en niet door een lege foto.
+    await prisma.oilSample.update({ where: { id: ids.monsters[2025][0] }, data: { photoUrl: '/nepdata/potje-2.jpg' } });
+    await prisma.sampleAttempt.updateMany({ where: { oilSampleId: ids.monsters[2025][0] }, data: { photoUrl: '/nepdata/potje-2.jpg' } });
+    await prisma.installatie.update({ where: { id: ids.installaties[0] }, data: { fotoUrl: '/nepdata/onderdeel-1.jpg' } });
+  });
+
+  it('de kijker van de tweede klant krijgt zijn eigen foto, en niet die van Mourik', async () => {
+    await inloggenAls('kempen', 'kempen123');
+    const eigen = await haal(`monster/${ids.tweedeMonsters[2026][0]}/potje`);
+    expect(eigen.status).toBe(200);
+    expect(eigen.headers.get('content-type')).toBe('image/jpeg');
+    expect(eigen.headers.get('cache-control')).toMatch(/^private/);
+    expect((await haal(`monster/${ids.monsters[2025][0]}/potje`)).status).toBe(404);
+    const pogingMourik = await prisma.sampleAttempt.findFirstOrThrow({ where: { oilSampleId: ids.monsters[2025][0] } });
+    expect((await haal(`poging/${pogingMourik.id}/potje`)).status).toBe(404);
+    expect((await haal(`installatie/${ids.installaties[0]}`)).status).toBe(404);
+    expect((await haal(`klantlogo/${ids.klanten.mourik}`)).status).toBe(404);
+  });
+
+  it('de kijker van Mourik krijgt de foto van de tweede klant niet', async () => {
+    await inloggenAls('kijker', 'kijker123');
+    expect((await haal(`monster/${ids.monsters[2025][0]}/potje`)).status).toBe(200);
+    expect((await haal(`monster/${ids.tweedeMonsters[2025][0]}/potje`)).status).toBe(404);
+    const pogingTweede = await prisma.sampleAttempt.findFirstOrThrow({ where: { oilSampleId: ids.tweedeMonsters[2025][0] } });
+    expect((await haal(`poging/${pogingTweede.id}/onderdeel`)).status).toBe(404);
+    expect((await haal(`klantlogo/${ids.klanten.mourik}`)).status).toBe(200);
+  });
+
+  it('de lijst geeft een kijker alleen adressen van de fotoroute', async () => {
+    await inloggenAls('kempen', 'kempen123');
+    const l = (await (await monsters(verzoek('/api/samples'), undefined)).json()) as { id: number; photoUrl: string | null; partPhotoUrl: string | null }[];
+    const metFoto = l.filter((m) => m.photoUrl);
+    expect(metFoto.length).toBeGreaterThan(0);
+    for (const m of metFoto) {
+      expect(m.photoUrl).toMatch(new RegExp(`^/api/fotos/monster/${m.id}/potje\\?v=`));
+      expect(m.partPhotoUrl).toMatch(new RegExp(`^/api/fotos/monster/${m.id}/onderdeel\\?v=`));
+    }
+  });
+
+  it('een onzinnig pad of een monster uit de prullenbak geeft 404', async () => {
+    await inloggenAls('admin', 'admin123');
+    expect((await haal(`monster/abc/potje`)).status).toBe(404);
+    expect((await haal(`monster/${ids.monsters[2025][0]}/iets`)).status).toBe(404);
+    await prisma.oilSample.update({ where: { id: ids.monsters[2025][0] }, data: { deletedAt: new Date() } });
+    expect((await haal(`monster/${ids.monsters[2025][0]}/potje`)).status).toBe(404);
+    expect((await haal(`installatie/${ids.installaties[0]}`)).status).toBe(200);
+  });
+
+  it('niet ingelogd: 401', async () => {
+    uitloggen();
+    expect((await haal(`monster/${ids.tweedeMonsters[2026][0]}/potje`)).status).toBe(401);
   });
 });

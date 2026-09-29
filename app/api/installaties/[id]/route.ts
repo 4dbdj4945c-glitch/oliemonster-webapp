@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { metInstallatieFoto } from '@/lib/fotoAdres';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
@@ -29,7 +30,7 @@ export const GET = apiRoute({ ...OPTIES, fout: 'Fout bij ophalen van de installa
       },
     },
   });
-  return NextResponse.json(installatie);
+  return NextResponse.json(metInstallatieFoto(installatie));
 });
 
 // PUT - Gegevens bijwerken. Een ander object mag, de monsters gaan dan niet mee.
@@ -62,7 +63,7 @@ export const PUT = apiRoute({ ...OPTIES, fout: 'Fout bij bijwerken van de instal
     details: { id, code: installatie.code, velden: Object.keys(data), monstersLosgekoppeld: losgekoppeld },
     request,
   });
-  return NextResponse.json(installatie);
+  return NextResponse.json(metInstallatieFoto(installatie));
 });
 
 const VerwijderSchema = z.object({ bevestigCode: z.string().optional() });

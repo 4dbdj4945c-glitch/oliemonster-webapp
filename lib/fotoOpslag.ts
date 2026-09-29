@@ -1,23 +1,35 @@
-// Foto's in Vercel Blob: opslaan met een willekeurig achtervoegsel en opruimen
-// als niemand er meer naar verwijst.
+// Foto's in Vercel Blob: opslaan onder een onvindbare naam en opruimen als
+// niemand er meer naar verwijst.
 //
-// - bewaarFoto: `put` met addRandomSuffix, zodat een bestandsnaam niet te raden
-//   is en twee uploads in dezelfde milliseconde elkaar nooit overschrijven.
+// - bewaarFoto: `put` onder fotos/<32 willekeurige hextekens>.<ext>, plus het
+//   willekeurige achtervoegsel van Blob. In de naam staat niets meer over het
+//   monster (vroeger sample-12-potje-...). Private opslag (`access: 'private'`)
+//   kent @vercel/blob 2.0 nog niet, dus is de foto technisch openbaar, maar het
+//   adres is niet te raden en komt nooit bij de browser: de schermen tonen
+//   foto's via /api/fotos/... (lib/fotoAdres.ts), die eerst de toegang
+//   controleert (fase 3).
 // - ruimFotoOpAls: na het vervangen of verwijderen van een foto. Een adres wordt
 //   alleen gewist (`del`) als geen enkel monster, geen poging en geen installatie
 //   er nog naar wijst, ook niet in de prullenbak. De cachevelden op OilSample
 //   bevatten dezelfde adressen als de pogingen; daarom deze controle, en niet
 //   blind wissen.
 //
-// Bestaande adressen blijven gewoon werken: er wordt niets hernoemd. Private
-// opslag met afscherming per klant komt in fase 3.
+// Bestaande adressen blijven gewoon werken: er wordt niets hernoemd; ze gaan
+// ook via /api/fotos/... naar de browser.
 
+import { randomBytes } from 'node:crypto';
 import { del, put } from '@vercel/blob';
 import { prisma } from './prisma';
 
-/** Slaat een foto op en geeft het publieke adres terug. */
+/** De opslagnaam: alleen de extensie van `naam` blijft over, de rest is willekeurig. */
+export function onvindbareNaam(naam: string): string {
+  const ext = /\.([a-z0-9]{2,5})$/i.exec(naam)?.[1]?.toLowerCase() ?? 'jpg';
+  return `fotos/${randomBytes(16).toString('hex')}.${ext}`;
+}
+
+/** Slaat een foto op en geeft het opslagadres terug (dat alleen de server gebruikt). */
 export async function bewaarFoto(naam: string, bestand: File): Promise<string> {
-  const blob = await put(naam, bestand, { access: 'public', addRandomSuffix: true });
+  const blob = await put(onvindbareNaam(naam), bestand, { access: 'public', addRandomSuffix: true });
   return blob.url;
 }
 
@@ -60,4 +72,13 @@ export async function ruimFotoOpAls(...urls: (string | null | undefined)[]): Pro
     }
   }
   return gewist;
+}
+
+/**
+ * Een fotoadres dat een scherm terugstuurt, mag nooit een adres van de eigen
+ * fotoroute zijn: dan zou er een verwijzing naar een verwijzing in de database
+ * komen. Voor zod: .refine(geenFotoRoute).
+ */
+export function geenFotoRoute(url: string | null | undefined): boolean {
+  return !url || !url.startsWith('/api/fotos/');
 }

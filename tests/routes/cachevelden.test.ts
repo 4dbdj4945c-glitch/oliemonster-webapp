@@ -133,9 +133,10 @@ describe('foto op het monster', () => {
     const id = ids.monsters[2025][4 + 1]; // genomen monster met een poging
     const res = await fotoOp(fotoVerzoek(`/api/samples/${id}/photo`, { photo: nepFoto() }), metParams({ id: String(id) }));
     expect(res.status).toBe(200);
-    const { photoUrl } = await res.json();
+    expect((await res.json()).photoUrl).toMatch(/^\/api\/fotos\/monster\//);
     const [poging] = await pogingen(id);
-    expect(poging.photoUrl).toBe(photoUrl);
+    const photoUrl = poging.photoUrl;
+    expect(photoUrl).toMatch(/blob\.vercel-storage\.com/);
 
     const put = await wijzigPoging(
       verzoek(`/api/samples/${id}/attempts/${poging.id}`, {
@@ -150,27 +151,33 @@ describe('foto op het monster', () => {
     expect(m.remarks).toBe('na de foto');
   });
 
-  it('krijgt een willekeurig achtervoegsel; vervangen en verwijderen ruimen het oude bestand op', async () => {
+  it('krijgt een onvindbare naam; vervangen en verwijderen ruimen het oude bestand op', async () => {
     const id = ids.monsters[2025][6];
     const eerste = await (await fotoOp(fotoVerzoek(`/api/samples/${id}/photo`, { photo: nepFoto() }), metParams({ id: String(id) }))).json();
-    expect(blob.put).toHaveBeenCalledWith(expect.stringMatching(/^sample-\d+-potje-\d+\.jpg$/), expect.anything(), { access: 'public', addRandomSuffix: true });
+    // In de naam staat niets meer over het monster (fase 3).
+    expect(blob.put).toHaveBeenCalledWith(expect.stringMatching(/^fotos\/[0-9a-f]{32}\.jpg$/), expect.anything(), { access: 'public', addRandomSuffix: true });
     expect(blob.del).not.toHaveBeenCalled();
+    // De browser krijgt het adres van de fotoroute, niet het opslagadres.
+    expect(eerste.photoUrl).toMatch(new RegExp(`^/api/fotos/monster/${id}/potje\\?v=`));
+    const eersteOpslag = (await monster(id)).photoUrl;
+    expect(eersteOpslag).toMatch(/blob\.vercel-storage\.com/);
 
     const tweede = await (await fotoOp(fotoVerzoek(`/api/samples/${id}/photo`, { photo: nepFoto() }), metParams({ id: String(id) }))).json();
     expect(tweede.photoUrl).not.toBe(eerste.photoUrl);
-    expect(blob.del).toHaveBeenCalledWith(eerste.photoUrl);
+    expect(blob.del).toHaveBeenCalledWith(eersteOpslag);
+    const tweedeOpslag = (await monster(id)).photoUrl;
 
     const weg = await fotoAf(verzoek(`/api/samples/${id}/photo?soort=potje`, { method: 'DELETE' }), metParams({ id: String(id) }));
     expect(weg.status).toBe(200);
-    expect(blob.del).toHaveBeenCalledWith(tweede.photoUrl);
+    expect(blob.del).toHaveBeenCalledWith(tweedeOpslag);
     expect((await monster(id)).photoUrl).toBeNull();
   });
 
   it('een adres dat nog ergens anders gebruikt wordt, blijft staan', async () => {
     const id = ids.monsters[2025][7];
-    const eerste = await (await fotoOp(fotoVerzoek(`/api/samples/${id}/photo`, { photo: nepFoto() }), metParams({ id: String(id) }))).json();
+    await fotoOp(fotoVerzoek(`/api/samples/${id}/photo`, { photo: nepFoto() }), metParams({ id: String(id) }));
     // Dezelfde foto hangt ook aan een ander monster (bijvoorbeeld overgenomen).
-    await prisma.oilSample.update({ where: { id: ids.monsters[2025][8] }, data: { unreachablePhotoUrl: eerste.photoUrl } });
+    await prisma.oilSample.update({ where: { id: ids.monsters[2025][8] }, data: { unreachablePhotoUrl: (await monster(id)).photoUrl } });
     await fotoAf(verzoek(`/api/samples/${id}/photo?soort=potje`, { method: 'DELETE' }), metParams({ id: String(id) }));
     expect(blob.del).not.toHaveBeenCalled();
   });
