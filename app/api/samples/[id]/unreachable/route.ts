@@ -6,6 +6,7 @@ import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { bouwOnbereikbaarReden } from '@/lib/unreachableReasons';
 import { foutAntwoordWensen2 } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
+import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
 
 /**
  * Niet bereikbaar: de locatie was door afzetting, andere werkzaamheden of
@@ -99,14 +100,17 @@ export async function PATCH(
     // niets, want in het veld lukt een foto niet altijd.
     let photoUrl: string | null = null;
     if (velden.file) {
+      const fotoMelding = fotoFout(velden.file);
+      if (fotoMelding) {
+        return NextResponse.json({ error: fotoMelding }, { status: 400 });
+      }
       if (!process.env.BLOB_READ_WRITE_TOKEN) {
         return NextResponse.json(
           { error: 'Blob storage is niet geconfigureerd. Voeg BLOB_READ_WRITE_TOKEN toe in Vercel environment variables.' },
           { status: 500 }
         );
       }
-      const extension = velden.file.name.split('.').pop();
-      const filename = `sample-${sampleId}-onbereikbaar-${Date.now()}.${extension}`;
+      const filename = `sample-${sampleId}-onbereikbaar-${Date.now()}.${fotoExtensie(velden.file)}`;
       const blob = await put(filename, velden.file, { access: 'public' });
       photoUrl = blob.url;
     }

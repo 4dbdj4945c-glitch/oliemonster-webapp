@@ -6,6 +6,7 @@ import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { syncLatestAttemptToSample } from '@/lib/sampleAttempts';
 import { tabelOntbreekt, foutAntwoordWensen2 } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
+import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
 
 /**
  * POST - Monster nemen in één keer.
@@ -63,6 +64,10 @@ export async function POST(
     const remarks = tekst('remarks');
     const fotoOnderdeel = bestand('photoOnderdeel');
     const fotoPotje = bestand('photoPotje');
+    for (const foto of [fotoOnderdeel, fotoPotje]) {
+      const melding = foto ? fotoFout(foto) : null;
+      if (melding) return NextResponse.json({ error: melding }, { status: 400 });
+    }
 
     const sample = await prisma.oilSample.findUnique({
       where: { id: sampleId, ...(await actiefFilter()) },
@@ -87,8 +92,7 @@ export async function POST(
 
     const uploaden = async (file: File | null, soort: string): Promise<string | null> => {
       if (!file) return null;
-      const extension = file.name.split('.').pop();
-      const filename = `sample-${sampleId}-${soort}-${Date.now()}.${extension}`;
+      const filename = `sample-${sampleId}-${soort}-${Date.now()}.${fotoExtensie(file)}`;
       const blob = await put(filename, file, { access: 'public' });
       return blob.url;
     };

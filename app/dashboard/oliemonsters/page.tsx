@@ -30,6 +30,7 @@ import PlanningPaneel from '@/app/components/PlanningPaneel';
 import { AppShell, Modal, Icon } from '@/app/components/ui';
 import { generateSamplesPdf } from '@/lib/generateSamplesPdf';
 import { isAlleenLezen, kijkersPagina, magJaarZien } from '@/lib/roles';
+import { verkleinFoto } from '@/lib/fotoVerkleinen';
 
 interface User {
   userId: number;
@@ -621,7 +622,7 @@ export default function DashboardPage() {
     setUploadingPhoto(`${sampleId}-${soort}`);
     try {
       const formData = new FormData();
-      formData.append('photo', file);
+      formData.append('photo', await verkleinFoto(file));
       formData.append('soort', soort);
 
       const response = await fetch(`/api/samples/${sampleId}/photo`, {

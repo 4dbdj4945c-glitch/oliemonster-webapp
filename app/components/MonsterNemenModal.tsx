@@ -9,6 +9,7 @@ import OnbereikbaarFormulier, {
   type OnbereikbaarWaarden,
 } from './OnbereikbaarFormulier';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
+import { verkleinFoto } from '@/lib/fotoVerkleinen';
 
 export interface NeemDoel {
   id: number;
@@ -75,8 +76,10 @@ export default function MonsterNemenModal({ doel, onClose, onKlaar }: Props) {
     form.append('sampleDate', datum);
     form.append('oilType', oilType);
     form.append('remarks', opmerking);
-    if (fotoOnderdeel) form.append('photoOnderdeel', fotoOnderdeel);
-    if (fotoPotje) form.append('photoPotje', fotoPotje);
+    // Verkleind naar ongeveer 400 KB per foto; twee onverkleinde iPhone-foto's
+    // gaan over de grens van 4,5 MB per verzoek.
+    if (fotoOnderdeel) form.append('photoOnderdeel', await verkleinFoto(fotoOnderdeel));
+    if (fotoPotje) form.append('photoPotje', await verkleinFoto(fotoPotje));
 
     try {
       const res = await fetch(`/api/samples/${doel.id}/nemen`, { method: 'POST', body: form });

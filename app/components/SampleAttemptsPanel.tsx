@@ -6,6 +6,7 @@ import LaadFout from './LaadFout';
 import AfnameOngedaanModal, { type AfnameDoel } from './AfnameOngedaanModal';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { FOTO_SOORTEN, type FotoSoort } from '@/lib/samplePhotos';
+import { verkleinFoto } from '@/lib/fotoVerkleinen';
 
 export interface SampleAttempt {
   id: number;
@@ -179,7 +180,7 @@ export default function SampleAttemptsPanel({
     setUploadingPhotoId(`${attemptId}-${soort}`);
     try {
       const fd = new FormData();
-      fd.append('photo', file);
+      fd.append('photo', await verkleinFoto(file));
       fd.append('soort', soort);
       const res = await fetch(`/api/samples/${sampleId}/attempts/${attemptId}/photo`, {
         method: 'POST',

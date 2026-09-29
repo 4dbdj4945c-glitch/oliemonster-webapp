@@ -3,6 +3,7 @@
 import FotoKiezer from './FotoKiezer';
 import { ONBEREIKBAAR_REDENEN } from '@/lib/unreachableReasons';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
+import { verkleinFoto } from '@/lib/fotoVerkleinen';
 
 export interface OnbereikbaarWaarden {
   reden: string;
@@ -32,7 +33,7 @@ export async function verstuurOnbereikbaar(
   form.append('reason', waarden.reden);
   form.append('toelichting', waarden.toelichting);
   form.append('note', waarden.omschrijving);
-  if (waarden.foto) form.append('photo', waarden.foto);
+  if (waarden.foto) form.append('photo', await verkleinFoto(waarden.foto));
 
   try {
     const res = await fetch(`/api/samples/${sampleId}/unreachable`, {

@@ -6,6 +6,7 @@ import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { fotoLabel, fotoVeld, leesFotoSoort } from '@/lib/samplePhotos';
 import { foutAntwoordWensen2 } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
+import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
 
 /*
   Foto's op het monster zelf. Er zijn er twee: het onderdeel waar het monster
@@ -37,9 +38,13 @@ export async function POST(
     }
 
     const formData = await request.formData();
-    const file = formData.get('photo') as File;
-    if (!file) {
+    const file = formData.get('photo');
+    if (!(file instanceof File) || file.size === 0) {
       return NextResponse.json({ error: 'Geen foto gevonden' }, { status: 400 });
+    }
+    const fotoMelding = fotoFout(file);
+    if (fotoMelding) {
+      return NextResponse.json({ error: fotoMelding }, { status: 400 });
     }
 
     const soort = leesFotoSoort(formData.get('soort'));
@@ -56,8 +61,7 @@ export async function POST(
     }
 
     const timestamp = Date.now();
-    const extension = file.name.split('.').pop();
-    const filename = `sample-${sampleId}-${soort}-${timestamp}.${extension}`;
+    const filename = `sample-${sampleId}-${soort}-${timestamp}.${fotoExtensie(file)}`;
 
     const blob = await put(filename, file, { access: 'public' });
 
