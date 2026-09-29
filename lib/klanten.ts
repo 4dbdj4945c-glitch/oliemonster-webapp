@@ -1,8 +1,11 @@
-// Klanten en contactpersonen: controles en invoer die de API-routes delen.
+// Klanten, contactpersonen en installaties: controles en invoer die de
+// API-routes delen. Alleen op de server (gebruikt de database).
 
+import { randomInt } from 'node:crypto';
 import { z } from 'zod';
 import { prisma } from './prisma';
-import { ApiFout, optioneleTekst, tekst } from './apiRoute';
+import { ApiFout, optioneelGetal, optioneleTekst, tekst } from './apiRoute';
+import { INSTALLATIE_SOORT_WAARDEN, nieuweInstallatieCode } from './installaties';
 
 /** Een klant waar iets aan gekoppeld wordt moet bestaan en niet verwijderd zijn. */
 export async function controleerKlant(klantId: number | null | undefined) {
@@ -50,4 +53,41 @@ export async function controleerKlantnaam(naam: string, behalveId?: number) {
     select: { id: true },
   });
   if (dubbel) throw new ApiFout(400, `Er is al een klant met de naam ${naam}`, { bestaandeKlant: dubbel.id });
+}
+
+// ------------------------------------------------------------------
+// Installaties
+// ------------------------------------------------------------------
+
+
+const installatieVelden = {
+  objectId: z.coerce
+    .number({ error: 'Kies het object waar de installatie staat' })
+    .int({ error: 'Kies het object waar de installatie staat' })
+    .positive({ error: 'Kies het object waar de installatie staat' }),
+  naam: tekst('Geef de installatie een naam', 200),
+  soort: z.enum(INSTALLATIE_SOORT_WAARDEN, { error: 'Kies wat voor installatie het is' }),
+  merk: optioneleTekst(200),
+  typenummer: optioneleTekst(200),
+  bouwjaar: optioneelGetal('Vul een bouwjaar in tussen 1900 en 2100', 1900, 2100),
+  serienummer: optioneleTekst(200),
+  notities: optioneleTekst(),
+};
+
+export const NieuweInstallatieSchema = z.object(installatieVelden);
+export const InstallatieWijzigingSchema = z.object({
+  ...installatieVelden,
+  objectId: installatieVelden.objectId.optional(),
+  naam: installatieVelden.naam.optional(),
+  soort: installatieVelden.soort.optional(),
+});
+
+/** Een nieuwe, nog niet gebruikte code voor de QR-sticker. */
+export async function vrijeInstallatieCode(): Promise<string> {
+  for (let poging = 0; poging < 20; poging++) {
+    const code = nieuweInstallatieCode(randomInt);
+    const bezet = await prisma.installatie.findUnique({ where: { code }, select: { id: true } });
+    if (!bezet) return code;
+  }
+  throw new Error('Geen vrije installatiecode gevonden');
 }

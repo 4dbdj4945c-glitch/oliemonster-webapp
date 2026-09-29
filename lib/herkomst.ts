@@ -32,6 +32,7 @@ const UPLOAD_ROUTES = [
   /^\/api\/samples\/\d+\/photo$/,
   /^\/api\/samples\/\d+\/unreachable$/,
   /^\/api\/samples\/\d+\/attempts\/\d+\/photo$/,
+  /^\/api\/installaties\/\d+\/foto$/,
 ];
 
 const VEILIGE_METHODES = new Set(['GET', 'HEAD', 'OPTIONS']);

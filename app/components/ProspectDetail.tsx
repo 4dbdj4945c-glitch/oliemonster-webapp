@@ -49,6 +49,8 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
   const [notities, setNotities] = useState('');
   const [kanaal, setKanaal] = useState<'MAIL' | 'LINKEDIN'>('MAIL');
   const [afgemeldOp, setAfgemeldOp] = useState('');
+  // Wordt klant: bestaat de naam al als klant, dan bieden we koppelen aan.
+  const [bestaandeKlant, setBestaandeKlant] = useState<{ id: number; naam: string } | null>(null);
 
   const laad = useCallback(async () => {
     setLaden(true);
@@ -103,6 +105,35 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
       }
       await laad();
       onGewijzigd();
+    } finally {
+      setBezig(false);
+    }
+  };
+
+  // Wordt klant: maakt een klant (plus contactpersoon) en koppelt de prospect.
+  const wordtKlant = async (klantId?: number) => {
+    setBezig(true);
+    setFout('');
+    try {
+      const res = await fetch(`/api/prospects/${prospectId}/wordt-klant`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(klantId ? { klantId } : {}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data.bestaandeKlant) {
+        setBestaandeKlant(data.bestaandeKlant);
+        return;
+      }
+      if (!res.ok) {
+        setFout(data.error || 'Omzetten naar klant mislukt.');
+        return;
+      }
+      setBestaandeKlant(null);
+      await laad();
+      onGewijzigd();
+    } catch {
+      setFout('Omzetten naar klant mislukt: geen verbinding.');
     } finally {
       setBezig(false);
     }
@@ -217,6 +248,42 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
         <Gegeven label="Laatste contact" waarde={datumNL(prospect.laatsteContactOp) || 'Nog geen contact'} />
         <Gegeven label="Klant sinds" waarde={datumNL(prospect.klantSindsOp)} />
       </div>
+
+      {/* Klant in de portal: na Wordt klant staat hier de link naar de klant */}
+      {(prospect.klantId || isAdmin) && (
+        <div className="card card-padded acq-klant">
+          <div className="section-label">Klant</div>
+          {prospect.klantId ? (
+            <p className="acq-klant-tekst">
+              {prospect.bedrijfsnaam} is klant in de portal.{' '}
+              <a className="btn btn-sm" href={`/dashboard/klanten/${prospect.klantId}`}>
+                <Icon name="company" size={16} />Naar klant
+              </a>
+            </p>
+          ) : bestaandeKlant ? (
+            <div role="alert">
+              <p className="acq-klant-tekst">
+                Er is al een klant {bestaandeKlant.naam}. Koppel {prospect.bedrijfsnaam} daaraan, dan komt er geen dubbele klant.
+              </p>
+              <div className="knoppenrij">
+                <button type="button" className="btn btn-primary" onClick={() => wordtKlant(bestaandeKlant.id)} disabled={bezig}>
+                  <Icon name="handshake" size={16} />Koppel aan {bestaandeKlant.naam}
+                </button>
+                <button type="button" className="btn" onClick={() => setBestaandeKlant(null)}>Terug</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="acq-klant-tekst">
+                Binnen? Maak er een klant van. De bedrijfsnaam en plaats gaan mee{prospect.contactpersoon ? `, en ${prospect.contactpersoon} wordt contactpersoon` : ''}. De status wordt Klant.
+              </p>
+              <button type="button" className="btn btn-primary" onClick={() => wordtKlant()} disabled={bezig}>
+                <Icon name="handshake" size={16} />Wordt klant
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Werkvelden */}
       <div className="card card-padded">

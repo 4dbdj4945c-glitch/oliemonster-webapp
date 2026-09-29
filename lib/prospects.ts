@@ -118,6 +118,8 @@ export interface ProspectRegel {
   volgendeActieOp: string | null;
   laatsteContactOp: string | null;
   klantSindsOp: string | null;
+  /** De klant die uit deze prospect ontstond (actie Wordt klant) */
+  klantId?: number | null;
   geschatteWaarde: number | null;
   notities: string | null;
   archief: boolean;

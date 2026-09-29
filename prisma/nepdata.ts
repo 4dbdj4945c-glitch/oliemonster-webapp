@@ -55,6 +55,8 @@ export async function vulMetNepdata(prisma: PrismaClient) {
   await prisma.uitnodiging.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.prospectContactmoment.deleteMany();
+  await prisma.prospect.deleteMany();
   await prisma.contactpersoon.deleteMany();
   await prisma.klant.deleteMany();
 

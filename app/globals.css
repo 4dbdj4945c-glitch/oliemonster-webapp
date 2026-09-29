@@ -2160,6 +2160,25 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   }
 }
 
+/* Acquisitie: blok Klant in het detailscherm (Wordt klant, Naar klant) */
+.acq-klant .section-label {
+  margin-bottom: 8px;
+}
+.acq-klant-tekst {
+  margin: 0 0 10px;
+  color: var(--grijs-700);
+  line-height: 1.5;
+}
+.acq-klant-tekst .btn {
+  margin-left: 6px;
+  vertical-align: middle;
+}
+@media (max-width: 640px) {
+  .acq-klant .btn {
+    min-height: 44px;
+  }
+}
+
 /* ============ Oliemonsters: tikbare status en foutmeldingen ============
    De hoofdhandeling in de monsterlijst is een monster op genomen of niet genomen
    zetten. Dat is één tik op de statuscel, zoals een straat afvinken bij de
