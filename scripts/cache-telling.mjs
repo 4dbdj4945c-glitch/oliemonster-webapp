@@ -11,6 +11,16 @@ import { PrismaClient } from '@prisma/client';
 const LAATSTE = `WITH l AS (SELECT DISTINCT ON ("oilSampleId") * FROM "SampleAttempt"
   ORDER BY "oilSampleId", "sampleDate" DESC, "createdAt" DESC)`;
 
+// Een monster met een geplande hermonstering waarvan de gegevens al (terecht) op
+// de vorige, genomen poging staan (deel 3 van de migratie): dat klopt, en telt
+// dus niet mee als "alleen op het monster" of "wijkt af". Zelfde voorwaarde in voor en na.
+const HERMONSTERING = `(l."sampleDate" IS NULL AND NOT l."isTaken" AND EXISTS (
+  SELECT 1 FROM "SampleAttempt" v WHERE v."oilSampleId" = s.id AND v.id <> l.id
+    AND v."isTaken" AND v."sampleDate" = s."sampleDate"
+    AND (s."remarks" IS NULL OR position(s."remarks" in coalesce(v."remarks", '')) > 0)
+    AND (s."photoUrl" IS NULL OR v."photoUrl" = s."photoUrl")
+    AND (s."partPhotoUrl" IS NULL OR v."partPhotoUrl" = s."partPhotoUrl")))`;
+
 const modus = process.argv[2];
 const prisma = new PrismaClient();
 const datum = (d) => (d ? new Date(d).toLocaleDateString('nl-NL') : '-');
@@ -20,27 +30,22 @@ try {
       SELECT
         (SELECT count(*) FROM "OilSample" m WHERE NOT EXISTS (SELECT 1 FROM "SampleAttempt" x WHERE x."oilSampleId" = m.id)
           AND (m."isTaken" OR m."sampleDate" IS NOT NULL OR m."remarks" IS NOT NULL OR m."photoUrl" IS NOT NULL OR m."partPhotoUrl" IS NOT NULL))::int AS zonder_poging,
-        (count(*) FILTER (WHERE (l."remarks" IS NULL AND s."remarks" IS NOT NULL)
+        (count(*) FILTER (WHERE NOT ${HERMONSTERING} AND ((l."remarks" IS NULL AND s."remarks" IS NOT NULL)
           OR (l."photoUrl" IS NULL AND s."photoUrl" IS NOT NULL)
-          OR (l."partPhotoUrl" IS NULL AND s."partPhotoUrl" IS NOT NULL)))::int AS opmerking_of_foto,
-        (count(*) FILTER (WHERE l."isTaken" IS DISTINCT FROM s."isTaken" OR l."sampleDate" IS DISTINCT FROM s."sampleDate"))::int AS datum_of_status
+          OR (l."partPhotoUrl" IS NULL AND s."partPhotoUrl" IS NOT NULL))))::int AS opmerking_of_foto,
+        (count(*) FILTER (WHERE NOT ${HERMONSTERING} AND (l."isTaken" IS DISTINCT FROM s."isTaken" OR l."sampleDate" IS DISTINCT FROM s."sampleDate")))::int AS datum_of_status,
+        (count(*) FILTER (WHERE ${HERMONSTERING}))::int AS hermonstering
       FROM l JOIN "OilSample" s ON s.id = l."oilSampleId"`);
     console.log('Monsters waarvan gegevens alleen op het monster staan (de cachemigratie zet ze op de poging):');
     console.log(`  zonder poging, met gegevens:              ${t.zonder_poging}`);
     console.log(`  opmerking of foto alleen op het monster:  ${t.opmerking_of_foto}`);
     console.log(`  datum of status wijkt af van de poging:   ${t.datum_of_status}`);
+    if (t.hermonstering) console.log(`  (en ${t.hermonstering} met een geplande hermonstering die al klopt, die blijven zoals ze zijn)`);
   } else if (modus === 'na') {
     const rijen = await prisma.$queryRawUnsafe(`${LAATSTE}
       SELECT s."oNumber", s."analysisYear", s."sampleDate" AS monster_datum, s."isTaken" AS monster_genomen,
              l."sampleDate" AS poging_datum, l."isTaken" AS poging_genomen,
-             -- Klopt alleen als de vorige poging genomen is op de datum van het monster
-             -- en de opmerking en foto's van het monster daar ook staan.
-             (l."sampleDate" IS NULL AND NOT l."isTaken" AND EXISTS (
-               SELECT 1 FROM "SampleAttempt" v WHERE v."oilSampleId" = s.id AND v.id <> l.id
-                 AND v."isTaken" AND v."sampleDate" = s."sampleDate"
-                 AND (s."remarks" IS NULL OR position(s."remarks" in coalesce(v."remarks", '')) > 0)
-                 AND (s."photoUrl" IS NULL OR v."photoUrl" = s."photoUrl")
-                 AND (s."partPhotoUrl" IS NULL OR v."partPhotoUrl" = s."partPhotoUrl"))) AS hermonstering
+             ${HERMONSTERING} AS hermonstering
       FROM l JOIN "OilSample" s ON s.id = l."oilSampleId"
       WHERE s."deletedAt" IS NULL AND (l."isTaken" IS DISTINCT FROM s."isTaken" OR l."sampleDate" IS DISTINCT FROM s."sampleDate")
       ORDER BY s."analysisYear", s."oNumber"`);
