@@ -222,16 +222,25 @@ export default function AdminPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Weet je zeker dat je deze gebruiker wilt verwijderen?')) return;
+  // Een gebruiker verwijderen is niet terug te draaien: het account en het
+  // wachtwoord zijn weg. Daarom staat de knop niet meer in de rij naast Bewerken
+  // en Wachtwoord resetten, maar onderaan het bewerkvenster.
+  const handleDelete = async (user: User) => {
+    if (!confirm(
+      `Gebruiker ${user.username} (${ROLE_LABELS[user.role] ?? user.role}) verwijderen?\n\n` +
+        'Het account en het wachtwoord verdwijnen; inloggen kan daarna niet meer. Het logboek blijft staan. ' +
+        'Dit kan niet ongedaan worden gemaakt: opnieuw toegang geven betekent een nieuw account aanmaken.'
+    )) return;
 
     try {
-      const response = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/users/${user.id}`, { method: 'DELETE' });
       const data = await response.json();
       if (!response.ok) {
         alert(data.error || 'Fout bij verwijderen van gebruiker');
         return;
       }
+      setShowUserModal(false);
+      resetForm();
       loadUsers();
     } catch {
       alert('Fout bij verwijderen van gebruiker');
@@ -363,10 +372,6 @@ export default function AdminPage() {
                                   >
                                     <Icon name="reset" size={16} />
                                     Wachtwoord resetten
-                                  </button>
-                                  <button type="button" onClick={() => handleDelete(user.id)} className="btn btn-sm btn-danger-soft">
-                                    <Icon name="trash" size={16} />
-                                    Verwijderen
                                   </button>
                                 </>
                               )}
@@ -526,6 +531,25 @@ export default function AdminPage() {
             </div>
           )}
         </form>
+
+        {/* Verwijderen: apart en onderaan, niet in de rij naast Bewerken. Jezelf
+            verwijderen kan niet. */}
+        {editingUser && editingUser.id !== sessionUser?.userId && (
+          <section className="gevarenzone">
+            <p className="gevarenzone-kop">
+              <Icon name="trash" size={16} />
+              Gebruiker verwijderen
+            </p>
+            <p className="gevarenzone-tekst">
+              {editingUser.username} kan daarna niet meer inloggen. Het logboek blijft staan. Dit kan niet ongedaan
+              worden gemaakt.
+            </p>
+            <button type="button" className="btn btn-sm btn-danger-soft" onClick={() => handleDelete(editingUser)}>
+              <Icon name="trash" size={16} />
+              Gebruiker verwijderen...
+            </button>
+          </section>
+        )}
       </Modal>
     </AppShell>
   );
