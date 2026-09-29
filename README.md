@@ -207,6 +207,23 @@ de laatste poging. Ze worden alleen via `wijzigLaatstePoging`
 - `GET /api/fotos/monster|poging|installatie|klantlogo/...` - elke foto (zie hieronder)
 - `/privacy` - de privacyverklaring, openbaar, gemarkeerd als concept (tekst in app/privacy/tekst.ts)
 
+### Inspecties en eigen dossier (fase 4)
+- `GET/POST /api/inspecties` (lijst: beheerder en gebruiker; nieuw: admin, de klant is die van het object)
+- `GET/PUT/DELETE /api/inspecties/[id]` (PUT ook instellingen en status `afgerond`/`concept`; DELETE zacht, body `{ bevestig: "INS-12" }`), `POST .../herstellen`
+- `POST /api/inspecties/[id]/items` (bevinding toevoegen), `PUT/DELETE /api/inspectie-items/[id]`, `POST .../herstellen`, `POST/DELETE .../foto` (in UPLOAD_ROUTES)
+- `GET /api/inspecties/[id]/rapport` - rapport als PDF (lib/rapport/inspectieRapportPdf.ts). Een kijker alleen met de weergave klantportaal, en dan alleen een afgeronde inspectie van zijn eigen klant (en kijkjaar); de klassieke kijker krijgt 403. In het logboek (`INSPECTIE_RAPPORT_DOWNLOAD`)
+- `GET /api/portaal` geeft ook `inspecties` (afgerond, met `volgende` en het rapportadres); het klantdossier geeft momenten van soort `inspectie`
+- `GET/POST /api/eigen-dossier`, `PUT/DELETE /api/eigen-dossier/[id]`, `POST .../herstellen`, `GET/POST/DELETE .../bestand` (PDF, JPEG of PNG tot 4 MB, in UPLOAD_ROUTES), `GET /api/eigen-dossier/inhuurdossier` (voorblad plus alle geldige bestanden in één PDF, pdf-lib). Alles alleen admin
+
+De sjablonen staan als configuratie in `lib/inspecties/sjablonen.ts` (velden, oordelen,
+checklist, instellingen, rapporttekst); rekenen in `lib/inspecties/rekenen.ts`. Een nieuw
+sjabloon: daar een object toevoegen, het model blijft gelijk. Persluchtlekken rekent
+kosten per jaar uit l/min, draaiuren en de prijs per kWh (energie per m3 uit de netdruk,
+compressor met 70 procent rendement, of zelf in te vullen) of per m3; CO2 standaard
+0,268 kg per kWh (stroom onbekend, CO2emissiefactoren.nl 2025). Inspectie arbeidsmiddelen
+zet de verklaring uit het juridisch onderzoek letterlijk in het rapport en verwijst een
+luchtketel boven 2.500 liter of vanaf 30 bar door naar een aangewezen instelling.
+
 ### Foto's
 Uploaden via `bewaarFoto` (lib/fotoOpslag.ts): Vercel Blob onder een
 onvindbare naam (`fotos/<32 hex>.jpg` plus het achtervoegsel van Blob; in de
@@ -285,6 +302,12 @@ hieronder. Pas die twee nooit aan; wijzigingen komen altijd in een nieuwe migrat
   `./db-bijwerken.sh` toont zelf vooraf hoeveel monsters het raakt en na afloop welke nog
   afwijken (scripts/cache-telling.mjs, alleen lezen), en zegt dat de deploy meteen moet volgen.
 
+**Migratie fase 4 (inspecties en eigen dossier):**
+
+- `20261001090000_inspecties_en_eigen_dossier`: drie nieuwe, lege tabellen
+  (`Inspectie`, `InspectieItem`, `EigenDocument`) met hun foreign keys. Aan bestaande
+  tabellen en gegevens verandert niets.
+
 **Productie bijwerken (Roel, op zijn Mac):**
 
 ```bash
@@ -316,6 +339,8 @@ node scripts/schermen.mjs kijker:/dashboard/oliemonsters/2025 admin:/dashboard/k
 node scripts/schermen.mjs admin:/dashboard/planning/dag/{vandaag}            # dagscherm van vandaag
 node scripts/schermen.mjs kempen:/dashboard admin:/dashboard/klanten/{kempen}   # klantportaal en klantdossier
 node scripts/schermen.mjs "admin:/dashboard@.onderbalk button:nth-of-type(1)"  # eerst klikken (menu open)
+node scripts/schermen.mjs "admin:/dashboard/inspecties/{lekken}@.veld-hoofdknop"   # invulscherm met venster Lek toevoegen
+SCHERMEN_POORT=3248 node scripts/schermen.mjs ...                              # andere poort (tweede kopie tegelijk)
 ```
 
 De nepdata zet de planning ten opzichte van vandaag (een monsterdag vandaag en

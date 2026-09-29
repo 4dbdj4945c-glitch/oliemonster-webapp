@@ -150,6 +150,17 @@ tabelregel en veld in de portal, dus dat is een eigen besluit en geen los foutje
   van de klant links en "uitgevoerd door" It's Done Services rechts, een navy band met de titel, dan kaarten die
   over de band vallen. Rapport downloaden is de enige oranje knop. Werkt tot 390px breed; tabellen verliezen op de
   telefoon de kolommen Volgende bezoek en Laatste foto.
+- **Inspecties** (`/dashboard/inspecties`, `.insp-*`): overzicht als beheertabel met filterchips (`.dossier-chip`)
+  per soort. Invulscherm (`Invulscherm`, `/dashboard/inspecties/[id]`) volgt het veldscherm: eigen kop, kengetallen
+  (`.insp-kengetallen`, groene regel met de besparing), bevindingen als `.veld-lijst-regel` (lek: labelnummer in een
+  vak `.insp-label`, groen als gerepareerd), en de enige oranje knop Lek toevoegen of Arbeidsmiddel toevoegen in
+  `.veld-actiebalk`. Het venster Bevinding is `.veldwerk`: grote keuzeknoppen naast elkaar (`.keuzeknoppen > .keuzeknop`,
+  gekozen met een rand van 2px en de kleur van de uitslag, nooit oranje), checklist met Goed/Niet goed/N.v.t., foto via
+  `FotoKiezer`. Luchtketel boven de grens: `alert-warning`. Woorden: Inspectie, Inspectierapport technische staat,
+  In orde / Actie nodig / Buiten gebruik. Nooit "gecertificeerd" of "keuringscertificaat" (alleen in de vaste verklaring).
+- **Eigen dossier** (`/dashboard/eigen-dossier`, alleen admin): twee kaarten (Bedrijf, Deskundigheid), per document een
+  badge Geldig, Verloopt binnenkort (amber), Verlopen (rood) of Verloopt niet; bovenaan een `alert-warning` bij iets dat
+  binnen 30 dagen verloopt. Hetzelfde staat op Vandaag, blok Eigen dossier.
 - **Privacyverklaring** (`/privacy`, `.privacy-*`): smalle leeskolom, `.privacy-open` markeert wat nog ingevuld of
   nagekeken moet, bovenaan een `alert-warning` zolang het een concept is.
 - **Inloggen**: `.auth-page > .auth-card > .auth-band + .auth-body (+ .auth-foot)`.
