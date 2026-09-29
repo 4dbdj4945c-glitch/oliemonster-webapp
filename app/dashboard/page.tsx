@@ -1,152 +1,167 @@
 'use client';
 
+// Het dashboard: per sectie uit het moduleregister (lib/modules.ts) een tegel
+// voor elke module die deze gebruiker mag zien. De oliemonsters krijgen een
+// tegel per analysejaar. Een kijker met een vast jaar komt hier niet (die gaat
+// meteen naar zijn jaarpagina); een kijker zonder vast jaar ziet alleen de
+// oliemonsters.
+
 import { useState, useEffect } from 'react';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
 import { useRouter } from 'next/navigation';
-import { isAlleenLezen, paginaVoorKijkjaar } from '@/lib/roles';
+import { isAlleenLezen } from '@/lib/roles';
 import { actieStaatOpen, eindeVanVandaag } from '@/lib/prospects';
+import { modulesVoor, oliemonsterPad, SECTIES, type ModuleInfo } from '@/lib/modules';
 import LaadFout from '@/app/components/LaadFout';
 import { GEEN_VERBINDING } from '@/lib/foutmelding';
 import { AppShell, Icon } from '@/app/components/ui';
 
-interface User {
-  userId: number;
-  username: string;
-  role: string;
-  /** Alleen bij de rol alleen lezen: het analysejaar dat deze gebruiker mag zien. */
-  viewYear?: number | null;
-  isLoggedIn: boolean;
+interface Stat {
+  waarde: number;
+  label: string;
+}
+
+interface Tegel {
+  sleutel: string;
+  module: ModuleInfo;
+  titel: string;
+  beschrijving: string;
+  href: string;
+}
+
+// Het aantal sjablonen in Mail opstellen (public/email-editor.html).
+const MAIL_SJABLONEN = 6;
+
+async function lijst(url: string): Promise<unknown[]> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(url);
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
 }
 
 export default function DashboardPage() {
-  const user: User | null = useGebruiker();
-  const [stats, setStats] = useState({
-    oilSamples2025: 0,
-    oilSamplesTaken2025: 0,
-    oilSamples2026: 0,
-    oilSamplesTaken2026: 0,
-    controlRounds: 0,
-    ultimoTasks: 0,
-    prospects: 0,
-    prospectActies: 0,
-  });
-  // Welke tellingen niet geladen zijn. Zonder deze melding staat er gewoon nul
-  // in de tegels en lijkt het alsof er niets te doen is.
-  const [foutmelding, setFoutmelding] = useState('');
-  // Modules waarvan de telling niet binnenkwam. Die tegels tonen geen getal:
-  // een 0 zou betekenen dat er niets is, terwijl we het gewoon niet weten.
-  const [mislukteModules, setMislukteModules] = useState<string[]>([]);
+  const user = useGebruiker();
   const router = useRouter();
+  const alleenLezen = isAlleenLezen(user.role);
+  const modules = modulesVoor(user.role).filter((m) => m.tegel);
+
+  // Per tegel de getallen; ontbreekt een tegel hier, dan staat er geen getal
+  // (een 0 zou betekenen dat er niets is, terwijl we het niet weten).
+  const [stats, setStats] = useState<Record<string, Stat[]>>({ mail: [{ waarde: MAIL_SJABLONEN, label: 'Sjablonen' }] });
+  const [jaren, setJaren] = useState<{ jaar: number; totaal: number; genomen: number }[] | null>(null);
+  const [foutmelding, setFoutmelding] = useState('');
+
+  const heeft = (sleutel: string) => modules.some((m) => m.sleutel === sleutel);
 
   const loadStats = async () => {
     const mislukt: string[] = [];
-    // Een kijker mag de andere modules niet ophalen; die routes geven hem een
-    // 403. Die tellingen vragen we dus niet op, anders komt er een foutmelding
-    // over iets wat hij niet hoort te zien.
-    const alleenMonsters = isAlleenLezen(user?.role);
-    const nietOphalen = Promise.resolve({ ok: false, overgeslagen: true }) as unknown as Promise<Response>;
-    try {
-      const [res2025, res2026, roundsRes, ultimoRes, prospectsRes] = await Promise.allSettled([
-        fetch('/api/samples?year=2025'),
-        fetch('/api/samples?year=2026'),
-        alleenMonsters ? nietOphalen : fetch('/api/control-rounds'),
-        alleenMonsters ? nietOphalen : fetch('/api/ultimo-tasks'),
-        alleenMonsters ? nietOphalen : fetch('/api/prospects'),
-      ]);
-
-      if (!(res2025.status === 'fulfilled' && res2025.value.ok)) mislukt.push('Oliemonsters 2025');
-      if (res2025.status === 'fulfilled' && res2025.value.ok) {
-        const data = await res2025.value.json();
-        setStats(prev => ({
-          ...prev,
-          oilSamples2025: data.length,
-          oilSamplesTaken2025: data.filter((s: { isTaken: boolean; isDisabled?: boolean }) => s.isTaken && !s.isDisabled).length,
-        }));
-      }
-      if (!(res2026.status === 'fulfilled' && res2026.value.ok)) mislukt.push('Oliemonsters 2026');
-      if (res2026.status === 'fulfilled' && res2026.value.ok) {
-        const data = await res2026.value.json();
-        setStats(prev => ({
-          ...prev,
-          oilSamples2026: data.length,
-          oilSamplesTaken2026: data.filter((s: { isTaken: boolean; isDisabled?: boolean }) => s.isTaken && !s.isDisabled).length,
-        }));
-      }
-      if (!alleenMonsters && !(roundsRes.status === 'fulfilled' && roundsRes.value.ok)) mislukt.push('Controlerondes');
-      if (roundsRes.status === 'fulfilled' && roundsRes.value.ok) {
-        const data = await roundsRes.value.json();
-        setStats(prev => ({
-          ...prev,
-          controlRounds: data.length,
-        }));
-      }
-      if (!alleenMonsters && !(ultimoRes.status === 'fulfilled' && ultimoRes.value.ok)) mislukt.push('Ultimo-opmerkingen');
-      if (ultimoRes.status === 'fulfilled' && ultimoRes.value.ok) {
-        const data = await ultimoRes.value.json();
-        setStats(prev => ({
-          ...prev,
-          ultimoTasks: data.length,
-        }));
-      }
-      // Acquisitie: aantal prospects en hoeveel acties er open staan (vandaag of eerder)
-      if (!alleenMonsters && !(prospectsRes.status === 'fulfilled' && prospectsRes.value.ok)) mislukt.push('Acquisitie');
-      if (prospectsRes.status === 'fulfilled' && prospectsRes.value.ok) {
-        const data = await prospectsRes.value.json();
-        const grens = eindeVanVandaag();
-        setStats(prev => ({
-          ...prev,
-          prospects: data.length,
-          prospectActies: data.filter((p: Parameters<typeof actieStaatOpen>[0]) => actieStaatOpen(p, grens)).length,
-        }));
-      }
-      setMislukteModules(mislukt);
-      setFoutmelding(
-        mislukt.length === 0
-          ? ''
-          : `Deze tellingen konden niet worden opgehaald: ${mislukt.join(', ')}. Bij die modules staat daarom geen getal.`
+    const nieuw: Record<string, Stat[]> = { mail: [{ waarde: MAIL_SJABLONEN, label: 'Sjablonen' }] };
+    // Alleen ophalen wat deze gebruiker mag zien: een andere route geeft hem een 403.
+    const taken: Promise<void>[] = [];
+    const tel = (sleutel: string, naam: string, url: string, maak: (data: unknown[]) => Stat[]) => {
+      if (!heeft(sleutel)) return;
+      taken.push(
+        lijst(url)
+          .then((data) => {
+            nieuw[sleutel] = maak(data);
+          })
+          .catch(() => {
+            mislukt.push(naam);
+          })
       );
-    } catch (error) {
-      setMislukteModules(['Oliemonsters 2025', 'Oliemonsters 2026', 'Controlerondes', 'Ultimo-opmerkingen', 'Acquisitie']);
-      setFoutmelding(GEEN_VERBINDING);
+    };
+
+    if (heeft('oliemonsters')) {
+      taken.push(
+        fetch('/api/samples/jaren')
+          .then(async (res) => {
+            if (!res.ok) throw new Error('jaren');
+            const data: { jaren: { jaar: number; totaal: number; genomen: number }[] } = await res.json();
+            // Altijd ook het huidige jaar, ook als daar nog niets in staat.
+            const nu = new Date().getFullYear();
+            const rijen = data.jaren.some((j) => j.jaar === nu)
+              ? data.jaren
+              : [...data.jaren, { jaar: nu, totaal: 0, genomen: 0 }];
+            setJaren(rijen.sort((a, b) => a.jaar - b.jaar));
+          })
+          .catch(() => {
+            mislukt.push('Oliemonsters');
+          })
+      );
     }
+    tel('controlerondes', 'Controlerondes', '/api/control-rounds', (d) => [{ waarde: d.length, label: 'Rondes' }]);
+    tel('ultimo', 'Ultimo-opmerkingen', '/api/ultimo-tasks', (d) => [{ waarde: d.length, label: 'Taken' }]);
+    tel('klanten', 'Klanten', '/api/klanten', (d) => [{ waarde: d.length, label: 'Klanten' }]);
+    tel('installaties', 'Installaties', '/api/installaties', (d) => [{ waarde: d.length, label: 'Installaties' }]);
+    tel('acquisitie', 'Acquisitie', '/api/prospects', (d) => {
+      const grens = eindeVanVandaag();
+      return [
+        { waarde: d.length, label: 'Prospects' },
+        { waarde: d.filter((p) => actieStaatOpen(p as Parameters<typeof actieStaatOpen>[0], grens)).length, label: 'Open acties' },
+      ];
+    });
+
+    try {
+      await Promise.all(taken);
+    } catch {
+      setFoutmelding(GEEN_VERBINDING);
+      return;
+    }
+    setStats(nieuw);
+    setFoutmelding(
+      mislukt.length === 0
+        ? ''
+        : `Deze tellingen konden niet worden opgehaald: ${mislukt.join(', ')}. Bij die modules staat daarom geen getal.`
+    );
   };
 
   useEffect(() => {
     // Tellingen ophalen bij het openen; de state verandert pas na de fetch.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (user) loadStats();
+    loadStats();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, []);
 
-  /** Toon de tellingen alleen als ze echt geladen zijn. */
-  const geladen = (module: string) => !mislukteModules.includes(module);
+  // De tegels per sectie. De oliemonsters: één tegel per jaar.
+  const tegelsVan = (m: ModuleInfo): Tegel[] => {
+    if (!m.perJaar) {
+      return [{ sleutel: m.sleutel, module: m, titel: m.naam, beschrijving: m.beschrijving, href: m.route }];
+    }
+    const lijstJaren = jaren?.map((j) => j.jaar) ?? [new Date().getFullYear()];
+    return lijstJaren.map((jaar) => ({
+      sleutel: `${m.sleutel}-${jaar}`,
+      module: m,
+      titel: `${m.naam} ${jaar}`,
+      beschrijving: `Overzicht en beheer van oliemonsteranalyses ${jaar}`,
+      href: oliemonsterPad(jaar),
+    }));
+  };
 
-  // Een kijker ziet alleen de oliemonstermodule: geen eigen modules van It's Done
-  // Services en geen Ultimo. De API's weigeren hem daar ook.
-  const alleenLezen = isAlleenLezen(user?.role);
-  // Een kijkjaar waarvoor nog geen modulepagina bestaat. Dan is er niets te
-  // kiezen en zegt de melding wat er aan de hand is.
-  const kijkjaarZonderPagina =
-    alleenLezen &&
-    user?.viewYear !== null &&
-    user?.viewYear !== undefined &&
-    paginaVoorKijkjaar(user.viewYear) === null;
+  const statsVan = (t: Tegel): Stat[] | undefined => {
+    if (t.module.perJaar) {
+      if (!jaren) return undefined;
+      const j = jaren.find((x) => `${t.module.sleutel}-${x.jaar}` === t.sleutel);
+      return j ? [{ waarde: j.totaal, label: 'Totaal' }, { waarde: j.genomen, label: 'Genomen' }] : undefined;
+    }
+    return stats[t.sleutel];
+  };
+
+  const open = (t: Tegel) => {
+    if (t.module.extern) window.open(t.href, '_blank', 'noopener');
+    else router.push(t.href);
+  };
 
   return (
     <>
       <style jsx>{`
-        /* Sectiekop met het logo van de eigenaar van de modules */
+        /* Sectiekop per sectie uit het moduleregister (Werk, Klanten, ...) */
         .sectie-kop {
-          display: flex;
-          align-items: center;
           margin: 0 0 14px 0;
           padding-bottom: 10px;
           border-bottom: 1px solid var(--grijs-200);
         }
-        /* Gedempt: grijs en iets transparant, zodat de kaarten de aandacht houden */
-        .sectie-logo { display: block; width: auto; filter: grayscale(1); opacity: 0.4; }
-        .sectie-logo-ids { height: 18px; }
-        .sectie-logo-mourik { height: 26px; }
+        .sectie-kop :global(.section-label) {
+          margin: 0;
+        }
 
         .cards-grid {
           display: grid;
@@ -272,11 +287,9 @@ export default function DashboardPage() {
           }
         }
       `}</style>
-
       <AppShell user={user}>
-        {/* Content */}
         <div>
-          <h1 className="page-title">Welkom, {user?.username}</h1>
+          <h1 className="page-title">Welkom, {user.username}</h1>
           <p className="page-subtitle">
             {alleenLezen
               ? 'Kies het jaar waarvan je de oliemonsters wilt bekijken.'
@@ -285,148 +298,52 @@ export default function DashboardPage() {
 
           {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={loadStats} />}
 
-          {/* Sectie It's Done Services: eigen modules. Niets voor een kijker. */}
-          {!alleenLezen && (<>
-          <div className="sectie-kop">
-            <img src="/logo-navy.png" alt="It's Done Services" className="sectie-logo sectie-logo-ids" />
-          </div>
-          <div className="cards-grid">
-            <div
-              className="module-card"
-              onClick={() => router.push('/dashboard/controlerondes')}
-            >
-              <div className="card-accent" />
-              <span className="card-icon"><Icon name="module-rounds" size={24} /></span>
-              <h2 className="card-title">Controlerondes</h2>
-              <p className="card-description">Plan en rijd controlerondes langs geselecteerde straten met live route en voortgang</p>
-              {geladen('Controlerondes') && (
-              <div className="card-stats">
-                <div className="stat-item">
-                  <div className="stat-value">{stats.controlRounds}</div>
-                  <div className="stat-label">Rondes</div>
+          {SECTIES.map((sectie) => {
+            const tegels = modules.filter((m) => m.sectie === sectie).flatMap(tegelsVan);
+            if (tegels.length === 0) return null;
+            return (
+              <section key={sectie} aria-label={sectie}>
+                {/* Een kijker ziet alleen de oliemonsters: dan geen sectiekop */}
+                {!alleenLezen && (
+                  <div className="sectie-kop">
+                    <h2 className="section-label">{sectie}</h2>
+                  </div>
+                )}
+                <div className="cards-grid">
+                  {tegels.map((t) => {
+                    const getallen = statsVan(t);
+                    return (
+                      <div
+                        key={t.sleutel}
+                        className="module-card"
+                        role="link"
+                        tabIndex={0}
+                        onClick={() => open(t)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') open(t);
+                        }}
+                      >
+                        <div className="card-accent" />
+                        <span className="card-icon"><Icon name={t.module.icoon} size={24} /></span>
+                        <h2 className="card-title">{t.titel}</h2>
+                        <p className="card-description">{t.beschrijving}</p>
+                        {getallen && (
+                          <div className="card-stats">
+                            {getallen.map((g) => (
+                              <div key={g.label} className="stat-item">
+                                <div className="stat-value">{g.waarde}</div>
+                                <div className="stat-label">{g.label}</div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-              )}
-            </div>
-            <div
-              className="module-card"
-              onClick={() => router.push('/dashboard/acquisitie')}
-            >
-              <div className="card-accent" />
-              <span className="card-icon"><Icon name="module-acquisitie" size={24} /></span>
-              <h2 className="card-title">Acquisitie</h2>
-              <p className="card-description">Prospects, pijplijn en contactmomenten voor nieuwe vaste klanten</p>
-              {geladen('Acquisitie') && (
-              <div className="card-stats">
-                <div className="stat-item">
-                  <div className="stat-value">{stats.prospects}</div>
-                  <div className="stat-label">Prospects</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-value">{stats.prospectActies}</div>
-                  <div className="stat-label">Open acties</div>
-                </div>
-              </div>
-              )}
-            </div>
-            {/* Mail opstellen (de e-mail editor): losstaand HTML-bestand in public/, opent in een nieuw tabblad.
-                Bron en uitleg: Documents/Claude/email-templates/ (sync-webapp.sh kopieert 'm hierheen). */}
-            <div
-              className="module-card"
-              onClick={() => window.open('/email-editor.html', '_blank', 'noopener')}
-            >
-              <div className="card-accent" />
-              <span className="card-icon"><Icon name="module-email" size={24} /></span>
-              <h2 className="card-title">Mail opstellen</h2>
-              <p className="card-description">Opgemaakte mails in huisstijl samenstellen vanuit sjablonen en plakken in Apple Mail</p>
-              <div className="card-stats">
-                <div className="stat-item">
-                  <div className="stat-value">6</div>
-                  <div className="stat-label">Sjablonen</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          </>)}
-
-          {kijkjaarZonderPagina && (
-            <div className="alert alert-info" role="status">
-              <Icon name="alert-info" />
-              Je mag de oliemonsters van {user?.viewYear} bekijken, maar daar is nog
-              geen pagina voor. Vraag de beheerder om het juiste jaar in te stellen.
-            </div>
-          )}
-
-          {/* Sectie Mourik: modules voor de opdrachtgever */}
-          {!kijkjaarZonderPagina && (<>
-          <div className="sectie-kop">
-            <img src="/mourik_logo.png" alt="Mourik" className="sectie-logo sectie-logo-mourik" />
-          </div>
-          <div className="cards-grid">
-            <div
-              className="module-card"
-              onClick={() => router.push('/dashboard/oliemonsters')}
-            >
-              <div className="card-accent" />
-              <span className="card-icon"><Icon name="oil-sample" size={24} /></span>
-              <h2 className="card-title">Oliemonsters 2025</h2>
-              <p className="card-description">Overzicht en beheer van oliemonsteranalyses 2025</p>
-              {geladen('Oliemonsters 2025') && (
-              <div className="card-stats">
-                <div className="stat-item">
-                  <div className="stat-value">{stats.oilSamples2025}</div>
-                  <div className="stat-label">Totaal</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-value">{stats.oilSamplesTaken2025}</div>
-                  <div className="stat-label">Genomen</div>
-                </div>
-              </div>
-              )}
-            </div>
-            <div
-              className="module-card"
-              onClick={() => router.push('/dashboard/oliemonsters2026')}
-            >
-              <div className="card-accent" />
-              <span className="card-icon"><Icon name="oil-sample" size={24} /></span>
-              <h2 className="card-title">Oliemonsters 2026</h2>
-              <p className="card-description">Overzicht en beheer van oliemonsteranalyses 2026</p>
-              {geladen('Oliemonsters 2026') && (
-              <div className="card-stats">
-                <div className="stat-item">
-                  <div className="stat-value">{stats.oilSamples2026}</div>
-                  <div className="stat-label">Totaal</div>
-                </div>
-                <div className="stat-item">
-                  <div className="stat-value">{stats.oilSamplesTaken2026}</div>
-                  <div className="stat-label">Genomen</div>
-                </div>
-              </div>
-              )}
-            </div>
-            {!alleenLezen && (
-            <div
-              className="module-card"
-              onClick={() => router.push('/dashboard/ultimo')}
-            >
-              <div className="card-accent" />
-              <span className="card-icon"><Icon name="module-ultimo" size={24} /></span>
-              <h2 className="card-title">Ultimo-opmerkingen</h2>
-              <p className="card-description">Opmerkingen per onderhoudstaak (looprouteregel) bijhouden en exact terugvinden</p>
-              {geladen('Ultimo-opmerkingen') && (
-              <div className="card-stats">
-                <div className="stat-item">
-                  <div className="stat-value">{stats.ultimoTasks}</div>
-                  <div className="stat-label">Taken</div>
-                </div>
-              </div>
-              )}
-            </div>
-            )}
-          </div>
-          </>)}
+              </section>
+            );
+          })}
         </div>
       </AppShell>
     </>
