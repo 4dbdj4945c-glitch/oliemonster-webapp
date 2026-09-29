@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Icon from './ui/Icon';
 import LaadFout from './LaadFout';
+import OngedaanMelding, { type OngedaanInhoud } from './OngedaanMelding';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 
 export interface UltimoComment {
@@ -51,6 +52,8 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
 
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [foutmelding, setFoutmelding] = useState('');
+  // Na het verwijderen van een opmerking: tien seconden Ongedaan maken
+  const [ongedaan, setOngedaan] = useState<OngedaanInhoud | null>(null);
 
   useEffect(() => {
     load();
@@ -138,11 +141,12 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
     }
   };
 
-  const handleDelete = async (commentId: number) => {
-    if (!confirm('Deze opmerking verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
+  // Eén opmerking is klein en makkelijk terug te zetten: geen vraag vooraf, wel
+  // tien seconden Ongedaan maken. Dat zet dezelfde tekst, datum en jobnummer terug.
+  const handleDelete = async (c: UltimoComment) => {
     setBusy(true);
     try {
-      const res = await fetch(`/api/ultimo-tasks/${taskId}/comments/${commentId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/ultimo-tasks/${taskId}/comments/${c.id}`, { method: 'DELETE' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         alert(err.error || 'Fout bij verwijderen opmerking');
@@ -150,6 +154,21 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
       }
       await load();
       notifyChange();
+      setOngedaan({
+        sleutel: `opmerking-${c.id}`,
+        tekst: `Opmerking${c.jobNumber ? ` bij job ${c.jobNumber}` : ''} verwijderd`,
+        onOngedaan: async () => {
+          const terug = await fetch(`/api/ultimo-tasks/${taskId}/comments`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: c.date ? c.date.split('T')[0] : null, jobNumber: c.jobNumber, text: c.text }),
+          });
+          if (!terug.ok) return false;
+          await load();
+          notifyChange();
+          return true;
+        },
+      });
     } finally {
       setBusy(false);
     }
@@ -318,7 +337,7 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
                             <Icon name="pencil" size={16} />
                             Bewerken
                           </button>
-                          <button type="button" className="icon-btn icon-btn-danger" onClick={() => handleDelete(c.id)} disabled={busy}>
+                          <button type="button" className="icon-btn icon-btn-danger" onClick={() => handleDelete(c)} disabled={busy}>
                             <Icon name="trash" size={16} />
                             Verwijderen
                           </button>
@@ -332,6 +351,7 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
           })}
         </ul>
       )}
+      <OngedaanMelding melding={ongedaan} onSluit={() => setOngedaan(null)} />
     </div>
   );
 }

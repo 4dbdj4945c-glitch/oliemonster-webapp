@@ -132,8 +132,18 @@ export default function UltimoPage() {
     }
   };
 
+  // Een taak verwijderen neemt de hele historie aan opmerkingen mee. Daarom staat
+  // de knop niet meer naast Taak bewerken maar onderaan het bewerkvenster, en
+  // zegt de bevestiging hoeveel opmerkingen er verdwijnen.
   const deleteTask = async (task: UltimoTask) => {
-    if (!confirm(`Taak "${task.taskDescription}" en alle bijbehorende opmerkingen verwijderen?`)) return;
+    const n = task.commentsCount;
+    if (!confirm(
+      `Taak "${task.taskDescription}" verwijderen?\n\n` +
+        (n > 0
+          ? `Daarmee verdwijnen ook ${n === 1 ? 'de opmerking' : `alle ${n} opmerkingen`} uit de historie, met datums en jobnummers. `
+          : '') +
+        'Dit kan niet ongedaan worden gemaakt.'
+    )) return;
     const res = await fetch(`/api/ultimo-tasks/${task.id}`, { method: 'DELETE' });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -141,6 +151,7 @@ export default function UltimoPage() {
       return;
     }
     if (expandedId === task.id) setExpandedId(null);
+    setShowModal(false);
     await loadTasks();
   };
 
@@ -298,7 +309,6 @@ export default function UltimoPage() {
                     {isAdmin && (
                       <div style={{ display: 'flex', gap: '14px', marginBottom: '12px', flexWrap: 'wrap' }}>
                         <button type="button" className="btn-link" onClick={() => openEdit(task)}>Taak bewerken</button>
-                        <button type="button" className="btn-link btn-link-danger" onClick={() => deleteTask(task)}>Taak verwijderen</button>
                       </div>
                     )}
                     <UltimoCommentsPanel taskId={task.id} isAdmin={!!isAdmin} onChange={loadTasks} />
@@ -338,6 +348,27 @@ export default function UltimoPage() {
           </div>
           {formError && <div className="alert alert-danger">{formError}</div>}
         </div>
+
+        {/* Verwijderen: apart en onderaan, niet naast Taak bewerken */}
+        {editingTask && isAdmin && (
+          <section className="gevarenzone">
+            <p className="gevarenzone-kop">
+              <Icon name="trash" size={16} />
+              Taak verwijderen
+            </p>
+            <p className="gevarenzone-tekst">
+              Haalt deze taak weg
+              {editingTask.commentsCount > 0
+                ? `, met ${editingTask.commentsCount === 1 ? 'de opmerking' : `alle ${editingTask.commentsCount} opmerkingen`} uit de historie`
+                : ''}
+              . Dit kan niet ongedaan worden gemaakt.
+            </p>
+            <button type="button" className="btn btn-sm btn-danger-soft" onClick={() => deleteTask(editingTask)}>
+              <Icon name="trash" size={16} />
+              Taak verwijderen...
+            </button>
+          </section>
+        )}
       </Modal>
     </AppShell>
   );
