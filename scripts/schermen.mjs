@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 const repo = join(dirname(fileURLToPath(import.meta.url)), '..');
 const uit = join(repo, 'schermen');
 mkdirSync(uit, { recursive: true });
-const POORT = 3148;
+const POORT = Number(process.env.SCHERMEN_POORT) || 3148;
 const BASIS = `http://localhost:${POORT}`;
 const wacht = (ms) => new Promise((r) => setTimeout(r, ms));
 const WACHTWOORDEN = { admin: 'admin123', gebruiker: 'user123', kijker: 'kijker123', kempen: 'kempen123' };
