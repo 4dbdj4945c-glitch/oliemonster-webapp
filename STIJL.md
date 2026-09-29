@@ -140,6 +140,18 @@ tabelregel en veld in de portal, dus dat is een eigen besluit en geen los foutje
   twee kolommen `.beheer-grid > .beheer-kolom > .card.beheer-kaart`, gegevens als `dl.gegevens-lijst`,
   regels `.beheer-lijst > .beheer-lijst-regel`, code van een installatie `.badge.code-badge`,
   formulier in een venster `.beheer-formulier` (lange velden `.beheer-veld-breed`).
+- **Klantdossier** (`/dashboard/klanten/[id]`, `DossierTijdlijn`): kop `.dossier-kop` met naam, adres,
+  contactpersoon en Klant sinds, knoppen Mail opstellen, Rapport maken en Klantportaal bekijken (alle drie wit),
+  kerncijfers `.dossier-kerncijfers`, tabs met een oranje streep onder de actieve (`.dossier-tabs`), jaarkeuze rechts.
+  Links de objecten met hun installaties (`.dossier-item`, actief grijs vlak met oranje streep links), rechts de
+  tijdlijn (`.dossier-tijdlijn > .moment`: datum, punt met icoon, titel met statusbadge, tekst, foto's van 72px).
+  Filteren met `.dossier-chip` (navy als actief).
+- **Klantportaal** (`KlantPortaal`, `.portaal-*`): geen schil en geen navy balk, maar een witte kop met het logo
+  van de klant links en "uitgevoerd door" It's Done Services rechts, een navy band met de titel, dan kaarten die
+  over de band vallen. Rapport downloaden is de enige oranje knop. Werkt tot 390px breed; tabellen verliezen op de
+  telefoon de kolommen Volgende bezoek en Laatste foto.
+- **Privacyverklaring** (`/privacy`, `.privacy-*`): smalle leeskolom, `.privacy-open` markeert wat nog ingevuld of
+  nagekeken moet, bovenaan een `alert-warning` zolang het een concept is.
 - **Inloggen**: `.auth-page > .auth-card > .auth-band + .auth-body (+ .auth-foot)`.
 - **Veldformulier**: `.veldwerk` om een formulier dat in het veld gebruikt wordt (Monster nemen,
   Niet bereikbaar). Velden en knoppen worden er 52px, op de telefoon 56px. Foto's gaan via
@@ -160,6 +172,10 @@ tabelregel en veld in de portal, dus dat is een eigen besluit en geen los foutje
 
 - Status van een monster: Genomen, Niet genomen, Niet bereikbaar, Geannuleerd (`lib/sampleStatus.ts`),
   overal hetzelfde, ook in het dagscherm.
+- Voor de klant (klantportaal en rapport, `lib/klantStatus.ts`) zijn de statussen neutraal: Genomen (groen),
+  Gepland (blauw, staat op een komende monsterdag), Nog in te plannen (grijs), Niet bereikbaar (amber, met de
+  reden) en Geannuleerd (grijs). Geen rood Niet genomen: werk dat nog komt is voor de klant geen fout.
+- "x van y genomen": y telt de geannuleerde monsters niet mee, net als op Vandaag.
 - Opslaan heet Opslaan (niet Bijwerken), tenzij de handeling een eigen werkwoord heeft (Toevoegen,
   Opslaan als genomen, Vastleggen).
 - Rollen: Beheerder, Gebruiker, Alleen lezen. Audit logs heet Logboek.

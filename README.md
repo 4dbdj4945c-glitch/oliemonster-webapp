@@ -82,7 +82,8 @@ naar een database op deze computer wijst.
 |---|---|---|
 | `admin` | `admin123` | admin |
 | `gebruiker` | `user123` | gebruiker (leest alles, wijzigt niets) |
-| `kijker` | `kijker123` | alleen lezen, alleen 2025, klant Mourik (zoals de Mourik-kijker) |
+| `kijker` | `kijker123` | alleen lezen, alleen 2025, klant Mourik, weergave klassiek (zoals de Mourik-kijker) |
+| `kempen` | `kempen123` | alleen lezen, alle jaren, tweede klant (Kempen Metaalbewerking), weergave klantportaal |
 | `nieuw` | geen | moet eerst een wachtwoord instellen via een uitnodigingslink |
 
 ## Gebruikshandleiding
@@ -144,7 +145,9 @@ oliemonster-webapp/
 - `Installatie` op een object (pomp, aggregaat, compressor, pers; merk, type,
   bouwjaar, serienummer, foto, korte `code` voor een latere QR-sticker)
 - `OilSample.installatieId` (optioneel), `Prospect.klantId` (na Wordt klant),
-  `User.klantId` (kijkers; de afscherming per klant komt in fase 3, tot die tijd geldt `viewYear`)
+  `User.klantId` (kijkers: ziet alleen die klant, zie Toegang)
+- Sinds fase 3: `User.portaalWeergave` (`klassiek` of `klantportaal`), `Klant.logoUrl`,
+  `OilSample.klantId` (alleen voor een monster zonder object: bij welke klant het hoort)
 
 ### OilSample
 - id (Int)
@@ -196,9 +199,32 @@ de laatste poging. Ze worden alleen via `wijzigLaatstePoging`
 - `GET/POST /api/installaties` (`?klantId=`, `?objectId=`), `GET/PUT/DELETE /api/installaties/[id]` (DELETE zacht, body `{ bevestigCode }`), `POST .../herstellen`, `POST/DELETE .../foto`
 - `POST /api/prospects/[id]/wordt-klant` - Klant (plus contactpersoon) uit een prospect; 409 met `bestaandeKlant` als de naam al bestaat, dan opnieuw met `{ klantId }`
 
+### Klantportaal, rapport en dossier (fase 3)
+- `GET /api/portaal?jaar=` - het klantportaal van een kijker (altijd zijn eigen klant; admin en gebruiker met `?klantId=`)
+- `GET /api/rapport?jaar=&klantId=&fotos=0` - rapport als PDF, op de server gemaakt (lib/rapport/rapportPdf.ts: jsPDF, Inter uit lib/rapport/fonts, foto's verkleind met sharp). Een kijker alleen van zijn eigen klant en jaar; elke download staat in het logboek (`RAPPORT_DOWNLOAD`)
+- `GET /api/klanten/[id]/dossier?jaar=` - klantdossier met momenten per object en installatie (admin)
+- `POST/DELETE /api/klanten/[id]/logo` - logo van een klant (admin, multipart, in UPLOAD_ROUTES)
+- `GET /api/fotos/monster|poging|installatie|klantlogo/...` - elke foto (zie hieronder)
+- `/privacy` - de privacyverklaring, openbaar, gemarkeerd als concept (tekst in app/privacy/tekst.ts)
+
 ### Foto's
-Uploaden via `bewaarFoto` (lib/fotoOpslag.ts): Vercel Blob met een willekeurig
-achtervoegsel. Wordt een foto vervangen of verwijderd, dan ruimt
+Uploaden via `bewaarFoto` (lib/fotoOpslag.ts): Vercel Blob onder een
+onvindbare naam (`fotos/<32 hex>.jpg` plus het achtervoegsel van Blob; in de
+naam staat niets meer over het monster).
+
+**Besluit fase 3, privé foto's.** @vercel/blob 2.0 (de versie in dit project)
+kent alleen `access: 'public'`; private opslag vraagt een nieuwere versie en een
+aparte private store in Vercel. Daarom: technisch openbaar maar onvindbaar, en
+het adres komt nooit meer bij de browser. Alle schermen tonen foto's via
+`/api/fotos/...` (adres uit lib/fotoAdres.ts, met `?v=` voor de cache). Die
+route controleert eerst of de gebruiker het monster, de installatie of de klant
+mag zien (lib/afscherming.ts, anders 404), haalt de foto dan zelf op en stuurt
+hem door (`Cache-Control: private`). Bestaande publieke adressen blijven staan en
+gaan ook via die route; een adres buiten onze opslag krijgt na de controle een
+doorverwijzing. Stapt het project later over op private Blob, dan hoeft alleen
+`bewaarFoto` en `haalFoto` (lib/fotoLaden.ts) mee te veranderen.
+
+ Wordt een foto vervangen of verwijderd, dan ruimt
 `ruimFotoOpAls` het oude bestand op (`del()`), maar alleen als geen monster,
 poging of installatie het adres nog gebruikt. Bij Afname ongedaan, Weer
 bereikbaar en een poging verwijderen blijven de foto's staan, met het adres in
@@ -236,6 +262,17 @@ hieronder. Pas die twee nooit aan; wijzigingen komen altijd in een nieuwe migrat
 - `20260929180200_contact_opheffen`: Contact en ContactNote gaan alleen weg als
   ze allebei leeg zijn. Staat er iets in, dan blijven ze onaangeroerd staan.
 
+**Migratie fase 3 (klantportaal):**
+
+- `20260930090000_klantportaal`: nieuwe lege kolommen `Klant.logoUrl` en
+  `OilSample.klantId` (met foreign key, ON DELETE SET NULL) en
+  `User.portaalWeergave` met standaard `klassiek`, dus elke bestaande gebruiker,
+  ook de Mourik-kijker, houdt precies wat hij had. Daarna: alle monsters zonder
+  object krijgen klant Mourik (alleen waar nog niets staat), zodat de
+  Mourik-kijker ze blijft zien nu de afscherming per klant geldt, en Mourik
+  krijgt het logo `/mourik_logo.png`. Er verdwijnt niets; vaker draaien doet
+  niets extra.
+
 **Productie bijwerken (Roel, op zijn Mac):**
 
 ```bash
@@ -265,6 +302,7 @@ uitvoer in `schermen/`):
 node scripts/schermen.mjs --seed                                   # standaardset
 node scripts/schermen.mjs kijker:/dashboard/oliemonsters/2025 admin:/dashboard/klanten
 node scripts/schermen.mjs admin:/dashboard/planning/dag/{vandaag}            # dagscherm van vandaag
+node scripts/schermen.mjs kempen:/dashboard admin:/dashboard/klanten/{kempen}   # klantportaal en klantdossier
 node scripts/schermen.mjs "admin:/dashboard@.onderbalk button:nth-of-type(1)"  # eerst klikken (menu open)
 ```
 
@@ -287,8 +325,18 @@ de migratiecontrole, de tests (met een eigen PostgreSQL) en de build.
   kijker het oude dashboard met tegels per jaar.
 - Planning: `/dashboard/planning?jaar=2026` (ook als tab op de oliemonsterpagina),
   het dagscherm (veldscherm) van een dag op `/dashboard/planning/dag/[id]`.
-- De kijker (rol alleen lezen) houdt de oude navy balk en ziet geen navigatie,
-  geen Vandaag en geen compacte lijst; zijn klantportaal komt later.
+- De kijker (rol alleen lezen) heeft een weergave per gebruiker (`User.portaalWeergave`,
+  in te stellen bij Instellingen, Gebruikers):
+  - `klassiek`: de oude navy balk, geen navigatie, geen Vandaag en geen compacte lijst,
+    pixel voor pixel zoals voor fase 3. Standaard voor alle bestaande gebruikers.
+  - `klantportaal`: alleen `/dashboard`, met het klantportaal (app/components/portaal/KlantPortaal.tsx).
+    Kan alleen met een klant; standaard voor een nieuwe kijker met een klant.
+- Afscherming per klant (lib/afscherming.ts): een kijker met `klantId` ziet alleen de
+  monsters, objecten, planning, foto's en rapporten van die klant, en daarbinnen alleen
+  zijn `viewYear`. Bij welke klant een monster hoort: de klant van zijn object, of bij
+  een monster zonder object `OilSample.klantId`. Een kijker zonder klant houdt het oude
+  gedrag (alleen zijn jaar). Een id van een andere klant in de URL geeft een 404.
+  Elke route die de rol alleen lezen toelaat, gebruikt `monsterFilter()` of `magMonsterZien()`.
 - API-routes: `export const GET = apiRoute({ rol, module, fout }, async (request, context, sessie) => ...)`
   uit `lib/apiRoute.ts`. Dat is `withAuth` (lib/toegang.ts) plus invoer met zod
   (`leesJson`, `leesQuery`, `leesId`) en één foutvorm: `{ error, velden? }`,
