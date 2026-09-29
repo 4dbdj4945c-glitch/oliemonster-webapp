@@ -36,6 +36,7 @@ import {
 } from '@/lib/klantStatus';
 import { objectTypeIcoon } from '@/lib/sampleObjects';
 import { SJABLONEN, type SjabloonSleutel } from '@/lib/inspecties/sjablonen';
+import { taakSoortInfo } from '@/lib/contracten';
 
 interface PortaalObject {
   id: number | null;
@@ -70,6 +71,30 @@ interface Portaal {
   monsters: PortaalMonster[];
   /** Afgeronde inspecties van de klant, met rapport en volgende inspectie. */
   inspecties?: PortaalInspectie[];
+  /** Komende onderhoudsmomenten uit de contracten (fase 5). */
+  onderhoud?: PortaalOnderhoud[];
+  /** Getekende dagrapporten (fase 5). */
+  dagrapporten?: PortaalDagrapport[];
+}
+
+interface PortaalOnderhoud {
+  id: number;
+  soort: string;
+  titel: string;
+  object: string;
+  installatie: string | null;
+  datum: string;
+  gepland: boolean;
+  wordtIngepland: boolean;
+}
+
+interface PortaalDagrapport {
+  id: number;
+  nummer: string;
+  datum: string;
+  plek: string | null;
+  getekendDoor: string | null;
+  pdf: string;
 }
 
 interface PortaalInspectie {
@@ -442,6 +467,40 @@ export default function KlantPortaal({
               )}
             </section>
 
+            {/* ---------- Onderhoud uit de contracten ---------- */}
+            {(data.onderhoud ?? []).length > 0 && (
+              <section className="card" aria-labelledby="portaal-onderhoud-kop">
+                <div className="sectiekop portaal-kaart-kop">
+                  <h2 id="portaal-onderhoud-kop">Onderhoud</h2>
+                </div>
+                <ul className="rijen">
+                  {(data.onderhoud ?? []).map((o) => {
+                    const d = dagDatum(o.datum);
+                    return (
+                      <li key={o.id} className="rij portaal-dag">
+                        <span className="portaal-dagvak getal" aria-hidden="true">
+                          <small>{d.toLocaleDateString('nl-NL', { month: 'short' }).replace('.', '').toUpperCase()}</small>
+                          <b>{o.wordtIngepland ? '-' : d.getDate()}</b>
+                        </span>
+                        <span className="rij-tekst">
+                          <strong>{o.titel}</strong>
+                          <span>{[o.object, o.installatie].filter(Boolean).join(', ')}</span>
+                          <span className="portaal-volgende">
+                            <Icon name={o.gepland ? 'status-planned' : taakSoortInfo(o.soort).icoon} size={16} />
+                            {o.gepland
+                              ? `Ingepland op ${d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' })}`
+                              : o.wordtIngepland
+                                ? 'Wordt binnenkort ingepland'
+                                : `Verwacht rond ${d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}`}
+                          </span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
+
             {/* ---------- Documenten ---------- */}
             <section className="card" aria-labelledby="portaal-documenten-kop">
               <div className="sectiekop portaal-kaart-kop">
@@ -477,6 +536,18 @@ export default function KlantPortaal({
                       )}
                     </span>
                     <a className="icon-btn" href={i.rapport} download title={`Rapport ${i.naam} downloaden`} aria-label={`Rapport ${i.naam} van ${i.datum} downloaden`}>
+                      <Icon name="download" size={20} />
+                    </a>
+                  </li>
+                ))}
+                {(data.dagrapporten ?? []).map((r) => (
+                  <li key={`dagrapport-${r.id}`} className="rij">
+                    <span className="icoonvak"><Icon name="module-dagrapport" size={20} /></span>
+                    <span className="rij-tekst">
+                      <strong>Dagrapport, {dagDatum(r.datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                      <span>{[r.plek, r.getekendDoor ? `getekend door ${r.getekendDoor}` : null].filter(Boolean).join(', ')}</span>
+                    </span>
+                    <a className="icon-btn" href={r.pdf} download title={`Dagrapport ${r.nummer} downloaden`} aria-label={`Dagrapport van ${r.datum} downloaden`}>
                       <Icon name="download" size={20} />
                     </a>
                   </li>

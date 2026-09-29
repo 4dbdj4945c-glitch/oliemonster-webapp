@@ -6,6 +6,8 @@
 // - Objecten en installaties: per object en installatie een tijdlijn van
 //   monsters (status en foto's), niet bereikbaar, annuleringen (DossierTijdlijn).
 //   Filter op jaar.
+// - Onderhoud: de contracten met terugkerende taken (fase 5), met bovenaan het
+//   dossier een melding als er een taak verlopen is of binnen 30 dagen moet.
 // - Contactpersonen, met Mail opstellen per persoon.
 // - Gegevens: adres, logo, meekijkers, objecten koppelen en verwijderen.
 
@@ -20,6 +22,8 @@ import KlantFormulier from '@/app/components/klanten/KlantFormulier';
 import ContactpersoonFormulier from '@/app/components/klanten/ContactpersoonFormulier';
 import InstallatieFormulier from '@/app/components/klanten/InstallatieFormulier';
 import DossierTijdlijn, { type DossierKeuze } from '@/app/components/klanten/DossierTijdlijn';
+import OnderhoudTab from '@/app/components/klanten/OnderhoudTab';
+import { termijnTekst, vandaagNl } from '@/lib/contracten';
 import {
   adresTekst,
   type Contactpersoon,
@@ -33,7 +37,15 @@ import { objectTypeIcoon, objectTypeLabel } from '@/lib/sampleObjects';
 import { ROLE_LABELS, WEERGAVE_LABELS, leesWeergave } from '@/lib/roles';
 import { mailOpstellenAdres } from '@/lib/mailOpstellen';
 
-type Tab = 'dossier' | 'contact' | 'gegevens';
+type Tab = 'dossier' | 'onderhoud' | 'contact' | 'gegevens';
+
+interface AandachtTaak {
+  id: number;
+  titel: string;
+  volgendeOp: string;
+  status: string;
+  object: { name: string };
+}
 
 export default function KlantPagina() {
   const user = useGebruiker();
@@ -57,6 +69,7 @@ export default function KlantPagina() {
   const [jaarGekozen, setJaarGekozen] = useState(false);
   const [keuze, setKeuze] = useState<DossierKeuze | null>(null);
   const [logoBezig, setLogoBezig] = useState(false);
+  const [aandacht, setAandacht] = useState<AandachtTaak[]>([]);
 
   const laad = useCallback(async () => {
     try {
@@ -76,6 +89,17 @@ export default function KlantPagina() {
   useEffect(() => {
     laad();
   }, [laad]);
+
+  // Contracttaken van deze klant die verlopen zijn of binnenkort moeten. Mislukt
+  // het, dan geen melding (de tab Onderhoud toont de fout zelf).
+  useEffect(() => {
+    let actueel = true;
+    fetch(`/api/contract-taken?aandacht=1&klantId=${id}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d: AandachtTaak[]) => { if (actueel) setAandacht(d); })
+      .catch(() => {});
+    return () => { actueel = false; };
+  }, [id]);
 
   // Het dossier van één jaar (of alle jaren). De eerste keer het jongste jaar
   // met monsters; daarna wat Roel kiest.
@@ -337,11 +361,31 @@ export default function KlantPagina() {
             <div className="alert alert-success" role="status" style={{ marginBottom: '16px' }}>{melding}</div>
           )}
 
+          {aandacht.length > 0 && (
+            <div className="alert alert-warning dossier-aandacht" role="status">
+              <Icon name="alert-warning" size={16} />
+              <div>
+                <strong>
+                  {aandacht.length === 1 ? 'Eén contracttaak vraagt aandacht' : `${aandacht.length} contracttaken vragen aandacht`}
+                </strong>
+                <ul>
+                  {aandacht.map((t) => (
+                    <li key={t.id}>
+                      {t.titel}, {t.object.name}: {termijnTekst(t.volgendeOp, vandaagNl())}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <button type="button" className="btn btn-sm" onClick={() => setTab('onderhoud')}>Onderhoud</button>
+            </div>
+          )}
+
           {/* ---------- Tabs ---------- */}
           <div className="dossier-tabbalk">
             <div className="dossier-tabs" role="tablist" aria-label="Klantdossier">
               {([
                 ['dossier', 'Objecten en installaties', klant.objecten.length],
+                ['onderhoud', 'Onderhoud', null],
                 ['contact', 'Contactpersonen', klant.contactpersonen.length],
                 ['gegevens', 'Gegevens', null],
               ] as const).map(([sleutel, naam, aantal]) => (
@@ -398,6 +442,8 @@ export default function KlantPagina() {
               )}
             </>
           )}
+
+          {tab === 'onderhoud' && <OnderhoudTab klant={{ id: klant.id, naam: klant.naam }} />}
 
           {tab === 'contact' && (
             <section className="card beheer-kaart">

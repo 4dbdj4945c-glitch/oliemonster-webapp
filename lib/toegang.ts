@@ -11,8 +11,8 @@
 // - niet ingelogd, of de gebruiker bestaat niet meer: 401
 // - moet eerst een wachtwoord instellen: 403 (proxy.ts dwingt dat ook af)
 // - de rol alleen lezen mag UITSLUITEND lezen in de module oliemonsters (en met
-//   de weergave klantportaal ook in de module inspecties, voor de rapporten van
-//   zijn eigen klant), en
+//   de weergave klantportaal ook in de modules inspecties en dagrapporten, voor
+//   de rapporten van zijn eigen klant), en
 //   alleen de monsters van zijn eigen kijkjaar (sessie.viewYear) en, als hij
 //   bij een klant hoort (sessie.klantId), alleen die van zijn klant. Het filter
 //   daarvoor staat in lib/afscherming.ts; elke route die een kijker toelaat
@@ -53,6 +53,9 @@ export const EERST_WACHTWOORD = 'Stel eerst je wachtwoord in.';
 export type Module =
   | 'oliemonsters'
   | 'inspecties'
+  | 'contracten'
+  | 'dagrapporten'
+  | 'agenda'
   | 'eigen-dossier'
   | 'planning'
   | 'objecten'
@@ -170,10 +173,11 @@ export function toegangsBesluit(
   }
   if (isAlleenLezen(gebruiker.role)) {
     // Een kijker mag alleen lezen, en alleen in de oliemonstermodule. Met het
-    // klantportaal ook de inspecties (rapporten van zijn eigen klant); de
-    // klassieke weergave, zoals de Mourik-kijker, niet.
+    // klantportaal ook de inspecties en de dagrapporten (rapporten van zijn
+    // eigen klant); de klassieke weergave, zoals de Mourik-kijker, niet.
     const magModule =
-      opties.module === 'oliemonsters' || (opties.module === 'inspecties' && krijgtKlantportaal(gebruiker));
+      opties.module === 'oliemonsters' ||
+      ((opties.module === 'inspecties' || opties.module === 'dagrapporten') && krijgtKlantportaal(gebruiker));
     if (opties.rol !== 'alleen_lezen' || !magModule) {
       return { status: 403, body: { error: 'Geen toegang' } };
     }

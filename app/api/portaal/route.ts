@@ -8,12 +8,15 @@ import { teNemen } from '@/lib/klantStatus';
 import { isAlleenLezen, krijgtKlantportaal } from '@/lib/roles';
 import { inspectiesVanKlant, inspectieInLijst } from '@/lib/inspecties/server';
 import { sjabloonVan } from '@/lib/inspecties/sjablonen';
+import { onderhoudVoorKlant } from '@/lib/contractenServer';
 
 /*
   GET /api/portaal?jaar=2026 - het klantportaal van een kijker: voortgang, stand
   per object, komende monsterdagen (zonder tijden of route), recente foto's,
   de rapporten per jaar en de afgeronde inspecties van de klant (met de
-  volgende inspectiedatum en het rapport). Alleen lezen.
+  volgende inspectiedatum en het rapport). Sinds fase 5 ook de komende
+  onderhoudsmomenten uit de contracten (zonder interne notities) en de
+  getekende dagrapporten. Alleen lezen.
 
   - Een kijker krijgt altijd zijn eigen klant; een klantId in de URL doet niets.
     Zonder klant is er geen klantportaal (403). Met een kijkjaar alleen dat jaar.
@@ -75,8 +78,13 @@ export const GET = apiRoute(
       };
     });
 
+    // Komende onderhoudsmomenten: soort, titel, plek en datum. Geen notities,
+    // geen interval, geen contractnaam (lib/contractenServer.ts).
+    const onderhoud = await onderhoudVoorKlant(klantId, sessie.viewYear);
+
     return NextResponse.json({
       inspecties,
+      onderhoud,
       klant: { id: opdracht.klant.id, naam: opdracht.klant.naam, logo: klantLogoAdres(opdracht.klant) },
       jaar,
       jaren,

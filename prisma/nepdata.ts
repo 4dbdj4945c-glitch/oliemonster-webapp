@@ -6,6 +6,8 @@
 
 import type { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 export const NEP_GEBRUIKERS = {
   admin: { username: 'admin', wachtwoord: 'admin123', role: 'admin', viewYear: null, klant: null, weergave: 'klassiek' },
@@ -68,6 +70,14 @@ function kalenderdagVanaf(n: number): Date {
 /** Wist de database en vult hem met een vaste set nepdata. Geeft de ids terug. */
 export async function vulMetNepdata(prisma: PrismaClient) {
   // Volgorde: eerst wat naar iets anders verwijst.
+  await prisma.verzending.deleteMany();
+  await prisma.agendaFeed.deleteMany();
+  await prisma.dagrapportFoto.deleteMany();
+  await prisma.dagrapport.deleteMany();
+  await prisma.samplePlanStop.deleteMany();
+  await prisma.contractTaakUitvoering.deleteMany();
+  await prisma.contractTaak.deleteMany();
+  await prisma.contract.deleteMany();
   await prisma.inspectieItem.deleteMany();
   await prisma.inspectie.deleteMany();
   await prisma.eigenDocument.deleteMany();
@@ -128,7 +138,7 @@ export async function vulMetNepdata(prisma: PrismaClient) {
     objecten.push(await prisma.sampleObject.create({ data: { ...o, address: `${o.name}, Nederland`, klantId: mourik.id } }));
   }
   const werkplaats = await prisma.sampleObject.create({
-    data: { name: 'Werkplaats Veldhoven', objectType: 'overig', address: 'Industrieweg 8, Veldhoven', klantId: tweede.id },
+    data: { name: 'Werkplaats Veldhoven', objectType: 'overig', address: 'Industrieweg 8, Veldhoven', lat: 51.4072, lng: 5.4046, klantId: tweede.id },
   });
 
   // Installaties: twee aggregaten op Sluis Grave, een pers en een compressor bij de tweede klant.
@@ -396,6 +406,85 @@ export async function vulMetNepdata(prisma: PrismaClient) {
     },
   });
 
+  // Contracten (fase 5). De tweede klant: een onderhoudscontract met vier
+  // terugkerende taken. De lekkeninspectie en de inspectie arbeidsmiddelen zijn
+  // al een keer uitgevoerd (door de afgeronde inspecties hierboven), het
+  // halfjaarlijkse onderhoud van de compressor staat vandaag op de planning en
+  // de oliemonsters zijn drie dagen te laat. Mourik: een contract met een taak
+  // ver weg. Alleen de dag telt (12:00 UTC, net als bij de inspecties).
+  const plusMaanden = (d: Date, n: number) => new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + n, d.getUTCDate(), 12));
+  const contractTweede = await prisma.contract.create({
+    data: {
+      klantId: tweede.id,
+      naam: 'Onderhoudscontract werkplaats',
+      startOp: inspectieDag(-60),
+      eindOp: inspectieDag(670),
+      notities: 'Intern: vaste prijs per bezoek afgesproken, voorrijkosten inbegrepen.',
+    },
+  });
+  const taakLekken = await prisma.contractTaak.create({
+    data: { contractId: contractTweede.id, soort: 'persluchtlekken', objectId: werkplaats.id, intervalMaanden: 12, volgendeOp: plusMaanden(inspectieDag(-21), 12), laatstUitgevoerdOp: inspectieDag(-21) },
+  });
+  await prisma.contractTaakUitvoering.create({
+    data: { taakId: taakLekken.id, datum: inspectieDag(-21), bron: `inspectie-${lekken.id}`, vorigeOp: inspectieDag(-25), volgendeOp: plusMaanden(inspectieDag(-21), 12), door: 'admin' },
+  });
+  const taakArbeidsmiddelen = await prisma.contractTaak.create({
+    data: { contractId: contractTweede.id, soort: 'arbeidsmiddelen', objectId: werkplaats.id, intervalMaanden: 12, volgendeOp: plusMaanden(inspectieDag(-10), 12), laatstUitgevoerdOp: inspectieDag(-10) },
+  });
+  await prisma.contractTaakUitvoering.create({
+    data: { taakId: taakArbeidsmiddelen.id, datum: inspectieDag(-10), bron: `inspectie-${arbeidsmiddelen.id}`, vorigeOp: inspectieDag(-5), volgendeOp: plusMaanden(inspectieDag(-10), 12), door: 'admin' },
+  });
+  const taakCompressor = await prisma.contractTaak.create({
+    data: {
+      contractId: contractTweede.id,
+      soort: 'onderhoud',
+      omschrijving: 'Halfjaarlijks onderhoud schroefcompressor',
+      objectId: werkplaats.id,
+      installatieId: installaties[3].id,
+      intervalMaanden: 6,
+      volgendeOp: inspectieDag(0),
+      geschatteMinuten: 90,
+      notities: 'Intern: filterset vooraf bestellen bij de leverancier.',
+    },
+  });
+  const taakOlie = await prisma.contractTaak.create({
+    data: { contractId: contractTweede.id, soort: 'oliemonsters', omschrijving: 'Oliemonsters kantpers en compressor', objectId: werkplaats.id, intervalMaanden: 6, volgendeOp: inspectieDag(-3) },
+  });
+  const contractMourik = await prisma.contract.create({
+    data: { klantId: mourik.id, naam: 'Oliemonstername kunstwerken', startOp: inspectieDag(-200), notities: 'Intern: gegund, twintig dagen per jaar.' },
+  });
+  const taakMourik = await prisma.contractTaak.create({
+    data: { contractId: contractMourik.id, soort: 'oliemonsters', omschrijving: 'Jaarlijkse monstername', objectId: objecten[0].id, intervalMaanden: 12, volgendeOp: inspectieDag(190), geschatteMinuten: 480 },
+  });
+  // Het onderhoud van de compressor staat vandaag op de planning, achteraan de monsterdag.
+  const taakStop = await prisma.samplePlanStop.create({
+    data: { planId: dag1.id, objectId: werkplaats.id, orderIndex: 2, taakId: taakCompressor.id },
+  });
+
+  // Dagrapporten (fase 5): een getekend rapport bij de tweede klant (dat ziet de
+  // kijker kempen in zijn portaal) en een concept bij Mourik (dat ziet niemand
+  // buiten It's Done Services).
+  const handtekening = `data:image/png;base64,${readFileSync(path.join(process.cwd(), 'public', 'nepdata', 'handtekening.png')).toString('base64')}`;
+  const dagrapportTweede = await prisma.dagrapport.create({
+    data: {
+      klantId: tweede.id,
+      objectId: werkplaats.id,
+      datum: inspectieDag(-21),
+      uitvoerder: 'Roel Mandigers',
+      werkzaamheden: 'Persluchtnet hal 1 en 2 nagelopen op lekken, drie lekken gelabeld. Twee snelkoppelingen direct vervangen.',
+      bevindingen: 'Lek bij het verdeelblok in hal 2 moet nog gerepareerd worden; onderdeel besteld.',
+      minuten: 150,
+      status: 'getekend',
+      handtekening,
+      getekendDoor: 'Piet Verhoeven',
+      getekendOp: inspectieDag(-21),
+      fotos: { create: [{ url: '/nepdata/lek-1.jpg', bijschrift: 'Lek 101, snelkoppeling werkbank 3', volgorde: 1 }, { url: '/nepdata/lek-3.jpg', bijschrift: 'Lek 103, verdeelblok', volgorde: 2 }] },
+    },
+  });
+  const dagrapportMourik = await prisma.dagrapport.create({
+    data: { klantId: mourik.id, planId: dag1.id, objectId: objecten[2].id, datum: inspectieDag(0), uitvoerder: 'Roel Mandigers', werkzaamheden: 'Monstername Sluis Sambeek.', minuten: 60 },
+  });
+
   // Eigen dossier: VCA verloopt binnen 30 dagen, de kalibratie is verlopen.
   await prisma.eigenDocument.createMany({
     data: [
@@ -412,6 +501,11 @@ export async function vulMetNepdata(prisma: PrismaClient) {
     gebruikers,
     klanten: { mourik: mourik.id, tweede: tweede.id },
     inspecties: { lekken: lekken.id, arbeidsmiddelen: arbeidsmiddelen.id, conceptTweede: conceptTweede.id, conceptMourik: conceptMourik.id },
+    contracten: { tweede: contractTweede.id, mourik: contractMourik.id },
+    taken: { lekken: taakLekken.id, arbeidsmiddelen: taakArbeidsmiddelen.id, compressor: taakCompressor.id, olie: taakOlie.id, mourik: taakMourik.id },
+    taakStop: taakStop.id,
+    dagen: { vandaag: dag1.id, overmorgen: dag2.id, volgendeWeek: dag3.id },
+    dagrapporten: { tweede: dagrapportTweede.id, mourik: dagrapportMourik.id },
     objecten: objecten.map((o) => o.id),
     werkplaats: werkplaats.id,
     installaties: installaties.map((x) => x.id),

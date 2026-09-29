@@ -107,6 +107,16 @@ export const MODULES: ModuleInfo[] = [
     tegel: true,
   },
   {
+    sleutel: 'contracten',
+    naam: 'Contracten',
+    beschrijving: 'Terugkerende taken per klant, met wat verlopen is of binnenkort moet',
+    icoon: 'module-contracten',
+    route: '/dashboard/contracten',
+    sectie: 'Klanten',
+    rollen: MEDEWERKERS,
+    tegel: true,
+  },
+  {
     sleutel: 'acquisitie',
     naam: 'Acquisitie',
     beschrijving: 'Prospects, pijplijn en contactmomenten voor nieuwe vaste klanten',

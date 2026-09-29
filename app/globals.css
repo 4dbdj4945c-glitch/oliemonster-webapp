@@ -5117,3 +5117,62 @@ div.veld-lijst-regel { cursor: default; }
   .eigen-regel { flex-wrap: wrap; }
   .eigen-regel .eigen-open { flex-basis: calc(100% - 60px); }
 }
+
+/* ============================================================
+   Fase 5: taken en inspecties op de planning
+   ============================================================ */
+
+/* Tweede kop in het blok Nog in te plannen, met een lijn erboven */
+.plan-objecten-tussenkop {
+  border-top: 1px solid var(--grijs-200);
+}
+
+/* Contracttaak of Inspectie achter de naam van een stop */
+.plan-stop-soort {
+  font-size: 11px;
+  padding: 1px 8px;
+}
+
+/* Veldscherm: taken en inspecties naast de monsters */
+.veld-voortgang-bezoeken { margin: 6px 0 0; font-size: 13px; color: var(--grijs-700); }
+.veld-bezoek-titel { font-size: 24px; font-weight: 800; color: var(--navy); margin: 4px 0 8px; }
+
+/* Vandaag, blok Onderhoud: de tekst van een regel is een link naar het contract */
+a.rij-tekst.rij-link { color: inherit; text-decoration: none; }
+a.rij-tekst.rij-link:hover strong { text-decoration: underline; }
+
+/* ---------- Contracten (/dashboard/contracten, fase 5) ---------- */
+.contract-soorten { grid-auto-flow: row; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.contract-eigen-interval { margin-top: 8px; max-width: 140px; }
+.label-bij { font-weight: 400; color: var(--grijs-500); }
+.contract-kaart { padding: 0; overflow: hidden; margin-bottom: 16px; }
+.contract-kaart-kop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  background: var(--grijs-50);
+  border-bottom: 1px solid var(--grijs-200);
+}
+.contract-kaart-kop h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--navy); }
+.contract-kaart-kop h2 a { color: inherit; text-decoration: none; }
+.contract-kaart-kop h2 a:hover { text-decoration: underline; }
+.contract-kaart-kop p { margin: 2px 0 0; font-size: 13px; color: var(--grijs-500); }
+.contract-taak { align-items: flex-start; }
+.contract-taak .rij-tekst > span { overflow-wrap: anywhere; }
+.contract-taak-status { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; text-align: right; font-size: 13px; }
+.contract-taak-status .datum { font-weight: 600; color: var(--navy); }
+.contract-geschiedenis { margin: 6px 0 0; padding: 0; list-style: none; font-size: 12px; color: var(--grijs-500); }
+.contract-notitie { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; color: var(--grijs-700); margin: 8px 0 0; }
+.contract-notitie .icon { flex: none; margin-top: 1px; color: var(--grijs-500); }
+.contract-leeg { padding: 16px 20px; font-size: 14px; color: var(--grijs-500); }
+
+@media (max-width: 640px) {
+  .contract-kaart-kop { flex-direction: column; }
+  .contract-taak { flex-wrap: wrap; }
+  .contract-taak .rij-tekst { flex-basis: calc(100% - 50px); }
+  .contract-taak-status { flex-direction: row; align-items: center; justify-content: space-between; width: 100%; padding-left: 50px; }
+  .contract-taak .rij-knoppen { width: 100%; padding-left: 50px; }
+  .contract-taak .rij-knoppen .btn { flex: 1; }
+}

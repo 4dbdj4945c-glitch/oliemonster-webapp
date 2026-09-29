@@ -11,6 +11,8 @@
 
   Voor de beheerder staat erbij wat in het eigen dossier binnen 30 dagen
   verloopt of al verlopen is (lib/eigenDossier.ts); zonder zo'n document geen blok.
+  Net zo het blok Onderhoud: contracttaken die verlopen zijn of binnen 30 dagen
+  moeten (lib/contracten.ts), zolang ze niet op een komende dag staan.
 
   Alleen echte gegevens: blokken waarvoor nog geen module bestaat (contracten,
   rapporten) staan er niet. Elk blok laadt en faalt apart, met een
@@ -28,6 +30,7 @@ import { magModule, moduleVan, oliemonsterPad } from '@/lib/modules';
 import { minutenAlsTekst } from '@/lib/planningInstellingen';
 import { actiesVoorVandaag, type ProspectRegel } from '@/lib/prospects';
 import { GELDIGHEID_BADGE, GELDIGHEID_LABEL, vervalTekst, type Geldigheid } from '@/lib/eigenDossier';
+import { TAAK_STATUS_BADGE, TAAK_STATUS_LABEL, taakSoortInfo, termijnTekst, vandaagNl, type TaakStatus } from '@/lib/contracten';
 import {
   begroeting,
   bouwVandaag,
@@ -65,6 +68,26 @@ function namenVan(dag: VandaagDag): string {
 
 const MAX_ACTIES = 5;
 
+interface TaakRegel {
+  id: number;
+  contractId: number;
+  titel: string;
+  soort: string;
+  klant: { id: number; naam: string };
+  object: { name: string };
+  volgendeOp: string;
+  status: TaakStatus;
+}
+
+const MAX_TAKEN = 6;
+
+/** Een stop op de monsterdag: het object, en bij een taak of inspectie wat er gebeurt. */
+function stopRegel(s: VandaagDag['stops'][number]): string {
+  if (s.soort === 'taak' && s.taak) return `${s.taak.titel}, ca. ${minutenAlsTekst(s.werkMinuten)}${s.isDone ? ', klaar' : ''}`;
+  if (s.soort === 'inspectie' && s.inspectie) return `${s.inspectie.naam}, ca. ${minutenAlsTekst(s.werkMinuten)}${s.isDone ? ', klaar' : ''}`;
+  return `${monsters(s.aantalMonsters)}, ca. ${minutenAlsTekst(s.werkMinuten)}${s.isDone ? ', klaar' : s.aantalGenomen > 0 ? `, ${s.aantalGenomen} genomen` : ''}`;
+}
+
 interface DossierRegel {
   id: number;
   titel: string;
@@ -78,7 +101,9 @@ export default function Vandaag() {
   const magAcquisitie = magModule(moduleVan('acquisitie'), user.role);
   const magPlanning = magModule(moduleVan('planning'), user.role);
   const magDossier = magModule(moduleVan('eigen-dossier'), user.role);
+  const magContracten = magModule(moduleVan('contracten'), user.role);
   const [documenten, setDocumenten] = useState<DossierRegel[]>([]);
+  const [taken, setTaken] = useState<Stand<TaakRegel[]>>({ status: 'laden' });
 
   const [planning, setPlanning] = useState<Stand<{ dagen: VandaagDag[]; objecten: VandaagObject[] }>>({ status: 'laden' });
   const [samples, setSamples] = useState<Stand<VandaagMonster[]>>({ status: 'laden' });
@@ -114,11 +139,18 @@ export default function Vandaag() {
     if (r.status === 'ok') setDocumenten(r.data.filter((d) => d.geldigheid === 'verloopt' || d.geldigheid === 'verlopen'));
   }, [magDossier]);
 
+  // Onderhoud: contracttaken die verlopen zijn of binnenkort moeten.
+  const haalTaken = useCallback(async () => {
+    if (!magContracten) return;
+    setTaken(await haal<TaakRegel[]>('/api/contract-taken?aandacht=1', 'Het onderhoud kon niet worden opgehaald.'));
+  }, [magContracten]);
+
   useEffect(() => {
     haalWerk();
     haalActies();
     haalDossier();
-  }, [haalWerk, haalActies, haalDossier]);
+    haalTaken();
+  }, [haalWerk, haalActies, haalDossier, haalTaken]);
 
   const laadWerk = () => {
     setPlanning({ status: 'laden' });
@@ -283,6 +315,40 @@ export default function Vandaag() {
         </div>
 
         <div className="vandaag-zij">
+          {/* ---------- Onderhoud: contracttaken die aandacht vragen ---------- */}
+          {magContracten && (taken.status === 'fout' || (taken.status === 'ok' && taken.data.length > 0)) && (
+            <section className="vandaag-sectie" aria-labelledby="kop-onderhoud">
+              <div className="sectiekop">
+                <h2 id="kop-onderhoud">Onderhoud</h2>
+                <Link href="/dashboard/contracten">Contracten</Link>
+              </div>
+              {taken.status === 'fout' ? (
+                <LaadFout melding={taken.melding} onOpnieuw={() => { setTaken({ status: 'laden' }); haalTaken(); }} />
+              ) : (
+                <ul className="card rijen">
+                  {taken.data.slice(0, MAX_TAKEN).map((t) => (
+                    <li key={t.id} className="rij">
+                      <span className="icoonvak" aria-hidden="true"><Icon name={taakSoortInfo(t.soort).icoon} /></span>
+                      <Link href={`/dashboard/contracten/${t.contractId}`} className="rij-tekst rij-link">
+                        <strong>{t.titel}</strong>
+                        <span>
+                          {t.klant.naam}, {t.object.name}.{' '}
+                          <span className={t.status === 'verlopen' ? 'tekst-te-laat' : undefined}>{termijnTekst(t.volgendeOp, vandaagNl())}</span>
+                        </span>
+                      </Link>
+                      <span className={`badge ${TAAK_STATUS_BADGE[t.status]}`}>{TAAK_STATUS_LABEL[t.status]}</span>
+                    </li>
+                  ))}
+                  {taken.data.length > MAX_TAKEN && (
+                    <li className="rij rij-meer">
+                      <Link href="/dashboard/contracten">Alle {taken.data.length} taken die aandacht vragen</Link>
+                    </li>
+                  )}
+                </ul>
+              )}
+            </section>
+          )}
+
           {/* ---------- Eigen dossier: verloopt binnen 30 dagen ---------- */}
           {documenten.length > 0 && (
             <section className="vandaag-sectie" aria-labelledby="kop-dossier">
@@ -401,10 +467,7 @@ function MonsterdagKaart({ dag, jaar }: { dag: VandaagDag; jaar: number }) {
               <span className={`plan-nummer${s.isDone ? ' plan-nummer-klaar' : ''}`}>{i + 1}</span>
               <span className="rij-tekst">
                 <strong>{s.object.name}</strong>
-                <span>
-                  {monsters(s.aantalMonsters)}, ca. {minutenAlsTekst(s.werkMinuten)}
-                  {s.isDone ? ', klaar' : s.aantalGenomen > 0 ? `, ${s.aantalGenomen} genomen` : ''}
-                </span>
+                <span>{stopRegel(s)}</span>
               </span>
             </li>
           ))}

@@ -13,6 +13,7 @@ import {
   inspectieAlsJson,
   metWaardeFout,
 } from '@/lib/inspecties/server';
+import { naInspectieStatus } from '@/lib/contractenServer';
 
 /*
   GET    /api/inspecties/[id] - de inspectie met bevindingen en totalen (beheerder en gebruiker)
@@ -49,12 +50,26 @@ export const PUT = apiRoute({ rol: 'admin', module: 'inspecties', fout: 'Fout bi
     data.afgerondOp = invoer.status === 'afgerond' ? new Date() : null;
     data.afgerondDoor = invoer.status === 'afgerond' ? sessie.username : null;
   }
-  await prisma.inspectie.update({ where: { id }, data, select: { id: true } });
+  const na = await prisma.inspectie.update({
+    where: { id },
+    data,
+    select: { id: true, sjabloon: true, objectId: true, installatieId: true, datum: true, status: true },
+  });
+  // Contracttaken van dit sjabloon op dit object gaan door (afgerond) of terug
+  // (weer concept). Ook bij een nieuwe datum van een afgeronde inspectie: eerst
+  // terug, dan opnieuw vanaf de nieuwe datum.
+  let taken: number[] = [];
+  if (data.status !== undefined) {
+    taken = await naInspectieStatus(na, na.status === 'afgerond', sessie.username);
+  } else if (na.status === 'afgerond' && (data.datum !== undefined || data.installatieId !== undefined)) {
+    await naInspectieStatus({ ...na, installatieId: huidig.installatieId, datum: huidig.datum }, false, sessie.username);
+    taken = await naInspectieStatus(na, true, sessie.username);
+  }
   await createAuditLog({
     userId: sessie.userId,
     username: sessie.username,
     action: AuditActions.UPDATE_INSPECTIE,
-    details: { id, velden: Object.keys(data), status: data.status },
+    details: { id, velden: Object.keys(data), status: data.status, ...(taken.length ? { contractTaken: taken } : {}) },
     request,
   });
   return NextResponse.json(inspectieAlsJson(await haalInspectie(id, sessie)));
@@ -70,7 +85,13 @@ export const DELETE = apiRoute({ rol: 'admin', module: 'inspecties', fout: 'Fout
   if ((bevestig ?? '').trim().toUpperCase() !== nummer) {
     throw new ApiFout(400, `Typ ${nummer} over om het verwijderen te bevestigen.`);
   }
-  await prisma.inspectie.update({ where: { id }, data: { deletedAt: new Date(), deletedBy: sessie.username } });
+  const weg = await prisma.inspectie.update({
+    where: { id },
+    data: { deletedAt: new Date(), deletedBy: sessie.username },
+    select: { id: true, sjabloon: true, objectId: true, installatieId: true, datum: true, status: true },
+  });
+  // Een afgeronde inspectie die weggaat, telt ook niet meer als uitvoering van een contracttaak.
+  if (weg.status === 'afgerond') await naInspectieStatus(weg, false, sessie.username);
   await createAuditLog({
     userId: sessie.userId,
     username: sessie.username,

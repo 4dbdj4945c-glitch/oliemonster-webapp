@@ -21,6 +21,10 @@ export interface VandaagMonster {
 
 export interface VandaagStop {
   id: number;
+  /** monsters, taak of inspectie (fase 5); leeg = monsters */
+  soort?: 'monsters' | 'taak' | 'inspectie';
+  taak?: { titel: string; soortLabel: string } | null;
+  inspectie?: { naam: string; nummer: string } | null;
   objectId: number;
   object: { name: string; lat: number | null; lng: number | null; address: string | null };
   samples: { id: number; isTaken: boolean }[];
