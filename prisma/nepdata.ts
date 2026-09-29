@@ -43,6 +43,20 @@ const ONDERDELEN = [
   'Cilinder puntdeur links',
 ];
 
+/** Middernacht van vandaag plus n dagen, in de eigen tijdzone. */
+function dagVanaf(n: number): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+/** Een kalenderdag vanaf vandaag als UTC-middernacht, zoals de prospectdatums worden opgeslagen. */
+function kalenderdagVanaf(n: number): Date {
+  const d = dagVanaf(n);
+  return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+}
+
 /** Wist de database en vult hem met een vaste set nepdata. Geeft de ids terug. */
 export async function vulMetNepdata(prisma: PrismaClient) {
   // Volgorde: eerst wat naar iets anders verwijst.
@@ -182,12 +196,14 @@ export async function vulMetNepdata(prisma: PrismaClient) {
     },
   });
 
-  // Planning 2026: twee werkdagen met de objecten die nog open staan.
+  // Planning 2026: vandaag en overmorgen, met de objecten die nog open staan.
+  // Ten opzichte van vandaag, zodat het startscherm Vandaag altijd een
+  // monsterdag laat zien. Middernacht in de eigen tijdzone, zoals de API opslaat.
   const dag1 = await prisma.samplePlan.create({
-    data: { date: new Date('2026-10-05T00:00:00'), analysisYear: 2026 },
+    data: { date: dagVanaf(0), analysisYear: 2026 },
   });
   const dag2 = await prisma.samplePlan.create({
-    data: { date: new Date('2026-10-06T00:00:00'), analysisYear: 2026, notes: 'Sleutel ophalen bij de sluiswachter' },
+    data: { date: dagVanaf(2), analysisYear: 2026, notes: 'Sleutel ophalen bij de sluiswachter' },
   });
   await prisma.samplePlanStop.createMany({
     data: [
@@ -195,6 +211,15 @@ export async function vulMetNepdata(prisma: PrismaClient) {
       { planId: dag1.id, objectId: objecten[3].id, orderIndex: 1 },
       { planId: dag2.id, objectId: objecten[4].id, orderIndex: 0 },
       { planId: dag2.id, objectId: objecten[5].id, orderIndex: 1, plannedMinutes: 45 },
+    ],
+  });
+
+  // Acquisitie: een actie die te laat is, een voor vandaag en een voor later.
+  await prisma.prospect.createMany({
+    data: [
+      { bedrijfsnaam: 'Kunststofpers Brabant', plaats: 'Tilburg', status: 'BENADERD', telefoon: '013 1234567', contactpersoon: 'Ruud Martens', volgendeActie: 'Nabellen over de eerste mail', volgendeActieOp: kalenderdagVanaf(-2), segment: 'industrie' },
+      { bedrijfsnaam: 'Metaalbewerking De Kempen', plaats: 'Eersel', status: 'GESPREK', email: 'info@example.com', volgendeActie: 'Voorstel keuring arbeidsmiddelen sturen', volgendeActieOp: kalenderdagVanaf(0), segment: 'industrie' },
+      { bedrijfsnaam: 'Loonbedrijf Heezerveld', plaats: 'Heeze', status: 'NIEUW', volgendeActie: 'Eerste mail sturen', volgendeActieOp: kalenderdagVanaf(5), segment: 'dienstverlener' },
     ],
   });
 

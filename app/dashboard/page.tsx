@@ -1,10 +1,15 @@
 'use client';
 
-// Het dashboard: per sectie uit het moduleregister (lib/modules.ts) een tegel
-// voor elke module die deze gebruiker mag zien. De oliemonsters krijgen een
-// tegel per analysejaar. Een kijker met een vast jaar komt hier niet (die gaat
+// Het startscherm /dashboard.
+//
+// Beheerder en gebruiker: Vandaag (app/components/vandaag/Vandaag.tsx), met de
+// monsterdag, openstaande monsters, acties en de voortgang. De modules staan in
+// de navigatie.
+//
+// Kijker (rol alleen lezen): het oude dashboard hieronder, ongewijzigd, met per
+// analysejaar een tegel. Een kijker met een vast jaar komt hier niet (die gaat
 // meteen naar zijn jaarpagina); een kijker zonder vast jaar ziet alleen de
-// oliemonsters.
+// oliemonsters. Zijn klantportaal komt in een volgende fase.
 
 import { useState, useEffect } from 'react';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
@@ -15,6 +20,7 @@ import { modulesVoor, oliemonsterPad, SECTIES, type ModuleInfo } from '@/lib/mod
 import LaadFout from '@/app/components/LaadFout';
 import { GEEN_VERBINDING } from '@/lib/foutmelding';
 import { AppShell, Icon } from '@/app/components/ui';
+import Vandaag from '@/app/components/vandaag/Vandaag';
 
 interface Stat {
   waarde: number;
@@ -40,6 +46,11 @@ async function lijst(url: string): Promise<unknown[]> {
 }
 
 export default function DashboardPage() {
+  const user = useGebruiker();
+  return isAlleenLezen(user.role) ? <KijkerDashboard /> : <Vandaag />;
+}
+
+function KijkerDashboard() {
   const user = useGebruiker();
   const router = useRouter();
   const alleenLezen = isAlleenLezen(user.role);

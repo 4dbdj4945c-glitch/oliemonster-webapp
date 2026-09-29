@@ -17,7 +17,7 @@ import {
   kwartaalGrenzen,
   eindeVanDezeWeek,
   actieStaatOpen,
-  dagenGeleden,
+  actiesVoorVandaag,
   datumNL,
   datumVoorVeld,
   euroTekst,
@@ -33,13 +33,6 @@ interface User {
 }
 
 type Sortering = 'score' | 'afstand' | 'actie' | 'naam';
-
-interface ActieItem {
-  prospect: ProspectRegel;
-  reden: string;
-  urgent: boolean;
-  sorteer: number;
-}
 
 const leegFormulier = {
   bedrijfsnaam: '',
@@ -112,9 +105,16 @@ export default function AcquisitiePage() {
         setGeladen(false);
         return;
       }
-      setProspects(await res.json());
+      const lijst: ProspectRegel[] = await res.json();
+      setProspects(lijst);
       setGeladen(true);
       setLaadFout('');
+      // Vanaf Vandaag: /dashboard/acquisitie?prospect=12 opent die prospect meteen.
+      const gevraagd = Number(new URLSearchParams(window.location.search).get('prospect'));
+      if (gevraagd && lijst.some((p) => p.id === gevraagd)) {
+        setDetailId(gevraagd);
+        window.history.replaceState(null, '', window.location.pathname);
+      }
     } catch {
       setLaadFout(GEEN_VERBINDING);
       setGeladen(false);
@@ -153,37 +153,7 @@ export default function AcquisitiePage() {
 
   /* ---------- Wat moet er vandaag gebeuren ---------- */
 
-  const actielijst = useMemo<ActieItem[]>(() => {
-    const items: ActieItem[] = [];
-    for (const p of prospects) {
-      if (p.archief || p.status === 'KLANT' || p.status === 'AFGEWEZEN') continue;
-      if (p.afgemeldOp) continue;  // afgemeld, dus niet meer benaderen
-
-      const dagenTeLaat = dagenGeleden(p.volgendeActieOp);
-      if (p.volgendeActieOp && dagenTeLaat !== null && dagenTeLaat >= 0) {
-        items.push({
-          prospect: p,
-          reden: dagenTeLaat === 0 ? 'Staat voor vandaag' : `${dagenTeLaat} ${dagenTeLaat === 1 ? 'dag' : 'dagen'} te laat`,
-          urgent: dagenTeLaat > 0,
-          sorteer: dagenTeLaat,
-        });
-        continue;
-      }
-
-      if (p.status === 'BENADERD') {
-        const sinds = dagenGeleden(p.laatsteContactOp ?? p.createdAt);
-        if (sinds !== null && sinds >= OPVOLGEN_NA_DAGEN) {
-          items.push({
-            prospect: p,
-            reden: `${sinds} dagen benaderd zonder reactie, tijd om op te volgen`,
-            urgent: false,
-            sorteer: sinds,
-          });
-        }
-      }
-    }
-    return items.sort((a, b) => b.sorteer - a.sorteer);
-  }, [prospects]);
+  const actielijst = useMemo(() => actiesVoorVandaag(prospects), [prospects]);
 
   /* ---------- Filteren en sorteren ---------- */
 

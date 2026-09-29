@@ -225,3 +225,54 @@ export function dagenGeleden(iso: string | null | undefined): number | null {
   d.setHours(0, 0, 0, 0);
   return Math.round((beginVanVandaag().getTime() - d.getTime()) / 86400000);
 }
+
+/** Een actie in "Wat moet er vandaag gebeuren" (Acquisitie en Vandaag). */
+export interface ActieItem<P extends ProspectActieBron = ProspectRegel> {
+  prospect: P;
+  reden: string;
+  /** Te laat (rood); anders staat hij voor vandaag of moet hij worden opgevolgd. */
+  urgent: boolean;
+  sorteer: number;
+}
+
+export type ProspectActieBron = Pick<
+  ProspectRegel,
+  'archief' | 'status' | 'afgemeldOp' | 'volgendeActieOp' | 'laatsteContactOp' | 'createdAt'
+>;
+
+/**
+ * Wat moet er vandaag gebeuren: acties die vandaag of eerder moesten, plus
+ * prospects die al OPVOLGEN_NA_DAGEN op Benaderd staan zonder reactie. De
+ * langst openstaande bovenaan. Eén regel voor Acquisitie en het startscherm.
+ */
+export function actiesVoorVandaag<P extends ProspectActieBron>(prospects: P[]): ActieItem<P>[] {
+  const items: ActieItem<P>[] = [];
+  for (const p of prospects) {
+    if (p.archief || p.status === 'KLANT' || p.status === 'AFGEWEZEN') continue;
+    if (p.afgemeldOp) continue; // afgemeld, dus niet meer benaderen
+
+    const dagenTeLaat = dagenGeleden(p.volgendeActieOp);
+    if (p.volgendeActieOp && dagenTeLaat !== null && dagenTeLaat >= 0) {
+      items.push({
+        prospect: p,
+        reden: dagenTeLaat === 0 ? 'Staat voor vandaag' : `${dagenTeLaat} ${dagenTeLaat === 1 ? 'dag' : 'dagen'} te laat`,
+        urgent: dagenTeLaat > 0,
+        sorteer: dagenTeLaat,
+      });
+      continue;
+    }
+
+    if (p.status === 'BENADERD') {
+      const sinds = dagenGeleden(p.laatsteContactOp ?? p.createdAt);
+      if (sinds !== null && sinds >= OPVOLGEN_NA_DAGEN) {
+        items.push({
+          prospect: p,
+          reden: `${sinds} dagen benaderd zonder reactie, tijd om op te volgen`,
+          urgent: false,
+          sorteer: sinds,
+        });
+      }
+    }
+  }
+  return items.sort((a, b) => b.sorteer - a.sorteer);
+}
