@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import Icon from './ui/Icon';
 import LaadFout from './LaadFout';
 import OngedaanMelding, { type OngedaanInhoud } from './OngedaanMelding';
+import MonsterNemenModal, { type NeemDoel } from './MonsterNemenModal';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { objectTypeIcoon } from '@/lib/sampleObjects';
 import {
@@ -195,6 +196,9 @@ export default function PlanningPaneel({
   const [laden, setLaden] = useState(true);
   const [foutmelding, setFoutmelding] = useState('');
   const [melding, setMelding] = useState('');
+  // Dagscherm: een tik op een open monster opent Monster nemen (datum, olie,
+  // foto's). Vroeger zette die tik het monster direct op genomen, zonder bewijs.
+  const [neemDoel, setNeemDoel] = useState<NeemDoel | null>(null);
   // Na een object van een dag halen: tien seconden Ongedaan maken
   const [ongedaan, setOngedaan] = useState<OngedaanInhoud | null>(null);
 
@@ -545,22 +549,11 @@ export default function PlanningPaneel({
     }
   };
 
-  const zetMonster = async (monster: PlanMonster, genomen: boolean) => {
-    try {
-      const res = await fetch(`/api/samples/${monster.id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isTaken: genomen }),
-      });
-      if (!res.ok) {
-        setFoutmelding(`${monster.oNumber} is niet bijgewerkt: ${await foutTekst(res, 'de server gaf geen reden.')}`);
-        return;
-      }
-      setFoutmelding('');
-      await laadPlanning();
-    } catch {
-      setFoutmelding(`${monster.oNumber} is niet opgeslagen: geen verbinding met de server.`);
-    }
+  const naMonsterNemen = async (tekst: string) => {
+    setNeemDoel(null);
+    setFoutmelding('');
+    setMelding(tekst);
+    await laadPlanning();
   };
 
   const stopGps = useCallback(() => {
@@ -1018,14 +1011,14 @@ export default function PlanningPaneel({
                                       <button
                                         type="button"
                                         className="plan-monster-knop"
-                                        onClick={() => isAdmin && zetMonster(m, !m.isTaken)}
-                                        disabled={!isAdmin}
-                                        aria-pressed={m.isTaken}
-                                        title={m.isTaken ? `${m.oNumber} op niet genomen zetten` : `${m.oNumber} op genomen zetten`}
+                                        onClick={() => isAdmin && !m.isTaken && setNeemDoel(m)}
+                                        disabled={!isAdmin || m.isTaken}
+                                        aria-haspopup={m.isTaken ? undefined : 'dialog'}
+                                        title={m.isTaken ? `${m.oNumber} is genomen` : `${m.oNumber} nemen: datum, type olie en foto's`}
                                       >
                                         <span className={`badge ${m.isTaken ? 'badge-success' : 'badge-danger'}`}>
                                           <Icon name={m.isTaken ? 'status-taken' : 'status-not-taken'} size={16} />
-                                          {m.isTaken ? 'Genomen' : 'Nog doen'}
+                                          {m.isTaken ? 'Genomen' : 'Niet genomen'}
                                         </span>
                                         <span className="plan-monster-tekst">
                                           <strong>{m.oNumber}</strong>
@@ -1171,6 +1164,13 @@ export default function PlanningPaneel({
         </div>
       )}
       <OngedaanMelding melding={ongedaan} onSluit={() => setOngedaan(null)} />
+
+      <MonsterNemenModal
+        key={`plan-nemen-${neemDoel?.id ?? 'geen'}`}
+        doel={neemDoel}
+        onClose={() => setNeemDoel(null)}
+        onKlaar={naMonsterNemen}
+      />
     </div>
   );
 }
