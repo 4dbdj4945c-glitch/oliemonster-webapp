@@ -273,10 +273,16 @@ hieronder. Pas die twee nooit aan; wijzigingen komen altijd in een nieuwe migrat
   krijgt het logo `/mourik_logo.png`. Er verdwijnt niets; vaker draaien doet
   niets extra.
 
-- `20260930090100_cache_naar_poging`: alleen data. Opmerking en foto's die op main
-  rechtstreeks op het monster zijn gezet (zonder poging), komen op de laatste poging,
-  zodat de eerstvolgende klik ze niet wist. Vult alleen lege velden, overschrijft niets.
-  In de migratie staat een telquery om vooraf op een kopie te zien hoeveel monsters het raakt.
+- `20260930090100_cache_naar_poging`: alleen data. Op main schreef Bijwerken opmerking,
+  datum en status, en de fotoknop de foto's, rechtstreeks op het monster. Sinds fase 1b
+  spiegelt elke klik de laatste poging naar het monster; zonder deze migratie zou zo'n
+  monster bij de eerste klik terugspringen. Drie stappen: (0) een monster met gegevens maar
+  zonder poging krijgt een poging met die gegevens; (1) lege opmerking en foto's van de
+  laatste poging worden gevuld vanuit het monster; (2) datum en status van het monster gaan
+  naar de laatste poging, behalve als een andere poging daardoor de laatste zou worden (die
+  blijven staan en moeten met de hand bekeken worden). Bovenin het bestand staat de
+  telquery (vooraf op een kopie draaien), onderaan in het commentaar de query die na afloop
+  de overgebleven afwijkers toont.
 
 **Productie bijwerken (Roel, op zijn Mac):**
 
@@ -342,7 +348,11 @@ de migratiecontrole, de tests (met een eigen PostgreSQL) en de build.
   de klant van dat object in `OilSample.klantId` (`bewaarKlantBijLoskoppelen`); overnemen naar
   een nieuw jaar neemt de klant mee.
 - Een rapport boven 4 MB (Vercel-limiet 4,5 MB) gaat eerst naar Blob (`rapporten/`, onvindbare
-  naam, een uur bewaard) en de browser krijgt een doorverwijzing.
+  naam, een uur bewaard) en de browser krijgt een doorverwijzing. Opruimen gebeurt bij de volgende grote
+  download; komt die niet, dan blijft het (openbare maar onvindbare) bestand staan.
+- Een nieuw monster zonder object krijgt alleen een klant als `klantId` meekomt in de API;
+  het monsterformulier heeft daar nog geen keuze voor. Zo'n monster ziet geen enkele kijker
+  tot het een object (met klant) krijgt.
 - Afscherming per klant (lib/afscherming.ts): een kijker met `klantId` ziet alleen de
   monsters, objecten, planning, foto's en rapporten van die klant, en daarbinnen alleen
   zijn `viewYear`. Bij welke klant een monster hoort: de klant van zijn object, of bij

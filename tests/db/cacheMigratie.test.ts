@@ -10,6 +10,13 @@ import { wijzigLaatstePoging } from '@/lib/sampleAttempts';
 const SQL = readFileSync('prisma/migrations/20260930090100_cache_naar_poging/migration.sql', 'utf8');
 let ids: Awaited<ReturnType<typeof vulMetNepdata>>;
 
+/** De migratie heeft twee statements; executeRaw doet er één tegelijk. */
+async function draaiMigratie() {
+  for (const stuk of SQL.split(/;\s*\n/).map((x) => x.replace(/^\s*--.*$/gm, '').trim()).filter(Boolean)) {
+    await prisma.$executeRawUnsafe(stuk);
+  }
+}
+
 beforeEach(async () => {
   ids = await vulMetNepdata(prisma);
 });
@@ -23,8 +30,8 @@ describe('cache naar de laatste poging', () => {
     const ander = ids.monsters[2025][1];
     await prisma.oilSample.update({ where: { id: ander }, data: { remarks: 'oud' } });
 
-    await prisma.$executeRawUnsafe(SQL);
-    await prisma.$executeRawUnsafe(SQL); // vaker draaien doet niets extra
+    await draaiMigratie();
+    await draaiMigratie(); // vaker draaien doet niets extra
 
     const [poging] = await prisma.sampleAttempt.findMany({ where: { oilSampleId: id } });
     expect(poging.remarks).toBe('lekkage pomp');
@@ -43,9 +50,70 @@ describe('cache naar de laatste poging', () => {
     const id = ids.monsters[2025][2];
     const zonderDatum = await prisma.sampleAttempt.create({ data: { oilSampleId: id, isTaken: false } });
     await prisma.oilSample.update({ where: { id }, data: { remarks: 'alleen op het monster' } });
-    await prisma.$executeRawUnsafe(SQL);
+    await draaiMigratie();
     expect((await prisma.sampleAttempt.findUniqueOrThrow({ where: { id: zonderDatum.id } })).remarks).toBe('alleen op het monster');
     await wijzigLaatstePoging(id, { isTaken: true, sampleDate: new Date() });
     expect((await prisma.oilSample.findUniqueOrThrow({ where: { id } })).remarks).toBe('alleen op het monster');
+  });
+});
+
+describe('datum en genomen van het monster naar de laatste poging', () => {
+  const voerUit = draaiMigratie;
+
+  it('een monster dat genomen is maar een lege poging heeft, blijft genomen na een foto', async () => {
+    const id = ids.monsters[2026][6]; // open monster, zonder poging in de nepdata
+    const leeg = await prisma.sampleAttempt.create({ data: { oilSampleId: id, isTaken: false } });
+    const datum = new Date(Date.UTC(2026, 2, 12));
+    await prisma.oilSample.update({ where: { id }, data: { isTaken: true, sampleDate: datum } });
+
+    await voerUit();
+    await voerUit();
+
+    const p = await prisma.sampleAttempt.findUniqueOrThrow({ where: { id: leeg.id } });
+    expect(p.isTaken).toBe(true);
+    expect(p.sampleDate?.toISOString()).toBe(datum.toISOString());
+    await wijzigLaatstePoging(id, { photoUrl: 'https://x.public.blob.vercel-storage.com/nieuw.jpg' });
+    const m = await prisma.oilSample.findUniqueOrThrow({ where: { id } });
+    expect(m.isTaken).toBe(true);
+    expect(m.sampleDate?.toISOString()).toBe(datum.toISOString());
+  });
+
+  it('een andere datum op het monster wint als de poging de laatste blijft', async () => {
+    const id = ids.monsters[2025][3];
+    const datum = new Date(Date.UTC(2025, 4, 20));
+    await prisma.oilSample.update({ where: { id }, data: { sampleDate: datum } });
+    await voerUit();
+    const [p] = await prisma.sampleAttempt.findMany({ where: { oilSampleId: id } });
+    expect(p.sampleDate?.toISOString()).toBe(datum.toISOString());
+  });
+
+  it('verandert niets als een andere poging dan de laatste zou worden', async () => {
+    const id = ids.monsters[2025][4];
+    // Twee pogingen zonder datum: de nieuwste is de laatste. Krijgt die een datum,
+    // dan schuift de andere naar boven. Dan dus niets aanpassen.
+    const eerste = await prisma.sampleAttempt.create({ data: { oilSampleId: id, isTaken: false, createdAt: new Date(Date.UTC(2025, 5, 1)) } });
+    const tweede = await prisma.sampleAttempt.create({ data: { oilSampleId: id, isTaken: false, createdAt: new Date(Date.UTC(2025, 5, 2)) } });
+    await prisma.oilSample.update({ where: { id }, data: { isTaken: true, sampleDate: new Date(Date.UTC(2025, 5, 3)) } });
+    await voerUit();
+    for (const p of [eerste, tweede]) {
+      const na = await prisma.sampleAttempt.findUniqueOrThrow({ where: { id: p.id } });
+      expect(na.isTaken).toBe(false);
+      expect(na.sampleDate).toBeNull();
+    }
+  });
+
+  it('een genomen monster zonder poging krijgt er een, met de gegevens van het monster', async () => {
+    const id = ids.monsters[2026][7];
+    await prisma.sampleAttempt.deleteMany({ where: { oilSampleId: id } });
+    const datum = new Date(Date.UTC(2026, 4, 4));
+    await prisma.oilSample.update({ where: { id }, data: { isTaken: true, sampleDate: datum, remarks: 'oud genomen', photoUrl: '/nepdata/potje-1.jpg' } });
+    await voerUit();
+    await voerUit();
+    const pogingen = await prisma.sampleAttempt.findMany({ where: { oilSampleId: id } });
+    expect(pogingen).toHaveLength(1);
+    expect(pogingen[0]).toMatchObject({ isTaken: true, remarks: 'oud genomen', photoUrl: '/nepdata/potje-1.jpg' });
+    // Monsters die niets hebben, krijgen geen lege poging.
+    const leeg = await prisma.oilSample.findFirstOrThrow({ where: { isTaken: false, remarks: null, attempts: { none: {} }, sampleDate: null } });
+    expect(await prisma.sampleAttempt.count({ where: { oilSampleId: leeg.id } })).toBe(0);
   });
 });

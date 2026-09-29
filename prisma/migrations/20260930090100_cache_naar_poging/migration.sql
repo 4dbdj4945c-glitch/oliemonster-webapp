@@ -1,8 +1,22 @@
--- Datamigratie: opmerking en foto's die alleen op het monster staan, naar de
--- laatste poging. Er verandert niets aan het schema.
+-- TELLING VOORAF (op een kopie van de productiedatabase), zie ook onderaan het commentaar.
+--   WITH l AS (SELECT DISTINCT ON ("oilSampleId") * FROM "SampleAttempt"
+--              ORDER BY "oilSampleId", "sampleDate" DESC, "createdAt" DESC)
+--   SELECT
+--     (SELECT count(*) FROM "OilSample" m WHERE NOT EXISTS (SELECT 1 FROM "SampleAttempt" x WHERE x."oilSampleId" = m.id)
+--        AND (m."isTaken" OR m."sampleDate" IS NOT NULL OR m."remarks" IS NOT NULL OR m."photoUrl" IS NOT NULL OR m."partPhotoUrl" IS NOT NULL)) AS zonder_poging,
+--     count(*) FILTER (WHERE (l."remarks" IS NULL AND s."remarks" IS NOT NULL)
+--                         OR (l."photoUrl" IS NULL AND s."photoUrl" IS NOT NULL)
+--                         OR (l."partPhotoUrl" IS NULL AND s."partPhotoUrl" IS NOT NULL)) AS opmerking_of_foto,
+--     count(*) FILTER (WHERE l."isTaken" IS DISTINCT FROM s."isTaken"
+--                         OR l."sampleDate" IS DISTINCT FROM s."sampleDate") AS datum_of_status
+--   FROM l JOIN "OilSample" s ON s.id = l."oilSampleId";
 --
--- Waarom: op main schreven de bewerkknop (remarks) en de fotoknop (photoUrl,
--- partPhotoUrl) rechtstreeks op OilSample, zonder poging. Sinds fase 1b gaat
+--
+-- Datamigratie: wat alleen op het monster staat (opmerking, foto's, datum en
+-- genomen), naar de laatste poging. Er verandert niets aan het schema.
+--
+-- Waarom: op main schreven de bewerkknop (remarks, sampleDate, isTaken) en de
+-- fotoknop (photoUrl, partPhotoUrl) rechtstreeks op OilSample, zonder poging. Sinds fase 1b gaat
 -- elke wijziging via de laatste poging (wijzigLaatstePoging in
 -- lib/sampleAttempts.ts) en wordt het monster daarna gelijk gezet met die
 -- poging. Staat de waarde alleen op het monster, dan zou de eerstvolgende klik
@@ -14,19 +28,36 @@
 -- en PostgreSQL zetten bij aflopend sorteren NULL vooraan, dus hier ook
 -- (NULLS FIRST is de standaard bij DESC).
 --
--- Alleen velden die op de poging leeg zijn en op het monster niet: er wordt
--- nooit iets overschreven. Monsters zonder poging hoeven niet: daar neemt
--- wijzigLaatstePoging de waarden van het monster al over. Vaker draaien doet
--- niets extra.
+-- Opmerking en foto's (deel 1): alleen velden die op de poging leeg zijn en
+-- op het monster niet; daar wordt nooit iets overschreven. Vaker draaien doet
+-- in alle delen niets extra.
 --
--- Telling vooraf (op een kopie): hoeveel monsters wijken af van hun laatste poging?
+-- Deel 0: een monster met iets in de cache (genomen, een datum, een opmerking
+-- of foto) maar zonder enige poging krijgt een poging met die gegevens. Anders
+-- zet syncLatestAttemptToSample het monster bij de eerste klik terug op leeg.
+--
+-- Datum en genomen (deel 2): daar wint het monster, want dat is wat Roel en
+-- de klant nu zien. De laatste poging krijgt de datum en de status van het
+-- monster. Een nieuwe datum kan de volgorde veranderen (een andere poging wordt
+-- dan de laatste); zo'n monster wordt NIET aangepast, want dan zou de volgende
+-- klik toch een andere poging spiegelen. Die afwijkers laat de query
+-- hieronder zien: die moet Roel met de hand bekijken (bewerkvenster, pogingen).
+--
+-- Na de migratie: welke monsters wijken nog af (datum of status)?
 --   WITH l AS (SELECT DISTINCT ON ("oilSampleId") * FROM "SampleAttempt"
 --              ORDER BY "oilSampleId", "sampleDate" DESC, "createdAt" DESC)
---   SELECT count(*) FROM l JOIN "OilSample" s ON s.id = l."oilSampleId"
---   WHERE (l."remarks" IS NULL AND s."remarks" IS NOT NULL)
---      OR (l."photoUrl" IS NULL AND s."photoUrl" IS NOT NULL)
---      OR (l."partPhotoUrl" IS NULL AND s."partPhotoUrl" IS NOT NULL);
+--   SELECT s.id, s."oNumber", s."analysisYear", s."sampleDate", s."isTaken", l."sampleDate", l."isTaken"
+--   FROM l JOIN "OilSample" s ON s.id = l."oilSampleId"
+--   WHERE l."isTaken" IS DISTINCT FROM s."isTaken" OR l."sampleDate" IS DISTINCT FROM s."sampleDate";
 
+-- Deel 0: poging voor een monster met cachegegevens maar zonder poging.
+INSERT INTO "SampleAttempt" ("oilSampleId", "sampleDate", "photoUrl", "partPhotoUrl", "remarks", "isTaken", "createdAt", "updatedAt")
+SELECT m."id", m."sampleDate", m."photoUrl", m."partPhotoUrl", m."remarks", m."isTaken", m."createdAt", CURRENT_TIMESTAMP
+FROM "OilSample" AS m
+WHERE NOT EXISTS (SELECT 1 FROM "SampleAttempt" AS x WHERE x."oilSampleId" = m."id")
+  AND (m."isTaken" OR m."sampleDate" IS NOT NULL OR m."remarks" IS NOT NULL OR m."photoUrl" IS NOT NULL OR m."partPhotoUrl" IS NOT NULL);
+
+-- Deel 1: opmerking en foto's.
 WITH laatste AS (
   SELECT DISTINCT ON ("oilSampleId") "id", "oilSampleId"
   FROM "SampleAttempt"
@@ -45,4 +76,36 @@ WHERE a."id" = l."id"
     (a."remarks" IS NULL AND s."remarks" IS NOT NULL)
     OR (a."photoUrl" IS NULL AND s."photoUrl" IS NOT NULL)
     OR (a."partPhotoUrl" IS NULL AND s."partPhotoUrl" IS NOT NULL)
+  );
+
+-- Deel 2: datum en genomen van het monster naar de laatste poging, alleen als
+-- die poging daarna nog steeds de laatste is.
+WITH laatste AS (
+  SELECT DISTINCT ON ("oilSampleId") "id", "oilSampleId", "createdAt"
+  FROM "SampleAttempt"
+  ORDER BY "oilSampleId", "sampleDate" DESC, "createdAt" DESC
+)
+UPDATE "SampleAttempt" AS a
+SET
+  "sampleDate" = s."sampleDate",
+  "isTaken" = s."isTaken",
+  "updatedAt" = CURRENT_TIMESTAMP
+FROM laatste AS l
+JOIN "OilSample" AS s ON s."id" = l."oilSampleId"
+WHERE a."id" = l."id"
+  AND (a."isTaken" IS DISTINCT FROM s."isTaken" OR a."sampleDate" IS DISTINCT FROM s."sampleDate")
+  -- Met de nieuwe datum blijft deze poging bovenaan: geen andere poging zonder
+  -- datum (die gaan voor) en geen met een latere datum, of dezelfde datum en later gemaakt.
+  AND (
+    s."sampleDate" IS NULL
+    OR NOT EXISTS (
+      SELECT 1 FROM "SampleAttempt" AS o
+      WHERE o."oilSampleId" = l."oilSampleId"
+        AND o."id" <> l."id"
+        AND (
+          o."sampleDate" IS NULL
+          OR o."sampleDate" > s."sampleDate"
+          OR (o."sampleDate" = s."sampleDate" AND o."createdAt" > l."createdAt")
+        )
+    )
   );
