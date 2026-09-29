@@ -19,6 +19,7 @@ import type { InspectieRij } from '../inspecties/server';
 import { nlDag } from '../klantOpdracht';
 import {
   CHECKLIST_ANTWOORDEN,
+  checklistVolledig,
   checklistVan,
   getal,
   inspectieNummer,
@@ -79,6 +80,12 @@ function dagKort(d: Date | string | null): string {
 export interface InspectieRapportOpties {
   origin?: string;
   metFotos?: boolean;
+}
+
+/** Voor welke arbeidsmiddelen geldt de verklaring (art. 7.4a)? Alleen met een uitslag en een volledige checklist. */
+export function verklaringGeldtVoor<T extends { oordeel: string | null; waarden: unknown }>(rij: { sjabloon: string; items: T[] }): T[] {
+  const s = sjabloonVan(rij.sjabloon);
+  return rij.items.filter((i) => !!i.oordeel && i.oordeel !== 'niet-gecontroleerd' && checklistVolledig(s, i.waarden));
 }
 
 export async function maakInspectieRapportPdf(rij: InspectieRij, opties: InspectieRapportOpties = {}): Promise<Buffer> {
@@ -283,8 +290,11 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
     ]);
     // De verklaring geldt alleen voor wat echt gecontroleerd is. Wat bewust is
     // overgeslagen (of nog geen uitslag heeft), staat er los onder.
-    const gecontroleerd = rij.items.filter((i) => i.oordeel && i.oordeel !== 'niet-gecontroleerd');
-    const nietGecontroleerd = rij.items.filter((i) => !i.oordeel || i.oordeel === 'niet-gecontroleerd');
+    // Gecontroleerd = een uitslag (niet Niet gecontroleerd) en de hele checklist beantwoord.
+    const geldt = new Set(verklaringGeldtVoor(rij));
+    const isGecontroleerd = (i: (typeof rij.items)[number]) => geldt.has(i);
+    const gecontroleerd = rij.items.filter(isGecontroleerd);
+    const nietGecontroleerd = rij.items.filter((i) => !isGecontroleerd(i));
     if (gecontroleerd.length > 0) {
       kader(
         `${s.rapport.verklaring!(instellingen)} Deze verklaring geldt voor: ${gecontroleerd.map((i) => i.titel).join(', ')}.`,
@@ -295,9 +305,9 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
     }
     if (nietGecontroleerd.length > 0) {
       kader(
-        `Niet gecontroleerd: ${nietGecontroleerd.map((i) => i.titel).join(', ')}. ${
+        `Niet (volledig) gecontroleerd: ${nietGecontroleerd.map((i) => i.titel).join(', ')}. ${
           nietGecontroleerd.length === 1 ? 'Dit arbeidsmiddel is' : 'Deze arbeidsmiddelen zijn'
-        } bij deze inspectie niet geïnspecteerd; de verklaring ${gecontroleerd.length > 0 ? 'hierboven ' : 'van art. 7.4a Arbobesluit '}geldt er niet voor.`,
+        } bij deze inspectie niet of niet op alle controlepunten geïnspecteerd; de verklaring ${gecontroleerd.length > 0 ? 'hierboven ' : 'van art. 7.4a Arbobesluit '}geldt er niet voor.`,
         AMBER_VLAK,
         [253, 186, 116],
         AMBER_TEKST

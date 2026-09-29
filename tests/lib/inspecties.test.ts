@@ -10,8 +10,10 @@ import {
   sjabloonVan,
   verklaringArbeidsmiddelen,
   oordeelFout,
+  checklistVolledig,
   WaardeFout,
 } from '@/lib/inspecties/sjablonen';
+import { verklaringGeldtVoor } from '@/lib/rapport/inspectieRapportPdf';
 import { berekenLek, energiePerM3, lekInstellingen, lekTotalen, uitkomstTekst, volgendeInspectie } from '@/lib/inspecties/rekenen';
 
 describe('sjablonen', () => {
@@ -53,6 +55,22 @@ describe('sjablonen', () => {
     expect(oordeelFout(s, 'in-orde', { checklist: { ...alles, lekkage: 'niet-goed' } })).toMatch(/niet goed/);
     expect(oordeelFout(s, 'actie-nodig', {})).toBeNull();
     expect(oordeelFout(sjabloonVan('persluchtlekken'), 'hoog', {})).toBeNull();
+  });
+
+  it('de verklaring (art. 7.4a) geldt alleen voor middelen met een uitslag en een volledig ingevulde checklist', () => {
+    const s = sjabloonVan('arbeidsmiddelen');
+    const alles = Object.fromEntries(s.checklist.map((p) => [p.sleutel, 'goed']));
+    const items = [
+      { titel: 'Volledig, in orde', oordeel: 'in-orde', waarden: { checklist: alles } },
+      { titel: 'Volledig, actie nodig', oordeel: 'actie-nodig', waarden: { checklist: { ...alles, lekkage: 'niet-goed' } } },
+      { titel: 'Leeg, actie nodig', oordeel: 'actie-nodig', waarden: {} },
+      { titel: 'Half, buiten gebruik', oordeel: 'buiten-gebruik', waarden: { checklist: { slangen: 'niet-goed' } } },
+      { titel: 'Volledig, niet gecontroleerd', oordeel: 'niet-gecontroleerd', waarden: { checklist: alles } },
+      { titel: 'Zonder uitslag', oordeel: null, waarden: { checklist: alles } },
+    ];
+    expect(verklaringGeldtVoor({ sjabloon: 'arbeidsmiddelen', items }).map((i) => i.titel)).toEqual(['Volledig, in orde', 'Volledig, actie nodig']);
+    expect(checklistVolledig(s, { checklist: { ...alles, filters: 'nvt' } })).toBe(true);
+    expect(checklistVolledig(s, { checklist: { slangen: 'goed' } })).toBe(false);
   });
 
   it('alle foute velden tegelijk, niet één per keer', () => {

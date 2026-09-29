@@ -394,6 +394,12 @@ export function oordeelFout(sjabloon: Sjabloon, oordeel: string | null | undefin
   return null;
 }
 
+/** Is elk controlepunt van de checklist beantwoord (goed, niet goed of n.v.t.)? Zonder checklist: ja. */
+export function checklistVolledig(sjabloon: Sjabloon, waarden: unknown): boolean {
+  const c = checklistVan(waarden);
+  return sjabloon.checklist.every((p) => !!c[p.sleutel]);
+}
+
 /** Een getal uit de waarden, of null. */
 export function getal(waarden: unknown, sleutel: string): number | null {
   const w = (waarden && typeof waarden === 'object' ? (waarden as Record<string, unknown>)[sleutel] : null) ?? null;
