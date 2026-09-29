@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { apiRoute, ApiFout, jaarSchema, leesJson, leesQuery } from '@/lib/apiRoute';
 import { controleerInstallatie, controleerObject, MonsterSchema } from '@/lib/monsterInvoer';
+import { controleerKlant } from '@/lib/klanten';
 import { wijzigLaatstePoging } from '@/lib/sampleAttempts';
 import {
   tabelOntbreekt,
@@ -107,6 +108,7 @@ export const POST = apiRoute(
     const jaar = invoer.analysisYear ?? 2025;
     await controleerObject(invoer.objectId);
     await controleerInstallatie(invoer.installatieId, invoer.objectId ?? null);
+    await controleerKlant(invoer.klantId);
 
     // O-nummers zijn uniek per analysejaar (2025 en 2026 mogen hetzelfde nummer hebben)
     const existing = await prisma.oilSample.findFirst({
@@ -140,6 +142,8 @@ export const POST = apiRoute(
         // Alleen meesturen als de pagina een object koos.
         ...(invoer.objectId === undefined ? {} : { objectId: invoer.objectId }),
         ...(invoer.installatieId === undefined ? {} : { installatieId: invoer.installatieId }),
+        // Een monster zonder object kan zo toch bij een klant horen (lib/afscherming.ts).
+        ...(invoer.klantId ? { klantId: invoer.klantId } : {}),
       },
       select: { id: true },
     });

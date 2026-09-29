@@ -8,7 +8,7 @@
 // 2. Voortgang: x van y genomen, balk en legenda (neutrale kleuren, geen rood).
 // 3. Tabel per object: o-nummer, omschrijving, status, datum en reden.
 // 4. Fotobijlage: per genomen monster de foto van het onderdeel en van het
-//    potje, verkleind (sharp, 520 px, JPEG).
+//    potje, verkleind (sharp, 400 px, JPEG).
 // Onderaan elke pagina de contactgegevens en het paginanummer.
 //
 // jsPDF + jspdf-autotable (stonden er al voor de PDF in de browser), met de
@@ -42,7 +42,10 @@ const STATUS_TEKST: Record<OpdrachtMonster['status'], RGB> = {
 };
 
 const MARGE = 16;
-const FOTO_MAX_ZIJDE = 520;
+// Klein genoeg voor een jaar met honderden monsters: 400 px, JPEG 60, rond
+// 15 tot 25 KB per foto. Wordt de PDF toch groter dan Vercel in een antwoord
+// toestaat, dan zet de route hem eerst in de opslag (app/api/rapport/route.ts).
+const FOTO_MAX_ZIJDE = 400;
 
 export const CONTACT = {
   naam: "It's Done Services",
@@ -117,7 +120,7 @@ async function laadFotoKlein(url: string | null, origin?: string): Promise<Beeld
       .rotate()
       .resize({ width: FOTO_MAX_ZIJDE, height: FOTO_MAX_ZIJDE, fit: 'inside', withoutEnlargement: true })
       .flatten({ background: '#ffffff' })
-      .jpeg({ quality: 68 })
+      .jpeg({ quality: 60, mozjpeg: true })
       .toBuffer({ resolveWithObject: true });
     return { data: new Uint8Array(data), soort: 'JPEG', ratio: info.width / info.height };
   } catch {
@@ -341,7 +344,7 @@ export async function maakRapportPdf(opdracht: Opdracht, opties: RapportOpties =
     ? opdracht.monsters.filter((m) => m.status === 'genomen' && (m.photoUrl || m.partPhotoUrl))
     : [];
   if (metFoto.length > 0) {
-    const beelden = await perStuk(metFoto, 5, async (m) => ({
+    const beelden = await perStuk(metFoto, 8, async (m) => ({
       m,
       onderdeel: await laadFotoKlein(m.partPhotoUrl, opties.origin),
       potje: await laadFotoKlein(m.photoUrl, opties.origin),

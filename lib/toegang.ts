@@ -126,25 +126,14 @@ export async function haalGebruiker(session: SessionData): Promise<Gebruiker | n
     portaalWeergave?: string | null;
     requiresPasswordChange: boolean;
   };
-  const basis = { id: true, username: true, role: true, requiresPasswordChange: true } as const;
-  // Van nieuw naar oud: staat een kolom er nog niet (database nog niet bij),
-  // dan zonder die kolom verder. klantId en portaalWeergave horen samen bij de
-  // migratie klantportaal (die ook OilSample.klantId aanlegt): zonder die
-  // migratie geldt het oude gedrag, alleen het kijkjaar.
-  const keuzes = [
-    { ...basis, viewYear: true, klantId: true, portaalWeergave: true },
-    { ...basis, viewYear: true },
-    basis,
-  ];
-  let rij: Rij | null = null;
-  for (const [i, select] of keuzes.entries()) {
-    try {
-      rij = (await prisma.user.findUnique({ where, select })) as Rij | null;
-      break;
-    } catch (error) {
-      if (!tabelOntbreekt(error) || i === keuzes.length - 1) throw error;
-    }
-  }
+  // Geen terugval als een kolom ontbreekt: zonder klantId zou een kijker met
+  // een klant ineens alle klanten zien. De volgorde is altijd eerst
+  // ./db-bijwerken.sh en dan deployen; ontbreekt er toch iets, dan liever een
+  // 500 dan te veel laten zien.
+  const rij: Rij | null = await prisma.user.findUnique({
+    where,
+    select: { id: true, username: true, role: true, requiresPasswordChange: true, viewYear: true, klantId: true, portaalWeergave: true },
+  });
   if (!rij) return null;
   return {
     userId: rij.id,

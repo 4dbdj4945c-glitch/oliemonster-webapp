@@ -15,6 +15,8 @@ import {
   WEERGAVE_LABELS,
   isAlleenLezen,
   leesWeergave,
+  OUD_KIJKJAAR,
+  ROLE_VIEWER_OIL2025_OUD,
 } from '@/lib/roles';
 
 interface User {
@@ -206,11 +208,15 @@ export default function AdminPage() {
   };
 
   const openEditModal = (user: User) => {
+    // De oude kijkersrol kent het formulier niet meer: die wordt Alleen lezen,
+    // en zonder jaar het jaar dat bij die rol hoorde (2025). Zo kan Roel de
+    // Mourik-kijker bewerken zonder dat hij ineens alle jaren ziet.
+    const oudeRol = user.role === ROLE_VIEWER_OIL2025_OUD;
     setFormData({
       username: user.username,
       password: '',
-      role: user.role,
-      viewYear: user.viewYear ? String(user.viewYear) : '',
+      role: oudeRol ? ROLE_ALLEEN_LEZEN : user.role,
+      viewYear: user.viewYear ? String(user.viewYear) : oudeRol ? String(OUD_KIJKJAAR) : '',
       klantId: user.klantId ? String(user.klantId) : '',
       portaalWeergave: leesWeergave(user.portaalWeergave),
     });

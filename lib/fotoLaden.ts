@@ -34,7 +34,12 @@ export function isLokaalPad(url: string): boolean {
 
 async function leesLokaal(url: string): Promise<GeladenBestand | null> {
   const publiek = path.join(process.cwd(), 'public');
-  const pad = path.normalize(path.join(publiek, decodeURIComponent(url.split('?')[0])));
+  let pad: string;
+  try {
+    pad = path.normalize(path.join(publiek, decodeURIComponent(url.split('?')[0])));
+  } catch {
+    return null; // kapot pad (%-teken zonder code)
+  }
   if (!pad.startsWith(publiek + path.sep)) return null;
   try {
     const bytes = await readFile(pad);

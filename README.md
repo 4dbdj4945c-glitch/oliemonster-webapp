@@ -273,6 +273,11 @@ hieronder. Pas die twee nooit aan; wijzigingen komen altijd in een nieuwe migrat
   krijgt het logo `/mourik_logo.png`. Er verdwijnt niets; vaker draaien doet
   niets extra.
 
+- `20260930090100_cache_naar_poging`: alleen data. Opmerking en foto's die op main
+  rechtstreeks op het monster zijn gezet (zonder poging), komen op de laatste poging,
+  zodat de eerstvolgende klik ze niet wist. Vult alleen lege velden, overschrijft niets.
+  In de migratie staat een telquery om vooraf op een kopie te zien hoeveel monsters het raakt.
+
 **Productie bijwerken (Roel, op zijn Mac):**
 
 ```bash
@@ -331,6 +336,13 @@ de migratiecontrole, de tests (met een eigen PostgreSQL) en de build.
     pixel voor pixel zoals voor fase 3. Standaard voor alle bestaande gebruikers.
   - `klantportaal`: alleen `/dashboard`, met het klantportaal (app/components/portaal/KlantPortaal.tsx).
     Kan alleen met een klant; standaard voor een nieuwe kijker met een klant.
+- Wie inlogt, wordt met klant en weergave uit de database gelezen, zonder terugval: ontbreekt
+  een kolom (database niet bij), dan een 500 in plaats van te veel laten zien.
+- Een monster dat zijn object verliest (object leeg, locatie losgekoppeld, object weg) houdt
+  de klant van dat object in `OilSample.klantId` (`bewaarKlantBijLoskoppelen`); overnemen naar
+  een nieuw jaar neemt de klant mee.
+- Een rapport boven 4 MB (Vercel-limiet 4,5 MB) gaat eerst naar Blob (`rapporten/`, onvindbare
+  naam, een uur bewaard) en de browser krijgt een doorverwijzing.
 - Afscherming per klant (lib/afscherming.ts): een kijker met `klantId` ziet alleen de
   monsters, objecten, planning, foto's en rapporten van die klant, en daarbinnen alleen
   zijn `viewYear`. Bij welke klant een monster hoort: de klant van zijn object, of bij

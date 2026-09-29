@@ -1,7 +1,7 @@
 // Het klantportaal (GET /api/portaal) en het rapport (GET /api/rapport): de
 // kijker ziet alleen zijn eigen klant en jaar, zonder interne details, en kan
 // het rapport van zijn eigen klant downloaden, niet dat van een ander.
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { prisma } from '@/lib/prisma';
 import { vulMetNepdata } from '@/prisma/nepdata';
@@ -11,6 +11,13 @@ import { GET as rapport } from '@/app/api/rapport/route';
 import { haalOpdracht } from '@/lib/klantOpdracht';
 import { GET as dossier } from '@/app/api/klanten/[id]/dossier/route';
 import { metParams, uitloggen, verzoek } from '../hulp/verzoek';
+
+const blob = vi.hoisted(() => ({
+  put: vi.fn(async (naam: string) => ({ url: `https://t.public.blob.vercel-storage.com/${naam}`, downloadUrl: `https://t.public.blob.vercel-storage.com/${naam}?download=1` })),
+  list: vi.fn(async () => ({ blobs: [] })),
+  del: vi.fn(async () => undefined),
+}));
+vi.mock('@vercel/blob', () => blob);
 
 let ids: Awaited<ReturnType<typeof vulMetNepdata>>;
 
@@ -122,6 +129,25 @@ describe('rapport als PDF', () => {
     expect(perNummer['K-2026-06'].reden).toBe('Compressor vervangen, nieuwe draait nog in');
     expect(perNummer['K-2026-05'].status).toBe('gepland');
     expect(perNummer['K-2026-07'].status).toBe('in-te-plannen');
+  });
+});
+
+describe('groot rapport', () => {
+  it('boven 4 MB gaat het via de opslag met een doorverwijzing', async () => {
+    const oud = process.env.BLOB_READ_WRITE_TOKEN;
+    process.env.BLOB_READ_WRITE_TOKEN = 'test';
+    const rapportPdf = await import('@/lib/rapport/rapportPdf');
+    const spy = vi.spyOn(rapportPdf, 'maakRapportPdf').mockResolvedValue(Buffer.alloc(5 * 1024 * 1024));
+    try {
+      await inloggenAls('kempen', 'kempen123');
+      const res = await rapport(verzoek('/api/rapport?jaar=2026'), undefined);
+      expect(res.status).toBe(303);
+      expect(res.headers.get('location')).toMatch(/^https:\/\/t\.public\.blob\.vercel-storage\.com\/rapporten\/[0-9a-f]{32}\/oliemonsters-2026-/);
+      expect(blob.list).toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+      process.env.BLOB_READ_WRITE_TOKEN = oud;
+    }
   });
 });
 

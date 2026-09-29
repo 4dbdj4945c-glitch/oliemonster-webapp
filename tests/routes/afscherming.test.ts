@@ -11,6 +11,8 @@ import { GET as sessie } from '@/app/api/auth/session/route';
 import { POST as nieuweGebruiker } from '@/app/api/users/route';
 import { PUT as wijzigGebruiker } from '@/app/api/users/[id]/route';
 import { GET as foto } from '@/app/api/fotos/[...pad]/route';
+import { PUT as wijzigMonster } from '@/app/api/samples/[id]/route';
+import { POST as overnemen } from '@/app/api/samples/copy-year/route';
 import { metParams, uitloggen, verzoek } from '../hulp/verzoek';
 
 let ids: Awaited<ReturnType<typeof vulMetNepdata>>;
@@ -216,5 +218,33 @@ describe("foto's via /api/fotos", () => {
   it('niet ingelogd: 401', async () => {
     uitloggen();
     expect((await haal(`monster/${ids.tweedeMonsters[2026][0]}/potje`)).status).toBe(401);
+  });
+});
+
+describe('de klant blijft bij het monster', () => {
+  it('als het object eraf gaat, en bij overnemen naar een nieuw jaar', async () => {
+    await inloggenAls('admin', 'admin123');
+    const id = ids.monsters[2025][0];
+    const m = await prisma.oilSample.findUniqueOrThrow({ where: { id } });
+    const res = await wijzigMonster(
+      verzoek(`/api/samples/${id}`, {
+        method: 'PUT',
+        body: { oNumber: m.oNumber, location: m.location, description: m.description, isTaken: m.isTaken, sampleDate: m.sampleDate?.toISOString(), objectId: null },
+      }),
+      metParams({ id: String(id) })
+    );
+    expect(res.status).toBe(200);
+    const na = await prisma.oilSample.findUniqueOrThrow({ where: { id } });
+    expect(na.objectId).toBeNull();
+    expect(na.klantId).toBe(ids.klanten.mourik);
+
+    const kopie = await overnemen(verzoek('/api/samples/copy-year', { body: { fromYear: 2025, toYear: 2027 } }), undefined);
+    expect(kopie.status).toBe(200);
+    const in2027 = await prisma.oilSample.findFirstOrThrow({ where: { oNumber: m.oNumber, analysisYear: 2027 } });
+    expect(in2027.klantId).toBe(ids.klanten.mourik);
+
+    await inloggenAls('kijker', 'kijker123');
+    const l = await lijst('/api/samples');
+    expect(l.map((x) => x.id)).toContain(id);
   });
 });

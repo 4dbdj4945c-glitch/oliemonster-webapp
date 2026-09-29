@@ -116,7 +116,12 @@ export const POST = apiRoute(
     }
 
     // Type olie staat op het monster zelf, niet op de poging. En een genomen
-    // monster is niet meer onbereikbaar.
+    // monster is niet meer onbereikbaar. De bewijsfoto van Niet bereikbaar
+    // blijft in de opslag staan, met het adres in het logboek (zelfde regel als
+    // bij Weer bereikbaar en Afname ongedaan): het is bewijs, geen wees.
+    const oudeBewijsfoto = (
+      await prisma.oilSample.findUnique({ where: { id: sampleId }, select: { unreachablePhotoUrl: true } })
+    )?.unreachablePhotoUrl;
     const monsterData = {
       ...(oilType ? { oilType } : {}),
       isUnreachable: false,
@@ -156,6 +161,7 @@ export const POST = apiRoute(
         nieuwePoging,
         fotoOnderdeel: partPhotoUrl !== null,
         fotoPotje: photoUrl !== null,
+        ...(oudeBewijsfoto ? { bewijsfotoNietBereikbaar: oudeBewijsfoto } : {}),
       },
       request,
     });

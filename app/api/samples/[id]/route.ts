@@ -6,7 +6,7 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { SAMPLE_BASIS_SELECT } from '@/lib/planningApi';
 import { tabelOntbreekt } from '@/lib/kolommen';
 import { apiRoute, ApiFout, leesId, leesJson } from '@/lib/apiRoute';
-import { controleerInstallatie, controleerObject, MonsterSchema } from '@/lib/monsterInvoer';
+import { controleerInstallatie, controleerObject, MonsterSchema, bewaarKlantBijLoskoppelen } from '@/lib/monsterInvoer';
 import { wijzigLaatstePoging, type PogingVelden } from '@/lib/sampleAttempts';
 import { actiefFilter, verwijderKolomBestaat, KOLOM_ONTBREEKT_VERWIJDEREN } from '@/lib/verwijderdeMonsters';
 
@@ -54,6 +54,8 @@ export const PUT = apiRoute(
 
     const objectId = invoer.objectId === undefined ? huidig.objectId : invoer.objectId;
     await controleerObject(invoer.objectId);
+    // Het object gaat eraf: de klant van dat object blijft op het monster staan.
+    if (invoer.objectId === null && huidig.objectId !== null) await bewaarKlantBijLoskoppelen({ id });
     await controleerInstallatie(invoer.installatieId, objectId);
 
     const gegevens = {

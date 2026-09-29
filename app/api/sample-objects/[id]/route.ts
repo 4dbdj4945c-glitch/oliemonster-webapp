@@ -1,3 +1,4 @@
+import { bewaarKlantBijLoskoppelen } from '@/lib/monsterInvoer';
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
@@ -73,6 +74,8 @@ export const DELETE = apiRoute({ ...OPTIES, fout: 'Fout bij verwijderen van obje
       `Op "${object.name}" staan nog ${installaties} ${installaties === 1 ? 'installatie' : 'installaties'}. Verplaats die eerst of voeg dit object samen met een ander.`
     );
   }
+  // Monsters in de prullenbak verliezen hun object (SetNull), maar houden de klant.
+  await bewaarKlantBijLoskoppelen({ objectId });
   await prisma.sampleObject.delete({ where: { id: objectId } });
 
   await createAuditLog({

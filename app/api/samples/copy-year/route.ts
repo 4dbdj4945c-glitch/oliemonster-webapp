@@ -25,11 +25,11 @@ export const POST = apiRoute(
     // koppeling dus mee, anders staat de planning van het nieuwe jaar leeg.
     // Zolang ./db-push-planning.sh nog niet gedraaid is bestaat de kolom niet;
     // dan halen we alleen de oude velden op.
-    let bron: { oNumber: string; location: string; description: string; oilType: string | null; objectId?: number | null }[];
+    let bron: { oNumber: string; location: string; description: string; oilType: string | null; objectId?: number | null; klantId?: number | null }[];
     try {
       bron = await prisma.oilSample.findMany({
         where: { analysisYear: fromYear, ...(await actiefFilter()) },
-        select: { oNumber: true, location: true, description: true, oilType: true, objectId: true },
+        select: { oNumber: true, location: true, description: true, oilType: true, objectId: true, klantId: true },
         orderBy: { oNumber: 'asc' },
       });
     } catch (error) {
@@ -62,6 +62,8 @@ export const POST = apiRoute(
           isTaken: false,
           isDisabled: false,
           ...(s.objectId === undefined ? {} : { objectId: s.objectId }),
+          // De klant van een monster zonder object gaat mee (lib/afscherming.ts).
+          ...(s.klantId ? { klantId: s.klantId } : {}),
         })),
       });
     }

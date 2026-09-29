@@ -63,5 +63,14 @@ if [ "$status" = "basis-ontbreekt" ]; then
 fi
 
 echo "Openstaande migraties uitvoeren..."
-npx prisma migrate deploy
+if ! npx prisma migrate deploy; then
+  echo ""
+  echo "GESTOPT: een migratie is mislukt (zie de melding hierboven). De migraties daarvoor"
+  echo "zijn wel uitgevoerd. Prisma blokkeert nu tot de mislukte migratie is afgehandeld."
+  echo "Niet zomaar opnieuw draaien. Zoek eerst uit wat er misging; is er niets van die"
+  echo "migratie in de database blijven staan, markeer hem dan als teruggedraaid met"
+  echo "  npx prisma migrate resolve --rolled-back <naam van de migratie>"
+  echo "(met DATABASE_URL naar de directe verbinding) en draai daarna dit script opnieuw."
+  exit 1
+fi
 echo "Klaar: de database is bij."

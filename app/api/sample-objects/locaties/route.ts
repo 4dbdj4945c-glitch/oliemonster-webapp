@@ -1,3 +1,4 @@
+import { bewaarKlantBijLoskoppelen } from '@/lib/monsterInvoer';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
@@ -132,6 +133,9 @@ export const POST = apiRoute({ rol: 'admin', ...OPTIES, fout: 'Fout bij koppelen
     },
     data: { installatieId: null },
   });
+
+  // Loskoppelen: de klant van het oude object blijft op het monster staan.
+  if (objectId === null) await bewaarKlantBijLoskoppelen({ id: { in: groep.monsterIds } });
 
   const resultaat = await prisma.oilSample.updateMany({
     where: { id: { in: groep.monsterIds } },
