@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Icon from './ui/Icon';
 import LaadFout from './LaadFout';
+import AfnameOngedaanModal, { type AfnameDoel } from './AfnameOngedaanModal';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { FOTO_SOORTEN, type FotoSoort } from '@/lib/samplePhotos';
 
@@ -25,6 +26,8 @@ interface Props {
   isAdmin: boolean;
   onPhotoClick: (url: string, label: string) => void;
   onChange?: () => void;  // Callback als pogingen wijzigen (voor ververs hoofdlijst)
+  /** Na Afname ongedaan maken, zodat het bewerkvenster zijn vinkje en datum bijwerkt */
+  onAfnameOngedaan?: () => void;
 }
 
 export default function SampleAttemptsPanel({
@@ -33,6 +36,7 @@ export default function SampleAttemptsPanel({
   isAdmin,
   onPhotoClick,
   onChange,
+  onAfnameOngedaan,
 }: Props) {
   const [attempts, setAttempts] = useState<SampleAttempt[]>([]);
   const [loading, setLoading] = useState(true);
@@ -46,6 +50,8 @@ export default function SampleAttemptsPanel({
   const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [foutmelding, setFoutmelding] = useState('');
+  // Afname ongedaan maken van de laatste monstername (bevestiging met wat er verdwijnt)
+  const [afnameDoel, setAfnameDoel] = useState<AfnameDoel | null>(null);
 
   useEffect(() => {
     load();
@@ -135,8 +141,23 @@ export default function SampleAttemptsPanel({
     }
   };
 
-  const handleDelete = async (attemptId: number) => {
-    if (!confirm('Deze monstername verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
+  // Een poging verwijderen is niet terug te draaien. De bevestiging noemt dus wat
+  // er weggaat, en wijst op Afname ongedaan maken als je alleen terug wilt naar
+  // niet genomen.
+  const handleDelete = async (attempt: SampleAttempt, nummer: number) => {
+    const attemptId = attempt.id;
+    const fotos = [attempt.partPhotoUrl, attempt.photoUrl].filter(Boolean).length;
+    const weg = [
+      attempt.sampleDate ? `de datum ${formatDate(attempt.sampleDate)}` : null,
+      attempt.remarks ? 'de opmerking' : null,
+      fotos === 1 ? 'de foto' : fotos > 1 ? `de ${fotos} foto's` : null,
+    ].filter(Boolean);
+    const tekst =
+      `Monstername ${nummer} van ${oNumber} helemaal verwijderen?` +
+      (weg.length ? `\n\nDaarmee verdwijnen ook: ${weg.join(', ')}.` : '') +
+      '\n\nDit kan niet ongedaan worden gemaakt.' +
+      (attempt.isTaken ? ' Wil je alleen terug naar niet genomen? Kies dan Afname ongedaan maken.' : '');
+    if (!confirm(tekst)) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/samples/${sampleId}/attempts/${attemptId}`, {
@@ -397,13 +418,33 @@ export default function SampleAttemptsPanel({
                           <Icon name="pencil" size={16} />
                           Bewerken
                         </button>
+                        {/* Alleen bij de laatste monstername, en alleen als die genomen is */}
+                        {attempt.isTaken && idx === attempts.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setAfnameDoel({
+                                sampleId,
+                                oNumber,
+                                sampleDate: attempt.sampleDate,
+                                heeftFotoPotje: !!attempt.photoUrl,
+                                heeftFotoOnderdeel: !!attempt.partPhotoUrl,
+                                aantalPogingen: attempts.length,
+                              })
+                            }
+                            className="btn-link"
+                          >
+                            <Icon name="reset" size={16} />
+                            Afname ongedaan maken
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => handleDelete(attempt.id)}
+                          onClick={() => handleDelete(attempt, idx + 1)}
                           className="btn-link btn-link-danger"
                         >
                           <Icon name="trash" size={16} />
-                          Verwijderen
+                          Monstername verwijderen
                         </button>
                       </div>
                     )}
@@ -414,6 +455,17 @@ export default function SampleAttemptsPanel({
           })}
         </ul>
       )}
+      <AfnameOngedaanModal
+        key={afnameDoel ? `afname-${afnameDoel.sampleId}` : 'afname-geen'}
+        doel={afnameDoel}
+        onClose={() => setAfnameDoel(null)}
+        onKlaar={async () => {
+          setAfnameDoel(null);
+          await load();
+          notifyChange();
+          if (onAfnameOngedaan) onAfnameOngedaan();
+        }}
+      />
     </div>
   );
 }

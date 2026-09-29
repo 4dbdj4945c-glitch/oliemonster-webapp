@@ -9,6 +9,11 @@ import HelpModal from '@/app/components/HelpModal';
 import Tooltip from '@/app/components/Tooltip';
 import SampleAttemptsPanel from '@/app/components/SampleAttemptsPanel';
 import LaadFout from '@/app/components/LaadFout';
+import OngedaanMelding, { type OngedaanInhoud } from '@/app/components/OngedaanMelding';
+import MonsterVerwijderBlok, { type VerwijderDoel } from '@/app/components/MonsterVerwijderBlok';
+import AfnameOngedaanModal, { type AfnameDoel } from '@/app/components/AfnameOngedaanModal';
+import VerwijderdeMonsters from '@/app/components/VerwijderdeMonsters';
+import HerstelHulp from '@/app/components/HerstelHulp';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { objectTypeIcoon, objectTypeLabel } from '@/lib/sampleObjects';
 import { ANNULEER_REDENEN } from '@/lib/cancelReasons';
@@ -98,8 +103,13 @@ export default function DashboardPage() {
   const [objecten, setObjecten] = useState<SampleObject[]>([]);
   const [objectenBeschikbaar, setObjectenBeschikbaar] = useState(false);
   const [objectFilter, setObjectFilter] = useState<string>('all');
-  // Tabbladen binnen deze module: de lijst met monsters of de planning
-  const [tab, setTab] = useState<'lijst' | 'planning'>('lijst');
+  // Tabbladen binnen deze module: de lijst met monsters, de planning of (admin)
+  // de prullenbak met verwijderde monsters
+  const [tab, setTab] = useState<'lijst' | 'planning' | 'prullenbak'>('lijst');
+  // Melding met Ongedaan maken na het verwijderen van een monster
+  const [ongedaan, setOngedaan] = useState<OngedaanInhoud | null>(null);
+  // Afname ongedaan maken vanuit het bewerkvenster
+  const [afnameDoel, setAfnameDoel] = useState<AfnameDoel | null>(null);
   // Annuleren met reden (los monster of alle monsters van een object)
   const [annuleerDoel, setAnnuleerDoel] = useState<OilSample | null>(null);
   const [annuleerBulk, setAnnuleerBulk] = useState(false);
@@ -386,24 +396,47 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Weet je zeker dat je dit monster wilt verwijderen?')) {
-      return;
-    }
-
+  // Terugzetten uit de prullenbak: vanuit de melding Ongedaan maken, de
+  // prullenbak zelf en de herstelhulp bij Nieuw monster.
+  const herstelMonster = async (id: number, oNumber: string): Promise<boolean> => {
     try {
-      const response = await fetch(`/api/samples/${id}`, {
-        method: 'DELETE',
-      });
-
+      const response = await fetch(`/api/samples/${id}/herstellen`, { method: 'POST' });
       if (!response.ok) {
-        setFoutmelding(await foutTekst(response, 'Het monster kon niet worden verwijderd.'));
-        return;
+        setFoutmelding(await foutTekst(response, `${oNumber} is niet teruggezet.`));
+        return false;
       }
-      loadSamples();
+      setFoutmelding('');
+      setMelding(`${oNumber} staat weer in de lijst, met alle monsternames en foto's.`);
+      await loadSamples();
+      return true;
     } catch (error) {
       setFoutmelding(GEEN_VERBINDING);
+      return false;
     }
+  };
+
+  // Na Monster verwijderen onderaan het bewerkvenster: venster dicht, rij weg
+  // en tien seconden de kans om het terug te draaien.
+  const naVerwijderen = (doel: VerwijderDoel) => {
+    setShowAddModal(false);
+    resetForm();
+    setSamples((prev) => prev.filter((s) => s.id !== doel.id));
+    setMelding('');
+    setOngedaan({
+      sleutel: `verwijderd-${doel.id}-${Date.now()}`,
+      tekst: `Monster ${doel.oNumber} verwijderd`,
+      onOngedaan: () => herstelMonster(doel.id, doel.oNumber),
+    });
+  };
+
+  // Afname ongedaan maken vanuit het bewerkvenster of het pogingenpaneel: het
+  // formulier volgt mee, anders zet Bijwerken het monster meteen weer op genomen.
+  const naAfnameOngedaan = () => {
+    setAfnameDoel(null);
+    setFormData((f) => ({ ...f, isTaken: false, sampleDate: '' }));
+    setEditingSample((s) => (s ? { ...s, isTaken: false, sampleDate: null, photoUrl: undefined, partPhotoUrl: null } : s));
+    setMelding(`De afname van ${editingSample?.oNumber ?? 'het monster'} is ongedaan gemaakt. Het staat weer op niet genomen.`);
+    loadSamples();
   };
 
   // Statusbadge: altijd icoon plus woord (zie STIJL.md). Vier statussen, uit
@@ -704,6 +737,8 @@ export default function DashboardPage() {
   const kolomAantal = visibleColumns.length + 1 + (objectenBeschikbaar ? 1 : 0) + (isAdmin ? 1 : 0);
   // De planning krijgt een kijker niet te zien; de API weigert hem ook.
   const magPlannen = objectenBeschikbaar && !isAlleenLezen(user?.role);
+  const toonLijst =
+    tab === 'lijst' || (tab === 'planning' && !magPlannen) || (tab === 'prullenbak' && !isAdmin);
   const objectNaamVanFilter =
     objecten.find((o) => String(o.id) === objectFilter)?.name ?? 'dit object';
   // Alle vier de statussen in één keer geteld (lib/sampleStatus.ts).
@@ -742,8 +777,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Tabbladen: de lijst of de planning van dit jaar */}
-      {magPlannen && (
+      {/* Tabbladen: de lijst, de planning van dit jaar en (admin) de prullenbak */}
+      {(magPlannen || isAdmin) && (
         <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '16px' }}>
           <div className="tabs" role="tablist">
             <button
@@ -755,15 +790,29 @@ export default function DashboardPage() {
             >
               Lijst
             </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'planning'}
-              className={tab === 'planning' ? 'on' : ''}
-              onClick={() => setTab('planning')}
-            >
-              Planning
-            </button>
+            {magPlannen && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'planning'}
+                className={tab === 'planning' ? 'on' : ''}
+                onClick={() => setTab('planning')}
+              >
+                Planning
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'prullenbak'}
+                className={tab === 'prullenbak' ? 'on' : ''}
+                onClick={() => setTab('prullenbak')}
+              >
+                <Icon name="trash" size={16} />
+                Prullenbak
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -772,7 +821,17 @@ export default function DashboardPage() {
         <PlanningPaneel analysisYear={2026} isAdmin={isAdmin} />
       )}
 
-      {(tab !== 'planning' || !magPlannen) && (<>
+      {tab === 'prullenbak' && isAdmin && (
+        <VerwijderdeMonsters
+          jaar={2026}
+          onHersteld={(oNumber) => {
+            setMelding(`${oNumber} staat weer in de lijst, met alle monsternames en foto's.`);
+            loadSamples();
+          }}
+        />
+      )}
+
+      {toonLijst && (<>
       {/* Zoeken en toevoegen */}
       <div className="card" style={{ marginBottom: '16px' }}>
         <div className="flex flex-col sm:flex-row gap-3">
@@ -1263,16 +1322,6 @@ export default function DashboardPage() {
                           <Icon name="pencil" size={16} />
                           <span className="alleen-mobiel">Bewerken</span>
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(sample.id)}
-                          className="icon-btn icon-btn-danger icon-btn-verwijder"
-                          title="Verwijderen"
-                          aria-label={`${sample.oNumber} verwijderen`}
-                        >
-                          <Icon name="trash" size={16} />
-                          <span className="alleen-mobiel">Verwijderen</span>
-                        </button>
                       </td>
                     )}
                   </tr>
@@ -1318,6 +1367,29 @@ export default function DashboardPage() {
                     <p id="veld-onummer-fout" role="alert" style={{ color: 'var(--rood)', fontSize: '13px', marginTop: '4px', fontWeight: 600 }}>
                       {oNumberWarning}
                     </p>
+                  )}
+                  {/* Herstelhulp: nummer van vorig jaar of uit de prullenbak */}
+                  {!editingSample && (
+                    <HerstelHulp
+                      oNumber={formData.oNumber}
+                      jaar={2026}
+                      bestaatAl={!!oNumberWarning}
+                      onOvernemen={(g) =>
+                        setFormData((f) => ({
+                          ...f,
+                          location: g.location,
+                          description: g.description,
+                          oilType: g.oilType,
+                          objectId: objectenBeschikbaar ? g.objectId : f.objectId,
+                        }))
+                      }
+                      onHerstel={async (id, oNumber) => {
+                        if (await herstelMonster(id, oNumber)) {
+                          setShowAddModal(false);
+                          resetForm();
+                        }
+                      }}
+                    />
                   )}
                 </div>
 
@@ -1427,6 +1499,32 @@ export default function DashboardPage() {
                 )}
               </form>
 
+              {/* Afname ongedaan maken: terug naar niet genomen, datum en foto's eraf */}
+              {editingSample && isAdmin && editingSample.isTaken && !editingSample.isDisabled && (
+                <div className="afname-blok">
+                  <p>
+                    Per ongeluk of te vroeg op genomen gezet? Zet de laatste monstername terug naar niet genomen.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    onClick={() =>
+                      setAfnameDoel({
+                        sampleId: editingSample.id,
+                        oNumber: editingSample.oNumber,
+                        sampleDate: editingSample.sampleDate,
+                        heeftFotoPotje: !!editingSample.photoUrl,
+                        heeftFotoOnderdeel: !!editingSample.partPhotoUrl,
+                        aantalPogingen: editingSample.attemptsCount ?? 1,
+                      })
+                    }
+                  >
+                    <Icon name="reset" size={16} />
+                    Afname ongedaan maken
+                  </button>
+                </div>
+              )}
+
               {editingSample && (
                 <div style={{ marginTop: '20px' }}>
                   <SampleAttemptsPanel
@@ -1435,8 +1533,26 @@ export default function DashboardPage() {
                     isAdmin={isAdmin}
                     onPhotoClick={(url, label) => setSelectedPhoto({ fotos: [{ url, label }], oNumber: label, start: 0 })}
                     onChange={() => loadSamples()}
+                    onAfnameOngedaan={naAfnameOngedaan}
                   />
                 </div>
+              )}
+
+              {/* Het enige plekje waar een heel monster weg kan, apart en onderaan */}
+              {editingSample && isAdmin && (
+                <MonsterVerwijderBlok
+                  key={`verwijder-${editingSample.id}`}
+                  doel={{
+                    id: editingSample.id,
+                    oNumber: editingSample.oNumber,
+                    attemptsCount: editingSample.attemptsCount,
+                    isTaken: editingSample.isTaken,
+                    sampleDate: editingSample.sampleDate,
+                    photoUrl: editingSample.photoUrl,
+                    partPhotoUrl: editingSample.partPhotoUrl,
+                  }}
+                  onVerwijderd={naVerwijderen}
+                />
               )}
             </div>
 
@@ -1529,6 +1645,17 @@ export default function DashboardPage() {
 
         {annuleerFout && <div className="alert alert-danger" style={{ marginTop: '12px' }}>{annuleerFout}</div>}
       </Modal>
+
+      {/* Afname ongedaan maken: bevestiging met wat er verdwijnt */}
+      <AfnameOngedaanModal
+        key={`afname-${afnameDoel?.sampleId ?? 'geen'}`}
+        doel={afnameDoel}
+        onClose={() => setAfnameDoel(null)}
+        onKlaar={naAfnameOngedaan}
+      />
+
+      {/* Na verwijderen: tien seconden Ongedaan maken */}
+      <OngedaanMelding melding={ongedaan} onSluit={() => setOngedaan(null)} />
 
       {/* Monster nemen: alles in één scherm, met de knop Niet bereikbaar erin */}
       <MonsterNemenModal

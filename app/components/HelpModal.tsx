@@ -103,7 +103,8 @@ export default function HelpModal({ isOpen, onClose, userRole }: HelpModalProps)
               <ul>
                 <li><strong>Toevoegen:</strong> klik op &quot;Nieuw monster&quot; om een monster toe te voegen.</li>
                 <li><strong>Bewerken:</strong> klik op het potloodje bij een monster om het aan te passen (op de telefoon staat er &quot;Bewerken&quot; bij).</li>
-                <li><strong>Verwijderen:</strong> klik op het prullenbakje bij een monster om het te verwijderen (op de telefoon staat er &quot;Verwijderen&quot; bij).</li>
+                <li><strong>Afname ongedaan maken:</strong> per ongeluk op genomen gezet? Open Bewerken en kies Afname ongedaan maken. De laatste monstername gaat terug naar niet genomen, datum en foto&apos;s gaan eraf.</li>
+                <li><strong>Verwijderen:</strong> alleen onderaan het bewerkvenster, in het blok Monster verwijderen, en pas na het overtypen van het O-nummer. Het monster gaat naar de prullenbak (tab Prullenbak) en is daar terug te zetten. Direct na het verwijderen kan het ook met Ongedaan maken.</li>
                 <li><strong>Datum:</strong> het datumveld is alleen beschikbaar wanneer &quot;Monster is genomen&quot; is aangevinkt.</li>
                 <li><strong>O-nummer:</strong> elk o-nummer moet uniek zijn, je krijgt een waarschuwing bij duplicaten.</li>
               </ul>

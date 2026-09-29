@@ -82,7 +82,7 @@ Na het seeden van de database zijn de volgende accounts beschikbaar:
 1. **Inloggen** met admin account
 2. **Monsters toevoegen**: Klik op "Nieuw Monster" knop
 3. **Monsters bewerken**: Klik op "Bewerken" naast een monster
-4. **Monsters verwijderen**: Klik op "Verwijderen" naast een monster
+4. **Monsters verwijderen**: Open Bewerken, onderaan staat het blok Monster verwijderen. Typ het O-nummer over ter bevestiging. Het monster gaat naar de prullenbak (tab Prullenbak, per jaar) en is daar terug te zetten
 5. **Zoeken**: Typ in het zoekveld om te filteren
 
 ### Voor Gebruikers
@@ -150,7 +150,10 @@ oliemonster-webapp/
 - `GET /api/samples?search={query}` - Alle monsters ophalen (met optionele zoekfilter)
 - `POST /api/samples` - Nieuw monster toevoegen (admin only)
 - `PUT /api/samples/[id]` - Monster bijwerken (admin only)
-- `DELETE /api/samples/[id]` - Monster verwijderen (admin only)
+- `DELETE /api/samples/[id]` - Monster naar de prullenbak (admin only, body `{ bevestigONummer }`; zacht verwijderen via `deletedAt`)
+- `GET /api/samples/verwijderd?year=` - Prullenbak van een jaar (admin only)
+- `POST /api/samples/[id]/herstellen` - Monster terugzetten uit de prullenbak (admin only)
+- `POST /api/samples/[id]/afname-ongedaan` - Laatste monstername terug naar niet genomen (admin only)
 
 ## Productie Deployment
 

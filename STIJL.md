@@ -120,8 +120,14 @@ Eén set voor de hele portal, via `<Icon name="..." />` uit `app/components/ui` 
   Geannuleerd `status-cancelled` (grijs). Rondes: `status-round-open/-busy/-done`.
   De vier statussen van een monster staan met hun label, badge en icoon in `lib/sampleStatus.ts`,
   zodat de lijst, de tellingen en de PDF hetzelfde zeggen.
-- **Tabelacties**: op desktop Hermonstering als knop met tekst, Bewerken en Verwijderen als `.icon-btn` met `title` en
-  `aria-label` (Verwijderen met `.icon-btn-verwijder`: rood in rust; elders blijft `.icon-btn-danger` grijs met rood bij hover); de tekst staat in `<span class="alleen-mobiel">`, zodat de telefoon altijd icoon plus tekst toont.
+- **Tabelacties**: op desktop Hermonstering als knop met tekst, Bewerken als `.icon-btn` met `title` en
+  `aria-label`; de tekst staat in `<span class="alleen-mobiel">`, zodat de telefoon altijd icoon plus tekst toont.
+- **Verwijderen**: iets dat veel meeneemt of niet terug kan, staat nooit als losse knop in een rij naast een
+  veelgebruikte actie. Het staat onderaan het bewerkvenster in `.gevarenzone` (component `MonsterVerwijderBlok`
+  voor monsters: uitleg wat er weggaat, dan het O-nummer overtypen). Monsters gaan naar de prullenbak (zacht
+  verwijderen, `lib/verwijderdeMonsters.ts`). Na verwijderen van iets kleins of iets uit de prullenbak:
+  `OngedaanMelding` (`.ongedaan-melding`, 10 seconden, knop Ongedaan maken). Een bevestiging noemt altijd wat er weggaat.
+  `.icon-btn-verwijder` (rood in rust) alleen nog waar een rij geen bewerkvenster heeft.
 - **Hulpklassen**: `.zoekveld` (loep in een veld), `.stat-card-icoon` (icoon rechtsboven in een stattegel), `.leeg > .icon`.
 - **Niet**: geen getypte "+" of "x" als icoon, geen emoji, geen losse inline `<svg>` in pagina's. Nieuw icoon nodig?
   Eerst in `iconen-voorstel/` tekenen volgens de spec en opnemen in `iconen.json`, dan opnieuw genereren.
