@@ -9,13 +9,20 @@
 
   Bij een nieuwe bevinding kan Opslaan en nog een: het venster blijft open en
   het labelnummer telt door.
+
+  Een NIEUWE bevinding zonder verbinding (of als de verbinding wegvalt tijdens
+  het versturen) gaat met de verkleinde foto in de offline wachtrij
+  (lib/wachtrij.ts). Per bevinding een eigen sleutel, zodat de server hem maar
+  één keer aanmaakt. Een bestaande bevinding wijzigen kan alleen met bereik.
 */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Icon, Modal } from '@/app/components/ui';
 import FotoKiezer from '@/app/components/FotoKiezer';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { verkleinFoto } from '@/lib/fotoVerkleinen';
+import { IDEMPOTENTIE_HEADER, inWachtrij, isNetwerkFout, nieuweSleutel } from '@/lib/wachtrij';
+import { useGebruiker } from '@/app/components/GebruikerProvider';
 import {
   CHECKLIST_ANTWOORDEN,
   checklistVan,
@@ -76,6 +83,7 @@ export default function BevindingVenster({
   onClose,
   onOpgeslagen,
   onWeghalen,
+  onBewaard,
 }: {
   inspectie: Inspectie;
   /** null = nieuwe bevinding */
@@ -86,7 +94,11 @@ export default function BevindingVenster({
   /** Na opslaan: de inspectie zoals de server hem teruggeeft. */
   onOpgeslagen: (nieuw: Inspectie, sluiten: boolean) => void;
   onWeghalen?: (item: Bevinding) => void;
+  /** Zonder bereik in de wachtrij gezet: de melding voor het scherm. */
+  onBewaard?: (melding: string, sluiten: boolean) => void;
 }) {
+  const gebruiker = useGebruiker();
+  const sleutel = useRef(nieuweSleutel());
   const s = sjabloonVan(inspectie.sjabloon);
   const [velden, setVelden] = useState<Velden>(() => beginVelden(inspectie, item));
   const [foto, setFoto] = useState<File | null>(null);
@@ -117,10 +129,39 @@ export default function BevindingVenster({
       ...(s.volgendePerItem ? { volgendeOp: velden.volgendeOp || null } : {}),
       ...(s.item.kiesInstallatie ? { installatieId: velden.installatieId || null } : {}),
     };
+    // Een nieuwe bevinding zonder bereik: bewaren op de telefoon.
+    const bewaar = async () => {
+      const f = foto ? await verkleinFoto(foto) : null;
+      await inWachtrij({
+        sleutel: sleutel.current,
+        soort: 'inspectie-item',
+        gebruiker: gebruiker.username,
+        titel: `${s.item.enkel.charAt(0).toUpperCase()}${s.item.enkel.slice(1)} ${velden.titel || 'zonder nummer'}, ${inspectie.nummer}`,
+        inspectieId: inspectie.id,
+        json: body,
+        foto: f ? { veld: 'photo', naam: f.name, blob: f } : null,
+      });
+      sleutel.current = nieuweSleutel();
+      onBewaard?.(`${velden.titel || 'De bevinding'} is op deze telefoon bewaard en gaat vanzelf mee zodra er bereik is.`, sluiten);
+      if (!sluiten) {
+        setVelden(beginVelden(inspectie, null));
+        setFoto(null);
+      }
+    };
+    if (!item && typeof navigator !== 'undefined' && !navigator.onLine) {
+      try {
+        await bewaar();
+      } catch {
+        setFout('Geen verbinding, en bewaren op deze telefoon lukte ook niet. Probeer het zo opnieuw.');
+      } finally {
+        setBezig(false);
+      }
+      return;
+    }
     try {
       const res = await fetch(item ? `/api/inspectie-items/${item.id}` : `/api/inspecties/${inspectie.id}/items`, {
         method: item ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(item ? {} : { [IDEMPOTENTIE_HEADER]: sleutel.current }) },
         body: JSON.stringify(body),
       });
       if (!res.ok) {
@@ -132,6 +173,7 @@ export default function BevindingVenster({
       const data = await res.json();
       let nieuw: Inspectie = item ? data : data.inspectie;
       const itemId: number = item ? item.id : data.itemId;
+      if (!item) sleutel.current = nieuweSleutel();
       if (foto) {
         const form = new FormData();
         form.append('photo', await verkleinFoto(foto));
@@ -150,8 +192,18 @@ export default function BevindingVenster({
         setVelden(beginVelden(nieuw, null));
         setFoto(null);
       }
-    } catch {
-      setFout(GEEN_VERBINDING);
+    } catch (e) {
+      // Verbinding weg tijdens het versturen van een nieuwe bevinding: met dezelfde
+      // sleutel in de wachtrij. Kwam hij toch aan, dan maakt de server hem niet twee keer.
+      if (!item && isNetwerkFout(e)) {
+        try {
+          await bewaar();
+        } catch {
+          setFout(GEEN_VERBINDING);
+        }
+      } else {
+        setFout(GEEN_VERBINDING);
+      }
     } finally {
       setBezig(false);
     }

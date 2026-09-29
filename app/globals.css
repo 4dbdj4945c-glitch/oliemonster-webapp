@@ -5233,3 +5233,49 @@ a.rij-tekst.rij-link:hover strong { text-decoration: underline; }
   .dr-teken { padding: 18px; }
 }
 .dr-veldknop { margin-top: 12px; }
+
+/* ---------- Offline wachtrij (fase 5) ---------- */
+.wachtrij {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--blue-light);
+  border: 1px solid var(--blue);
+  border-radius: var(--radius);
+}
+.wachtrij-fout { background: var(--oranje-light); border-color: var(--geel-tekst); }
+.wachtrij-kop { display: flex; gap: 12px; align-items: flex-start; color: var(--navy); }
+.wachtrij-kop > .icon { flex: none; color: var(--blue); }
+.wachtrij-fout .wachtrij-kop > .icon { color: var(--geel-tekst); }
+.wachtrij-kop div { display: flex; flex-direction: column; gap: 2px; }
+.wachtrij-kop strong { font-size: 16px; }
+.wachtrij-kop span { font-size: 14px; color: var(--grijs-700); }
+.wachtrij-lijst { list-style: none; margin: 0; padding: 0; background: var(--wit); border: 1px solid var(--grijs-200); border-radius: var(--radius-md); overflow: hidden; }
+.wachtrij-lijst li { display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 10px 14px; }
+.wachtrij-lijst li + li { border-top: 1px solid var(--grijs-200); }
+.wachtrij-tekst { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wachtrij-tekst strong { font-size: 15px; color: var(--navy); }
+.wachtrij-tekst span { font-size: 13px; color: var(--grijs-700); overflow-wrap: anywhere; }
+.wachtrij-knop-nu { min-height: 52px; background: var(--wit); }
+
+/* De knop in de balk: blauw vlak, geen oranje (dat is voor de hoofdknop van de pagina) */
+.wachtrij-balk {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.wachtrij-balk-zij { width: 100%; justify-content: center; min-height: 44px; margin-bottom: 8px; }
+.wachtrij-balk-kop .wachtrij-balk-lang { display: none; }
+.wachtrij-balk-kop { min-height: 44px; min-width: 44px; justify-content: center; }
+.veld-wachtend { font-size: 14px; color: var(--grijs-700); margin: 6px 0 0; }

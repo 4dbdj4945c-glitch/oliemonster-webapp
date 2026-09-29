@@ -26,6 +26,10 @@ import type { IconNaam } from './icons/namen';
 import { MenuItem, ToolbarMenu, initiaal } from './Menu';
 import type { AppShellProps, ShellUser } from './AppShell';
 import AgendaVenster from '../AgendaVenster';
+import Modal from './Modal';
+import WachtrijOverzicht, { wachtTekst } from '../wachtrij/WachtrijOverzicht';
+import { useWachtrij, useWachtrijVerzender } from '../wachtrij/useWachtrij';
+import { wisVeldCache } from '../wachtrij/VeldOffline';
 
 const TAB_INFO: Record<Exclude<NavTab, 'vandaag'>, { naam: string; icoon: IconNaam }> = {
   Werk: { naam: 'Werk', icoon: 'calendar' },
@@ -55,6 +59,17 @@ export default function Schil({
   const paneel = paneelOp && paneelOp.pad === pad ? paneelOp.tab : null;
   const setPaneel = (t: Exclude<NavTab, 'vandaag'> | null) => setPaneelOp(t ? { tab: t, pad } : null);
   const [agendaOpen, setAgendaOpen] = useState(false);
+  // Offline wachtrij (Monster nemen, bevindingen): alleen de beheerder vult in.
+  useWachtrijVerzender(user.username, isAdmin);
+  const wachtrij = useWachtrij(isAdmin ? user.username : '');
+  const [wachtrijOpen, setWachtrijOpen] = useState(false);
+  const wachtrijKnop = (klasse: string) =>
+    wachtrij.length > 0 && (
+      <button type="button" className={`wachtrij-balk ${klasse}`} onClick={() => setWachtrijOpen(true)} aria-label={wachtTekst(wachtrij.length)}>
+        <Icon name="verzenden" size={16} />
+        <span>{wachtrij.length}<span className="wachtrij-balk-lang"> {wachtrij.length === 1 ? 'wacht' : 'wachten'} op verzending</span></span>
+      </button>
+    );
 
   // Dicht bij Escape.
   useEffect(() => {
@@ -69,6 +84,7 @@ export default function Schil({
   const uitloggen = async () => {
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
+      await wisVeldCache();
     } finally {
       router.push('/login');
     }
@@ -109,6 +125,7 @@ export default function Schil({
           ))}
         </div>
         <div className="zijbalk-voet">
+          {wachtrijKnop('wachtrij-balk-zij')}
           <ToolbarMenu
             label={`Gebruikersmenu van ${user.username}`}
             buttonClass="zijbalk-gebruiker"
@@ -140,6 +157,7 @@ export default function Schil({
         </Link>
         {title && <span className="schil-kop-titel">{title}</span>}
         <div className="schil-kop-rechts">
+          {wachtrijKnop('wachtrij-balk-kop')}
           {rightActions}
           {onHelp && (
             <button type="button" className="nav-btn nav-btn-icoon" onClick={onHelp} aria-label="Help" title="Help">
@@ -251,6 +269,9 @@ export default function Schil({
       )}
 
       {agendaOpen && <AgendaVenster open onClose={() => setAgendaOpen(false)} />}
+      <Modal open={wachtrijOpen && wachtrij.length > 0} onClose={() => setWachtrijOpen(false)} title="Wachtrij" size="md">
+        <WachtrijOverzicht lijst={wachtrij} gebruiker={user.username} />
+      </Modal>
     </div>
   );
 }

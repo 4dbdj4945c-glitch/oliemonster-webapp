@@ -32,6 +32,9 @@ import { objectTypeIcoon } from '@/lib/sampleObjects';
 import { datumAlsInvoer, datumAlsTekst, minutenAlsTekst } from '@/lib/planningInstellingen';
 import { magModule, moduleVan } from '@/lib/modules';
 import { STANDAARD_UITVOERDER, type DagrapportInLijst } from '@/app/components/dagrapport/types';
+import WachtrijOverzicht from '@/app/components/wachtrij/WachtrijOverzicht';
+import { useWachtrij } from '@/app/components/wachtrij/useWachtrij';
+import VeldOffline from '@/app/components/wachtrij/VeldOffline';
 import { kaartenLink, korteDatum } from '@/lib/vandaag';
 import type { MapStreet } from '@/app/components/RouteMap';
 import { isMonsterStop, stopNaam, type PlanDag, type PlanMonster, type PlanStop } from './types';
@@ -67,14 +70,26 @@ function monsters(aantal: number): string {
   return `${aantal} ${aantal === 1 ? 'monster' : 'monsters'}`;
 }
 
-/** Het monster dat op deze stop nu aan de beurt is: eerst een open monster dat bereikbaar is. */
-function volgendMonster(stop: PlanStop | null): PlanMonster | null {
+/**
+ * Het monster dat op deze stop nu aan de beurt is: eerst een open monster dat
+ * bereikbaar is. Een monster dat al in de wachtrij staat (genomen zonder bereik)
+ * is niet meer aan de beurt.
+ */
+function volgendMonster(stop: PlanStop | null, wachtend: Set<number>): PlanMonster | null {
   if (!stop) return null;
-  const open = stop.samples.filter((m) => !m.isTaken);
+  const open = stop.samples.filter((m) => !m.isTaken && !wachtend.has(m.id));
   return open.find((m) => !m.isUnreachable) ?? open[0] ?? null;
 }
 
-function StatusBadge({ m }: { m: PlanMonster }) {
+function StatusBadge({ m, wacht }: { m: PlanMonster; wacht?: boolean }) {
+  if (wacht && !m.isTaken) {
+    return (
+      <span className="badge badge-info">
+        <Icon name="verzenden" size={16} />
+        Wacht op verzending
+      </span>
+    );
+  }
   if (m.isTaken) {
     return (
       <span className="badge badge-success">
@@ -116,6 +131,11 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
   const magDagrapport = magModule(moduleVan('dagrapporten'), user.role);
   const [dagrapporten, setDagrapporten] = useState<DagrapportInLijst[]>([]);
   const [rapportBezig, setRapportBezig] = useState(false);
+  // Offline wachtrij: wat hier zonder bereik genomen is, telt als genomen tot het verstuurd is.
+  const wachtrij = useWachtrij(isAdmin ? user.username : '');
+  const wachtend = new Set(wachtrij.filter((i) => i.soort === 'monster-nemen' && i.monsterId).map((i) => i.monsterId as number));
+  const aantalInWachtrij = wachtrij.length;
+  const vorigAantal = useRef(aantalInWachtrij);
 
   const [gpsAan, setGpsAan] = useState(false);
   const [positie, setPositie] = useState<{ lat: number; lng: number } | null>(null);
@@ -148,6 +168,12 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
   useEffect(() => {
     laadDag();
   }, [laadDag]);
+
+  // Is er iets uit de wachtrij verstuurd, dan de dag opnieuw ophalen.
+  useEffect(() => {
+    if (aantalInWachtrij < vorigAantal.current && navigator.onLine) laadDag();
+    vorigAantal.current = aantalInWachtrij;
+  }, [aantalInWachtrij, laadDag]);
 
   // De dagrapporten van deze dag. Mislukt het (geen verbinding), dan geen lijst.
   useEffect(() => {
@@ -291,7 +317,8 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
     setOnbereikbaarDoel(null);
     setGekozenMonster(null);
     setMelding(tekst);
-    await laadDag();
+    // Zonder bereik lukt ophalen toch niet; de wachtrij toont wat er klaarstaat.
+    if (navigator.onLine) await laadDag();
   };
 
   const terugHref = dag ? `/dashboard/planning?jaar=${dag.analysisYear}` : '/dashboard/planning';
@@ -303,9 +330,10 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
   const stop = stops.find((s) => s.id === gekozenStop) ?? volgendeStop ?? stops[stops.length - 1] ?? null;
   const stopNummer = stop ? stops.indexOf(stop) + 1 : 0;
   const monster =
-    (stop && stop.samples.find((m) => m.id === gekozenMonster && !m.isTaken)) ?? volgendMonster(stop);
+    (stop && stop.samples.find((m) => m.id === gekozenMonster && !m.isTaken && !wachtend.has(m.id))) ?? volgendMonster(stop, wachtend);
   const totaal = stops.reduce((n, s) => n + s.aantalMonsters, 0);
   const genomen = stops.reduce((n, s) => n + s.aantalGenomen, 0);
+  const nogTeVersturen = stops.reduce((n, s) => n + s.samples.filter((m) => !m.isTaken && wachtend.has(m.id)).length, 0);
   const bezoeken = stops.filter((s) => !isMonsterStop(s));
   const bezoekStop = stop && !isMonsterStop(stop) ? stop : null;
   const loopt = !!stop?.startedAt && !stop?.endedAt;
@@ -360,6 +388,7 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
 
   return (
     <AppShell title="Dagscherm" wide veld user={user}>
+      <VeldOffline api={`/api/sample-plans/${dagId}`} />
       <div className="veld">
         {kop}
         <GeenVerbinding />
@@ -378,6 +407,7 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
                 </div>
               )}
               {gpsFout && <div className="alert alert-danger" role="alert">{gpsFout}</div>}
+              <WachtrijOverzicht lijst={wachtrij} gebruiker={user.username} />
 
               <div className="veld-voortgang">
                 <div className="veld-voortgang-tekst">
@@ -389,6 +419,11 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
                 <div className="voortgang-balk" role="img" aria-label={`${genomen} van ${totaal} monsters genomen`}>
                   <i className="voortgang-genomen" style={{ width: `${totaal ? (genomen / totaal) * 100 : 0}%` }} />
                 </div>
+                {nogTeVersturen > 0 && (
+                  <p className="veld-wachtend">
+                    En {nogTeVersturen} genomen op deze telefoon, {nogTeVersturen === 1 ? 'wacht' : 'wachten'} op verzending
+                  </p>
+                )}
                 {bezoeken.length > 0 && (
                   <p className="veld-voortgang-bezoeken">
                     {bezoeken.filter((b) => b.isDone).length} van {bezoeken.length}{' '}
@@ -525,15 +560,15 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
                             <button
                               type="button"
                               className="veld-lijst-regel"
-                              onClick={() => !m.isTaken && setGekozenMonster(m.id)}
-                              disabled={m.isTaken}
+                              onClick={() => !m.isTaken && !wachtend.has(m.id) && setGekozenMonster(m.id)}
+                              disabled={m.isTaken || wachtend.has(m.id)}
                               title={m.isTaken ? `${m.oNumber} is genomen` : `${m.oNumber} als volgende kiezen`}
                             >
                               <span className="veld-lijst-tekst">
                                 <strong>{m.oNumber}</strong>
                                 <span>{[m.description, m.location].filter(Boolean).join(', ')}</span>
                               </span>
-                              <StatusBadge m={m} />
+                              <StatusBadge m={m} wacht={wachtend.has(m.id)} />
                             </button>
                           </li>
                         ))}

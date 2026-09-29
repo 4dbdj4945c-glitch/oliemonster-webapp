@@ -112,7 +112,7 @@ describe('afscherming', () => {
     expect((await lijst(verzoek('/api/dagrapporten'), undefined)).status).toBe(403);
     // Foto's van een dagrapport alleen in de PDF.
     const fotoId = (await prisma.dagrapportFoto.findFirstOrThrow({ where: { dagrapportId: ids.dagrapporten.tweede } })).id;
-    expect((await foto(verzoek(`/api/fotos/dagrapport/${fotoId}`), metParams({ pad: ['dagrapport', String(fotoId)] }))).status).toBe(404);
+    expect((await foto(verzoek(`/api/fotos/dagrapport/${fotoId}`), { params: Promise.resolve({ pad: ['dagrapport', String(fotoId)] }) })).status).toBe(404);
   });
 
   it('een eigen rapport dat weer concept is, verdwijnt voor de kijker', async () => {

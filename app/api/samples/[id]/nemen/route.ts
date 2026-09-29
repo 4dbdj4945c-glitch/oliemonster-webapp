@@ -7,6 +7,7 @@ import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
 import { bewaarFoto, ruimFotoOpAls } from '@/lib/fotoOpslag';
 import { apiRoute, ApiFout, leesId } from '@/lib/apiRoute';
+import { eenmalig } from '@/lib/idempotentie';
 
 /**
  * POST - Monster nemen in één keer.
@@ -25,39 +26,43 @@ import { apiRoute, ApiFout, leesId } from '@/lib/apiRoute';
  * Staat er nog een openstaande poging (ingeplande hermonstering), dan wordt die
  * gevuld in plaats van dat er een tweede poging bijkomt. Anders komt er een
  * nieuwe poging bij, zodat hermonstering blijft werken zoals het werkte.
+ *
+ * Met de header Idempotentie-Sleutel (de offline wachtrij, lib/wachtrij.ts)
+ * wordt dezelfde invoer maar één keer verwerkt (lib/idempotentie.ts).
  */
 export const POST = apiRoute(
   { rol: 'admin', module: 'oliemonsters', fout: 'Fout bij opslaan van het genomen monster', ontbreekt: KOLOM_ONTBREEKT_WENSEN2 },
   async (request, context, session) => {
     const sampleId = await leesId(context, 'Onbekend monster');
+    return eenmalig(request, session, `nemen-${sampleId}`, async () => {
 
-    const form = await request.formData();
-    const tekst = (naam: string) => {
-      const waarde = form.get(naam);
-      return typeof waarde === 'string' ? waarde.trim() : '';
-    };
-    const bestand = (naam: string) => {
-      const waarde = form.get(naam);
-      return waarde instanceof File && waarde.size > 0 ? waarde : null;
-    };
+      const form = await request.formData();
+      const tekst = (naam: string) => {
+        const waarde = form.get(naam);
+        return typeof waarde === 'string' ? waarde.trim() : '';
+      };
+      const bestand = (naam: string) => {
+        const waarde = form.get(naam);
+        return waarde instanceof File && waarde.size > 0 ? waarde : null;
+      };
 
-    const datumTekst = tekst('sampleDate');
-    if (!datumTekst) throw new ApiFout(400, 'Vul de datum van de afname in');
-    const sampleDate = new Date(datumTekst);
-    if (Number.isNaN(sampleDate.getTime())) throw new ApiFout(400, 'De datum van de afname klopt niet');
+      const datumTekst = tekst('sampleDate');
+      if (!datumTekst) throw new ApiFout(400, 'Vul de datum van de afname in');
+      const sampleDate = new Date(datumTekst);
+      if (Number.isNaN(sampleDate.getTime())) throw new ApiFout(400, 'De datum van de afname klopt niet');
 
-    const oilType = tekst('oilType');
-    const remarks = tekst('remarks');
-    const fotoOnderdeel = bestand('photoOnderdeel');
-    const fotoPotje = bestand('photoPotje');
-    for (const foto of [fotoOnderdeel, fotoPotje]) {
-      const melding = foto ? fotoFout(foto) : null;
-      if (melding) throw new ApiFout(400, melding);
-    }
+      const oilType = tekst('oilType');
+      const remarks = tekst('remarks');
+      const fotoOnderdeel = bestand('photoOnderdeel');
+      const fotoPotje = bestand('photoPotje');
+      for (const foto of [fotoOnderdeel, fotoPotje]) {
+        const melding = foto ? fotoFout(foto) : null;
+        if (melding) throw new ApiFout(400, melding);
+      }
 
-    const sample = await prisma.oilSample.findUnique({
-      where: { id: sampleId, ...(await actiefFilter()) },
-      select: { id: true, oNumber: true, analysisYear: true, isDisabled: true },
+      const sample = await prisma.oilSample.findUnique({
+        where: { id: sampleId, ...(await actiefFilter()) },
+        select: { id: true, oNumber: true, analysisYear: true, isDisabled: true },
     });
     if (!sample) throw new ApiFout(404, 'Monster niet gevonden');
     if (sample.isDisabled) throw new ApiFout(400, 'Dit monster is geannuleerd. Draai de annulering eerst terug.');
@@ -167,5 +172,6 @@ export const POST = apiRoute(
     });
 
     return NextResponse.json({ id: sampleId, attemptId, isTaken: true, sampleDate });
+    });
   }
 );

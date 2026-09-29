@@ -12,7 +12,7 @@
   De beheerder vult in; een gebruiker ziet alles alleen.
 */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
@@ -25,6 +25,10 @@ import { INSPECTIE_STATUS_BADGE, INSPECTIE_STATUS_LABELS, oordeelVan, sjabloonVa
 import { aantalNietGoed, berekenLek, co2Tekst, euro, nl } from '@/lib/inspecties/rekenen';
 import { ROLE_ADMIN } from '@/lib/roles';
 import BevindingVenster from './BevindingVenster';
+import WachtrijOverzicht from '@/app/components/wachtrij/WachtrijOverzicht';
+import { useWachtrij } from '@/app/components/wachtrij/useWachtrij';
+import VeldOffline from '@/app/components/wachtrij/VeldOffline';
+import GeenVerbinding from '@/app/components/GeenVerbinding';
 import { dagKort, type Bevinding, type Inspectie, type InstallatieKort } from './types';
 
 export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
@@ -38,6 +42,9 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
   const [installaties, setInstallaties] = useState<InstallatieKort[]>([]);
   const [ongedaan, setOngedaan] = useState<OngedaanInhoud | null>(null);
   const [verwijderd, setVerwijderd] = useState(false);
+  const wachtrij = useWachtrij(isAdmin ? user.username : '').filter((i) => i.soort === 'inspectie-item' && i.inspectieId === inspectieId);
+  const inWachtrij = wachtrij.length;
+  const vorigInWachtrij = useRef(inWachtrij);
 
   const laad = useCallback(async () => {
     try {
@@ -58,6 +65,13 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     laad();
   }, [laad]);
+
+  // Is er een bevinding uit de wachtrij verstuurd, dan de inspectie opnieuw ophalen.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (inWachtrij < vorigInWachtrij.current && navigator.onLine) laad();
+    vorigInWachtrij.current = inWachtrij;
+  }, [inWachtrij, laad]);
 
   // De arbeidsmiddelen kies je uit de installaties van de klant.
   const klantId = insp?.klantId;
@@ -178,8 +192,10 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
 
   return (
     <AppShell title="Inspecties" wide veld user={user}>
+      <VeldOffline api={`/api/inspecties/${inspectieId}`} />
       <div className="veld">
         {kop}
+        <GeenVerbinding tekst="Een nieuwe bevinding wordt op deze telefoon bewaard en gaat vanzelf mee zodra er bereik is. Wijzigen en afronden lukken pas weer met bereik." />
         {fout && <LaadFout melding={fout} onOpnieuw={laad} />}
         {!insp || !s ? (
           fout ? null : <Laden regels={3} soort="lijst" />
@@ -198,6 +214,7 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
               </div>
 
               {melding && <div className="alert alert-success" role="status">{melding}</div>}
+              <WachtrijOverzicht lijst={wachtrij} gebruiker={user.username} />
 
               <Uitkomst insp={insp} />
 
@@ -305,6 +322,10 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
             if (sluiten) setVenster(null);
           }}
           onWeghalen={weghalen}
+          onBewaard={(tekst, sluiten) => {
+            setMelding(tekst);
+            if (sluiten) setVenster(null);
+          }}
         />
       )}
       <OngedaanMelding melding={ongedaan} onSluit={() => setOngedaan(null)} />

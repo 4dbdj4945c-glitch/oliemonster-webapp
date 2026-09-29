@@ -27,6 +27,7 @@ import { verkleinFoto } from '@/lib/fotoVerkleinen';
 import { dagKort } from '@/lib/contracten';
 import { ROLE_ADMIN } from '@/lib/roles';
 import HandtekeningVeld, { type HandtekeningVeldRef } from './HandtekeningVeld';
+import VeldOffline from '@/app/components/wachtrij/VeldOffline';
 import { urenTekst, urenVeld, type Dagrapport } from './types';
 
 interface Velden {
@@ -277,6 +278,7 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
 
   return (
     <AppShell title="Dagrapport" wide veld user={user}>
+      <VeldOffline api={`/api/dagrapporten/${dagrapportId}`} />
       <div className="veld">
         {kop}
         <GeenVerbinding tekst="Wat je invult, blijft staan. Opslaan en tekenen lukt pas weer als je bereik hebt." />

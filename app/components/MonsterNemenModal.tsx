@@ -10,6 +10,9 @@ import OnbereikbaarFormulier, {
 } from './OnbereikbaarFormulier';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { verkleinFoto } from '@/lib/fotoVerkleinen';
+import { IDEMPOTENTIE_HEADER, inWachtrij, isNetwerkFout, nieuweSleutel, type Bestand } from '@/lib/wachtrij';
+import { useGebruiker } from './GebruikerProvider';
+import { useOnline } from './GeenVerbinding';
 
 export interface NeemDoel {
   id: number;
@@ -51,6 +54,12 @@ function vandaag(): string {
 
   Grote velden en knoppen, want dit wordt op een telefoon met werkhandschoenen
   aan gebruikt (klasse veldwerk in globals.css).
+
+  Zonder verbinding (of als de verbinding wegvalt tijdens het versturen) gaat
+  het ingevulde formulier met de verkleinde foto's in de offline wachtrij
+  (lib/wachtrij.ts) en wordt het vanzelf verstuurd zodra er bereik is. Eén
+  sleutel per keer dat het venster opent: een herhaling doet op de server niets
+  dubbel.
 */
 export default function MonsterNemenModal({ doel, onClose, onKlaar }: Props) {
   // De pagina geeft dit venster een key mee per monster, dus elk nieuw monster
@@ -65,6 +74,9 @@ export default function MonsterNemenModal({ doel, onClose, onKlaar }: Props) {
   const [onbereikbaar, setOnbereikbaar] = useState<OnbereikbaarWaarden>(leegOnbereikbaar());
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState('');
+  const gebruiker = useGebruiker();
+  const [sleutel] = useState(nieuweSleutel);
+  const online = useOnline();
 
   const opslaan = async () => {
     if (!doel) return;
@@ -75,24 +87,50 @@ export default function MonsterNemenModal({ doel, onClose, onKlaar }: Props) {
     setBezig(true);
     setFout('');
 
-    const form = new FormData();
-    form.append('sampleDate', datum);
-    form.append('oilType', oilType);
-    form.append('remarks', opmerking);
+    const velden = { sampleDate: datum, oilType, remarks: opmerking };
     // Verkleind naar ongeveer 400 KB per foto; twee onverkleinde iPhone-foto's
     // gaan over de grens van 4,5 MB per verzoek.
-    if (fotoOnderdeel) form.append('photoOnderdeel', await verkleinFoto(fotoOnderdeel));
-    if (fotoPotje) form.append('photoPotje', await verkleinFoto(fotoPotje));
+    const bestanden: Bestand[] = [];
+    if (fotoOnderdeel) {
+      const f = await verkleinFoto(fotoOnderdeel);
+      bestanden.push({ veld: 'photoOnderdeel', naam: f.name, blob: f });
+    }
+    if (fotoPotje) {
+      const f = await verkleinFoto(fotoPotje);
+      bestanden.push({ veld: 'photoPotje', naam: f.name, blob: f });
+    }
+
+    // Geen bereik: bewaren op de telefoon, de wachtrij verstuurt het later.
+    const bewaar = async () => {
+      try {
+        await inWachtrij({ sleutel, soort: 'monster-nemen', gebruiker: gebruiker.username, titel: `${doel.oNumber} nemen`, monsterId: doel.id, velden, bestanden });
+        onKlaar(`${doel.oNumber} is op deze telefoon bewaard en gaat vanzelf mee zodra er bereik is.`);
+      } catch {
+        setFout('Geen verbinding, en bewaren op deze telefoon lukte ook niet. Laat het venster open en probeer het zo opnieuw.');
+      }
+    };
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await bewaar();
+      setBezig(false);
+      return;
+    }
+
+    const form = new FormData();
+    for (const [k, v] of Object.entries(velden)) form.append(k, v);
+    for (const b of bestanden) form.append(b.veld, b.blob as File);
 
     try {
-      const res = await fetch(`/api/samples/${doel.id}/nemen`, { method: 'POST', body: form });
+      const res = await fetch(`/api/samples/${doel.id}/nemen`, { method: 'POST', body: form, headers: { [IDEMPOTENTIE_HEADER]: sleutel } });
       if (!res.ok) {
         setFout(await foutTekst(res, 'Het monster is niet opgeslagen.'));
         return;
       }
       onKlaar(`${doel.oNumber} staat op genomen.`);
-    } catch {
-      setFout(GEEN_VERBINDING);
+    } catch (e) {
+      // Verbinding weg tijdens het versturen: misschien kwam het wel aan. Met
+      // dezelfde sleutel in de wachtrij, dan gebeurt er op de server niets dubbel.
+      if (isNetwerkFout(e)) await bewaar();
+      else setFout(GEEN_VERBINDING);
     } finally {
       setBezig(false);
     }
@@ -126,8 +164,8 @@ export default function MonsterNemenModal({ doel, onClose, onKlaar }: Props) {
           <>
             <button type="button" className="btn veldwerk-knop" onClick={onClose} disabled={bezig}>Terug</button>
             <button type="button" className="btn btn-primary veldwerk-knop" onClick={opslaan} disabled={bezig}>
-              <Icon name="status-taken" size={16} />
-              {bezig ? 'Bezig...' : 'Opslaan als genomen'}
+              <Icon name={online ? 'status-taken' : 'offline'} size={16} />
+              {bezig ? 'Bezig...' : online ? 'Opslaan als genomen' : 'Bewaren op deze telefoon'}
             </button>
           </>
         ) : (
@@ -148,6 +186,13 @@ export default function MonsterNemenModal({ doel, onClose, onKlaar }: Props) {
           <strong>{doel.location}</strong>
           <span>{doel.description}</span>
         </p>
+      )}
+
+      {stap === 'nemen' && !online && (
+        <div className="alert alert-info veldwerk-offline" role="status">
+          <Icon name="offline" size={16} />
+          Geen bereik. Wat je opslaat, wordt op deze telefoon bewaard en gaat vanzelf mee zodra er weer verbinding is.
+        </div>
       )}
 
       {stap === 'nemen' ? (
