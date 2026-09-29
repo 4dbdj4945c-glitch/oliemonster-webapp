@@ -38,6 +38,7 @@ export type Module =
   | 'oliemonsters'
   | 'planning'
   | 'objecten'
+  | 'klanten'
   | 'acquisitie'
   | 'controlerondes'
   | 'ultimo'

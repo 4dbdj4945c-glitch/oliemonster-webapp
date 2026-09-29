@@ -59,27 +59,6 @@ export function leesViewYear(
 }
 
 /**
- * Bij welke pagina hoort een kijkjaar? Er zijn twee modulepagina's, voor 2025 en
- * 2026. Een ander jaar heeft nog geen pagina; dan krijgt de kijker een melding
- * in plaats van een doorverwijzing naar een jaar dat hij niet mag zien.
- */
-export function paginaVoorKijkjaar(jaar: number): string | null {
-  if (jaar === 2025) return '/dashboard/oliemonsters';
-  if (jaar === 2026) return '/dashboard/oliemonsters2026';
-  return null;
-}
-
-/**
- * Waar hoort een kijker heen die hier niets te zoeken heeft? Naar de pagina van
- * zijn eigen kijkjaar. Mag hij alle jaren zien, dan naar het dashboard: dat toont
- * hem alleen de oliemonstermodule.
- */
-export function kijkersPagina(viewYear?: number | null): string {
-  if (viewYear === null || viewYear === undefined) return '/dashboard';
-  return paginaVoorKijkjaar(viewYear) ?? '/dashboard';
-}
-
-/**
  * Mag deze gebruiker de monsters van dit analysejaar zien? Alleen de rol alleen
  * lezen is beperkt, en dan alleen als er een kijkjaar is ingesteld.
  */

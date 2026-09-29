@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { effectiefKijkjaar, toegangsBesluit, type Gebruiker, type ToegangsOpties } from '@/lib/toegang';
-import { kijkersPagina, leesViewYear, magJaarZien, paginaVoorKijkjaar } from '@/lib/roles';
-import { paginaBesluit } from '@/lib/paginaToegang';
+import { leesViewYear, magJaarZien } from '@/lib/roles';
+import { kijkersPagina, paginaBesluit, paginaVoorKijkjaar } from '@/lib/paginaToegang';
 
 const maak = (role: string, viewYear: number | null = null, requiresPasswordChange = false): Gebruiker => ({
   userId: 1,
@@ -79,12 +79,10 @@ describe('rollen en jaren', () => {
     expect(magJaarZien('alleen_lezen', null, 2026)).toBe(true);
     expect(magJaarZien('admin', 2025, 2026)).toBe(true);
   });
-  it('kijkersPagina en paginaVoorKijkjaar', () => {
-    expect(paginaVoorKijkjaar(2025)).toBe('/dashboard/oliemonsters');
-    expect(paginaVoorKijkjaar(2026)).toBe('/dashboard/oliemonsters2026');
-    expect(paginaVoorKijkjaar(2027)).toBeNull();
-    expect(kijkersPagina(2025)).toBe('/dashboard/oliemonsters');
-    expect(kijkersPagina(2027)).toBe('/dashboard');
+  it('kijkersPagina en paginaVoorKijkjaar: elk jaar heeft een pagina', () => {
+    expect(paginaVoorKijkjaar(2025)).toBe('/dashboard/oliemonsters/2025');
+    expect(paginaVoorKijkjaar(2027)).toBe('/dashboard/oliemonsters/2027');
+    expect(kijkersPagina(2025)).toBe('/dashboard/oliemonsters/2025');
     expect(kijkersPagina(null)).toBe('/dashboard');
   });
   it('leesViewYear', () => {
@@ -102,31 +100,50 @@ describe('paginaBesluit (dashboard)', () => {
     expect(paginaBesluit(maak('user', null, true), '/dashboard')).toBe('/set-password');
   });
   it('kijker 2025 alleen op zijn eigen jaarpagina', () => {
-    expect(paginaBesluit(kijker2025, '/dashboard/oliemonsters')).toBeNull();
-    expect(paginaBesluit(kijker2025, '/dashboard/oliemonsters/')).toBeNull();
-    for (const pad of ['/dashboard', '/dashboard/oliemonsters2026', '/dashboard/acquisitie', '/dashboard/admin', '/dashboard/objecten/koppelen']) {
-      expect(paginaBesluit(kijker2025, pad)).toBe('/dashboard/oliemonsters');
+    expect(paginaBesluit(kijker2025, '/dashboard/oliemonsters/2025')).toBeNull();
+    expect(paginaBesluit(kijker2025, '/dashboard/oliemonsters/2025/')).toBeNull();
+    for (const pad of [
+      '/dashboard',
+      '/dashboard/oliemonsters',
+      '/dashboard/oliemonsters2026',
+      '/dashboard/oliemonsters/2026',
+      '/dashboard/acquisitie',
+      '/dashboard/admin',
+      '/dashboard/klanten',
+      '/dashboard/objecten/koppelen',
+    ]) {
+      expect(paginaBesluit(kijker2025, pad)).toBe('/dashboard/oliemonsters/2025');
     }
   });
   it('de oude kijkersrol gedraagt zich als kijker 2025', () => {
-    expect(paginaBesluit(oudeKijker, '/dashboard/oliemonsters')).toBeNull();
-    expect(paginaBesluit(oudeKijker, '/dashboard')).toBe('/dashboard/oliemonsters');
+    expect(paginaBesluit(oudeKijker, '/dashboard/oliemonsters/2025')).toBeNull();
+    expect(paginaBesluit(oudeKijker, '/dashboard')).toBe('/dashboard/oliemonsters/2025');
   });
-  it('kijker zonder jaar: dashboard en beide jaren, verder niets', () => {
+  it('kijker zonder jaar: dashboard en elk jaar, verder niets', () => {
     expect(paginaBesluit(kijkerAlles, '/dashboard')).toBeNull();
-    expect(paginaBesluit(kijkerAlles, '/dashboard/oliemonsters')).toBeNull();
-    expect(paginaBesluit(kijkerAlles, '/dashboard/oliemonsters2026')).toBeNull();
+    expect(paginaBesluit(kijkerAlles, '/dashboard/oliemonsters/2025')).toBeNull();
+    expect(paginaBesluit(kijkerAlles, '/dashboard/oliemonsters/2026')).toBeNull();
+    expect(paginaBesluit(kijkerAlles, '/dashboard/oliemonsters/2027')).toBeNull();
+    expect(paginaBesluit(kijkerAlles, '/dashboard/oliemonsters/abc')).toBe('/dashboard');
     expect(paginaBesluit(kijkerAlles, '/dashboard/ultimo')).toBe('/dashboard');
   });
-  it('kijker met een jaar zonder pagina: alleen het dashboard', () => {
+  it('kijker met een jaar zonder monsters krijgt gewoon de pagina van dat jaar', () => {
     const k = maak('alleen_lezen', 2027);
-    expect(paginaBesluit(k, '/dashboard')).toBeNull();
-    expect(paginaBesluit(k, '/dashboard/oliemonsters')).toBe('/dashboard');
+    expect(paginaBesluit(k, '/dashboard/oliemonsters/2027')).toBeNull();
+    expect(paginaBesluit(k, '/dashboard')).toBe('/dashboard/oliemonsters/2027');
   });
   it('Instellingen en Audit logs alleen voor admin', () => {
     expect(paginaBesluit(gebruiker, '/dashboard/admin')).toBe('/dashboard');
     expect(paginaBesluit(gebruiker, '/dashboard/audit-logs')).toBe('/dashboard');
     expect(paginaBesluit(gebruiker, '/dashboard/acquisitie')).toBeNull();
     expect(paginaBesluit(admin, '/dashboard/admin')).toBeNull();
+  });
+  it('Klanten en Installaties alleen voor admin, oliemonsters per jaar voor iedereen', () => {
+    for (const pad of ['/dashboard/klanten', '/dashboard/klanten/3', '/dashboard/installaties/7']) {
+      expect(paginaBesluit(gebruiker, pad)).toBe('/dashboard');
+      expect(paginaBesluit(admin, pad)).toBeNull();
+    }
+    expect(paginaBesluit(gebruiker, '/dashboard/oliemonsters/2026')).toBeNull();
+    expect(paginaBesluit(gebruiker, '/dashboard/objecten')).toBeNull();
   });
 });
