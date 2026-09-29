@@ -3249,3 +3249,274 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
     margin-block: 3px;
   }
 }
+
+/* ============ Beheer: Klanten en Installaties ============
+   Eenvoudige beheerschermen (lijst en detail). Het klantdossier met tijdlijn
+   komt in fase 3; dan kan dit blok daarin opgaan. */
+
+.beheer-kop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.beheer-kop .page-subtitle {
+  margin-bottom: 20px;
+}
+.beheer-knoppen {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.beheer-titel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.beheer-titel .icon {
+  color: var(--grijs-700);
+}
+.terug-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.beheer-filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.beheer-filters .zoekveld {
+  flex: 1 1 280px;
+}
+.beheer-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.beheer-filter .label {
+  margin: 0;
+}
+.beheer-filter .select {
+  width: auto;
+}
+.beheer-tabel .rij-link {
+  cursor: pointer;
+}
+.beheer-tabel .rij-link:hover td {
+  background: var(--grijs-50);
+}
+.beheer-naam {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--navy);
+  text-decoration: none;
+}
+.beheer-naam .icon {
+  color: var(--grijs-500);
+  flex-shrink: 0;
+}
+a.beheer-naam:hover {
+  color: var(--blue);
+}
+.code-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.06em;
+}
+.beheer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.beheer-kolom {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.beheer-kaart .section-label {
+  margin: 0 0 10px;
+}
+.beheer-kaart-kop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.beheer-kaart-kop .section-label {
+  margin: 0;
+}
+.gegevens-lijst {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 8px 12px;
+  margin: 0;
+  font-size: 14px;
+}
+.gegevens-lijst dt {
+  color: var(--grijs-500);
+  font-size: 13px;
+}
+.gegevens-lijst dd {
+  margin: 0;
+  color: var(--navy);
+  overflow-wrap: anywhere;
+}
+.gegevens-notitie {
+  white-space: pre-wrap;
+  color: var(--grijs-700);
+}
+.beheer-lijst {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.beheer-lijst-regel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--grijs-200);
+}
+.beheer-lijst-regel:first-child {
+  border-top: none;
+}
+.beheer-lijst-tekst {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  color: var(--navy);
+}
+.beheer-lijst-link {
+  text-decoration: none;
+}
+.beheer-lijst-link:hover strong {
+  color: var(--blue);
+}
+.beheer-bijzaak {
+  font-size: 13px;
+  color: var(--grijs-500);
+}
+.beheer-contact {
+  display: flex;
+  gap: 4px 14px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.object-blok {
+  padding: 12px 0;
+  border-top: 1px solid var(--grijs-200);
+}
+.object-blok:first-of-type {
+  border-top: none;
+  padding-top: 0;
+}
+.object-blok-kop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.object-blok .beheer-lijst {
+  margin: 0 0 6px 22px;
+}
+.object-blok-knoppen {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.object-koppelen {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--grijs-200);
+}
+.object-koppelen-rij {
+  display: flex;
+  gap: 8px;
+}
+.object-koppelen-rij .select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.installatie-foto {
+  display: block;
+  max-width: 100%;
+  max-height: 320px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--grijs-200);
+}
+.btn.is-bezig {
+  opacity: 0.6;
+  pointer-events: none;
+}
+/* Formulieren in de beheervensters: twee kolommen, lange velden over de volle breedte */
+.beheer-formulier {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 0 12px;
+}
+.beheer-veld-breed {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 900px) {
+  .beheer-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .beheer-kop {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .beheer-knoppen {
+    margin-bottom: 16px;
+  }
+  .beheer-knoppen .btn {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+  .beheer-filter {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+  }
+  .beheer-filter .select {
+    width: 100%;
+  }
+  .beheer-formulier {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gegevens-lijst {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .gegevens-lijst dd {
+    margin-bottom: 8px;
+  }
+  .terug-link,
+  .beheer-kaart .btn,
+  .beheer-kaart .icon-btn,
+  .object-koppelen-rij .select {
+    min-height: 44px;
+  }
+  .beheer-contact .btn-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  .object-blok .beheer-lijst {
+    margin-left: 0;
+  }
+}
