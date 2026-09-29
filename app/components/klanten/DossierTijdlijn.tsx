@@ -14,6 +14,7 @@ import { Icon, type IconNaam } from '@/app/components/ui';
 import PhotoModal, { type FotoInVenster } from '@/app/components/PhotoModal';
 import { installatieSoortIcoon, installatieSoortLabel } from '@/lib/installaties';
 import { objectTypeIcoon, objectTypeLabel } from '@/lib/sampleObjects';
+import { oordeelVan, sjabloonVan } from '@/lib/inspecties/sjablonen';
 import type { Dossier, DossierInstallatie, DossierObject, Moment, MomentSoort } from './types';
 
 export type DossierKeuze = { soort: 'object' | 'installatie'; id: number } | { soort: 'los' };
@@ -26,17 +27,30 @@ const SOORT: Record<MomentSoort, { icoon: IconNaam; badge: string; label: string
   'niet-bereikbaar': { icoon: 'alert-warning', badge: 'badge-warning', label: 'Niet bereikbaar' },
   geannuleerd: { icoon: 'status-cancelled', badge: 'badge-gray', label: 'Geannuleerd' },
   open: { icoon: 'calendar', badge: 'badge-gray', label: 'Nog in te plannen' },
+  inspectie: { icoon: 'module-inspecties', badge: 'badge-success', label: 'Afgerond' },
 };
+
+/** Badge van een inspectiemoment: de uitslag van het arbeidsmiddel, anders de status. */
+function inspectieBadge(m: Moment): { icoon: IconNaam; badge: string; label: string } {
+  const i = m.inspectie!;
+  const s = sjabloonVan(i.sjabloon);
+  const oordeel = oordeelVan(s, i.oordeel);
+  if (oordeel) return { icoon: s.icoon, badge: oordeel.badge, label: oordeel.label };
+  return i.status === 'afgerond'
+    ? { icoon: s.icoon, badge: 'badge-success', label: 'Afgerond' }
+    : { icoon: s.icoon, badge: 'badge-gray', label: 'Concept' };
+}
 
 const GEPLAND = { icoon: 'status-planned' as IconNaam, badge: 'badge-info', label: 'Gepland' };
 
-type Filter = 'alles' | 'monster' | 'open' | 'niet-bereikbaar' | 'geannuleerd';
+type Filter = 'alles' | 'monster' | 'open' | 'niet-bereikbaar' | 'geannuleerd' | 'inspectie';
 const FILTERS: { sleutel: Filter; naam: string }[] = [
   { sleutel: 'alles', naam: 'Alles' },
   { sleutel: 'monster', naam: 'Genomen' },
   { sleutel: 'open', naam: 'Open' },
   { sleutel: 'niet-bereikbaar', naam: 'Niet bereikbaar' },
   { sleutel: 'geannuleerd', naam: 'Geannuleerd' },
+  { sleutel: 'inspectie', naam: 'Inspecties' },
 ];
 
 function past(m: Moment, f: Filter): boolean {
@@ -48,7 +62,7 @@ function past(m: Moment, f: Filter): boolean {
 export function momentenVan(dossier: Dossier, keuze: DossierKeuze): Moment[] {
   if (keuze.soort === 'los') return dossier.momenten.filter((m) => m.objectId === null);
   if (keuze.soort === 'installatie') return dossier.momenten.filter((m) => m.installatieId === keuze.id);
-  return dossier.momenten.filter((m) => m.objectId === keuze.id);
+  return dossier.momenten.filter((m) => m.objectId === keuze.id && !m.onderdeel);
 }
 
 const dagDatum = (dag: string) => new Date(`${dag}T12:00:00`);
@@ -271,7 +285,7 @@ export default function DossierTijdlijn({
             ) : (
               <ol className="dossier-tijdlijn">
                 {zichtbaar.map((m) => {
-                  const w = m.soort === 'open' && m.gepland ? GEPLAND : SOORT[m.soort];
+                  const w = m.soort === 'inspectie' ? inspectieBadge(m) : m.soort === 'open' && m.gepland ? GEPLAND : SOORT[m.soort];
                   return (
                     <li key={m.sleutel} className="moment">
                       <div className="moment-datum">
@@ -293,7 +307,24 @@ export default function DossierTijdlijn({
                           <span className={`badge ${w.badge}`}>{w.label}</span>
                         </div>
                         {m.tekst && <p>{m.tekst}</p>}
-                        {m.door && <p className="moment-door">Vastgelegd door {m.door}</p>}
+                        {m.door && <p className="moment-door">{m.inspectie ? 'Uitgevoerd' : 'Vastgelegd'} door {m.door}</p>}
+                        {m.inspectie && (
+                          <p className="moment-links">
+                            {m.inspectie.volgende && (
+                              <span><Icon name="calendar" size={16} />Volgende inspectie {dagDatum(m.inspectie.volgende).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            )}
+                            <a
+                              href={`/dashboard/inspecties/${m.inspectie.id}`}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                router.push(`/dashboard/inspecties/${m.inspectie!.id}`);
+                              }}
+                            >
+                              <Icon name="pencil" size={16} />Openen
+                            </a>
+                            <a href={m.inspectie.rapport} download><Icon name="file-pdf" size={16} />Rapport</a>
+                          </p>
+                        )}
                         {m.fotos.length > 0 && (
                           <div className="moment-fotos">
                             {m.fotos.map((f, i) => (

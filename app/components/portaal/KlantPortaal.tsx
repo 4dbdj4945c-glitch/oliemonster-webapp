@@ -8,7 +8,9 @@
   Alleen lezen. Eigen kop met het logo van de klant en "uitgevoerd door" It's
   Done Services, een navy band met de titel, dan voortgang, stand per object,
   planning (alleen dag en object, geen tijden of route), documenten, recente
-  foto's en contact. Onderaan de link naar de privacyverklaring.
+  foto's en contact. Onder Documenten ook de afgeronde inspecties met hun
+  rapport en de datum van de volgende inspectie. Onderaan de link naar de
+  privacyverklaring.
 
   Alle getallen komen van GET /api/portaal, die ook de afscherming per klant en
   jaar doet. Statussen voor de klant zijn neutraal (lib/klantStatus.ts): geen
@@ -33,6 +35,7 @@ import {
   type KlantTelling,
 } from '@/lib/klantStatus';
 import { objectTypeIcoon } from '@/lib/sampleObjects';
+import { SJABLONEN, type SjabloonSleutel } from '@/lib/inspecties/sjablonen';
 
 interface PortaalObject {
   id: number | null;
@@ -65,6 +68,20 @@ interface Portaal {
   planning: { dag: string; objecten: string[]; aantal: number }[];
   recenteFotos: { id: number; oNumber: string; plek: string; datum: string | null; foto: string }[];
   monsters: PortaalMonster[];
+  /** Afgeronde inspecties van de klant, met rapport en volgende inspectie. */
+  inspecties?: PortaalInspectie[];
+}
+
+interface PortaalInspectie {
+  id: number;
+  nummer: string;
+  naam: string;
+  sjabloon: SjabloonSleutel;
+  datum: string;
+  object: string;
+  uitkomst: string;
+  volgende: string | null;
+  rapport: string;
 }
 
 const EERSTE_OBJECTEN = 6;
@@ -442,6 +459,24 @@ export default function KlantPortaal({
                       </span>
                     </span>
                     <a className="icon-btn" href={rapportAdres(j.jaar)} download title={`Rapport ${j.jaar} downloaden`} aria-label={`Rapport ${j.jaar} downloaden`}>
+                      <Icon name="download" size={20} />
+                    </a>
+                  </li>
+                ))}
+                {(data.inspecties ?? []).map((i) => (
+                  <li key={`inspectie-${i.id}`} className="rij">
+                    <span className="icoonvak"><Icon name={SJABLONEN[i.sjabloon]?.icoon ?? 'module-inspecties'} size={20} /></span>
+                    <span className="rij-tekst">
+                      <strong>{i.naam}, {new Date(`${i.datum}T12:00:00`).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                      <span>{i.object}. {i.uitkomst}</span>
+                      {i.volgende && (
+                        <span className="portaal-volgende">
+                          <Icon name="calendar" size={16} />
+                          Volgende inspectie {new Date(`${i.volgende}T12:00:00`).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </span>
+                      )}
+                    </span>
+                    <a className="icon-btn" href={i.rapport} download title={`Rapport ${i.naam} downloaden`} aria-label={`Rapport ${i.naam} van ${i.datum} downloaden`}>
                       <Icon name="download" size={20} />
                     </a>
                   </li>

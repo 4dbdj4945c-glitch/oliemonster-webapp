@@ -9,8 +9,11 @@
   2. Deze week: de volgende monsterdagen.
   3. Voortgang: openstaande monsters en per opdracht x van y genomen.
 
-  Alleen echte gegevens: blokken waarvoor nog geen module bestaat (keuringen,
-  contracten, rapporten) staan er niet. Elk blok laadt en faalt apart, met een
+  Voor de beheerder staat erbij wat in het eigen dossier binnen 30 dagen
+  verloopt of al verlopen is (lib/eigenDossier.ts); zonder zo'n document geen blok.
+
+  Alleen echte gegevens: blokken waarvoor nog geen module bestaat (contracten,
+  rapporten) staan er niet. Elk blok laadt en faalt apart, met een
   skelet tijdens het laden en een foutmelding in plaats van nullen.
   Getallen en indeling: lib/vandaag.ts.
 */
@@ -24,6 +27,7 @@ import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { magModule, moduleVan, oliemonsterPad } from '@/lib/modules';
 import { minutenAlsTekst } from '@/lib/planningInstellingen';
 import { actiesVoorVandaag, type ProspectRegel } from '@/lib/prospects';
+import { GELDIGHEID_BADGE, GELDIGHEID_LABEL, vervalTekst, type Geldigheid } from '@/lib/eigenDossier';
 import {
   begroeting,
   bouwVandaag,
@@ -61,11 +65,20 @@ function namenVan(dag: VandaagDag): string {
 
 const MAX_ACTIES = 5;
 
+interface DossierRegel {
+  id: number;
+  titel: string;
+  vervaltOp: string | null;
+  geldigheid: Geldigheid;
+}
+
 export default function Vandaag() {
   const user = useGebruiker();
   const jaar = new Date().getFullYear();
   const magAcquisitie = magModule(moduleVan('acquisitie'), user.role);
   const magPlanning = magModule(moduleVan('planning'), user.role);
+  const magDossier = magModule(moduleVan('eigen-dossier'), user.role);
+  const [documenten, setDocumenten] = useState<DossierRegel[]>([]);
 
   const [planning, setPlanning] = useState<Stand<{ dagen: VandaagDag[]; objecten: VandaagObject[] }>>({ status: 'laden' });
   const [samples, setSamples] = useState<Stand<VandaagMonster[]>>({ status: 'laden' });
@@ -93,10 +106,19 @@ export default function Vandaag() {
     }
   }, [magAcquisitie]);
 
+  // Eigen dossier: alleen wat aandacht vraagt. Mislukt het, dan geen blok (het
+  // staat ook op de pagina Eigen dossier).
+  const haalDossier = useCallback(async () => {
+    if (!magDossier) return;
+    const r = await haal<DossierRegel[]>('/api/eigen-dossier', '');
+    if (r.status === 'ok') setDocumenten(r.data.filter((d) => d.geldigheid === 'verloopt' || d.geldigheid === 'verlopen'));
+  }, [magDossier]);
+
   useEffect(() => {
     haalWerk();
     haalActies();
-  }, [haalWerk, haalActies]);
+    haalDossier();
+  }, [haalWerk, haalActies, haalDossier]);
 
   const laadWerk = () => {
     setPlanning({ status: 'laden' });
@@ -261,6 +283,28 @@ export default function Vandaag() {
         </div>
 
         <div className="vandaag-zij">
+          {/* ---------- Eigen dossier: verloopt binnen 30 dagen ---------- */}
+          {documenten.length > 0 && (
+            <section className="vandaag-sectie" aria-labelledby="kop-dossier">
+              <div className="sectiekop">
+                <h2 id="kop-dossier">Eigen dossier</h2>
+                <Link href="/dashboard/eigen-dossier">Openen</Link>
+              </div>
+              <ul className="card rijen">
+                {documenten.map((d) => (
+                  <li key={d.id} className="rij">
+                    <span className="icoonvak" aria-hidden="true"><Icon name="alert-warning" /></span>
+                    <span className="rij-tekst">
+                      <strong>{d.titel}</strong>
+                      <span className={d.geldigheid === 'verlopen' ? 'tekst-te-laat' : undefined}>{vervalTekst(d.vervaltOp)}</span>
+                    </span>
+                    <span className={`badge ${GELDIGHEID_BADGE[d.geldigheid]}`}>{GELDIGHEID_LABEL[d.geldigheid]}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {/* ---------- Openstaande monsters ---------- */}
           {!werkFout && (
           <section className="vandaag-sectie" aria-labelledby="kop-open">

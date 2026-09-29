@@ -85,13 +85,15 @@ export function adresTekst(k: Pick<Klant, 'adres' | 'postcode' | 'plaats'>): str
 // Klantdossier (GET /api/klanten/[id]/dossier, lib/klantDossier.ts)
 // ------------------------------------------------------------------
 
-export type MomentSoort = 'monster' | 'poging' | 'niet-bereikbaar' | 'geannuleerd' | 'open';
+export type MomentSoort = 'monster' | 'poging' | 'niet-bereikbaar' | 'geannuleerd' | 'open' | 'inspectie';
 
 export interface Moment {
   sleutel: string;
   soort: MomentSoort;
   datum: string | null;
-  monsterId: number;
+  /** null bij een inspectie */
+  monsterId: number | null;
+  /** O-nummer, of bij een inspectie het nummer (INS-12) */
   oNumber: string;
   jaar: number;
   objectId: number | null;
@@ -101,6 +103,9 @@ export interface Moment {
   gepland?: boolean;
   fotos: { url: string; label: string }[];
   door: string | null;
+  inspectie?: { id: number; sjabloon: string; status: string; oordeel: string | null; volgende: string | null; rapport: string };
+  /** Moment van één arbeidsmiddel: alleen bij die installatie tonen, niet bij het object. */
+  onderdeel?: boolean;
 }
 
 export interface DossierInstallatie extends InstallatieKort {
@@ -119,6 +124,8 @@ export interface DossierObject {
 
 export interface Dossier {
   jaren: { jaar: number; totaal: number }[];
+  /** Jaren met inspecties, voor de jaarkeuze */
+  inspectieJaren: number[];
   jaar: number | null;
   objecten: DossierObject[];
   heeftLosseMonsters: boolean;

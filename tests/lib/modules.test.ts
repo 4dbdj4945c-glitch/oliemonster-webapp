@@ -38,8 +38,11 @@ describe('moduleregister', () => {
     expect(gebruiker).toContain('acquisitie');
     expect(gebruiker).not.toContain('klanten');
     expect(gebruiker).not.toContain('instellingen');
-    expect(modulesVoor('admin', 'Beheer').map((m) => m.sleutel)).toEqual(['objecten', 'instellingen']);
-    expect(modulesVoor('admin', 'Rapportage').map((m) => m.sleutel)).toEqual(['audit-logs']);
+    expect(modulesVoor('admin', 'Beheer').map((m) => m.sleutel)).toEqual(['objecten', 'eigen-dossier', 'instellingen']);
+    expect(modulesVoor('admin', 'Rapportage').map((m) => m.sleutel)).toEqual(['inspecties', 'audit-logs']);
+    // Inspecties leest een gebruiker mee, het eigen dossier is alleen voor de beheerder.
+    expect(gebruiker).toContain('inspecties');
+    expect(gebruiker).not.toContain('eigen-dossier');
   });
 
   it('pad naar module en jaar', () => {
@@ -63,10 +66,10 @@ describe('moduleregister', () => {
       '/dashboard/controlerondes',
       '/dashboard/ultimo',
     ]);
-    expect(admin[3].items.map((i) => i.sleutel)).toEqual(['objecten', 'kolommen', 'instellingen']);
+    expect(admin[3].items.map((i) => i.sleutel)).toEqual(['objecten', 'eigen-dossier', 'kolommen', 'instellingen']);
 
     const gebruiker = navigatieVoor('user', 2026);
-    expect(gebruiker.map((s) => s.sectie)).toEqual(['Werk', 'Klanten', 'Beheer']);
+    expect(gebruiker.map((s) => s.sectie)).toEqual(['Werk', 'Klanten', 'Rapportage', 'Beheer']);
     expect(gebruiker.flatMap((s) => s.items.map((i) => i.sleutel))).not.toContain('klanten');
 
     expect(navigatieVoor('alleen_lezen', 2025)).toEqual([
@@ -85,5 +88,7 @@ describe('moduleregister', () => {
     expect(actieveTab('/dashboard/klanten/3')).toBe('Klanten');
     expect(actieveTab('/dashboard/audit-logs')).toBe('meer');
     expect(actieveTab('/dashboard/admin')).toBe('meer');
+    expect(actiefNavItem('/dashboard/inspecties/12')).toBe('inspecties');
+    expect(actieveTab('/dashboard/eigen-dossier')).toBe('meer');
   });
 });

@@ -111,6 +111,7 @@ export default function KlantPagina() {
     if (!dossier) return null;
     const perMonster = new Map<number, string>();
     for (const m of dossier.momenten) {
+      if (m.monsterId === null) continue;
       const oud = perMonster.get(m.monsterId);
       if (m.soort === 'monster' || !oud) perMonster.set(m.monsterId, m.soort);
       if (m.soort === 'geannuleerd') perMonster.set(m.monsterId, 'geannuleerd');
@@ -357,7 +358,7 @@ export default function KlantPagina() {
                 </button>
               ))}
             </div>
-            {tab === 'dossier' && dossier && dossier.jaren.length > 0 && (
+            {tab === 'dossier' && dossier && (dossier.jaren.length > 0 || (dossier.inspectieJaren ?? []).length > 0) && (
               <label className="dossier-jaar">
                 <span className="label">Jaar</span>
                 <select
@@ -368,9 +369,11 @@ export default function KlantPagina() {
                     setJaar(e.target.value ? Number(e.target.value) : null);
                   }}
                 >
-                  {dossier.jaren.map((j) => (
-                    <option key={j.jaar} value={j.jaar}>{j.jaar}</option>
-                  ))}
+                  {[...new Set([...dossier.jaren.map((j) => j.jaar), ...(dossier.inspectieJaren ?? [])])]
+                    .sort((a, b) => b - a)
+                    .map((j) => (
+                      <option key={j} value={j}>{j}</option>
+                    ))}
                   <option value="">Alle jaren</option>
                 </select>
               </label>

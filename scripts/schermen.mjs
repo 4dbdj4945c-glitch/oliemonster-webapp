@@ -8,6 +8,7 @@
 //   node scripts/schermen.mjs kijker:/dashboard/oliemonsters/2025 admin:/dashboard/klanten
 //   node scripts/schermen.mjs admin:/dashboard/planning/dag/{vandaag}   dagscherm van de monsterdag van vandaag
 //   node scripts/schermen.mjs admin:/dashboard/klanten/{kempen}          klantdossier ({mourik} of {kempen})
+//   node scripts/schermen.mjs admin:/dashboard/inspecties/{lekken}       invulscherm ({lekken} of {arbeidsmiddelen})
 //   node scripts/schermen.mjs "admin:/dashboard@.onderbalk button:nth-of-type(1)"   eerst klikken, dan alleen het scherm zelf
 // Gebruikers en wachtwoorden: prisma/nepdata.ts. Uitvoer: schermen/<naam>-<breedte>.png
 // (1440 en 390 breed) en per scherm of de pagina horizontaal overloopt.
@@ -80,6 +81,14 @@ async function vulIn(pad, cookie) {
     const k = klanten.find((x) => x.naam.toLowerCase().includes(naam));
     if (!k) throw new Error(`Geen klant ${naam}. Draai met --seed.`);
     pad = pad.replace(`{${naam}}`, String(k.id));
+  }
+  // {lekken} of {arbeidsmiddelen}: de afgeronde inspectie van dat sjabloon uit de nepdata.
+  for (const [, naam] of pad.matchAll(/\{(lekken|arbeidsmiddelen)\}/g)) {
+    const lijst = await (await fetch(`${BASIS}/api/inspecties`, { headers: { Cookie: `${cookie[0]}=${cookie[1]}` } })).json();
+    const sjabloon = naam === 'lekken' ? 'persluchtlekken' : 'arbeidsmiddelen';
+    const i = lijst.find((x) => x.sjabloon === sjabloon && x.status === 'afgerond');
+    if (!i) throw new Error(`Geen afgeronde inspectie ${sjabloon}. Draai met --seed.`);
+    pad = pad.replace(`{${naam}}`, String(i.id));
   }
   if (!pad.includes('{vandaag}')) return pad;
   const nu = new Date();

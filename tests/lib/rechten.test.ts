@@ -55,6 +55,17 @@ describe('toegangsBesluit (API)', () => {
     expect(toegangsBesluit(kijker2025, lezenAcquisitie)?.status).toBe(403);
     expect(toegangsBesluit(kijker2025, { rol: 'alleen_lezen', module: 'planning' })?.status).toBe(403);
   });
+  it('inspecties: alleen de kijker met het klantportaal mag lezen, de klassieke kijker niet', () => {
+    const lezenInspecties: ToegangsOpties = { rol: 'alleen_lezen', module: 'inspecties' };
+    const klassiek: Gebruiker = { ...kijkerAlles, klantId: 3, portaalWeergave: 'klassiek' };
+    const portaal: Gebruiker = { ...kijkerAlles, klantId: 3, portaalWeergave: 'klantportaal' };
+    expect(toegangsBesluit(klassiek, lezenInspecties)?.status).toBe(403);
+    expect(toegangsBesluit(kijker2025, lezenInspecties)?.status).toBe(403);
+    expect(toegangsBesluit(portaal, lezenInspecties)).toBeNull();
+    expect(toegangsBesluit(portaal, { rol: 'user', module: 'inspecties' })?.status).toBe(403);
+    expect(toegangsBesluit(portaal, { rol: 'alleen_lezen', module: 'eigen-dossier' })?.status).toBe(403);
+    expect(toegangsBesluit(gebruiker, { rol: 'admin', module: 'eigen-dossier' })?.status).toBe(403);
+  });
   it('de oude kijkersrol telt als alleen lezen', () => {
     expect(toegangsBesluit(oudeKijker, lezenOlie)).toBeNull();
     expect(toegangsBesluit(oudeKijker, adminOlie)?.status).toBe(403);
