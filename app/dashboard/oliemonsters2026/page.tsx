@@ -1532,6 +1532,7 @@ export default function DashboardPage() {
 
       {/* Monster nemen: alles in één scherm, met de knop Niet bereikbaar erin */}
       <MonsterNemenModal
+        key={`nemen-${neemDoel?.id ?? 'geen'}`}
         doel={neemDoel}
         onClose={() => setNeemDoel(null)}
         onKlaar={naVeldwerk}
@@ -1539,6 +1540,7 @@ export default function DashboardPage() {
 
       {/* Niet bereikbaar: reden en omschrijving van een openstaand monster */}
       <OnbereikbaarModal
+        key={`onbereikbaar-${onbereikbaarDoel?.id ?? 'geen'}`}
         doel={onbereikbaarDoel}
         onClose={() => setOnbereikbaarDoel(null)}
         onKlaar={naVeldwerk}

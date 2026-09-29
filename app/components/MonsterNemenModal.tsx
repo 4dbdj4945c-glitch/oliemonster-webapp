@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Icon } from './ui';
 import FotoKiezer from './FotoKiezer';
 import OnbereikbaarFormulier, {
@@ -50,28 +50,17 @@ function vandaag(): string {
   aan gebruikt (klasse veldwerk in globals.css).
 */
 export default function MonsterNemenModal({ doel, onClose, onKlaar }: Props) {
+  // De pagina geeft dit venster een key mee per monster, dus elk nieuw monster
+  // begint met een leeg formulier en de datum van vandaag.
   const [stap, setStap] = useState<'nemen' | 'onbereikbaar'>('nemen');
   const [datum, setDatum] = useState(vandaag());
-  const [oilType, setOilType] = useState('');
+  const [oilType, setOilType] = useState(doel?.oilType || '');
   const [opmerking, setOpmerking] = useState('');
   const [fotoOnderdeel, setFotoOnderdeel] = useState<File | null>(null);
   const [fotoPotje, setFotoPotje] = useState<File | null>(null);
   const [onbereikbaar, setOnbereikbaar] = useState<OnbereikbaarWaarden>(leegOnbereikbaar());
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState('');
-
-  // Elk nieuw monster begint met een leeg formulier en de datum van vandaag.
-  useEffect(() => {
-    if (!doel) return;
-    setStap('nemen');
-    setDatum(vandaag());
-    setOilType(doel.oilType || '');
-    setOpmerking('');
-    setFotoOnderdeel(null);
-    setFotoPotje(null);
-    setOnbereikbaar(leegOnbereikbaar());
-    setFout('');
-  }, [doel]);
 
   const opslaan = async () => {
     if (!doel) return;

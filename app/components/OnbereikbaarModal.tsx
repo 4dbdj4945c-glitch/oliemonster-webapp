@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Modal, Icon } from './ui';
 import OnbereikbaarFormulier, {
   leegOnbereikbaar,
@@ -27,16 +27,11 @@ interface Props {
   in het veld merk je het daar pas.
 */
 export default function OnbereikbaarModal({ doel, onClose, onKlaar }: Props) {
+  // De pagina geeft dit venster een key mee per monster, dus bij een ander
+  // monster begint het met een leeg formulier. Geen useEffect nodig om te wissen.
   const [waarden, setWaarden] = useState<OnbereikbaarWaarden>(leegOnbereikbaar());
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState('');
-
-  useEffect(() => {
-    if (doel) {
-      setWaarden(leegOnbereikbaar());
-      setFout('');
-    }
-  }, [doel]);
 
   const opslaan = async () => {
     if (!doel) return;

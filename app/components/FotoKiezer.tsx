@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useMemo } from 'react';
 import Icon from './ui/Icon';
 import type { IconNaam } from './ui';
 
@@ -28,7 +29,16 @@ export default function FotoKiezer({
   bestaandeUrl = null,
   uitgeschakeld = false,
 }: Props) {
-  const voorbeeld = bestand ? URL.createObjectURL(bestand) : bestaandeUrl;
+  // Eén blob-URL per gekozen bestand, en weer opruimen zodra het bestand wisselt
+  // of het venster dichtgaat. Zonder useMemo maakt elke render een nieuwe URL:
+  // dat lekt geheugen en laat de voorbeeldfoto knipperen.
+  const gekozenUrl = useMemo(() => (bestand ? URL.createObjectURL(bestand) : null), [bestand]);
+  useEffect(() => {
+    if (!gekozenUrl) return;
+    return () => URL.revokeObjectURL(gekozenUrl);
+  }, [gekozenUrl]);
+
+  const voorbeeld = gekozenUrl ?? bestaandeUrl;
 
   return (
     <div className={`foto-kiezer${bestand ? ' foto-kiezer-gevuld' : ''}`}>
