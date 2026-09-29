@@ -6,21 +6,25 @@
 // monsterdag, openstaande monsters, acties en de voortgang. De modules staan in
 // de navigatie.
 //
-// Kijker (rol alleen lezen): het oude dashboard hieronder, ongewijzigd, met per
-// analysejaar een tegel. Een kijker met een vast jaar komt hier niet (die gaat
-// meteen naar zijn jaarpagina); een kijker zonder vast jaar ziet alleen de
-// oliemonsters. Zijn klantportaal komt in een volgende fase.
+// Kijker (rol alleen lezen) met de weergave klantportaal: het klantportaal
+// (app/components/portaal/KlantPortaal.tsx).
+//
+// Kijker met de weergave klassiek: het oude dashboard hieronder, ongewijzigd,
+// met per analysejaar een tegel. Een kijker met een vast jaar komt hier niet
+// (die gaat meteen naar zijn jaarpagina); een kijker zonder vast jaar ziet
+// alleen de oliemonsters.
 
 import { useState, useEffect } from 'react';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
 import { useRouter } from 'next/navigation';
-import { isAlleenLezen } from '@/lib/roles';
+import { isAlleenLezen, krijgtKlantportaal } from '@/lib/roles';
 import { actieStaatOpen, eindeVanVandaag } from '@/lib/prospects';
 import { modulesVoor, oliemonsterPad, SECTIES, type ModuleInfo } from '@/lib/modules';
 import LaadFout from '@/app/components/LaadFout';
 import { GEEN_VERBINDING } from '@/lib/foutmelding';
 import { AppShell, Icon } from '@/app/components/ui';
 import Vandaag from '@/app/components/vandaag/Vandaag';
+import KlantPortaal from '@/app/components/portaal/KlantPortaal';
 
 interface Stat {
   waarde: number;
@@ -47,6 +51,7 @@ async function lijst(url: string): Promise<unknown[]> {
 
 export default function DashboardPage() {
   const user = useGebruiker();
+  if (krijgtKlantportaal(user)) return <KlantPortaal gebruikersnaam={user.username} />;
   return isAlleenLezen(user.role) ? <KijkerDashboard /> : <Vandaag />;
 }
 

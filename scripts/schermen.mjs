@@ -22,7 +22,7 @@ mkdirSync(uit, { recursive: true });
 const POORT = 3148;
 const BASIS = `http://localhost:${POORT}`;
 const wacht = (ms) => new Promise((r) => setTimeout(r, ms));
-const WACHTWOORDEN = { admin: 'admin123', gebruiker: 'user123', kijker: 'kijker123' };
+const WACHTWOORDEN = { admin: 'admin123', gebruiker: 'user123', kijker: 'kijker123', kempen: 'kempen123' };
 
 const args = process.argv.slice(2);
 if (args.includes('--seed')) execSync('npm run seed', { cwd: repo, stdio: 'inherit' });

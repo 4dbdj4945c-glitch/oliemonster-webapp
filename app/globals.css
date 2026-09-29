@@ -4592,3 +4592,143 @@ h2.sectiekop {
 .keuze > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .keuze strong { font-weight: 600; color: var(--navy); }
 .keuze small { font-size: 13px; color: var(--grijs-500); }
+
+/* ---------- Klantportaal (app/components/portaal/KlantPortaal.tsx) ---------- */
+.portaal { min-height: 100vh; background: var(--grijs-100); color: var(--navy); display: flex; flex-direction: column; }
+.portaal-kop { background: var(--wit); border-bottom: 1px solid var(--grijs-200); }
+.portaal-kop-in { max-width: 1120px; margin: 0 auto; padding: 14px 32px; display: flex; align-items: center; gap: 20px; }
+.portaal-klantlogo { height: 34px; width: auto; max-width: 180px; object-fit: contain; }
+.portaal-klantnaam { font-weight: 800; font-size: 17px; letter-spacing: -0.02em; }
+.portaal-door { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--grijs-500); font-size: 12px; white-space: nowrap; }
+.portaal-door img { height: 13px; width: auto; }
+.portaal-gebruiker { display: flex; align-items: center; gap: 10px; padding-left: 20px; border-left: 1px solid var(--grijs-200); font-weight: 600; }
+.portaal-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--navy); color: var(--wit); font-weight: 700; font-size: 14px;
+}
+.portaal-voorbeeld {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  max-width: 1120px; width: 100%; margin: 12px auto 0; padding: 10px 32px;
+  font-size: 13px; color: var(--grijs-700);
+}
+.portaal-band { background: var(--navy); color: var(--wit); }
+.portaal-band-in { max-width: 1120px; margin: 0 auto; padding: 36px 32px 88px; display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; }
+.portaal-band h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.03em; color: var(--wit); }
+.portaal-band p { margin: 6px 0 0; color: var(--navy-tekst); }
+.portaal-jaar .select { width: auto; min-width: 96px; }
+.portaal-inhoud { width: 100%; max-width: 1120px; margin: -64px auto 0; padding: 0 32px 32px; display: grid; gap: 24px; }
+.portaal-inhoud > .card { margin: 0; }
+.portaal-kaart-kop { padding: 18px 20px 6px; margin: 0; }
+.portaal-voortgang { padding: 24px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px; align-items: center; }
+.portaal-groot { margin: 0; font-size: 44px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; color: var(--navy); }
+.portaal-groot small { font-size: 18px; font-weight: 600; color: var(--grijs-500); letter-spacing: 0; margin-left: 8px; }
+.portaal-balk { display: flex; gap: 2px; height: 14px; margin-top: 16px; border-radius: 999px; overflow: hidden; background: var(--grijs-200); }
+.portaal-balk > i { display: block; height: 100%; }
+.portaal-balk-genomen { background: var(--groen); }
+.portaal-balk-gepland { background: var(--blue); }
+.portaal-balk-niet-bereikbaar { background: #D97706; }
+.portaal-balk-geannuleerd { background: var(--grijs-400); }
+.portaal-balk-in-te-plannen { background: var(--grijs-200); border: 1px solid var(--grijs-300); }
+.portaal-legenda { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 13px; color: var(--grijs-700); }
+.portaal-legenda li { display: inline-flex; align-items: center; gap: 6px; }
+.portaal-legenda b { font-weight: 700; color: var(--navy); }
+.portaal-stip { display: inline-block; width: 10px; height: 10px; border-radius: 3px; }
+.portaal-rapport { display: grid; gap: 10px; justify-items: center; }
+.portaal-rapport > span { font-size: 12.5px; color: var(--grijs-500); text-align: center; }
+.portaal-twee { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.portaal-zij { display: grid; gap: 24px; }
+.portaal-zij > .card { margin: 0; padding: 0; overflow: hidden; }
+.portaal-objecten, .portaal-inhoud > .card:not(.portaal-voortgang):not(.portaal-contact) { padding: 0; overflow: hidden; }
+.portaal-tabel { width: 100%; border-collapse: collapse; font-size: 14px; }
+.portaal-tabel th {
+  text-align: left; padding: 10px 16px; background: var(--grijs-50);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--grijs-500);
+  border-top: 1px solid var(--grijs-200); border-bottom: 1px solid var(--grijs-200);
+}
+.portaal-tabel td { padding: 10px 16px; border-bottom: 1px solid var(--grijs-200); vertical-align: middle; }
+.portaal-tabel tr:last-child td { border-bottom: 0; }
+.portaal-object {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px;
+  background: none; border: 0; padding: 0; text-align: left; color: inherit; cursor: pointer;
+}
+.portaal-object > .icon:first-child { color: var(--grijs-500); flex: none; }
+.portaal-object > .icon:last-child { color: var(--grijs-500); flex: none; margin-left: auto; transition: transform 0.15s; }
+.portaal-object[aria-expanded="true"] > .icon:last-child { transform: rotate(180deg); }
+.portaal-object > span { display: flex; flex-direction: column; min-width: 0; }
+.portaal-object b { font-weight: 600; }
+.portaal-object small { font-size: 12.5px; color: var(--grijs-500); }
+.portaal-object:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 4px; }
+.portaal-genomen { white-space: nowrap; }
+.portaal-minibalk { display: inline-block; width: 90px; height: 6px; margin-right: 8px; vertical-align: middle; border-radius: 999px; overflow: hidden; background: var(--grijs-200); }
+.portaal-minibalk > i { display: block; height: 100%; background: var(--groen); }
+.portaal-mini { display: block; width: 44px; height: 33px; padding: 0; border: 1px solid var(--grijs-200); border-radius: 6px; overflow: hidden; background: var(--grijs-100); cursor: pointer; }
+.portaal-mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.portaal-rij-open td { background: var(--grijs-50); }
+.portaal-monsters-rij td { background: var(--grijs-50); padding-top: 0; }
+.portaal-monsters { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.portaal-monsters li {
+  display: grid; grid-template-columns: 96px minmax(0, 1fr) auto 64px; gap: 12px; align-items: center;
+  padding: 8px 0; border-top: 1px solid var(--grijs-200); font-size: 13.5px;
+}
+.portaal-monster-nr { font-weight: 600; }
+.portaal-monster-tekst { display: flex; flex-direction: column; color: var(--grijs-700); min-width: 0; overflow-wrap: anywhere; }
+.portaal-monster-tekst small { color: var(--geel-tekst); font-size: 12.5px; }
+.portaal-monster-datum { color: var(--grijs-500); text-align: right; white-space: nowrap; }
+.portaal-dag { align-items: flex-start; }
+.portaal-dagvak { display: flex; flex-direction: column; align-items: center; width: 48px; flex: none; padding: 4px 0; border: 1px solid var(--grijs-200); border-radius: var(--radius-md); }
+.portaal-dagvak small { font-size: 11px; font-weight: 600; color: var(--grijs-500); }
+.portaal-dagvak b { font-size: 18px; font-weight: 800; }
+.portaal-leeg-tekst { margin: 0; padding: 8px 20px 20px; color: var(--grijs-500); font-size: 13.5px; }
+.portaal-fotoraster { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; padding: 8px 20px 20px; }
+.portaal-fotoraster figure { margin: 0; min-width: 0; }
+.portaal-fotoraster button { display: block; width: 100%; aspect-ratio: 4 / 3; padding: 0; border: 1px solid var(--grijs-200); border-radius: var(--radius-md); overflow: hidden; background: var(--grijs-100); cursor: pointer; }
+.portaal-fotoraster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.portaal-fotoraster figcaption { margin-top: 4px; font-size: 12px; color: var(--grijs-500); overflow-wrap: anywhere; }
+.portaal-fotoraster figcaption b { color: var(--navy); font-weight: 600; }
+.portaal-contact { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 20px 24px; }
+.portaal-contact > div:first-child { display: flex; flex-direction: column; gap: 2px; }
+.portaal-contact b { font-weight: 700; }
+.portaal-contact > div:first-child span { color: var(--grijs-500); }
+.portaal-contact-lijnen { display: flex; gap: 20px; flex-wrap: wrap; }
+.portaal-contact-lijnen a { display: inline-flex; align-items: center; gap: 6px; color: var(--grijs-700); text-decoration: none; min-height: 44px; }
+.portaal-contact-lijnen a .icon { color: var(--grijs-500); }
+.portaal-contact-lijnen a:hover { color: var(--navy); text-decoration: underline; }
+.portaal-voet {
+  width: 100%; max-width: 1120px; margin: 0 auto; padding: 8px 32px 32px;
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--grijs-500);
+}
+.portaal-voet a { color: var(--blue); font-weight: 600; text-decoration: none; }
+.portaal-voet a:hover { text-decoration: underline; }
+
+@media (max-width: 800px) {
+  .portaal-kop-in { padding: 12px 16px; gap: 12px; flex-wrap: wrap; }
+  .portaal-klantlogo { height: 26px; }
+  .portaal-door { order: 3; width: 100%; margin-left: 0; padding-top: 8px; border-top: 1px solid var(--grijs-200); }
+  .portaal-gebruiker { margin-left: auto; padding-left: 0; border-left: 0; }
+  .portaal-gebruiker-naam, .portaal-uitloggen-tekst { display: none; }
+  .portaal-gebruiker .btn { min-width: 44px; min-height: 44px; padding: 0 12px; }
+  .portaal-voorbeeld { padding: 10px 16px; }
+  .portaal-band-in { padding: 24px 16px 80px; flex-direction: column; }
+  .portaal-band h1 { font-size: 24px; }
+  .portaal-inhoud { padding: 0 16px 24px; gap: 20px; }
+  .portaal-voortgang { grid-template-columns: 1fr; padding: 18px; }
+  .portaal-groot { font-size: 38px; }
+  .portaal-rapport .btn { width: 100%; min-height: 56px; }
+  .portaal-twee { grid-template-columns: 1fr; gap: 20px; }
+  .portaal-zij { gap: 20px; }
+  .portaal-kol-plan, .portaal-kol-foto { display: none; }
+  .portaal-tabel th, .portaal-tabel td { padding: 10px 12px; }
+  .portaal-minibalk { width: 48px; }
+  .portaal-monsters li { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
+  .portaal-monster-tekst { grid-column: 1 / -1; grid-row: 2; }
+  .portaal-monster-datum { display: none; }
+  .portaal-fotoraster { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 8px 16px 16px; }
+  .portaal-fotoraster figure:nth-child(n + 5) { display: none; }
+  .portaal-contact { padding: 16px; flex-direction: column; align-items: flex-start; }
+  .portaal-contact-lijnen { flex-direction: column; gap: 0; }
+  .portaal-voet { padding: 8px 16px 24px; }
+}
+@media print {
+  .portaal-kop .btn, .portaal-rapport, .portaal-voorbeeld { display: none; }
+}
