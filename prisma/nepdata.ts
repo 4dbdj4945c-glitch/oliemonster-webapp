@@ -402,7 +402,8 @@ export async function vulMetNepdata(prisma: PrismaClient) {
       installatieId: installaties[0].id,
       datum: inspectieDag(-2),
       uitvoerder: 'Roel Mandigers',
-      items: { create: [{ volgorde: 1, titel: 'Aggregaat hefdeur boven', installatieId: installaties[0].id, oordeel: 'in-orde', waarden: { werkdrukBar: 180, checklist: { slangen: 'goed', lekkage: 'goed' } }, volgendeOp: inspectieDag(363) }] },
+      // Halverwege: twee controlepunten gedaan, nog geen uitslag (In orde kan pas met een volledige checklist).
+      items: { create: [{ volgorde: 1, titel: 'Aggregaat hefdeur boven', installatieId: installaties[0].id, oordeel: null, waarden: { werkdrukBar: 180, checklist: { slangen: 'goed', lekkage: 'goed' } }, volgendeOp: inspectieDag(363) }] },
     },
   });
 
