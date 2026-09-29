@@ -204,6 +204,14 @@ npx tsc --noEmit
 npm run db:controle      # passen de migraties bij schema.prisma?
 ```
 
+Screenshots met de echte lokale database en een echte inlog (1440 en 390 breed,
+uitvoer in `schermen/`):
+
+```bash
+node scripts/schermen.mjs --seed                                   # standaardset
+node scripts/schermen.mjs kijker:/dashboard/oliemonsters admin:/dashboard/objecten
+```
+
 De tests in `tests/db` en `tests/routes` wissen `ids_portal_test` en vullen hem
 met `prisma/nepdata.ts`. Een andere testdatabase kan via `TEST_DATABASE_URL`.
 De GitHub Action (`.github/workflows/ci.yml`) draait bij elke push lint, tsc,

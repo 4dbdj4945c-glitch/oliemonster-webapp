@@ -46,3 +46,6 @@ next-env.d.ts
 # database
 *.db
 *.db-journal
+
+# screenshots van scripts/schermen.mjs
+/schermen/
