@@ -2,7 +2,7 @@
 // ligt het vast), handtekening wissen, de PDF, en de afscherming per klant:
 // alleen de getekende rapporten van de eigen klant voor de kijker met het
 // klantportaal, niets voor de klassieke kijker.
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { PDFDocument } from 'pdf-lib';
@@ -17,6 +17,13 @@ import { GET as portaal } from '@/app/api/portaal/route';
 import { GET as dossier } from '@/app/api/klanten/[id]/dossier/route';
 import { GET as foto } from '@/app/api/fotos/[...pad]/route';
 import { metParams, uitloggen, verzoek } from '../hulp/verzoek';
+
+const blob = vi.hoisted(() => ({
+  put: vi.fn(async (naam: string) => ({ url: `https://t.public.blob.vercel-storage.com/${naam}`, downloadUrl: `https://t.public.blob.vercel-storage.com/${naam}?download=1` })),
+  list: vi.fn(async () => ({ blobs: [] })),
+  del: vi.fn(async () => undefined),
+}));
+vi.mock('@vercel/blob', () => blob);
 
 let ids: Awaited<ReturnType<typeof vulMetNepdata>>;
 const HANDTEKENING = `data:image/png;base64,${readFileSync(path.join(process.cwd(), 'public', 'nepdata', 'handtekening.png')).toString('base64')}`;
@@ -136,5 +143,37 @@ describe('afscherming', () => {
     await admin();
     const d = await (await dossier(verzoek(`/api/klanten/${ids.klanten.tweede}/dossier`), p(ids.klanten.tweede))).json();
     expect(d.momenten.find((m: { soort: string }) => m.soort === 'dagrapport')).toMatchObject({ dagrapport: { id: ids.dagrapporten.tweede, status: 'getekend' } });
+  });
+});
+
+describe('grote PDF via de opslag', () => {
+  it('dagrapport, inspectierapport en inhuurdossier boven 4 MB: doorverwijzing naar de opslag', async () => {
+    const oud = process.env.BLOB_READ_WRITE_TOKEN;
+    process.env.BLOB_READ_WRITE_TOKEN = 'test';
+    const groot = Buffer.alloc(5 * 1024 * 1024);
+    const dr = await import('@/lib/rapport/dagrapportPdf');
+    const ins = await import('@/lib/rapport/inspectieRapportPdf');
+    const inh = await import('@/lib/rapport/inhuurdossierPdf');
+    const spies = [
+      vi.spyOn(dr, 'maakDagrapportPdf').mockResolvedValue(groot),
+      vi.spyOn(ins, 'maakInspectieRapportPdf').mockResolvedValue(groot),
+      vi.spyOn(inh, 'maakInhuurdossierPdf').mockResolvedValue(groot),
+    ];
+    try {
+      await admin();
+      const { GET: inspectierapport } = await import('@/app/api/inspecties/[id]/rapport/route');
+      const { GET: inhuur } = await import('@/app/api/eigen-dossier/inhuurdossier/route');
+      const a = await pdf(verzoek(`/api/dagrapporten/${ids.dagrapporten.tweede}/pdf`), p(ids.dagrapporten.tweede));
+      const b = await inspectierapport(verzoek(`/api/inspecties/${ids.inspecties.lekken}/rapport`), p(ids.inspecties.lekken));
+      const c = await inhuur(verzoek('/api/eigen-dossier/inhuurdossier'), undefined);
+      for (const res of [a, b, c]) {
+        expect(res.status).toBe(303);
+        expect(res.headers.get('location')).toMatch(/^https:\/\/t\.public\.blob\.vercel-storage\.com\/rapporten\/[0-9a-f]{32}\//);
+      }
+      expect(blob.put).toHaveBeenCalledTimes(3);
+    } finally {
+      spies.forEach((s) => s.mockRestore());
+      process.env.BLOB_READ_WRITE_TOKEN = oud;
+    }
   });
 });

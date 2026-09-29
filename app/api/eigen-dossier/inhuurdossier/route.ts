@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { apiRoute } from '@/lib/apiRoute';
 import { documentSoort, isGeldig, vandaagDag } from '@/lib/eigenDossier';
 import { nlDag } from '@/lib/klantOpdracht';
 import { maakInhuurdossierPdf } from '@/lib/rapport/inhuurdossierPdf';
+import { pdfAntwoord } from '@/lib/pdfAntwoord';
 
 /*
   GET /api/eigen-dossier/inhuurdossier - de geldige documenten van het eigen
@@ -33,12 +33,6 @@ export const GET = apiRoute({ rol: 'admin', module: 'eigen-dossier', fout: 'Het 
     details: { documenten: geldig.map((d) => d.id), weggelaten: rijen.length - geldig.length },
     request,
   });
-  return new NextResponse(new Uint8Array(pdf), {
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="inhuurdossier-its-done-services-${vandaagDag()}.pdf"`,
-      'Content-Length': String(pdf.length),
-      'Cache-Control': 'private, no-store',
-    },
-  });
+  // Gescande documenten tot 4 MB per stuk: samen al snel boven de grens, dan via de opslag.
+  return pdfAntwoord(pdf, `inhuurdossier-its-done-services-${vandaagDag()}.pdf`);
 });

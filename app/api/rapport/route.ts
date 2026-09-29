@@ -1,6 +1,3 @@
-import { randomBytes } from 'node:crypto';
-import { NextResponse } from 'next/server';
-import { del, list, put } from '@vercel/blob';
 import { z } from 'zod';
 import { apiRoute, ApiFout, jaarSchema, leesQuery } from '@/lib/apiRoute';
 import { magJaar } from '@/lib/afscherming';
@@ -8,6 +5,7 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalOpdracht } from '@/lib/klantOpdracht';
 import { maakRapportPdf, rapportNaam } from '@/lib/rapport/rapportPdf';
 import { isAlleenLezen, krijgtKlantportaal } from '@/lib/roles';
+import { pdfAntwoord } from '@/lib/pdfAntwoord';
 
 /*
   GET /api/rapport?jaar=2026[&klantId=3][&fotos=0] - het rapport van een
@@ -23,23 +21,7 @@ import { isAlleenLezen, krijgtKlantportaal } from '@/lib/roles';
 // Foto's ophalen en verkleinen kan even duren bij een groot jaar.
 export const maxDuration = 60;
 
-// Een antwoord van een Vercel-functie mag hooguit 4,5 MB zijn. Een groter
-// rapport (een jaar met honderden foto's) gaat eerst naar de opslag onder een
-// onvindbare naam, en de browser krijgt een doorverwijzing daarheen. Zo'n
-// bestand blijft een uur staan; elke nieuwe download ruimt de oude op.
-const MAX_ANTWOORD = 4 * 1024 * 1024;
-const RAPPORT_MAP = 'rapporten/';
-const BEWAAR_MS = 60 * 60 * 1000;
-
-async function ruimOudeRapportenOp() {
-  try {
-    const { blobs } = await list({ prefix: RAPPORT_MAP });
-    const oud = blobs.filter((b) => Date.now() - new Date(b.uploadedAt).getTime() > BEWAAR_MS).map((b) => b.url);
-    if (oud.length) await del(oud);
-  } catch (error) {
-    console.error('Oude rapporten niet opgeruimd:', error);
-  }
-}
+// Groter dan 4,5 MB: via de opslag (lib/pdfAntwoord.ts).
 
 const Query = z.object({
   jaar: z.string({ error: 'Kies een jaar' }),
@@ -82,25 +64,6 @@ export const GET = apiRoute(
       request,
     });
 
-    const naam = rapportNaam(opdracht.klant.naam, jaar);
-    if (pdf.length > MAX_ANTWOORD && process.env.BLOB_READ_WRITE_TOKEN) {
-      await ruimOudeRapportenOp();
-      const blob = await put(`${RAPPORT_MAP}${randomBytes(16).toString('hex')}/${naam}`, pdf, {
-        access: 'public',
-        addRandomSuffix: true,
-        contentType: 'application/pdf',
-      });
-      // downloadUrl laat de browser het bestand opslaan in plaats van tonen.
-      return NextResponse.redirect(blob.downloadUrl, 303);
-    }
-
-    return new NextResponse(new Uint8Array(pdf), {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${naam}"`,
-        'Content-Length': String(pdf.length),
-        'Cache-Control': 'private, no-store',
-      },
-    });
+    return pdfAntwoord(pdf, rapportNaam(opdracht.klant.naam, jaar));
   }
 );

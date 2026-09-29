@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { apiRoute, leesId, leesQuery } from '@/lib/apiRoute';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalInspectie } from '@/lib/inspecties/server';
 import { inspectieNummer } from '@/lib/inspecties/sjablonen';
 import { inspectieRapportNaam, maakInspectieRapportPdf } from '@/lib/rapport/inspectieRapportPdf';
+import { pdfAntwoord } from '@/lib/pdfAntwoord';
 
 /*
   GET /api/inspecties/[id]/rapport[?fotos=0] - het rapport van één inspectie
@@ -37,13 +37,6 @@ export const GET = apiRoute(
       request,
     });
 
-    return new NextResponse(new Uint8Array(pdf), {
-      headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${inspectieRapportNaam(rij)}"`,
-        'Content-Length': String(pdf.length),
-        'Cache-Control': 'private, no-store',
-      },
-    });
+    return pdfAntwoord(pdf, inspectieRapportNaam(rij));
   }
 );

@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
 import { apiRoute, leesId } from '@/lib/apiRoute';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { dagrapportNummer, haalDagrapport } from '@/lib/dagrapporten';
 import { dagrapportNaam, maakDagrapportPdf } from '@/lib/rapport/dagrapportPdf';
+import { pdfAntwoord } from '@/lib/pdfAntwoord';
 
 /*
   GET /api/dagrapporten/[id]/pdf - het dagrapport als PDF, op de server gemaakt
@@ -27,12 +27,5 @@ export const GET = apiRoute({ rol: 'alleen_lezen', module: 'dagrapporten', fout:
     details: { id, nummer: dagrapportNummer(id), klantId: rij.klantId, klant: rij.klant.naam },
     request,
   });
-  return new NextResponse(new Uint8Array(pdf), {
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${dagrapportNaam(rij)}"`,
-      'Content-Length': String(pdf.length),
-      'Cache-Control': 'private, no-store',
-    },
-  });
+  return pdfAntwoord(pdf, dagrapportNaam(rij));
 });

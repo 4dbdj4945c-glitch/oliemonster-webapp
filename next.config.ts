@@ -11,6 +11,7 @@ const nextConfig: NextConfig = {
     '/api/rapport': ['./lib/rapport/fonts/**'],
     '/api/inspecties/[id]/rapport': ['./lib/rapport/fonts/**'],
     '/api/eigen-dossier/inhuurdossier': ['./lib/rapport/fonts/**'],
+    '/api/dagrapporten/[id]/pdf': ['./lib/rapport/fonts/**'],
   },
   serverExternalPackages: ['jspdf', 'jspdf-autotable', 'sharp', 'pdf-lib'],
 
