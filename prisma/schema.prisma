@@ -11,17 +11,26 @@ datasource db {
 }
 
 model User {
-  id                     Int      @id @default(autoincrement())
-  username               String   @unique
-  password               String?  // Optioneel - null als wachtwoord nog niet gezet is
-  role                   String   // "admin", "user" of "alleen_lezen" (zie lib/roles.ts)
+  id                     Int             @id @default(autoincrement())
+  username               String          @unique
+  password               String? // Optioneel - null als wachtwoord nog niet gezet is
+  role                   String // "admin", "user" of "alleen_lezen" (zie lib/roles.ts)
   // Alleen voor de rol "alleen lezen": welk analysejaar deze gebruiker mag zien.
   // Leeg betekent alle jaren. Wordt serverside afgedwongen in de monsterroutes,
   // niet alleen in de schermen.
   viewYear               Int?
-  requiresPasswordChange Boolean  @default(true)  // Moet gebruiker wachtwoord instellen?
-  createdAt              DateTime @default(now())
+  requiresPasswordChange Boolean         @default(true) // Moet gebruiker wachtwoord instellen?
+  // Bij de rol alleen lezen: de klant waarvoor deze gebruiker meekijkt. In fase
+  // 1b alleen vastgelegd (de migratie koppelt de bestaande kijkers aan Mourik);
+  // de afscherming per klant komt in fase 3. Tot die tijd geldt viewYear.
+  klantId                Int?
+  klant                  Klant?          @relation(fields: [klantId], references: [id], onDelete: SetNull)
+  createdAt              DateTime        @default(now())
   uitnodigingen          Uitnodiging[]
+  auditLogs              AuditLog[]
+  ultimoOpmerkingen      UltimoComment[]
+
+  @@index([klantId])
 }
 
 // Eenmalige link om een wachtwoord in te stellen (nieuwe gebruiker of reset).
@@ -43,55 +52,58 @@ model Uitnodiging {
 }
 
 model OilSample {
-  id           Int      @id @default(autoincrement())
-  oNumber      String            // o-nummer, uniek per analyse-jaar (zie @@unique)
-  analysisYear Int      @default(2025)  // analyse-jaar (2025, 2026, ...)
-  sampleDate   DateTime?         // cache: datum van de meest recente poging (SampleAttempt)
-  location     String            // locatie
-  description  String            // omschrijving
-  oilType      String?           // type olie (optioneel)
-  remarks      String?           // cache: opmerking van de meest recente poging
-  isTaken      Boolean           // of er een geldig genomen monster is (true = groen, false = rood)
-  isDisabled   Boolean  @default(false)  // monster is geannuleerd/niet nodig (grijze status)
-  photoUrl     String?           // cache: foto van het monsterpotje, van de meest recente poging
-  partPhotoUrl String?           // cache: foto van het onderdeel waar het monster vandaan komt
-  objectId     Int?              // object waar dit monster bij hoort (planning); location blijft bestaan
+  id                  Int       @id @default(autoincrement())
+  oNumber             String // o-nummer, uniek per analyse-jaar (zie @@unique)
+  analysisYear        Int       @default(2025) // analyse-jaar (2025, 2026, ...)
+  sampleDate          DateTime? // cache: datum van de meest recente poging (SampleAttempt)
+  location            String // locatie
+  description         String // omschrijving
+  oilType             String? // type olie (optioneel)
+  remarks             String? // cache: opmerking van de meest recente poging
+  isTaken             Boolean // of er een geldig genomen monster is (true = groen, false = rood)
+  isDisabled          Boolean   @default(false) // monster is geannuleerd/niet nodig (grijze status)
+  photoUrl            String? // cache: foto van het monsterpotje, van de meest recente poging
+  partPhotoUrl        String? // cache: foto van het onderdeel waar het monster vandaan komt
+  objectId            Int? // object waar dit monster bij hoort (planning); location blijft bestaan
+  installatieId       Int? // optioneel: de installatie op dat object (pomp, aggregaat, ...)
   // Annuleren met reden. Deze velden blijven buiten de synchronisatie met de
   // pogingen (lib/sampleAttempts.ts), anders worden ze overschreven zodra er
   // een hermonstering bijkomt. Vroeger stond de reden in `remarks` en verdween hij daar stilletjes.
-  cancelReason      String?          // reden uit de vaste lijst, of de toelichting bij "anders"
-  cancelledAt       DateTime?        // wanneer geannuleerd
-  cancelledBy       String?          // gebruikersnaam
-  cancelReasonInPdf Boolean @default(true)  // reden meenemen in de PDF voor de klant
+  cancelReason        String? // reden uit de vaste lijst, of de toelichting bij "anders"
+  cancelledAt         DateTime? // wanneer geannuleerd
+  cancelledBy         String? // gebruikersnaam
+  cancelReasonInPdf   Boolean   @default(true) // reden meenemen in de PDF voor de klant
   // Niet bereikbaar: de locatie was door afzetting, andere werkzaamheden of
   // begroeiing niet te bereiken. Dit is iets anders dan geannuleerd: het monster
   // blijft openstaan (isDisabled blijft false) en blijft dus meetellen in de
   // planning, want het moet waarschijnlijk alsnog gebeuren. Net als bij het
   // annuleren blijven deze velden buiten de synchronisatie met de pogingen
   // (lib/sampleAttempts.ts), zodat een hermonstering ze niet overschrijft.
-  isUnreachable       Boolean  @default(false)  // staat nu als niet bereikbaar te boek
-  unreachableReason   String?          // reden uit de vaste lijst, of de toelichting bij "anders"
-  unreachableNote     String?          // korte omschrijving van de situatie
-  unreachablePhotoUrl String?          // eigen foto als bewijs
-  unreachableAt       DateTime?        // wanneer vastgelegd
-  unreachableBy       String?          // gebruikersnaam
+  isUnreachable       Boolean   @default(false) // staat nu als niet bereikbaar te boek
+  unreachableReason   String? // reden uit de vaste lijst, of de toelichting bij "anders"
+  unreachableNote     String? // korte omschrijving van de situatie
+  unreachablePhotoUrl String? // eigen foto als bewijs
+  unreachableAt       DateTime? // wanneer vastgelegd
+  unreachableBy       String? // gebruikersnaam
   // Zacht verwijderen: een verwijderd monster blijft met pogingen en al in de
   // database staan en gaat naar de prullenbak (admin, per jaar), waar je het
   // terugzet. Alle lijsten, tellingen, de planning en de PDF slaan monsters met
   // een deletedAt over (lib/verwijderdeMonsters.ts). Het O-nummer blijft bezet
   // zolang het monster in de prullenbak staat, want @@unique hieronder geldt ook
   // voor verwijderde monsters.
-  deletedAt    DateTime?          // wanneer verwijderd; leeg = gewoon in de lijst
-  deletedBy    String?            // gebruikersnaam
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  deletedAt           DateTime? // wanneer verwijderd; leeg = gewoon in de lijst
+  deletedBy           String? // gebruikersnaam
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  attempts     SampleAttempt[]
-  object       SampleObject? @relation(fields: [objectId], references: [id], onDelete: SetNull)
+  attempts    SampleAttempt[]
+  object      SampleObject?   @relation(fields: [objectId], references: [id], onDelete: SetNull)
+  installatie Installatie?    @relation(fields: [installatieId], references: [id], onDelete: SetNull)
 
   @@unique([oNumber, analysisYear])
   @@index([analysisYear])
   @@index([objectId])
+  @@index([installatieId])
   @@index([deletedAt])
 }
 
@@ -110,21 +122,25 @@ model OilSample {
 
 model SampleObject {
   id               Int      @id @default(autoincrement())
-  name             String   @unique   // bijv. "Sluis Grave"
-  region           String?            // bijv. "Maas" of "Zuid-Willemsvaart"
-  objectType       String?            // sluis, stuw, brug, gemaal, ... (zie lib/sampleObjects.ts)
-  address          String?            // adres zoals gevonden via PDOK
-  lat              Float?             // speld op de kaart, mag verschoven worden
+  name             String   @unique // bijv. "Sluis Grave"
+  region           String? // bijv. "Maas" of "Zuid-Willemsvaart"
+  objectType       String? // sluis, stuw, brug, gemaal, ... (zie lib/sampleObjects.ts)
+  address          String? // adres zoals gevonden via PDOK
+  lat              Float? // speld op de kaart, mag verschoven worden
   lng              Float?
-  estimatedMinutes Int?               // geschatte werktijd op locatie, in minuten
+  estimatedMinutes Int? // geschatte werktijd op locatie, in minuten
   notes            String?
+  klantId          Int? // de klant waar dit object bij hoort
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  samples          OilSample[]
-  stops            SamplePlanStop[]
+  klant        Klant?           @relation(fields: [klantId], references: [id], onDelete: SetNull)
+  samples      OilSample[]
+  stops        SamplePlanStop[]
+  installaties Installatie[]
 
   @@index([region])
+  @@index([klantId])
 }
 
 // ============================================
@@ -138,17 +154,17 @@ model SampleObject {
 
 model SamplePlan {
   id            Int      @id @default(autoincrement())
-  date          DateTime            // de dag zelf (zonder tijd)
-  analysisYear  Int                 // 2025, 2026, ...
+  date          DateTime // de dag zelf (zonder tijd)
+  analysisYear  Int // 2025, 2026, ...
   notes         String?
-  routeGeometry String?             // cache: rij-traject als GeoJSON-coords [[lng,lat],...]
-  routeDistance Float?              // cache: afstand in meters
-  routeDuration Float?              // cache: rijtijd in seconden
-  manualOrder   Boolean  @default(false)  // volgorde met de hand gezet; niet meer automatisch herschikken
+  routeGeometry String? // cache: rij-traject als GeoJSON-coords [[lng,lat],...]
+  routeDistance Float? // cache: afstand in meters
+  routeDuration Float? // cache: rijtijd in seconden
+  manualOrder   Boolean  @default(false) // volgorde met de hand gezet; niet meer automatisch herschikken
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  stops         SamplePlanStop[]
+  stops SamplePlanStop[]
 
   @@unique([date, analysisYear])
   @@index([analysisYear])
@@ -161,21 +177,21 @@ model SamplePlan {
 // dagscherm, zodat de werkelijke tijd naast je inschatting komt te staan.
 
 model SamplePlanStop {
-  id             Int      @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   planId         Int
   objectId       Int
-  sampleIds      String?            // JSON: [12, 13, 14]; null of leeg = alles wat openstaat
-  orderIndex     Int      @default(0)
-  plannedMinutes Int?               // inschatting voor dit bezoek; leeg = die van het object
-  isDone         Boolean  @default(false)
+  sampleIds      String? // JSON: [12, 13, 14]; null of leeg = alles wat openstaat
+  orderIndex     Int       @default(0)
+  plannedMinutes Int? // inschatting voor dit bezoek; leeg = die van het object
+  isDone         Boolean   @default(false)
   doneAt         DateTime?
   startedAt      DateTime?
   endedAt        DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  plan           SamplePlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
-  object         SampleObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
+  plan   SamplePlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  object SampleObject @relation(fields: [objectId], references: [id], onDelete: Cascade)
 
   @@index([planId])
   @@index([objectId])
@@ -189,15 +205,15 @@ model SamplePlanStop {
 model SampleAttempt {
   id           Int       @id @default(autoincrement())
   oilSampleId  Int
-  sampleDate   DateTime?            // datum afname; null = gepland maar nog niet genomen
-  photoUrl     String?              // foto van het monsterpotje bij deze poging
-  partPhotoUrl String?              // foto van het onderdeel waar het monster vandaan komt
-  remarks      String?              // opmerkingen specifiek voor deze poging
-  isTaken      Boolean   @default(false)  // of deze poging daadwerkelijk is afgenomen
+  sampleDate   DateTime? // datum afname; null = gepland maar nog niet genomen
+  photoUrl     String? // foto van het monsterpotje bij deze poging
+  partPhotoUrl String? // foto van het onderdeel waar het monster vandaan komt
+  remarks      String? // opmerkingen specifiek voor deze poging
+  isTaken      Boolean   @default(false) // of deze poging daadwerkelijk is afgenomen
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  oilSample    OilSample @relation(fields: [oilSampleId], references: [id], onDelete: Cascade)
+  oilSample OilSample @relation(fields: [oilSampleId], references: [id], onDelete: Cascade)
 
   @@index([oilSampleId])
   @@index([sampleDate])
@@ -205,22 +221,26 @@ model SampleAttempt {
 
 model Settings {
   id        Int      @id @default(autoincrement())
-  key       String   @unique  // Settings key (bijv. "theme", "columns")
-  value     String              // JSON string met de settings waarde
+  key       String   @unique // Settings key (bijv. "theme", "columns")
+  value     String // JSON string met de settings waarde
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 }
 
 model AuditLog {
-  id         Int      @id @default(autoincrement())
-  userId     Int?                // Optioneel - bij login failures is er geen userId
-  username   String              // Gebruikersnaam voor makkelijk filteren
-  action     String              // Bijv. "LOGIN", "CREATE_SAMPLE", "DELETE_USER"
-  details    String?             // JSON string met extra details
-  ipAddress  String?             // IP adres van de request
-  userAgent  String?             // Browser/device info
-  success    Boolean  @default(true)  // Of de actie geslaagd is
-  createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  userId    Int? // Optioneel - bij login failures is er geen userId
+  username  String // Gebruikersnaam voor makkelijk filteren
+  action    String // Bijv. "LOGIN", "CREATE_SAMPLE", "DELETE_USER"
+  details   String? // JSON string met extra details
+  ipAddress String? // IP adres van de request
+  userAgent String? // Browser/device info
+  success   Boolean  @default(true) // Of de actie geslaagd is
+  createdAt DateTime @default(now())
+
+  // Echte koppeling met de gebruiker. Wordt die verwijderd, dan blijft de regel
+  // staan met de gebruikersnaam als tekst (username hierboven).
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([action])
@@ -238,72 +258,36 @@ model AuditLog {
 
 model ControlRound {
   id            Int      @id @default(autoincrement())
-  name          String              // Naam van de ronde (bijv. "Wijk Noord controle")
-  place         String              // Woonplaats waarin de ronde valt
-  notes         String?             // Optionele notities
-  routeGeometry String?             // Cache: berekend rij-traject als GeoJSON-coords [[lng,lat],...]
-  routeDistance Float?              // Cache: totale afstand in meters (indien bekend)
-  routeSteps    String?             // Cache: stap-voor-stap routebeschrijving als JSON
+  name          String // Naam van de ronde (bijv. "Wijk Noord controle")
+  place         String // Woonplaats waarin de ronde valt
+  notes         String? // Optionele notities
+  routeGeometry String? // Cache: berekend rij-traject als GeoJSON-coords [[lng,lat],...]
+  routeDistance Float? // Cache: totale afstand in meters (indien bekend)
+  routeSteps    String? // Cache: stap-voor-stap routebeschrijving als JSON
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  streets       ControlRoundStreet[]
+  streets ControlRoundStreet[]
 
   @@index([place])
 }
 
 model ControlRoundStreet {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   roundId    Int
-  street     String              // Straatnaam
-  lat        Float               // Representatief midpunt - breedtegraad (label/GPS-fallback)
-  lng        Float               // Representatief midpunt - lengtegraad
-  geometry   String?             // Volledige straatlijn(en) als JSON: [[[lng,lat],...],...]
-  orderIndex Int      @default(0)  // Positie in de berekende rijvolgorde
-  isDone     Boolean  @default(false)  // Of deze straat al gereden/gecontroleerd is
-  doneAt     DateTime?           // Wanneer afgevinkt
-  createdAt  DateTime @default(now())
+  street     String // Straatnaam
+  lat        Float // Representatief midpunt - breedtegraad (label/GPS-fallback)
+  lng        Float // Representatief midpunt - lengtegraad
+  geometry   String? // Volledige straatlijn(en) als JSON: [[[lng,lat],...],...]
+  orderIndex Int       @default(0) // Positie in de berekende rijvolgorde
+  isDone     Boolean   @default(false) // Of deze straat al gereden/gecontroleerd is
+  doneAt     DateTime? // Wanneer afgevinkt
+  createdAt  DateTime  @default(now())
 
-  round      ControlRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
+  round ControlRound @relation(fields: [roundId], references: [id], onDelete: Cascade)
 
   @@index([roundId])
   @@index([orderIndex])
-}
-
-// ============================================
-// CONTACTEN
-// ============================================
-
-model Contact {
-  id        Int      @id @default(autoincrement())
-  company   String              // Bedrijfsnaam
-  name      String?             // Contactpersoon (optioneel)
-  email     String?             // E-mailadres
-  phone     String?             // Telefoonnummer
-  address   String?             // Adres
-  notes     String?             // Algemene notities
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  contactNotes ContactNote[]
-
-  @@index([company])
-  @@index([name])
-}
-
-model ContactNote {
-  id        Int      @id @default(autoincrement())
-  contactId Int
-  content   String              // Inhoud van de notitie
-  userId    Int?                // Wie heeft de notitie gemaakt
-  username  String?             // Gebruikersnaam voor referentie
-  createdAt DateTime @default(now())
-
-  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-
-  @@index([contactId])
-  @@index([createdAt])
 }
 
 // ============================================
@@ -316,34 +300,36 @@ model ContactNote {
 // spiegelen de meest recente opmerking als cache, zodat de lijst snel laadt.
 
 model UltimoTask {
-  id              Int      @id @default(autoincrement())
-  jobName         String              // Jobnaam (bijv. "Onderhoud pompen hal 2")
-  taskDescription String              // Looprouteregel / taakomschrijving
-  installation    String?             // Installatie / object (optioneel)
-  lastDate        DateTime?           // cache: datum van de meest recente opmerking
-  lastComment     String?             // cache: tekst van de meest recente opmerking
-  lastJobNumber   String?             // cache: jobnummer van de meest recente opmerking
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id              Int       @id @default(autoincrement())
+  jobName         String // Jobnaam (bijv. "Onderhoud pompen hal 2")
+  taskDescription String // Looprouteregel / taakomschrijving
+  installation    String? // Installatie / object (optioneel)
+  lastDate        DateTime? // cache: datum van de meest recente opmerking
+  lastComment     String? // cache: tekst van de meest recente opmerking
+  lastJobNumber   String? // cache: jobnummer van de meest recente opmerking
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  comments        UltimoComment[]
+  comments UltimoComment[]
 
   @@index([jobName])
   @@index([taskDescription])
 }
 
 model UltimoComment {
-  id        Int      @id @default(autoincrement())
+  id        Int       @id @default(autoincrement())
   taskId    Int
-  date      DateTime?            // datum waarop je de opmerking plaatste
-  jobNumber String?              // jobnummer van die cyclus (wisselt per keer)
-  text      String               // de opmerking zoals in Ultimo geplaatst
-  userId    Int?                 // wie de opmerking vastlegde
-  username  String?              // gebruikersnaam voor referentie
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  date      DateTime? // datum waarop je de opmerking plaatste
+  jobNumber String? // jobnummer van die cyclus (wisselt per keer)
+  text      String // de opmerking zoals in Ultimo geplaatst
+  userId    Int? // wie de opmerking vastlegde
+  username  String? // gebruikersnaam voor referentie
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  task      UltimoTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task UltimoTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  // Wordt de gebruiker verwijderd, dan blijft de opmerking staan met de naam als tekst.
+  user User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([taskId])
   @@index([date])
@@ -360,15 +346,15 @@ model UltimoComment {
 // uit het onderzoek een-op-een geimporteerd kan worden.
 
 enum ProspectStatus {
-  NIEUW        // net binnen uit de lijst, nog niets mee gedaan
-  ONDERZOCHT   // uitgezocht, klaar om te benaderen
-  BENADERD     // mail of LinkedIn verstuurd, wacht op reactie
-  REACTIE      // ze hebben gereageerd
-  GESPREK      // gesprek gehad of gepland
-  OFFERTE      // offerte de deur uit
-  KLANT        // binnen als klant
-  AFGEWEZEN    // gaat niet door
-  LATER        // interessant, maar nu even niet
+  NIEUW // net binnen uit de lijst, nog niets mee gedaan
+  ONDERZOCHT // uitgezocht, klaar om te benaderen
+  BENADERD // mail of LinkedIn verstuurd, wacht op reactie
+  REACTIE // ze hebben gereageerd
+  GESPREK // gesprek gehad of gepland
+  OFFERTE // offerte de deur uit
+  KLANT // binnen als klant
+  AFGEWEZEN // gaat niet door
+  LATER // interessant, maar nu even niet
 }
 
 enum ProspectKanaal {
@@ -381,41 +367,44 @@ enum ProspectKanaal {
 }
 
 model Prospect {
-  id               Int      @id @default(autoincrement())
-  bedrijfsnaam     String
-  segment          String?            // industrie / dienstverlener / overheid
-  plaats           String
-  provincie        String?
-  website          String?
-  telefoon         String?
-  email            String?
-  contactpersoon   String?
-  functie          String?
-  linkedin         String?
-  omvang           String?            // schatting aantal medewerkers, bv "50-100"
-  activiteit       String?            // een zin: wat doen ze
-  aanknopingspunt  String?            // de reden waarom dit bedrijf mij nodig heeft
-  signaal          String?            // recent nieuws, vacature, uitbreiding, met datum
-  bron             String?            // URL waar aanknopingspunt en signaal vandaan komen
-  score            Int?               // 1-5, 5 = beste match
-  scoreReden       String?
-  afstandKm        Float?             // hemelsbreed vanaf Heeze
+  id              Int     @id @default(autoincrement())
+  bedrijfsnaam    String
+  segment         String? // industrie / dienstverlener / overheid
+  plaats          String
+  provincie       String?
+  website         String?
+  telefoon        String?
+  email           String?
+  contactpersoon  String?
+  functie         String?
+  linkedin        String?
+  omvang          String? // schatting aantal medewerkers, bv "50-100"
+  activiteit      String? // een zin: wat doen ze
+  aanknopingspunt String? // de reden waarom dit bedrijf mij nodig heeft
+  signaal         String? // recent nieuws, vacature, uitbreiding, met datum
+  bron            String? // URL waar aanknopingspunt en signaal vandaan komen
+  score           Int? // 1-5, 5 = beste match
+  scoreReden      String?
+  afstandKm       Float? // hemelsbreed vanaf Heeze
 
   status           ProspectStatus @default(NIEUW)
-  kanaal           ProspectKanaal @default(MAIL)  // via welk kanaal je dit bedrijf benadert: MAIL of LINKEDIN, één tegelijk
-  afgemeldOp       DateTime?          // datum waarop ze aangaven geen mail meer te willen (eis uit het e-mailrecht)
-  volgendeActie    String?            // wat is de eerstvolgende stap
-  volgendeActieOp  DateTime?          // wanneer die stap moet gebeuren
-  laatsteContactOp DateTime?          // cache: datum van het laatste contactmoment
-  klantSindsOp     DateTime?          // gezet zodra de status op KLANT komt (voor "nieuwe klanten dit kwartaal")
-  geschatteWaarde  Int?               // in hele euro's
+  kanaal           ProspectKanaal @default(MAIL) // via welk kanaal je dit bedrijf benadert: MAIL of LINKEDIN, één tegelijk
+  afgemeldOp       DateTime? // datum waarop ze aangaven geen mail meer te willen (eis uit het e-mailrecht)
+  volgendeActie    String? // wat is de eerstvolgende stap
+  volgendeActieOp  DateTime? // wanneer die stap moet gebeuren
+  laatsteContactOp DateTime? // cache: datum van het laatste contactmoment
+  klantSindsOp     DateTime? // gezet zodra de status op KLANT komt (voor "nieuwe klanten dit kwartaal")
+  geschatteWaarde  Int? // in hele euro's
   notities         String?
-  archief          Boolean  @default(false)
+  archief          Boolean        @default(false)
+  // Gezet door de actie Wordt klant: de klant die uit deze prospect is ontstaan.
+  klantId          Int?           @unique
+  klant            Klant?         @relation(fields: [klantId], references: [id], onDelete: SetNull)
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  contactmomenten  ProspectContactmoment[]
+  contactmomenten ProspectContactmoment[]
 
   // Voorkomt dubbelen bij het importeren van een prospectlijst
   @@unique([bedrijfsnaam, plaats])
@@ -427,16 +416,92 @@ model Prospect {
 model ProspectContactmoment {
   id             Int            @id @default(autoincrement())
   prospectId     Int
-  datum          DateTime                  // wanneer het contact was
+  datum          DateTime // wanneer het contact was
   kanaal         ProspectKanaal @default(MAIL)
-  samenvatting   String                    // wat je gedaan of gestuurd hebt
-  uitkomst       String?                   // wat eruit kwam
-  aangemaaktDoor String?                   // gebruikersnaam
+  samenvatting   String // wat je gedaan of gestuurd hebt
+  uitkomst       String? // wat eruit kwam
+  aangemaaktDoor String? // gebruikersnaam
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  prospect       Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  prospect Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
 
   @@index([prospectId])
   @@index([datum])
+}
+
+// ============================================
+// KLANTEN
+// ============================================
+// De kern van de portal: een klant, met contactpersonen, objecten (vestiging,
+// kunstwerk of locatie, het bestaande SampleObject) en op een object eventueel
+// installaties. Mourik Infra B.V. is de eerste klant; de migratie
+// klanten_en_installaties koppelt alle bestaande objecten en kijkers daaraan.
+//
+// Verwijderen is zacht (deletedAt), net als bij de oliemonsters: de gegevens
+// blijven staan en zijn terug te zetten.
+
+model Klant {
+  id        Int       @id @default(autoincrement())
+  naam      String
+  adres     String? // straat en huisnummer
+  postcode  String?
+  plaats    String?
+  kvkNummer String?
+  notities  String?
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  contactpersonen Contactpersoon[]
+  objecten        SampleObject[]
+  gebruikers      User[]
+  prospect        Prospect?
+
+  @@index([naam])
+  @@index([deletedAt])
+}
+
+model Contactpersoon {
+  id        Int       @id @default(autoincrement())
+  klantId   Int
+  naam      String
+  functie   String?
+  email     String?
+  telefoon  String?
+  deletedAt DateTime?
+  deletedBy String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  klant Klant @relation(fields: [klantId], references: [id], onDelete: Cascade)
+
+  @@index([klantId])
+}
+
+// Een installatie op een object: pomp, hydraulisch aggregaat, compressor, pers.
+// `code` is een korte, unieke code voor een latere QR-sticker (lib/installaties.ts).
+model Installatie {
+  id          Int       @id @default(autoincrement())
+  objectId    Int
+  code        String    @unique
+  naam        String // bijv. "Aggregaat hefdeur boven"
+  soort       String // pomp, aggregaat, compressor, pers, overig (lib/installaties.ts)
+  merk        String?
+  typenummer  String?
+  bouwjaar    Int?
+  serienummer String?
+  fotoUrl     String?
+  notities    String?
+  deletedAt   DateTime?
+  deletedBy   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  object   SampleObject @relation(fields: [objectId], references: [id], onDelete: Restrict)
+  monsters OilSample[]
+
+  @@index([objectId])
+  @@index([deletedAt])
 }

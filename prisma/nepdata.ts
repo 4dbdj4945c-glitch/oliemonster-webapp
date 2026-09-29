@@ -50,10 +50,35 @@ export async function vulMetNepdata(prisma: PrismaClient) {
   await prisma.samplePlan.deleteMany();
   await prisma.sampleAttempt.deleteMany();
   await prisma.oilSample.deleteMany();
+  await prisma.installatie.deleteMany();
   await prisma.sampleObject.deleteMany();
   await prisma.uitnodiging.deleteMany();
   await prisma.auditLog.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.contactpersoon.deleteMany();
+  await prisma.klant.deleteMany();
+
+  // Klanten: Mourik (zoals de migratie hem aanmaakt) en een tweede, verzonnen klant.
+  const mourik = await prisma.klant.create({
+    data: { naam: 'Mourik Infra B.V.', adres: 'Trambaan 15', postcode: '6101 AJ', plaats: 'Echt' },
+  });
+  const tweede = await prisma.klant.create({
+    data: {
+      naam: 'Kempen Metaalbewerking B.V.',
+      adres: 'Industrieweg 8',
+      postcode: '5500 AA',
+      plaats: 'Veldhoven',
+      kvkNummer: '12345678',
+      notities: 'Nepdata: tweede klant om mee te testen.',
+    },
+  });
+  await prisma.contactpersoon.createMany({
+    data: [
+      { klantId: mourik.id, naam: 'Jan de Vries', functie: 'Projectleider', email: 'jan.devries@example.com', telefoon: '06 12345678' },
+      { klantId: mourik.id, naam: 'Els Janssen', functie: 'Werkvoorbereider', email: 'els.janssen@example.com' },
+      { klantId: tweede.id, naam: 'Piet Verhoeven', functie: 'Technisch dienst', telefoon: '040 1234567' },
+    ],
+  });
 
   const gebruikers: Record<string, number> = {};
   for (const [sleutel, g] of Object.entries(NEP_GEBRUIKERS)) {
@@ -64,6 +89,7 @@ export async function vulMetNepdata(prisma: PrismaClient) {
         role: g.role,
         viewYear: g.viewYear,
         requiresPasswordChange: g.wachtwoord === null,
+        klantId: g.role === 'alleen_lezen' ? mourik.id : null,
       },
     });
     gebruikers[sleutel] = user.id;
@@ -71,8 +97,27 @@ export async function vulMetNepdata(prisma: PrismaClient) {
 
   const objecten = [];
   for (const o of OBJECTEN) {
-    objecten.push(await prisma.sampleObject.create({ data: { ...o, address: `${o.name}, Nederland` } }));
+    objecten.push(await prisma.sampleObject.create({ data: { ...o, address: `${o.name}, Nederland`, klantId: mourik.id } }));
   }
+  const werkplaats = await prisma.sampleObject.create({
+    data: { name: 'Werkplaats Veldhoven', objectType: 'overig', address: 'Industrieweg 8, Veldhoven', klantId: tweede.id },
+  });
+
+  // Installaties: twee aggregaten op Sluis Grave, een pers en een compressor bij de tweede klant.
+  const installaties = [
+    await prisma.installatie.create({
+      data: { objectId: objecten[0].id, code: 'GRV2AB', naam: 'Aggregaat hefdeur boven', soort: 'aggregaat', merk: 'Bosch Rexroth', typenummer: 'ABPAC-100', bouwjaar: 2009, serienummer: 'R9-44871' },
+    }),
+    await prisma.installatie.create({
+      data: { objectId: objecten[0].id, code: 'GRV3CD', naam: 'Aggregaat hefdeur beneden', soort: 'aggregaat', merk: 'Bosch Rexroth', bouwjaar: 2009 },
+    }),
+    await prisma.installatie.create({
+      data: { objectId: werkplaats.id, code: 'KMP4EF', naam: 'Kantpers 1', soort: 'pers', merk: 'Safan', typenummer: 'E-Brake 100', bouwjaar: 2015 },
+    }),
+    await prisma.installatie.create({
+      data: { objectId: werkplaats.id, code: 'KMP5GH', naam: 'Schroefcompressor', soort: 'compressor', merk: 'Atlas Copco', typenummer: 'GA 15', notities: 'Staat in de technische ruimte achter hal 2.' },
+    }),
+  ];
 
   // Per jaar per object twee monsters: 12 per jaar.
   const monsters: Record<number, number[]> = { 2025: [], 2026: [] };
@@ -95,6 +140,8 @@ export async function vulMetNepdata(prisma: PrismaClient) {
             description: onderdeel,
             oilType: k === 0 ? 'HLP 46' : 'CLP 220',
             objectId: object.id,
+            // De eerste twee monsters van Sluis Grave horen bij een installatie.
+            installatieId: i === 0 ? installaties[k].id : null,
             isTaken: genomen && !geannuleerd,
             sampleDate: genomen && !geannuleerd ? datum : null,
             isDisabled: geannuleerd,
@@ -149,5 +196,13 @@ export async function vulMetNepdata(prisma: PrismaClient) {
     ],
   });
 
-  return { gebruikers, objecten: objecten.map((o) => o.id), monsters, verwijderd: verwijderd.id };
+  return {
+    gebruikers,
+    klanten: { mourik: mourik.id, tweede: tweede.id },
+    objecten: objecten.map((o) => o.id),
+    werkplaats: werkplaats.id,
+    installaties: installaties.map((x) => x.id),
+    monsters,
+    verwijderd: verwijderd.id,
+  };
 }
