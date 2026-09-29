@@ -244,7 +244,7 @@ export default function SampleAttemptsPanel({
               type="button"
               onClick={handleAdd}
               disabled={busy}
-              className="btn btn-sm btn-blue"
+              className="btn btn-sm"
             >
               <Icon name="resample" size={16} />
               Hermonstering
@@ -337,7 +337,7 @@ export default function SampleAttemptsPanel({
                         type="button"
                         onClick={() => saveEdit(attempt.id)}
                         disabled={busy}
-                        className="btn btn-sm btn-blue"
+                        className="btn btn-sm"
                       >
                         Opslaan
                       </button>

@@ -759,7 +759,7 @@ export default function ObjectenPage() {
           <>
             <button type="button" className="btn" onClick={() => setToonModal(false)}>Annuleren</button>
             <button type="button" className="btn btn-primary" onClick={bewaar} disabled={opslaan}>
-              {opslaan ? 'Bezig...' : bewerkt ? 'Bijwerken' : 'Toevoegen'}
+              {opslaan ? 'Bezig...' : bewerkt ? 'Opslaan' : 'Toevoegen'}
             </button>
           </>
         }

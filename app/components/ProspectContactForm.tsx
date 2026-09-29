@@ -178,14 +178,15 @@ export default function ProspectContactForm({ prospect, onOpgeslagen, onAnnulere
 
       {fout && <div className="alert alert-danger"><Icon name="alert-danger" size={16} />{fout}</div>}
 
-      <div className="knoppenrij">
-        <button type="button" className="btn btn-primary" onClick={opslaan} disabled={bezig}>
-          <Icon name="check" size={16} />
-          {bezig ? 'Bezig...' : 'Contactmoment opslaan'}
-        </button>
+      {/* Hoofdknop rechts, zoals in elk venster */}
+      <div className="knoppenrij knoppenrij-eind">
         {onAnnuleren && (
           <button type="button" className="btn" onClick={onAnnuleren} disabled={bezig}>Annuleren</button>
         )}
+        <button type="button" className="btn btn-primary" onClick={opslaan} disabled={bezig}>
+          <Icon name="check" size={16} />
+          {bezig ? 'Bezig...' : 'Opslaan'}
+        </button>
       </div>
     </div>
   );

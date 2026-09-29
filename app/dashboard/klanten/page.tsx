@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
-import { AppShell, Icon } from '@/app/components/ui';
+import { AppShell, Icon, Laden } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import KlantFormulier from '@/app/components/klanten/KlantFormulier';
 import { adresTekst, type KlantInLijst } from '@/app/components/klanten/types';
@@ -67,7 +67,7 @@ export default function KlantenPagina() {
       {fout && <LaadFout melding={fout} onOpnieuw={laad} />}
 
       {klanten === null ? (
-        fout ? null : <div className="laden">Laden...</div>
+        fout ? null : <Laden regels={4} soort="lijst" />
       ) : (
         <>
           <div className="card" style={{ marginBottom: '16px' }}>

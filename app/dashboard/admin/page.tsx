@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
-import { AppShell, Modal, Icon } from '@/app/components/ui';
+import { AppShell, Modal, Icon, Laden } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { ROLE_ALLEEN_LEZEN, ROLE_ADMIN, ROLE_USER, ROLE_LABELS } from '@/lib/roles';
@@ -296,12 +296,17 @@ export default function AdminPage() {
   };
 
   if (loading) {
-    return <div className="laadscherm">Laden...</div>;
+    return (
+      <AppShell title="Instellingen" wide user={sessionUser}>
+        <h1 className="page-title">Instellingen</h1>
+        <Laden label="Instellingen laden" regels={3} soort="lijst" />
+      </AppShell>
+    );
   }
 
   const rolBadgeClass = (role: string) => {
     if (role === ROLE_ADMIN) return 'badge badge-info';
-    if (role === ROLE_ALLEEN_LEZEN) return 'badge badge-warning';
+    if (role === ROLE_ALLEEN_LEZEN) return 'badge badge-gray';
     return 'badge badge-gray';
   };
 
@@ -495,7 +500,7 @@ export default function AdminPage() {
               Annuleren
             </button>
             <button type="submit" form="admin-user-form" className="btn btn-primary">
-              {editingUser ? 'Bijwerken' : 'Toevoegen'}
+              {editingUser ? 'Opslaan' : 'Toevoegen'}
             </button>
           </>
         }

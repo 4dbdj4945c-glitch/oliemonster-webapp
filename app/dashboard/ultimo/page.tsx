@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
-import { AppShell, Modal, Icon } from '@/app/components/ui';
+import { AppShell, Modal, Icon, Laden } from '@/app/components/ui';
 import UltimoCommentsPanel from '@/app/components/UltimoCommentsPanel';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
@@ -245,7 +245,7 @@ export default function UltimoPage() {
       </div>
 
       {loading ? (
-        <p className="laden">Laden...</p>
+        <Laden label="Taken laden" regels={3} soort="lijst" />
       ) : tasks.length === 0 && foutmelding ? null : tasks.length === 0 ? (
         <div className="leeg">
           <Icon name="empty" size={32} />

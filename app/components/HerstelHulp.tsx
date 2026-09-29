@@ -126,7 +126,7 @@ export default function HerstelHulp({
       {!overgenomen && (
         <button
           type="button"
-          className="btn btn-sm btn-blue"
+          className="btn btn-sm"
           onClick={() => {
             onOvernemen({
               location: vorig.location ?? '',

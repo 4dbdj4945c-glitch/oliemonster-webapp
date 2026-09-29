@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Icon from './ui/Icon';
+import { useVenster } from './ui/Modal';
+import Laden from './ui/Laden';
 import LaadFout from './LaadFout';
 import OngedaanMelding, { type OngedaanInhoud } from './OngedaanMelding';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
@@ -106,6 +108,7 @@ export default function PlanningPaneel({
   const [kiesDag, setKiesDag] = useState<number | null>(null);
   const [kiesMonsters, setKiesMonsters] = useState<number[]>([]);
   const [kiesAlles, setKiesAlles] = useState(true);
+  const kiesPaneel = useVenster<HTMLDivElement>(kiesObject !== null, () => setKiesObject(null));
 
   // Slepen (desktop)
   const sleepStop = useRef<number | null>(null);
@@ -388,7 +391,7 @@ export default function PlanningPaneel({
   const teVolDagen = dagen.filter((d) => d.teVol).length;
 
   if (laden) {
-    return <p className="laden">Planning laden...</p>;
+    return <Laden label="Planning laden" regels={3} />;
   }
 
   return (
@@ -406,7 +409,7 @@ export default function PlanningPaneel({
               <span><strong>{dagen.length}</strong> dagen</span>
               <span><strong>{minutenAlsTekst(totaalWerk)}</strong> werk</span>
               <span><strong>{minutenAlsTekst(totaalRij)}</strong> rijden</span>
-              {totaalKm > 0 && <span><strong>{totaalKm.toFixed(0)} km</strong></span>}
+              {totaalKm > 0 && <span><strong>{Math.round(totaalKm).toLocaleString('nl-NL')} km</strong></span>}
               {teVolDagen > 0 && (
                 <span className="badge badge-warning">
                   <Icon name="alert-warning" size={16} />
@@ -424,7 +427,7 @@ export default function PlanningPaneel({
                   <Icon name="route" size={16} />
                   Route berekenen
                 </button>
-                <button type="button" className="btn btn-sm btn-blue" onClick={() => berekenVolgorde(true)} disabled={bezig}>
+                <button type="button" className="btn btn-sm" onClick={() => berekenVolgorde(true)} disabled={bezig}>
                   <Icon name="route" size={16} />
                   Volgorde en verdeling berekenen
                 </button>
@@ -631,9 +634,17 @@ export default function PlanningPaneel({
       {/* Object op een dag zetten */}
       {kiesObject && (
         <div className="modal-backdrop" onClick={() => setKiesObject(null)}>
-          <div className="modal-content modal-content-md" onClick={(e) => e.stopPropagation()}>
+          <div
+            ref={kiesPaneel}
+            className="modal-content modal-content-md"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="plan-kies-titel"
+            tabIndex={-1}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modal-header">
-              <h2 className="modal-title">{kiesObject.name} inplannen</h2>
+              <h2 className="modal-title" id="plan-kies-titel">{kiesObject.name} inplannen</h2>
               <button type="button" className="icon-btn modal-sluit" onClick={() => setKiesObject(null)} aria-label="Sluiten">
                 <Icon name="close" />
               </button>

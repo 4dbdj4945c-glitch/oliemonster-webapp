@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
-import { AppShell, Modal, Icon } from '@/app/components/ui';
+import { AppShell, Modal, Icon, Laden } from '@/app/components/ui';
 import ProspectDetail from '@/app/components/ProspectDetail';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
@@ -361,7 +361,7 @@ export default function AcquisitiePage() {
       {laadFout && <LaadFout melding={laadFout} onOpnieuw={laadProspects} />}
 
       {laden ? (
-        <p className="laden">Laden...</p>
+        <Laden label="Prospects laden" regels={3} />
       ) : !geladen ? null : (
         <>
           {/* Cijfers */}
@@ -414,7 +414,7 @@ export default function AcquisitiePage() {
                     </div>
                     <div className="acq-actie-knoppen">
                       {isAdmin && (
-                        <button type="button" className="btn btn-sm btn-blue" onClick={() => setSnelContact(prospect)}>
+                        <button type="button" className="btn btn-sm" onClick={() => setSnelContact(prospect)}>
                           <Icon name="comment" size={16} />Vastleggen
                         </button>
                       )}

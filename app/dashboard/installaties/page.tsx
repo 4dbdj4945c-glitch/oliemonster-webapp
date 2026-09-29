@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
-import { AppShell, Icon } from '@/app/components/ui';
+import { AppShell, Icon, Laden } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import InstallatieFormulier from '@/app/components/klanten/InstallatieFormulier';
 import { typeTekst, type InstallatieKort, type KlantInLijst, type ObjectKeuze } from '@/app/components/klanten/types';
@@ -86,7 +86,7 @@ export default function InstallatiesPagina() {
       {fout && <LaadFout melding={fout} onOpnieuw={laad} />}
 
       {lijst === null ? (
-        fout ? null : <div className="laden">Laden...</div>
+        fout ? null : <Laden regels={4} soort="lijst" />
       ) : (
         <>
           <div className="card beheer-filters" style={{ marginBottom: '16px' }}>

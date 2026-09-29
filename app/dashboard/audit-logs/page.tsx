@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
 import LaadFout from '@/app/components/LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
-import { AppShell, Icon } from '@/app/components/ui';
+import { AppShell, Icon, Laden } from '@/app/components/ui';
 
 interface User {
   userId: number;
@@ -68,16 +68,22 @@ export default function AuditLogsPage() {
   };
 
   if (loading) {
-    return <div className="laadscherm">Laden...</div>;
+    return (
+      <AppShell title="Logboek" wide user={user}>
+        <h1 className="page-title">Logboek</h1>
+        <p className="page-subtitle">Inzicht in acties en wijzigingen.</p>
+        <Laden label="Logboek laden" regels={5} soort="lijst" />
+      </AppShell>
+    );
   }
 
   return (
     <AppShell
-      title="Audit Logs"
+      title="Logboek"
       wide
       user={user}
     >
-      <h1 className="page-title">Audit Logs</h1>
+      <h1 className="page-title">Logboek</h1>
       <p className="page-subtitle">Inzicht in acties en wijzigingen.</p>
 
       {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={loadLogs} />}

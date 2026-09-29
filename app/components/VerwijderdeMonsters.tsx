@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Icon } from '@/app/components/ui';
+import { Icon, Laden } from '@/app/components/ui';
 import LaadFout from './LaadFout';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 
@@ -91,7 +91,7 @@ export default function VerwijderdeMonsters({
       {fout && <LaadFout melding={fout} onOpnieuw={laad} bezig={laden} />}
 
       {laden ? (
-        <p className="laden">Laden...</p>
+        <Laden label="Prullenbak laden" regels={2} soort="lijst" />
       ) : !geladen ? null : kolomOntbreekt ? (
         <div className="alert alert-info">
           De prullenbak staat nog niet in de database. Draai ./db-push-veilig-verwijderen.sh in de projectmap. Tot die
@@ -140,7 +140,7 @@ export default function VerwijderdeMonsters({
                     <td data-label="Acties" className="kaart-acties">
                       <button
                         type="button"
-                        className="btn btn-sm btn-blue"
+                        className="btn btn-sm"
                         onClick={() => herstel(m)}
                         disabled={bezig === m.id}
                       >

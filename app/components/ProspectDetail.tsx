@@ -1,5 +1,6 @@
 'use client';
 
+import Laden from './ui/Laden';
 import { useCallback, useEffect, useState } from 'react';
 import Icon from './ui/Icon';
 import ProspectContactForm from './ProspectContactForm';
@@ -170,7 +171,7 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
     onGewijzigd();
   };
 
-  if (laden) return <p className="laden">Laden...</p>;
+  if (laden) return <Laden label="Prospect laden" regels={2} />;
   if (!prospect) return <div className="alert alert-danger"><Icon name="alert-danger" size={16} />{fout || 'Prospect niet gevonden.'}</div>;
 
   return (
@@ -287,7 +288,7 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
 
       {/* Werkvelden */}
       <div className="card card-padded">
-        <div className="section-label">Bijwerken</div>
+        <div className="section-label">Status en opvolging</div>
         <div className="acq-velden" style={{ marginTop: '10px' }}>
           <div>
             <label className="label" htmlFor="detail-status">Status</label>
@@ -408,7 +409,7 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
         <div className="card-kop">
           <span className="section-label">Contactmomenten</span>
           {isAdmin && !contactOpen && (
-            <button type="button" className="btn btn-sm btn-blue" onClick={() => setContactOpen(true)}>
+            <button type="button" className="btn btn-sm" onClick={() => setContactOpen(true)}>
               <Icon name="plus" size={16} />Contactmoment toevoegen
             </button>
           )}

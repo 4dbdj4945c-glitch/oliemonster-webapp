@@ -248,7 +248,7 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
         {isAdmin && geladen && !adding && (
           <button
             type="button"
-            className="btn btn-blue btn-sm"
+            className="btn btn-sm"
             onClick={() => { setAdding(true); setNewDraft({ ...emptyDraft, date: todayISO() }); }}
             disabled={busy}
           >
@@ -276,7 +276,7 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
             <textarea className="textarea opm-tekst" value={newDraft.text} onChange={(e) => setNewDraft({ ...newDraft, text: e.target.value })} rows={3} placeholder="De opmerking zoals je 'm in Ultimo plaatst" />
           </div>
           <div className="knoppenrij" style={{ display: 'flex', gap: '8px' }}>
-            <button type="button" className="btn btn-blue btn-sm" onClick={handleAdd} disabled={busy}>Opslaan</button>
+            <button type="button" className="btn btn-sm" onClick={handleAdd} disabled={busy}>Opslaan</button>
             <button type="button" className="btn btn-sm" onClick={() => { setAdding(false); setNewDraft({ ...emptyDraft }); }}>Annuleren</button>
           </div>
         </div>
@@ -319,7 +319,7 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
                     </div>
                     <textarea className="textarea opm-tekst" value={editDraft.text} onChange={(e) => setEditDraft({ ...editDraft, text: e.target.value })} rows={3} />
                     <div className="knoppenrij" style={{ display: 'flex', gap: '8px' }}>
-                      <button type="button" className="btn btn-blue btn-sm" onClick={() => saveEdit(c.id)} disabled={busy}>Opslaan</button>
+                      <button type="button" className="btn btn-sm" onClick={() => saveEdit(c.id)} disabled={busy}>Opslaan</button>
                       <button type="button" className="btn btn-sm" onClick={() => setEditingId(null)}>Annuleren</button>
                     </div>
                   </div>

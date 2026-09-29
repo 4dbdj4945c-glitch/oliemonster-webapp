@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
-import { AppShell, Icon } from '@/app/components/ui';
+import { AppShell, Icon, Laden } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import OngedaanMelding, { type OngedaanInhoud } from '@/app/components/OngedaanMelding';
 import VeiligVerwijderBlok from '@/app/components/VeiligVerwijderBlok';
@@ -160,7 +160,7 @@ export default function InstallatiePagina() {
       {terug}
       {fout && <LaadFout melding={fout} onOpnieuw={laad} />}
       {!inst ? (
-        fout ? null : <div className="laden">Laden...</div>
+        fout ? null : <Laden regels={2} />
       ) : (
         <>
           <div className="beheer-kop">
