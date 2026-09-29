@@ -250,7 +250,7 @@ describe('de klant blijft bij het monster', () => {
 });
 
 describe('interne velden voor de kijker', () => {
-  it('geen cancelledBy, unreachableBy en geen interne reden van annuleren', async () => {
+  it('geen cancelledBy en unreachableBy; de klassieke kijker ziet de reden van annuleren zoals op main', async () => {
     await prisma.oilSample.updateMany({ where: { oNumber: 'O-2025-005' }, data: { cancelReasonInPdf: false } });
     await inloggenAls('kijker', 'kijker123');
     const l = (await (await monsters(verzoek('/api/samples'), undefined)).json()) as Record<string, unknown>[];
@@ -258,7 +258,15 @@ describe('interne velden voor de kijker', () => {
       expect(m).not.toHaveProperty('cancelledBy');
       expect(m).not.toHaveProperty('unreachableBy');
     }
-    expect(l.find((m) => m.oNumber === 'O-2025-005')?.cancelReason).toBeNull();
+    // Op main toonde de lijst de reden altijd; de keuze voor de PDF gold alleen de PDF.
+    expect(l.find((m) => m.oNumber === 'O-2025-005')?.cancelReason).toBe('Installatie buiten bedrijf');
+  });
+  it('de kijker met het klantportaal volgt de keuze voor de PDF', async () => {
+    await prisma.oilSample.updateMany({ where: { oNumber: 'K-2026-06' }, data: { cancelReasonInPdf: false } });
+    await inloggenAls('kempen', 'kempen123');
+    const l = (await (await monsters(verzoek('/api/samples?year=2026'), undefined)).json()) as Record<string, unknown>[];
+    expect(l.find((m) => m.oNumber === 'K-2026-06')).toMatchObject({ cancelReason: null });
+    expect(l[0]).not.toHaveProperty('cancelledBy');
   });
   it('admin ziet ze wel', async () => {
     await inloggenAls('admin', 'admin123');
