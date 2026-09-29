@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 import { berekenPlanning } from '@/lib/samplePlans';
 
 /**
@@ -15,11 +16,7 @@ import { berekenPlanning } from '@/lib/samplePlans';
 // dat langer dan de standaardlimiet van tien seconden op Vercel.
 export const maxDuration = 60;
 
-export async function POST(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (request: NextRequest, _context, session) => {
   try {
     const body = await request.json().catch(() => ({}));
     const jaar = parseInt(String(body.analysisYear ?? ''));
@@ -42,4 +39,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return foutAntwoord(error, 'Fout bij uitrekenen van de route');
   }
-}
+});

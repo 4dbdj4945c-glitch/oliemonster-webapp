@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 import { berekenRouteVoorDag } from '@/lib/samplePlans';
 
 /**
@@ -11,14 +12,11 @@ import { berekenRouteVoorDag } from '@/lib/samplePlans';
  * automatische berekening laat de volgorde daarna met rust. De route wordt wel
  * opnieuw opgehaald, zodat afstand en rijtijd bij de nieuwe volgorde horen.
  */
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const planId = parseInt(id);
@@ -71,4 +69,4 @@ export async function POST(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij opslaan van de volgorde');
   }
-}
+});

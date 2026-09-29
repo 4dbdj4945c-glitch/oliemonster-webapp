@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
 import { createAuditLog } from '@/lib/auditLog';
 import { tabelOntbreekt } from '@/lib/kolommen';
 import { maakUitnodiging, linkVoor, originVan, KOLOM_ONTBREEKT_FASE0, UITNODIGING_GELDIG_UREN } from '@/lib/uitnodiging';
@@ -10,21 +8,12 @@ import { maakUitnodiging, linkVoor, originVan, KOLOM_ONTBREEKT_FASE0, UITNODIGIN
 // POST - Reset wachtwoord, of een nieuwe link voor wie nog geen wachtwoord heeft.
 // Het oude wachtwoord vervalt en de beheerder krijgt een eenmalige link terug
 // (72 uur geldig) die hij zelf naar de gebruiker stuurt.
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'beheer', adminMelding: 'Geen toegang' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn || session.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Geen toegang' },
-        { status: 403 }
-      );
-    }
-
     const { id } = await params;
     const userId = parseInt(id);
 
@@ -87,4 +76,4 @@ export async function POST(
       { status: 500 }
     );
   }
-}
+});

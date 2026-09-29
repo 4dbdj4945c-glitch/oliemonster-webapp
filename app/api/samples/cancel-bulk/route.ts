@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 import { bouwAnnuleerReden } from '@/lib/cancelReasons';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
@@ -12,11 +13,7 @@ import { actiefFilter } from '@/lib/verwijderdeMonsters';
  *
  * Al genomen monsters blijven met rust; die hebben een uitslag.
  */
-export async function POST(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (request: NextRequest, _context, session) => {
   try {
     const body = await request.json().catch(() => ({}));
     const objectId = parseInt(String(body.objectId ?? ''));
@@ -85,4 +82,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return foutAntwoord(error, 'Fout bij annuleren van de monsters');
   }
-}
+});

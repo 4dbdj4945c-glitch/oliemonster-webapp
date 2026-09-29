@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { put } from '@vercel/blob';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { fotoLabel, fotoVeld, leesFotoSoort } from '@/lib/samplePhotos';
 import { foutAntwoordWensen2 } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
@@ -15,14 +15,11 @@ import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
   zodat bestaande aanroepen en bestaande foto's blijven kloppen.
 */
 
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const sampleId = parseInt(id);
@@ -83,16 +80,13 @@ export async function POST(
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij uploaden van foto');
   }
-}
+});
 
-export async function DELETE(
+export const DELETE = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const sampleId = parseInt(id);
@@ -132,4 +126,4 @@ export async function DELETE(
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij verwijderen van foto');
   }
-}
+});

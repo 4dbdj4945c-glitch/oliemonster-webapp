@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 import { raadKunstwerk } from '@/lib/sampleObjects';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
@@ -46,11 +47,7 @@ async function haalGroepen(jaar: number) {
 }
 
 // GET - Alle locatieteksten van een jaar, met voorstel.
-export async function GET(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, false);
-  if (fout) return fout;
-
+export const GET = withAuth({ rol: 'user', module: 'objecten' }, async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const jaar = parseInt(searchParams.get('year') ?? '');
@@ -101,15 +98,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return foutAntwoord(error, 'Fout bij ophalen van de locaties');
   }
-}
+});
 
 // POST - Alle monsters van een jaar met deze locatietekst aan een kunstwerk
 // hangen. `objectId: null` maakt ze juist los. Alleen admin.
-export async function POST(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+export const POST = withAuth({ rol: 'admin', module: 'objecten' }, async (request: NextRequest, _context, session) => {
   try {
     const body = await request.json().catch(() => ({}));
     const jaar = parseInt(String(body.analysisYear ?? ''));
@@ -164,4 +157,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return foutAntwoord(error, 'Fout bij koppelen van de locatie');
   }
-}
+});

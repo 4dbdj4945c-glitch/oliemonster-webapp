@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 import { haalPlanning } from '@/lib/samplePlans';
 
 /**
  * De dagen van de planning. Lezen mag iedereen die is ingelogd behalve de
- * beperkte kijker (die wordt in toegangsFout geweigerd, ook serverside);
+ * beperkte kijker (die wordt in withAuth geweigerd, ook serverside);
  * plannen mag alleen een admin.
  */
 
 // GET - Alle dagen van een analysejaar, met stops, monsters en tijden, plus de
 // objecten met wat er nog ingepland moet worden.
-export async function GET(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, false);
-  if (fout) return fout;
-
+export const GET = withAuth({ rol: 'user', module: 'planning' }, async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const jaar = parseInt(searchParams.get('year') || '');
@@ -27,14 +24,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return foutAntwoord(error, 'Fout bij ophalen van de planning');
   }
-}
+});
 
 // POST - Nieuwe dag (alleen admin)
-export async function POST(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (request: NextRequest, _context, session) => {
   try {
     const body = await request.json().catch(() => ({}));
     const jaar = parseInt(String(body.analysisYear ?? ''));
@@ -75,4 +68,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return foutAntwoord(error, 'Fout bij aanmaken van de dag');
   }
-}
+});

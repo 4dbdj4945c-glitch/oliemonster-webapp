@@ -1,28 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { syncLatestCommentToTask } from '@/lib/ultimoTasks';
 
 // PUT - Opmerking bijwerken (alleen admin)
-export async function PUT(
+export const PUT = withAuth({ rol: 'admin', module: 'ultimo', adminMelding: 'Alleen admins kunnen opmerkingen bewerken' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; commentId: string }> }
-) {
+  { params }: { params: Promise<{ id: string; commentId: string }> },
+  session
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen opmerkingen bewerken' }, { status: 403 });
-    }
-
     const { id, commentId } = await params;
     const taskId = parseInt(id);
 
@@ -61,25 +49,15 @@ export async function PUT(
     console.error('Error updating ultimo comment:', error);
     return NextResponse.json({ error: 'Fout bij bijwerken van opmerking' }, { status: 500 });
   }
-}
+});
 
 // DELETE - Opmerking verwijderen (alleen admin)
-export async function DELETE(
+export const DELETE = withAuth({ rol: 'admin', module: 'ultimo', adminMelding: 'Alleen admins kunnen opmerkingen verwijderen' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; commentId: string }> }
-) {
+  { params }: { params: Promise<{ id: string; commentId: string }> },
+  session
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen opmerkingen verwijderen' }, { status: 403 });
-    }
-
     const { id, commentId } = await params;
     const taskId = parseInt(id);
 
@@ -100,4 +78,4 @@ export async function DELETE(
     console.error('Error deleting ultimo comment:', error);
     return NextResponse.json({ error: 'Fout bij verwijderen van opmerking' }, { status: 500 });
   }
-}
+});

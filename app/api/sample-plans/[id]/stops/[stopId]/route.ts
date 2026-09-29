@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 import { schrijfSampleIds } from '@/lib/samplePlans';
 
 /**
@@ -11,14 +12,11 @@ import { schrijfSampleIds } from '@/lib/samplePlans';
  * Het dagscherm gebruikt deze route voor start, stop en afvinken; daarom houden
  * we hem klein en accepteren we alleen de velden die meegestuurd worden.
  */
-export async function PATCH(
+export const PATCH = withAuth({ rol: 'admin', module: 'planning' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; stopId: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string; stopId: string }> },
+  session
+) => {
   try {
     const { id, stopId } = await params;
     const planId = parseInt(id);
@@ -89,17 +87,14 @@ export async function PATCH(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij bijwerken van de stop');
   }
-}
+});
 
 // DELETE - Object van de dag halen (alleen admin)
-export async function DELETE(
+export const DELETE = withAuth({ rol: 'admin', module: 'planning' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; stopId: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string; stopId: string }> },
+  session
+) => {
   try {
     const { id, stopId } = await params;
     const planId = parseInt(id);
@@ -144,4 +139,4 @@ export async function DELETE(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij weghalen van de stop');
   }
-}
+});

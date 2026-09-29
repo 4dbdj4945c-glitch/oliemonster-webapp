@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord, bouwProspectData } from '@/lib/prospectApi';
+import { foutAntwoord, bouwProspectData } from '@/lib/prospectApi';
 
 // GET - Alle prospects. Standaard zonder archief; met ?archief=1 komt het archief mee.
 // Optioneel ?search= op bedrijfsnaam, plaats, contactpersoon, segment en aanknopingspunt.
-export async function GET(request: NextRequest) {
+export const GET = withAuth({ rol: 'user', module: 'acquisitie' }, async (request: NextRequest) => {
   try {
-    const session = await haalSessie();
-    const fout = toegangsFout(session, false);
-    if (fout) return fout;
-
     const { searchParams } = new URL(request.url);
     const metArchief = searchParams.get('archief') === '1';
     const search = searchParams.get('search')?.trim();
@@ -43,15 +40,11 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return foutAntwoord(error, 'Fout bij ophalen van prospects');
   }
-}
+});
 
 // POST - Nieuwe prospect (alleen admin)
-export async function POST(request: NextRequest) {
+export const POST = withAuth({ rol: 'admin', module: 'acquisitie' }, async (request: NextRequest, _context, session) => {
   try {
-    const session = await haalSessie();
-    const fout = toegangsFout(session, true);
-    if (fout) return fout;
-
     const body = await request.json().catch(() => ({}));
     const resultaat = bouwProspectData(body as Record<string, unknown>, true);
     if ('fout' in resultaat) {
@@ -82,4 +75,4 @@ export async function POST(request: NextRequest) {
     }
     return foutAntwoord(error, 'Fout bij aanmaken van prospect');
   }
-}
+});

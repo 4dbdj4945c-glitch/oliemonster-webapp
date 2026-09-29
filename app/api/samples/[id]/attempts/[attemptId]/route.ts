@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { ATTEMPT_BASIS_SELECT, syncLatestAttemptToSample } from '@/lib/sampleAttempts';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { foutAntwoordWensen2 } from '@/lib/kolommen';
 
 // PUT - Poging bijwerken
-export async function PUT(
+export const PUT = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; attemptId: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string; attemptId: string }> },
+  session
+) => {
   try {
     const { id, attemptId } = await params;
     const oilSampleId = parseInt(id);
@@ -74,17 +71,14 @@ export async function PUT(
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij bijwerken van poging');
   }
-}
+});
 
 // DELETE - Poging verwijderen
-export async function DELETE(
+export const DELETE = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; attemptId: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string; attemptId: string }> },
+  session
+) => {
   try {
     const { id, attemptId } = await params;
     const oilSampleId = parseInt(id);
@@ -116,4 +110,4 @@ export async function DELETE(
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij verwijderen van poging');
   }
-}
+});

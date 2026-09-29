@@ -1,20 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 
 // GET - Eén ronde met alle straten in rijvolgorde.
-export async function GET(
+export const GET = withAuth({ rol: 'user', module: 'controlerondes' }, async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
-    const session = await haalSessie();
-    // Lezen mag elke ingelogde gebruiker behalve de kijker; wijzigen alleen
-    // een admin, net als in de andere modules.
-    const fout = toegangsFout(session, false);
-    if (fout) return fout;
-
     const { id } = await params;
     const round = await prisma.controlRound.findUnique({
       where: { id: parseInt(id) },
@@ -30,20 +24,15 @@ export async function GET(
     console.error('Error fetching control round:', error);
     return NextResponse.json({ error: 'Fout bij ophalen van ronde' }, { status: 500 });
   }
-}
+});
 
 // PATCH - Naam/notities van een ronde bijwerken.
-export async function PATCH(
+export const PATCH = withAuth({ rol: 'admin', module: 'controlerondes' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
-    const session = await haalSessie();
-    // Wijzigen alleen door een admin, net als in de andere modules. De kijker
-    // komt hier helemaal niet.
-    const fout = toegangsFout(session, true);
-    if (fout) return fout;
-
     const { id } = await params;
     const body = await request.json();
     const { name, notes } = body as { name?: string; notes?: string | null };
@@ -74,20 +63,15 @@ export async function PATCH(
     console.error('Error updating control round:', error);
     return NextResponse.json({ error: 'Fout bij bijwerken van ronde' }, { status: 500 });
   }
-}
+});
 
 // DELETE - Ronde verwijderen (straten verdwijnen mee via cascade).
-export async function DELETE(
+export const DELETE = withAuth({ rol: 'admin', module: 'controlerondes' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
-    const session = await haalSessie();
-    // Wijzigen alleen door een admin, net als in de andere modules. De kijker
-    // komt hier helemaal niet.
-    const fout = toegangsFout(session, true);
-    if (fout) return fout;
-
     const { id } = await params;
     const round = await prisma.controlRound.findUnique({ where: { id: parseInt(id) } });
 
@@ -106,4 +90,4 @@ export async function DELETE(
     console.error('Error deleting control round:', error);
     return NextResponse.json({ error: 'Fout bij verwijderen van ronde' }, { status: 500 });
   }
-}
+});

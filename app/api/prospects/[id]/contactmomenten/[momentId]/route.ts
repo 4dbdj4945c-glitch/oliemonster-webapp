@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/prospectApi';
+import { foutAntwoord } from '@/lib/prospectApi';
 import { isProspectKanaal } from '@/lib/prospects';
 
 /** Zet laatsteContactOp van de prospect gelijk aan het nieuwste contactmoment. */
@@ -18,15 +19,12 @@ async function ververLaatsteContact(prospectId: number) {
 }
 
 // PUT - Contactmoment bijwerken (alleen admin)
-export async function PUT(
+export const PUT = withAuth({ rol: 'admin', module: 'acquisitie' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; momentId: string }> }
-) {
+  { params }: { params: Promise<{ id: string; momentId: string }> },
+  session
+) => {
   try {
-    const session = await haalSessie();
-    const fout = toegangsFout(session, true);
-    if (fout) return fout;
-
     const { id, momentId } = await params;
     const prospectId = parseInt(id);
     const contactmomentId = parseInt(momentId);
@@ -80,18 +78,15 @@ export async function PUT(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij bijwerken van contactmoment');
   }
-}
+});
 
 // DELETE - Contactmoment verwijderen (alleen admin)
-export async function DELETE(
+export const DELETE = withAuth({ rol: 'admin', module: 'acquisitie' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; momentId: string }> }
-) {
+  { params }: { params: Promise<{ id: string; momentId: string }> },
+  session
+) => {
   try {
-    const session = await haalSessie();
-    const fout = toegangsFout(session, true);
-    if (fout) return fout;
-
     const { id, momentId } = await params;
     const prospectId = parseInt(id);
     const contactmomentId = parseInt(momentId);
@@ -116,4 +111,4 @@ export async function DELETE(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij verwijderen van contactmoment');
   }
-}
+});

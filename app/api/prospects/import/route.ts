@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord, tabelOntbreekt } from '@/lib/prospectApi';
+import { foutAntwoord, tabelOntbreekt } from '@/lib/prospectApi';
 import { leesProspectsCsv } from '@/lib/prospectCsv';
 
 /** Sleutel om dubbelen te herkennen: bedrijfsnaam + plaats, hoofdletterongevoelig. */
@@ -11,12 +12,8 @@ function sleutel(bedrijfsnaam: string, plaats: string): string {
 
 // POST - Prospects importeren uit een CSV-tekst (alleen admin).
 // Body: { csv: "..." }. Dubbelen worden overgeslagen, niets wordt overschreven.
-export async function POST(request: NextRequest) {
+export const POST = withAuth({ rol: 'admin', module: 'acquisitie' }, async (request: NextRequest, _context, session) => {
   try {
-    const session = await haalSessie();
-    const fout = toegangsFout(session, true);
-    if (fout) return fout;
-
     const body = await request.json().catch(() => ({}));
     const csv = (body as { csv?: string }).csv;
 
@@ -122,4 +119,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return foutAntwoord(error, 'Fout bij importeren van prospects');
   }
-}
+});

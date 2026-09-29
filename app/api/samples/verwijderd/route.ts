@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { verwijderKolomBestaat } from '@/lib/verwijderdeMonsters';
 
 /**
@@ -8,11 +8,7 @@ import { verwijderKolomBestaat } from '@/lib/verwijderdeMonsters';
  * De rol alleen lezen en gewone gebruikers krijgen hier niets.
  * Staat de kolom deletedAt er nog niet, dan is de prullenbak gewoon leeg.
  */
-export async function GET(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+export const GET = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (request: NextRequest) => {
   try {
     const jaar = parseInt(new URL(request.url).searchParams.get('year') ?? '');
     if (Number.isNaN(jaar)) {
@@ -46,4 +42,4 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching deleted samples:', error);
     return NextResponse.json({ error: 'Fout bij ophalen van de prullenbak' }, { status: 500 });
   }
-}
+});

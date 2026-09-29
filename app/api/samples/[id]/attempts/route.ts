@@ -1,21 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { ATTEMPT_BASIS_SELECT, syncLatestAttemptToSample } from '@/lib/sampleAttempts';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { foutAntwoordWensen2, tabelOntbreekt } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 // GET - Alle pogingen voor een monster (chronologisch, oudste eerst)
-export async function GET(
+export const GET = withAuth({ rol: 'user', module: 'oliemonsters' }, async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   // De rol alleen lezen mag de pogingen niet zien: die zit alleen in het
-  // bewerkvenster van een admin. toegangsFout weigert hem, ook serverside.
-  const session = await haalSessie();
-  const fout = toegangsFout(session, false);
-  if (fout) return fout;
+  // bewerkvenster van een admin. withAuth weigert hem, ook serverside.
 
   try {
     const { id } = await params;
@@ -48,17 +45,14 @@ export async function GET(
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij ophalen van pogingen');
   }
-}
+});
 
 // POST - Nieuwe poging toevoegen (hermonstering)
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const oilSampleId = parseInt(id);
@@ -109,4 +103,4 @@ export async function POST(
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij aanmaken van poging');
   }
-}
+});

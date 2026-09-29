@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, kijkjaar, leesToegangsFout, toegangsFout } from '@/lib/toegang';
 import {
   tabelOntbreekt,
   SAMPLE_BASIS_SELECT,
@@ -13,11 +13,8 @@ import {
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 // GET - Lijst van alle samples (met optionele zoekfunctie en analysisYear-filter)
-export async function GET(request: NextRequest) {
+export const GET = withAuth({ rol: 'alleen_lezen', module: 'oliemonsters' }, async (request: NextRequest, _context, session) => {
   // De monsterlijst is het enige dat de rol alleen lezen mag ophalen.
-  const session = await haalSessie();
-  const fout = leesToegangsFout(session);
-  if (fout) return fout;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -25,7 +22,7 @@ export async function GET(request: NextRequest) {
     // Heeft deze gebruiker een eigen kijkjaar, dan geldt dat jaar en niets
     // anders, ongeacht wat er in de query staat. Dat wordt hier serverside
     // afgedwongen en niet alleen in de schermen. null = alle jaren.
-    const eigenJaar = await kijkjaar(session);
+    const eigenJaar = session.viewYear;
     const year = eigenJaar !== null ? String(eigenJaar) : searchParams.get('year');
 
     // Verwijderde monsters (prullenbak) ziet niemand in de lijst, ook de rol
@@ -93,14 +90,10 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching samples:', error);
     return NextResponse.json({ error: 'Fout bij ophalen van monsters' }, { status: 500 });
   }
-}
+});
 
 // POST - Nieuw sample toevoegen (alleen admin)
-export async function POST(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (request: NextRequest, _context, session) => {
   try {
     const body = await request.json();
     const { oNumber, sampleDate, location, description, oilType, remarks, isTaken, analysisYear, objectId } = body;
@@ -184,4 +177,4 @@ export async function POST(request: NextRequest) {
     console.error('Error creating sample:', error);
     return NextResponse.json({ error: 'Fout bij aanmaken van monster' }, { status: 500 });
   }
-}
+});

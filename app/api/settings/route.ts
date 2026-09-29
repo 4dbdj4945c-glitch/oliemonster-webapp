@@ -1,22 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
 
 // GET - Haal alle settings op
-export async function GET(request: NextRequest) {
+// Ook de rol alleen lezen mag de instellingen lezen: de kolominstellingen van de
+// oliemonsterlijst staan hierin. Wijzigen kan alleen een admin.
+export const GET = withAuth({ rol: 'alleen_lezen', module: 'oliemonsters' }, async () => {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json(
-        { error: 'Niet ingelogd' },
-        { status: 401 }
-      );
-    }
-
     const settings = await prisma.settings.findMany();
     
     // Convert naar object format
@@ -37,21 +27,11 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});
 
 // POST - Update settings (alleen admin)
-export async function POST(request: NextRequest) {
+export const POST = withAuth({ rol: 'admin', module: 'beheer', adminMelding: 'Geen toegang' }, async (request: NextRequest) => {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn || session.role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Geen toegang' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
     const { key, value } = body;
 
@@ -83,4 +63,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

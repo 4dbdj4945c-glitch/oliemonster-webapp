@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { tabelOntbreekt } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
@@ -23,14 +23,12 @@ import { actiefFilter } from '@/lib/verwijderdeMonsters';
  * je op "niet genomen" zet, anders ben je een afnamedatum kwijt die je niet
  * terugkrijgt; de lijst toont de datum toch alleen bij een genomen monster.
  */
-export async function PATCH(
+export const PATCH = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   // De rol alleen lezen mag niets wijzigen, ook niet via de API.
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
 
   try {
     const { id } = await params;
@@ -146,4 +144,4 @@ export async function PATCH(
     console.error('Error updating sample status:', error);
     return NextResponse.json({ error: 'Fout bij bijwerken van de status' }, { status: 500 });
   }
-}
+});

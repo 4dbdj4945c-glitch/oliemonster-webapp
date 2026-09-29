@@ -1,29 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
-import { cookies } from 'next/headers';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { isAlleenLezen } from '@/lib/roles';
 import { syncLatestCommentToTask } from '@/lib/ultimoTasks';
 
 // GET - Alle opmerkingen voor een taak (nieuwste eerst)
-export async function GET(
+export const GET = withAuth({ rol: 'user', module: 'ultimo' }, async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-    // De rol alleen lezen komt alleen in de oliemonstermodule, niet hier.
-    if (isAlleenLezen(session.role)) {
-      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
-    }
-
     const { id } = await params;
     const taskId = parseInt(id);
 
@@ -40,29 +26,15 @@ export async function GET(
     console.error('Error fetching ultimo comments:', error);
     return NextResponse.json({ error: 'Fout bij ophalen van opmerkingen' }, { status: 500 });
   }
-}
+});
 
 // POST - Nieuwe opmerking toevoegen (alleen admin)
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'ultimo', adminMelding: 'Alleen admins kunnen opmerkingen toevoegen' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-    // De rol alleen lezen komt alleen in de oliemonstermodule, niet hier.
-    if (isAlleenLezen(session.role)) {
-      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
-    }
-
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen opmerkingen toevoegen' }, { status: 403 });
-    }
-
     const { id } = await params;
     const taskId = parseInt(id);
 
@@ -108,4 +80,4 @@ export async function POST(
     console.error('Error creating ultimo comment:', error);
     return NextResponse.json({ error: 'Fout bij aanmaken van opmerking' }, { status: 500 });
   }
-}
+});

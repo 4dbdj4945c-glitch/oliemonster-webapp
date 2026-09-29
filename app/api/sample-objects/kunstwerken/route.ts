@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 import { KUNSTWERKEN } from '@/lib/sampleObjects';
 
 /**
@@ -13,11 +14,7 @@ import { KUNSTWERKEN } from '@/lib/sampleObjects';
  * Zonder `uitvoeren: true` krijg je alleen een voorbeeld: wat zou er gebeuren.
  * Een kunstwerk dat al bestaat (zelfde naam) blijft ongemoeid.
  */
-export async function POST(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+export const POST = withAuth({ rol: 'admin', module: 'objecten' }, async (request: NextRequest, _context, session) => {
   try {
     const body = await request.json().catch(() => ({}));
     const uitvoeren = body.uitvoeren === true;
@@ -73,4 +70,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return foutAntwoord(error, 'Fout bij aanmaken van de kunstwerkenlijst');
   }
-}
+});

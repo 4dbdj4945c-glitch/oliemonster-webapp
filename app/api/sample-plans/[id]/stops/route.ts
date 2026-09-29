@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 import { schrijfSampleIds, leesSampleIds } from '@/lib/samplePlans';
 
 /**
@@ -12,14 +13,11 @@ import { schrijfSampleIds, leesSampleIds } from '@/lib/samplePlans';
  * bij welke dag horen. Zonder `sampleIds` horen alle openstaande monsters van
  * het object bij dit bezoek.
  */
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const planId = parseInt(id);
@@ -116,4 +114,4 @@ export async function POST(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij inplannen van het object');
   }
-}
+});

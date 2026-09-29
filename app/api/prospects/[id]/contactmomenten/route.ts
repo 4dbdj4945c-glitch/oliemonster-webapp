@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/prospectApi';
+import { foutAntwoord } from '@/lib/prospectApi';
 import { isProspectKanaal, isProspectStatus } from '@/lib/prospects';
 
 // GET - Alle contactmomenten van een prospect, nieuwste eerst
-export async function GET(
+export const GET = withAuth({ rol: 'user', module: 'acquisitie' }, async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
-    const session = await haalSessie();
-    const fout = toegangsFout(session, false);
-    if (fout) return fout;
-
     const { id } = await params;
     const contactmomenten = await prisma.prospectContactmoment.findMany({
       where: { prospectId: parseInt(id) },
@@ -25,20 +22,17 @@ export async function GET(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij ophalen van contactmomenten');
   }
-}
+});
 
 // POST - Contactmoment vastleggen (alleen admin).
 // Je mag in dezelfde stap de status en de volgende actie meegeven, zodat je op de
 // telefoon met één formulier klaar bent.
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'acquisitie' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
-    const session = await haalSessie();
-    const fout = toegangsFout(session, true);
-    if (fout) return fout;
-
     const { id } = await params;
     const prospectId = parseInt(id);
 
@@ -117,4 +111,4 @@ export async function POST(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij vastleggen van contactmoment');
   }
-}
+});

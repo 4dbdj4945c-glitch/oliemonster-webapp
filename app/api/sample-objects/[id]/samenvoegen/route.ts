@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 
 /**
  * POST - Object samenvoegen: alle monsters en geplande stops van dit object
@@ -12,14 +13,11 @@ import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
  * Staan beide objecten op dezelfde dag in de planning, dan worden die twee stops
  * een stop en gaan de monsterkeuzes samen.
  */
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'objecten' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const vanId = parseInt(id);
@@ -98,7 +96,7 @@ export async function POST(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij samenvoegen van de objecten');
   }
-}
+});
 
 /** JSON-lijst met monster-ids; null of leeg betekent "alles wat openstaat". */
 function leesIds(waarde: string | null): number[] | null {

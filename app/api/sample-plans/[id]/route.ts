@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 
 // PUT - Datum of notitie van een dag wijzigen (alleen admin)
-export async function PUT(
+export const PUT = withAuth({ rol: 'admin', module: 'planning' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const planId = parseInt(id);
@@ -68,17 +66,14 @@ export async function PUT(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij bijwerken van de dag');
   }
-}
+});
 
 // DELETE - Dag verwijderen (alleen admin). De stops gaan mee, de monsters blijven.
-export async function DELETE(
+export const DELETE = withAuth({ rol: 'admin', module: 'planning' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const planId = parseInt(id);
@@ -108,4 +103,4 @@ export async function DELETE(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij verwijderen van de dag');
   }
-}
+});

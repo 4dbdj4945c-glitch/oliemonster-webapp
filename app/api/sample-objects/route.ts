@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 import { leesObject } from '@/lib/sampleObjects';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
@@ -13,11 +14,7 @@ import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 // GET - Alle objecten, met het aantal monsters per object.
 // Met ?year=2026 tellen we alleen de monsters van dat analysejaar.
-export async function GET(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, false);
-  if (fout) return fout;
-
+export const GET = withAuth({ rol: 'user', module: 'objecten' }, async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const jaarParam = searchParams.get('year');
@@ -69,14 +66,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return foutAntwoord(error, 'Fout bij ophalen van objecten');
   }
-}
+});
 
 // POST - Nieuw object (alleen admin)
-export async function POST(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+export const POST = withAuth({ rol: 'admin', module: 'objecten' }, async (request: NextRequest, _context, session) => {
   try {
     const body = await request.json().catch(() => ({}));
     const gegevens = leesObject(body, true);
@@ -106,4 +99,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return foutAntwoord(error, 'Fout bij aanmaken van object');
   }
-}
+});

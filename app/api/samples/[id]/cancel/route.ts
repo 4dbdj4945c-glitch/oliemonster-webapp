@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 import { bouwAnnuleerReden } from '@/lib/cancelReasons';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
@@ -13,14 +14,11 @@ import { actiefFilter } from '@/lib/verwijderdeMonsters';
  * eigen veld, niet in het opmerkingenveld: daar werd hij overschreven zodra er
  * een hermonstering bijkwam.
  */
-export async function PATCH(
+export const PATCH = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const sampleId = parseInt(id);
@@ -81,4 +79,4 @@ export async function PATCH(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij annuleren van het monster');
   }
-}
+});

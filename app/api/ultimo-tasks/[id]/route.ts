@@ -1,27 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
-import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 
 // PUT - Taak bijwerken (alleen admin)
-export async function PUT(
+export const PUT = withAuth({ rol: 'admin', module: 'ultimo', adminMelding: 'Alleen admins kunnen taken bewerken' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen taken bewerken' }, { status: 403 });
-    }
-
     const { id } = await params;
     const body = await request.json();
     const { jobName, taskDescription, installation } = body as {
@@ -59,25 +47,15 @@ export async function PUT(
     console.error('Error updating ultimo task:', error);
     return NextResponse.json({ error: 'Fout bij bijwerken van taak' }, { status: 500 });
   }
-}
+});
 
 // DELETE - Taak verwijderen (alleen admin). Opmerkingen verdwijnen mee (cascade).
-export async function DELETE(
+export const DELETE = withAuth({ rol: 'admin', module: 'ultimo', adminMelding: 'Alleen admins kunnen taken verwijderen' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen taken verwijderen' }, { status: 403 });
-    }
-
     const { id } = await params;
 
     const task = await prisma.ultimoTask.findUnique({ where: { id: parseInt(id) } });
@@ -97,4 +75,4 @@ export async function DELETE(
     console.error('Error deleting ultimo task:', error);
     return NextResponse.json({ error: 'Fout bij verwijderen van taak' }, { status: 500 });
   }
-}
+});

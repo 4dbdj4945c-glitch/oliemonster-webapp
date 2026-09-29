@@ -6,8 +6,8 @@ import { sessionOptions, sessieSleutel, SessionData } from './lib/session';
 
 /**
  * Routes die een sessie mag gebruiken die nog een wachtwoord moet instellen.
- * Alle andere API-routes weigeren zo'n sessie, ook als ze zelf (nog) niet via
- * lib/toegang.ts controleren.
+ * Alle andere API-routes weigeren zo'n sessie. withAuth (lib/toegang.ts) doet dat ook,
+ * met de waarde uit de database; dit is de extra grendel op basis van de cookie.
  */
 const ROUTES_ZONDER_WACHTWOORD = new Set([
   '/api/auth/login',

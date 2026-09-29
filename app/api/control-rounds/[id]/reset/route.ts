@@ -1,20 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 
 // POST - Voortgang van een ronde resetten: alle straten weer op "nog te rijden".
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'controlerondes' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
-    const session = await haalSessie();
-    // Wijzigen alleen door een admin, net als in de andere modules. De kijker
-    // komt hier helemaal niet.
-    const fout = toegangsFout(session, true);
-    if (fout) return fout;
-
     const { id } = await params;
 
     await prisma.controlRoundStreet.updateMany({
@@ -40,4 +35,4 @@ export async function POST(
     console.error('Error resetting control round:', error);
     return NextResponse.json({ error: 'Fout bij resetten van ronde' }, { status: 500 });
   }
-}
+});

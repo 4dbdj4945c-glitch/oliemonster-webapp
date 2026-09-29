@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { syncLatestAttemptToSample } from '@/lib/sampleAttempts';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { tabelOntbreekt } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
@@ -18,14 +18,11 @@ import { actiefFilter } from '@/lib/verwijderdeMonsters';
  * en de adressen van de foto's staan in het logboek, zodat het met de hand terug
  * te zetten is als het toch een vergissing was.
  */
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const sampleId = parseInt(id);
@@ -120,4 +117,4 @@ export async function POST(
     console.error('Error undoing sample take:', error);
     return NextResponse.json({ error: 'Fout bij ongedaan maken van de afname' }, { status: 500 });
   }
-}
+});

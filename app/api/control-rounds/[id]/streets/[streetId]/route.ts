@@ -1,20 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 
 // PATCH - Straat markeren als gereden/nog te rijden. Body: { isDone: boolean }
 // Bewust geen audit-log per straat (te veel ruis tijdens het rijden).
-export async function PATCH(
+export const PATCH = withAuth({ rol: 'admin', module: 'controlerondes' }, async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string; streetId: string }> }
-) {
+) => {
   try {
-    const session = await haalSessie();
-    // Wijzigen alleen door een admin, net als in de andere modules. De kijker
-    // komt hier helemaal niet.
-    const fout = toegangsFout(session, true);
-    if (fout) return fout;
-
     const { id, streetId } = await params;
     const body = await request.json();
     const { isDone } = body as { isDone?: boolean };
@@ -40,4 +34,4 @@ export async function PATCH(
     console.error('Error updating street:', error);
     return NextResponse.json({ error: 'Fout bij bijwerken van straat' }, { status: 500 });
   }
-}
+});

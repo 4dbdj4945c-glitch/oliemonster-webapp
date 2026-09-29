@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/prospectApi';
+import { foutAntwoord } from '@/lib/prospectApi';
 import { schrijfProspectsCsv } from '@/lib/prospectCsv';
 
 // GET - Alle prospects als CSV. Met ?archief=1 komt het archief mee.
-export async function GET(request: NextRequest) {
+export const GET = withAuth({ rol: 'user', module: 'acquisitie' }, async (request: NextRequest, _context, session) => {
   try {
-    const session = await haalSessie();
-    const fout = toegangsFout(session, false);
-    if (fout) return fout;
-
     const { searchParams } = new URL(request.url);
     const metArchief = searchParams.get('archief') === '1';
 
@@ -42,4 +39,4 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return foutAntwoord(error, 'Fout bij exporteren van prospects');
   }
-}
+});

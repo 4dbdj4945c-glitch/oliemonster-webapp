@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { put } from '@vercel/blob';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { syncLatestAttemptToSample } from '@/lib/sampleAttempts';
 import { tabelOntbreekt, foutAntwoordWensen2 } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
@@ -26,14 +26,11 @@ import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
  * gevuld in plaats van dat er een tweede poging bijkomt. Anders komt er een
  * nieuwe poging bij, zodat hermonstering blijft werken zoals het werkte.
  */
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const sampleId = parseInt(id);
@@ -185,4 +182,4 @@ export async function POST(
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij opslaan van het genomen monster');
   }
-}
+});

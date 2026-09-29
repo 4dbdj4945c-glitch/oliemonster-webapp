@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { ALLOWED_ROLES, leesViewYear } from '@/lib/roles';
 import { tabelOntbreekt, foutAntwoordWensen2 } from '@/lib/kolommen';
 import { maakUitnodiging, linkVoor, originVan, KOLOM_ONTBREEKT_FASE0 } from '@/lib/uitnodiging';
 
 // GET - Lijst van alle gebruikers (alleen admin)
-export async function GET(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+export const GET = withAuth({ rol: 'admin', module: 'beheer' }, async () => {
   try {
     const basis = {
       id: true,
@@ -38,14 +34,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij ophalen gebruikers');
   }
-}
+});
 
 // POST - Nieuwe gebruiker aanmaken (alleen admin)
-export async function POST(request: NextRequest) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+export const POST = withAuth({ rol: 'admin', module: 'beheer' }, async (request: NextRequest, _context, session) => {
   try {
     const body = await request.json();
     const { username, role } = body;
@@ -109,4 +101,4 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij aanmaken gebruiker');
   }
-}
+});

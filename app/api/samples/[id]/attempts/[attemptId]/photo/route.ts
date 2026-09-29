@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { put } from '@vercel/blob';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { syncLatestAttemptToSample } from '@/lib/sampleAttempts';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { fotoLabel, fotoVeld, leesFotoSoort } from '@/lib/samplePhotos';
 import { foutAntwoordWensen2 } from '@/lib/kolommen';
 import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
@@ -15,14 +15,11 @@ import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
 */
 
 // POST - Foto uploaden voor een specifieke poging
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; attemptId: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string; attemptId: string }> },
+  session
+) => {
   try {
     const { id, attemptId } = await params;
     const oilSampleId = parseInt(id);
@@ -86,17 +83,14 @@ export async function POST(
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij uploaden van foto');
   }
-}
+});
 
 // DELETE - Foto verwijderen van een poging
-export async function DELETE(
+export const DELETE = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; attemptId: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string; attemptId: string }> },
+  session
+) => {
   try {
     const { id, attemptId } = await params;
     const oilSampleId = parseInt(id);
@@ -138,4 +132,4 @@ export async function DELETE(
   } catch (error) {
     return foutAntwoordWensen2(error, 'Fout bij verwijderen van foto');
   }
-}
+});

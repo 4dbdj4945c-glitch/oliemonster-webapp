@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { SAMPLE_BASIS_SELECT } from '@/lib/planningApi';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { tabelOntbreekt } from '@/lib/kolommen';
 import { actiefFilter, verwijderKolomBestaat, KOLOM_ONTBREEKT_VERWIJDEREN } from '@/lib/verwijderdeMonsters';
 
 // PUT - Update sample (alleen admin)
-export async function PUT(
+export const PUT = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const body = await request.json();
@@ -136,7 +133,7 @@ export async function PUT(
       { status: 500 }
     );
   }
-}
+});
 
 // DELETE - Monster naar de prullenbak (alleen admin)
 //
@@ -144,14 +141,11 @@ export async function PUT(
 // pogingen, datums en foto's staan. Een admin zet het terug via de prullenbak.
 // Staat de kolom nog niet in de database (db push nog niet gedraaid), dan
 // weigeren we: terugvallen op een harde delete is precies wat misging.
-export async function DELETE(
+export const DELETE = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const sampleId = parseInt(id);
@@ -211,4 +205,4 @@ export async function DELETE(
       { status: 500 }
     );
   }
-}
+});

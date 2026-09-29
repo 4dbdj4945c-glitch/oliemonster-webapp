@@ -1,26 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { defaultSession } from '@/lib/session';
-import { haalSessie, kijkjaar } from '@/lib/toegang';
+import { haalSessie, haalGebruiker } from '@/lib/toegang';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await haalSessie();
 
-    if (!session.isLoggedIn) {
+    // Rol, kijkjaar en requiresPasswordChange komen uit de database en niet uit
+    // de cookie, zodat een wijziging in het gebruikersbeheer direct geldt. Is de
+    // gebruiker verwijderd, dan geldt de sessie als uitgelogd.
+    const gebruiker = await haalGebruiker(session);
+    if (!gebruiker) {
       return NextResponse.json(defaultSession);
     }
 
-    // Het kijkjaar komt uit de database en niet uit de cookie, zodat een
-    // wijziging in het gebruikersbeheer direct geldt. null = alle jaren.
-    const viewYear = await kijkjaar(session);
-
     return NextResponse.json({
-      userId: session.userId,
-      username: session.username,
-      role: session.role,
-      viewYear,
-      isLoggedIn: session.isLoggedIn,
-      requiresPasswordChange: session.requiresPasswordChange || false,
+      userId: gebruiker.userId,
+      username: gebruiker.username,
+      role: gebruiker.role,
+      viewYear: gebruiker.viewYear,
+      isLoggedIn: true,
+      requiresPasswordChange: gebruiker.requiresPasswordChange,
     });
   } catch (error) {
     console.error('Session error:', error);

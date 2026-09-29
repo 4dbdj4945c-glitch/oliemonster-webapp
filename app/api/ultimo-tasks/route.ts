@@ -1,26 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
-import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { isAlleenLezen } from '@/lib/roles';
 
 // GET - Lijst van alle taken (met optionele zoekfunctie)
 // Doorzoekt jobnaam, taakomschrijving, installatie en de gecachte laatste opmerking + jobnummer.
-export async function GET(request: NextRequest) {
+export const GET = withAuth({ rol: 'user', module: 'ultimo' }, async (request: NextRequest) => {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-
-    if (isAlleenLezen(session.role)) {
-      return NextResponse.json({ error: 'Geen toegang' }, { status: 403 });
-    }
-
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
 
@@ -60,22 +46,11 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching ultimo tasks:', error);
     return NextResponse.json({ error: 'Fout bij ophalen van taken' }, { status: 500 });
   }
-}
+});
 
 // POST - Nieuwe taak toevoegen (alleen admin)
-export async function POST(request: NextRequest) {
+export const POST = withAuth({ rol: 'admin', module: 'ultimo', adminMelding: 'Alleen admins kunnen taken toevoegen' }, async (request: NextRequest, _context, session) => {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen taken toevoegen' }, { status: 403 });
-    }
-
     const body = await request.json();
     const { jobName, taskDescription, installation } = body as {
       jobName?: string;
@@ -111,4 +86,4 @@ export async function POST(request: NextRequest) {
     console.error('Error creating ultimo task:', error);
     return NextResponse.json({ error: 'Fout bij aanmaken van taak' }, { status: 500 });
   }
-}
+});

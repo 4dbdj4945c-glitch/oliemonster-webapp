@@ -1,19 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { foutAntwoord } from '@/lib/planningApi';
 import { leesObject } from '@/lib/sampleObjects';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 // PUT - Object bijwerken (alleen admin)
-export async function PUT(
+export const PUT = withAuth({ rol: 'admin', module: 'objecten' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const objectId = parseInt(id);
@@ -60,20 +58,17 @@ export async function PUT(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij bijwerken van object');
   }
-}
+});
 
 // DELETE - Object verwijderen (alleen admin). Dat mag alleen als er geen monsters
 // meer aan hangen: anders raak je zonder het te zien de koppeling van die
 // monsters kwijt. Hangen er nog monsters aan, voeg het object dan eerst samen
 // met het goede kunstwerk.
-export async function DELETE(
+export const DELETE = withAuth({ rol: 'admin', module: 'objecten' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const objectId = parseInt(id);
@@ -114,4 +109,4 @@ export async function DELETE(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij verwijderen van object');
   }
-}
+});

@@ -1,11 +1,10 @@
-// Kleine helpers die de API-routes van de planningsmodule delen: sessiecontrole,
-// rolcontrole en een nette melding zolang de tabellen nog niet in de database
+// Kleine helpers die de API-routes van de planningsmodule delen: selects en
+// een nette melding zolang de tabellen nog niet in de database
 // staan. Zelfde patroon als lib/prospectApi.ts (module Acquisitie).
 
 import { NextResponse } from 'next/server';
 import { maakFoutAntwoord } from './kolommen';
 
-export { haalSessie, toegangsFout } from './toegang';
 export { tabelOntbreekt } from './kolommen';
 
 export const TABEL_ONTBREEKT_PLANNING =

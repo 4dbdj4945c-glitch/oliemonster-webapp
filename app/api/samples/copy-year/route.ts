@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getIronSession } from 'iron-session';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
-import { sessionOptions, SessionData } from '@/lib/session';
-import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { tabelOntbreekt } from '@/lib/planningApi';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
@@ -11,18 +9,8 @@ import { actiefFilter } from '@/lib/verwijderdeMonsters';
 // Body: { fromYear: 2025, toYear: 2026 }
 // Alle monsters uit fromYear, ook de daar geannuleerde, worden als "gepland" (niet genomen,
 // niet geannuleerd, zonder datum, foto of opmerking) aangemaakt in toYear. O-nummers die in toYear al bestaan worden overgeslagen.
-export async function POST(request: NextRequest) {
+export const POST = withAuth({ rol: 'admin', module: 'oliemonsters', adminMelding: 'Alleen admins kunnen monsters overnemen' }, async (request: NextRequest, _context, session) => {
   try {
-    const cookieStore = await cookies();
-    const session = await getIronSession<SessionData>(cookieStore, sessionOptions);
-
-    if (!session.isLoggedIn) {
-      return NextResponse.json({ error: 'Niet geautoriseerd' }, { status: 401 });
-    }
-    if (session.role !== 'admin') {
-      return NextResponse.json({ error: 'Alleen admins kunnen monsters overnemen' }, { status: 403 });
-    }
-
     const body = await request.json();
     const fromYear = Number(body.fromYear);
     const toYear = Number(body.toYear);
@@ -92,4 +80,4 @@ export async function POST(request: NextRequest) {
     console.error('Error copying samples:', error);
     return NextResponse.json({ error: 'Fout bij overnemen van monsters' }, { status: 500 });
   }
-}
+});

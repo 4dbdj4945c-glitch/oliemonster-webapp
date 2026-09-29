@@ -1,14 +1,11 @@
-// Kleine helpers die alle API-routes van de module Acquisitie delen:
-// sessiecontrole, rolcontrole en een nette melding als de tabellen nog niet
+// Kleine helpers die alle API-routes van de module Acquisitie delen: velden
+// uit de body lezen en een nette melding als de tabellen nog niet
 // in de database staan (dan is `prisma db push` nog niet gedraaid).
 
 import { NextResponse } from 'next/server';
 import { isProspectStatus, BENADER_KANALEN } from './prospects';
 import { maakFoutAntwoord } from './kolommen';
 
-// De sessie- en rolcontrole staat in lib/toegang.ts, omdat elke module die deelt.
-// Hier blijven ze exporteren, zodat de bestaande routes ongewijzigd blijven werken.
-export { haalSessie, toegangsFout } from './toegang';
 export { tabelOntbreekt } from './kolommen';
 
 export const TABEL_ONTBREEKT =

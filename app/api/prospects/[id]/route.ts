@@ -1,19 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout, foutAntwoord, bouwProspectData } from '@/lib/prospectApi';
+import { foutAntwoord, bouwProspectData } from '@/lib/prospectApi';
 
 // GET - Een prospect met zijn contactmomenten (nieuwste eerst)
-export async function GET(
+export const GET = withAuth({ rol: 'user', module: 'acquisitie' }, async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   try {
-    const session = await haalSessie();
-    const fout = toegangsFout(session, false);
-    if (fout) return fout;
-
     const { id } = await params;
     const prospect = await prisma.prospect.findUnique({
       where: { id: parseInt(id) },
@@ -26,19 +23,16 @@ export async function GET(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij ophalen van prospect');
   }
-}
+});
 
 // PUT - Prospect bijwerken (alleen admin). Alleen de meegestuurde velden worden gezet,
 // zodat de pijplijn ook alleen een status kan doorgeven.
-export async function PUT(
+export const PUT = withAuth({ rol: 'admin', module: 'acquisitie' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
-    const session = await haalSessie();
-    const fout = toegangsFout(session, true);
-    if (fout) return fout;
-
     const { id } = await params;
     const prospectId = parseInt(id);
 
@@ -87,18 +81,15 @@ export async function PUT(
     }
     return foutAntwoord(error, 'Fout bij bijwerken van prospect');
   }
-}
+});
 
 // DELETE - Prospect verwijderen (alleen admin). Contactmomenten gaan mee (cascade).
-export async function DELETE(
+export const DELETE = withAuth({ rol: 'admin', module: 'acquisitie' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
-    const session = await haalSessie();
-    const fout = toegangsFout(session, true);
-    if (fout) return fout;
-
     const { id } = await params;
     const prospectId = parseInt(id);
 
@@ -119,4 +110,4 @@ export async function DELETE(
   } catch (error) {
     return foutAntwoord(error, 'Fout bij verwijderen van prospect');
   }
-}
+});

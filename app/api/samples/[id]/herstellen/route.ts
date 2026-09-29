@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { verwijderKolomBestaat, KOLOM_ONTBREEKT_VERWIJDEREN } from '@/lib/verwijderdeMonsters';
 
 /**
@@ -9,14 +9,11 @@ import { verwijderKolomBestaat, KOLOM_ONTBREEKT_VERWIJDEREN } from '@/lib/verwij
  * Pogingen, datums en foto's zijn nooit weg geweest, dus die komen vanzelf mee.
  * Ook gebruikt door de knop Ongedaan maken direct na het verwijderen.
  */
-export async function POST(
+export const POST = withAuth({ rol: 'admin', module: 'oliemonsters' }, async (
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const session = await haalSessie();
-  const fout = toegangsFout(session, true);
-  if (fout) return fout;
-
+  { params }: { params: Promise<{ id: string }> },
+  session
+) => {
   try {
     const { id } = await params;
     const sampleId = parseInt(id);
@@ -63,4 +60,4 @@ export async function POST(
     console.error('Error restoring sample:', error);
     return NextResponse.json({ error: 'Fout bij terugzetten van het monster' }, { status: 500 });
   }
-}
+});

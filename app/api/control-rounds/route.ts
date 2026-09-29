@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { optimizeRoute, RouteStreet } from '@/lib/routePlanner';
-import { haalSessie, toegangsFout } from '@/lib/toegang';
 
 // GET - Lijst van alle controlerondes met voortgang (aantal straten / gereden).
-export async function GET() {
+export const GET = withAuth({ rol: 'user', module: 'controlerondes' }, async () => {
   try {
-    const session = await haalSessie();
-    // Lezen mag elke ingelogde gebruiker behalve de kijker; wijzigen alleen
-    // een admin, net als in de andere modules.
-    const fout = toegangsFout(session, false);
-    if (fout) return fout;
-
     const rounds = await prisma.controlRound.findMany({
       orderBy: { updatedAt: 'desc' },
       include: { streets: { select: { isDone: true } } },
@@ -29,18 +23,12 @@ export async function GET() {
     console.error('Error fetching control rounds:', error);
     return NextResponse.json({ error: 'Fout bij ophalen van rondes' }, { status: 500 });
   }
-}
+});
 
 // POST - Nieuwe ronde aanmaken. Body: { name, place, notes?, streets: [{street, lat, lng}] }
 // De rijvolgorde + route-traject worden berekend en opgeslagen.
-export async function POST(request: NextRequest) {
+export const POST = withAuth({ rol: 'admin', module: 'controlerondes' }, async (request: NextRequest, _context, session) => {
   try {
-    const session = await haalSessie();
-    // Wijzigen alleen door een admin, net als in de andere modules. De kijker
-    // komt hier helemaal niet.
-    const fout = toegangsFout(session, true);
-    if (fout) return fout;
-
     const body = await request.json();
     const { name, place, notes, streets } = body as {
       name?: string;
@@ -127,4 +115,4 @@ export async function POST(request: NextRequest) {
     console.error('Error creating control round:', error);
     return NextResponse.json({ error: 'Fout bij aanmaken van ronde' }, { status: 500 });
   }
-}
+});
