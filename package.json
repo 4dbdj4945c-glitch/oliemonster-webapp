@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "db:controle": "prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url \"${SHADOW_DATABASE_URL:-postgresql://$USER@localhost:5432/ids_portal_shadow}\" --exit-code",
     "seed": "tsx prisma/seed.ts",
     "migrate-attempts": "tsx prisma/migrate-to-attempts.ts",
     "postinstall": "prisma generate",
