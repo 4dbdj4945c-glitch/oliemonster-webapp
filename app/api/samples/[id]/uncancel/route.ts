@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 /**
  * PATCH - Draai de annulering van een monster terug. Het monster telt daarna
@@ -23,7 +24,7 @@ export async function PATCH(
     }
 
     const sample = await prisma.oilSample.findUnique({
-      where: { id: sampleId },
+      where: { id: sampleId, ...(await actiefFilter()) },
       select: { id: true, oNumber: true, analysisYear: true, isDisabled: true, cancelReason: true },
     });
     if (!sample) {

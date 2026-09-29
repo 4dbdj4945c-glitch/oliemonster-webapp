@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
 import { leesObject } from '@/lib/sampleObjects';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 /**
  * Objecten van de planningsmodule: de plekken waar de monsters vandaan komen.
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     // in de lijst, en `aantalAlleJaren` laat zien hoeveel monsters er meeverhuizen
     // als je dit object samenvoegt. Dat gaat namelijk over alle jaren.
     const monsters = await prisma.oilSample.findMany({
-      where: { objectId: { not: null } },
+      where: { objectId: { not: null }, ...(await actiefFilter()) },
       select: { objectId: true, isTaken: true, isDisabled: true, analysisYear: true },
     });
     const gekozenJaar = jaar && !Number.isNaN(jaar) ? jaar : null;

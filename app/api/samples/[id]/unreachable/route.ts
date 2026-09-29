@@ -5,6 +5,7 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { bouwOnbereikbaarReden } from '@/lib/unreachableReasons';
 import { foutAntwoordWensen2 } from '@/lib/kolommen';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 /**
  * Niet bereikbaar: de locatie was door afzetting, andere werkzaamheden of
@@ -75,7 +76,7 @@ export async function PATCH(
     }
 
     const sample = await prisma.oilSample.findUnique({
-      where: { id: sampleId },
+      where: { id: sampleId, ...(await actiefFilter()) },
       select: { id: true, oNumber: true, analysisYear: true, isDisabled: true, isTaken: true },
     });
     if (!sample) {
@@ -169,7 +170,7 @@ export async function DELETE(
     }
 
     const sample = await prisma.oilSample.findUnique({
-      where: { id: sampleId },
+      where: { id: sampleId, ...(await actiefFilter()) },
       select: {
         id: true,
         oNumber: true,

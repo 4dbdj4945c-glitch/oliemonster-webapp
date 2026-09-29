@@ -5,6 +5,7 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { fotoLabel, fotoVeld, leesFotoSoort } from '@/lib/samplePhotos';
 import { foutAntwoordWensen2 } from '@/lib/kolommen';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 /*
   Foto's op het monster zelf. Er zijn er twee: het onderdeel waar het monster
@@ -47,7 +48,7 @@ export async function POST(
     }
 
     const sample = await prisma.oilSample.findUnique({
-      where: { id: sampleId },
+      where: { id: sampleId, ...(await actiefFilter()) },
       select: { id: true, oNumber: true },
     });
     if (!sample) {
@@ -102,7 +103,7 @@ export async function DELETE(
     }
 
     const sample = await prisma.oilSample.findUnique({
-      where: { id: sampleId },
+      where: { id: sampleId, ...(await actiefFilter()) },
       select: { id: true, oNumber: true },
     });
     if (!sample) {

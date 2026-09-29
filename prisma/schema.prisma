@@ -56,6 +56,14 @@ model OilSample {
   unreachablePhotoUrl String?          // eigen foto als bewijs
   unreachableAt       DateTime?        // wanneer vastgelegd
   unreachableBy       String?          // gebruikersnaam
+  // Zacht verwijderen: een verwijderd monster blijft met pogingen en al in de
+  // database staan en gaat naar de prullenbak (admin, per jaar), waar je het
+  // terugzet. Alle lijsten, tellingen, de planning en de PDF slaan monsters met
+  // een deletedAt over (lib/verwijderdeMonsters.ts). Het O-nummer blijft bezet
+  // zolang het monster in de prullenbak staat, want @@unique hieronder geldt ook
+  // voor verwijderde monsters.
+  deletedAt    DateTime?          // wanneer verwijderd; leeg = gewoon in de lijst
+  deletedBy    String?            // gebruikersnaam
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -65,6 +73,7 @@ model OilSample {
   @@unique([oNumber, analysisYear])
   @@index([analysisYear])
   @@index([objectId])
+  @@index([deletedAt])
 }
 
 // ============================================

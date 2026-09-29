@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
 import { leesObject } from '@/lib/sampleObjects';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 // PUT - Object bijwerken (alleen admin)
 export async function PUT(
@@ -88,7 +89,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Object niet gevonden' }, { status: 404 });
     }
 
-    const aantal = await prisma.oilSample.count({ where: { objectId } });
+    const aantal = await prisma.oilSample.count({ where: { objectId, ...(await actiefFilter()) } });
     if (aantal > 0) {
       return NextResponse.json(
         {

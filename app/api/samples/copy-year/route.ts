@@ -5,6 +5,7 @@ import { sessionOptions, SessionData } from '@/lib/session';
 import { cookies } from 'next/headers';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { tabelOntbreekt } from '@/lib/planningApi';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 // POST - Neem de te nemen monsters van een vorig analyse-jaar over naar een nieuw jaar (alleen admin).
 // Body: { fromYear: 2025, toYear: 2026 }
@@ -36,19 +37,21 @@ export async function POST(request: NextRequest) {
     let bron: { oNumber: string; location: string; description: string; oilType: string | null; objectId?: number | null }[];
     try {
       bron = await prisma.oilSample.findMany({
-        where: { analysisYear: fromYear },
+        where: { analysisYear: fromYear, ...(await actiefFilter()) },
         select: { oNumber: true, location: true, description: true, oilType: true, objectId: true },
         orderBy: { oNumber: 'asc' },
       });
     } catch (error) {
       if (!tabelOntbreekt(error)) throw error;
       bron = await prisma.oilSample.findMany({
-        where: { analysisYear: fromYear },
+        where: { analysisYear: fromYear, ...(await actiefFilter()) },
         select: { oNumber: true, location: true, description: true, oilType: true },
         orderBy: { oNumber: 'asc' },
       });
     }
 
+    // Hier bewust ook de monsters in de prullenbak: hun O-nummer is in de
+    // database nog bezet, dus overnemen zou op de unieke sleutel stuklopen.
     const bestaand = await prisma.oilSample.findMany({
       where: { analysisYear: toYear },
       select: { oNumber: true },

@@ -4,6 +4,7 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { ATTEMPT_BASIS_SELECT, syncLatestAttemptToSample } from '@/lib/sampleAttempts';
 import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { foutAntwoordWensen2, tabelOntbreekt } from '@/lib/kolommen';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 // GET - Alle pogingen voor een monster (chronologisch, oudste eerst)
 export async function GET(
@@ -66,7 +67,7 @@ export async function POST(
     }
 
     const sample = await prisma.oilSample.findUnique({
-      where: { id: oilSampleId },
+      where: { id: oilSampleId, ...(await actiefFilter()) },
       select: { id: true, oNumber: true },
     });
     if (!sample) {

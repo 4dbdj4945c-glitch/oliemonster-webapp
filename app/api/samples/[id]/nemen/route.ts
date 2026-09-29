@@ -5,6 +5,7 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { syncLatestAttemptToSample } from '@/lib/sampleAttempts';
 import { tabelOntbreekt, foutAntwoordWensen2 } from '@/lib/kolommen';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 /**
  * POST - Monster nemen in één keer.
@@ -64,7 +65,7 @@ export async function POST(
     const fotoPotje = bestand('photoPotje');
 
     const sample = await prisma.oilSample.findUnique({
-      where: { id: sampleId },
+      where: { id: sampleId, ...(await actiefFilter()) },
       select: { id: true, oNumber: true, analysisYear: true, isDisabled: true },
     });
     if (!sample) {

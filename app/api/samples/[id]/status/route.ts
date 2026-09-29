@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { tabelOntbreekt } from '@/lib/kolommen';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 /**
  * PATCH - Zet een monster met één handeling op genomen of niet genomen.
@@ -48,12 +49,12 @@ export async function PATCH(
     let sample: { id: number; oNumber: string; isTaken: boolean; isDisabled: boolean; analysisYear: number; sampleDate: Date | null; isUnreachable?: boolean } | null;
     try {
       sample = await prisma.oilSample.findUnique({
-        where: { id: sampleId },
+        where: { id: sampleId, ...(await actiefFilter()) },
         select: { ...basis, isUnreachable: true },
       });
     } catch (error) {
       if (!tabelOntbreekt(error)) throw error;
-      sample = await prisma.oilSample.findUnique({ where: { id: sampleId }, select: basis });
+      sample = await prisma.oilSample.findUnique({ where: { id: sampleId, ...(await actiefFilter()) }, select: basis });
     }
     if (!sample) {
       return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });

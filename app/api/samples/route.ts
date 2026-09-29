@@ -10,6 +10,7 @@ import {
   SAMPLE_PLANNING_LEEG,
   SAMPLE_WENSEN2_LEEG,
 } from '@/lib/planningApi';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 // GET - Lijst van alle samples (met optionele zoekfunctie en analysisYear-filter)
 export async function GET(request: NextRequest) {
@@ -27,7 +28,9 @@ export async function GET(request: NextRequest) {
     const eigenJaar = await kijkjaar(session);
     const year = eigenJaar !== null ? String(eigenJaar) : searchParams.get('year');
 
-    const yearFilter = year ? { analysisYear: parseInt(year) } : {};
+    // Verwijderde monsters (prullenbak) ziet niemand in de lijst, ook de rol
+    // alleen lezen niet; alleen een admin ziet ze via /api/samples/verwijderd.
+    const yearFilter = { ...(year ? { analysisYear: parseInt(year) } : {}), ...(await actiefFilter()) };
 
     const whereClause = search
       ? {
@@ -127,9 +130,28 @@ export async function POST(request: NextRequest) {
 
     // O-nummers zijn uniek per analyse-jaar (2025 en 2026 mogen hetzelfde nummer hebben)
     const jaar = analysisYear ?? 2025;
-    const existing = await prisma.oilSample.findFirst({ where: { oNumber, analysisYear: jaar } });
+    const existing = await prisma.oilSample.findFirst({
+      where: { oNumber, analysisYear: jaar, ...(await actiefFilter()) },
+      select: { id: true },
+    });
     if (existing) {
       return NextResponse.json({ error: `O-nummer bestaat al in ${jaar}` }, { status: 400 });
+    }
+    // Staat dit nummer in de prullenbak, dan is het in de database nog bezet
+    // (uniek per jaar). Een nieuw monster zou de oude pogingen en foto's
+    // verbergen; terugzetten is dan de bedoeling. De pagina toont een knop.
+    const inPrullenbak = await prisma.oilSample.findFirst({
+      where: { oNumber, analysisYear: jaar },
+      select: { id: true },
+    });
+    if (inPrullenbak) {
+      return NextResponse.json(
+        {
+          error: `O-nummer ${oNumber} staat in ${jaar} in de prullenbak. Zet het daar terug, dan komen de pogingen, datums en foto's ook weer terug.`,
+          inPrullenbak: inPrullenbak.id,
+        },
+        { status: 409 }
+      );
     }
 
     const sample = await prisma.oilSample.create({

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
 import { raadKunstwerk } from '@/lib/sampleObjects';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 /*
   De locatieteksten van een analysejaar, om ze aan een kunstwerk te knopen.
@@ -21,7 +22,7 @@ interface Groep {
 
 async function haalGroepen(jaar: number) {
   const monsters = await prisma.oilSample.findMany({
-    where: { analysisYear: jaar },
+    where: { analysisYear: jaar, ...(await actiefFilter()) },
     select: { id: true, location: true, description: true, objectId: true },
     orderBy: { oNumber: 'asc' },
   });

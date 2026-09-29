@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { PLANNING, geschatteMinuten } from './planningInstellingen';
 import { optimizePointRoute, LatLng } from './routePlanner';
+import { actiefFilter } from './verwijderdeMonsters';
 
 /**
  * Serverkant van de planning: de dagen met hun stops ophalen en er meteen de
@@ -65,7 +66,7 @@ export async function haalPlanning(analysisYear: number) {
   // Alle monsters van dit jaar die aan een object hangen en niet geannuleerd zijn.
   // Geannuleerde monsters tellen niet mee in de planning en de tijdsberekening.
   const monsters = await prisma.oilSample.findMany({
-    where: { analysisYear, objectId: { not: null }, isDisabled: false },
+    where: { analysisYear, objectId: { not: null }, isDisabled: false, ...(await actiefFilter()) },
     select: {
       id: true,
       oNumber: true,
@@ -84,7 +85,7 @@ export async function haalPlanning(analysisYear: number) {
   // zakken. Zonder deze telling zou de deling altijd 1 opleveren.
   const geteld = await prisma.oilSample.groupBy({
     by: ['objectId'],
-    where: { analysisYear, objectId: { not: null } },
+    where: { analysisYear, objectId: { not: null }, ...(await actiefFilter()) },
     _count: { _all: true },
   });
   const noemerPerObject = new Map<number, number>();
@@ -372,7 +373,7 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
   }
 
   const monsters = await prisma.oilSample.findMany({
-    where: { analysisYear, objectId: { not: null }, isDisabled: false },
+    where: { analysisYear, objectId: { not: null }, isDisabled: false, ...(await actiefFilter()) },
     select: { id: true, oNumber: true, description: true, location: true, isTaken: true, sampleDate: true, objectId: true },
   });
 
@@ -382,7 +383,7 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
   // zakken. Zonder deze telling zou de deling altijd 1 opleveren.
   const geteld = await prisma.oilSample.groupBy({
     by: ['objectId'],
-    where: { analysisYear, objectId: { not: null } },
+    where: { analysisYear, objectId: { not: null }, ...(await actiefFilter()) },
     _count: { _all: true },
   });
   const noemerPerObject = new Map<number, number>();

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
 import { bouwAnnuleerReden } from '@/lib/cancelReasons';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 /**
  * POST - Annuleer in één keer alle nog openstaande monsters van een object in een
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     const teAnnuleren = await prisma.oilSample.findMany({
-      where: { objectId, analysisYear: jaar, isDisabled: false, isTaken: false },
+      where: { objectId, analysisYear: jaar, isDisabled: false, isTaken: false, ...(await actiefFilter()) },
       select: { id: true, oNumber: true },
     });
 

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { haalSessie, toegangsFout, foutAntwoord } from '@/lib/planningApi';
 import { bouwAnnuleerReden } from '@/lib/cancelReasons';
+import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
 /**
  * PATCH - Annuleer een monster met een reden.
@@ -35,7 +36,7 @@ export async function PATCH(
     const inPdf = body.cancelReasonInPdf === false ? false : true;
 
     const sample = await prisma.oilSample.findUnique({
-      where: { id: sampleId },
+      where: { id: sampleId, ...(await actiefFilter()) },
       select: { id: true, oNumber: true, analysisYear: true, isDisabled: true },
     });
     if (!sample) {
