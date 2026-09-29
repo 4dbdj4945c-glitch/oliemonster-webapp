@@ -4732,3 +4732,35 @@ h2.sectiekop {
 @media print {
   .portaal-kop .btn, .portaal-rapport, .portaal-voorbeeld { display: none; }
 }
+
+/* ---------- Privacyverklaring (app/privacy/page.tsx), openbaar ---------- */
+.privacy { min-height: 100vh; background: var(--grijs-100); color: var(--navy); }
+.privacy-kop { background: var(--wit); border-bottom: 1px solid var(--grijs-200); }
+.privacy-kop-in { max-width: 820px; margin: 0 auto; padding: 16px 32px; }
+.privacy-kop-in img { height: 14px; width: auto; display: block; }
+.privacy-inhoud { max-width: 820px; margin: 0 auto; padding: 32px 32px 48px; }
+.privacy-concept { margin-bottom: 20px; }
+.privacy-tekst { padding: 28px 32px; font-size: 15px; line-height: 1.6; color: var(--grijs-700); }
+.privacy-tekst h2 { margin: 28px 0 8px; font-size: 20px; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); }
+.privacy-tekst h3 { margin: 20px 0 8px; font-size: 16px; font-weight: 700; color: var(--navy); }
+.privacy-tekst > :first-child { margin-top: 0; }
+.privacy-tekst p { margin: 0 0 12px; }
+.privacy-tekst ul { margin: 0 0 12px; padding-left: 20px; }
+.privacy-tekst li { margin: 4px 0; }
+.privacy-tekst strong { color: var(--navy); font-weight: 600; }
+.privacy-lijn { border: 0; border-top: 1px solid var(--grijs-200); margin: 24px 0; }
+.privacy-open { background: var(--oranje-light); color: var(--geel-tekst); padding: 0 3px; border-radius: 3px; }
+.privacy-tabel { overflow-x: auto; margin: 0 0 16px; border: 1px solid var(--grijs-200); border-radius: var(--radius-md); }
+.privacy-tabel table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.privacy-tabel th, .privacy-tabel td { text-align: left; vertical-align: top; padding: 10px 12px; border-top: 1px solid var(--grijs-200); }
+.privacy-tabel tr:first-child th, .privacy-tabel tr:first-child td { border-top: 0; }
+.privacy-tabel thead th { background: var(--grijs-50); color: var(--grijs-500); font-size: 12px; font-weight: 600; }
+.privacy-tabel tbody th { width: 150px; color: var(--navy); font-weight: 600; background: var(--grijs-50); }
+@media (max-width: 640px) {
+  .privacy-kop-in { padding: 14px 16px; }
+  .privacy-inhoud { padding: 20px 16px 32px; }
+  .privacy-tekst { padding: 18px 16px; font-size: 15px; }
+  .privacy-tabel tbody th, .privacy-tabel tbody td { display: block; width: auto; }
+  .privacy-tabel tbody th { border-top: 1px solid var(--grijs-200); }
+  .privacy-tabel tbody td { border-top: 0; padding-top: 4px; }
+}
