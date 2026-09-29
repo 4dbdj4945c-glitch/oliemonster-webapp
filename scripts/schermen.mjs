@@ -6,6 +6,8 @@
 //   node scripts/schermen.mjs                    standaardset
 //   node scripts/schermen.mjs --seed             eerst npm run seed (wist ids_portal_dev)
 //   node scripts/schermen.mjs kijker:/dashboard/oliemonsters/2025 admin:/dashboard/klanten
+//   node scripts/schermen.mjs admin:/dashboard/planning/dag/{vandaag}   dagscherm van de monsterdag van vandaag
+//   node scripts/schermen.mjs "admin:/dashboard@.onderbalk button:nth-of-type(1)"   eerst klikken, dan alleen het scherm zelf
 // Gebruikers en wachtwoorden: prisma/nepdata.ts. Uitvoer: schermen/<naam>-<breedte>.png
 // (1440 en 390 breed) en per scherm of de pagina horizontaal overloopt.
 import { spawn, execSync } from 'node:child_process';
@@ -29,9 +31,17 @@ const SCHERMEN = (gevraagd.length ? gevraagd : [
   'kijker:/dashboard/oliemonsters/2025',
   'admin:/dashboard',
   'admin:/dashboard/oliemonsters/2026',
+  'admin:/dashboard/planning/dag/{vandaag}',
+  'admin:/dashboard@.zijbalk-gebruiker',
+  'admin:/dashboard@.onderbalk button:nth-of-type(1)',
+  'admin:/dashboard@.onderbalk button:nth-of-type(3)',
   'admin:/dashboard/klanten',
   'gebruiker:/dashboard',
-]).map((a) => { const [wie, pad] = a.split(/:(.*)/s); return { wie, pad }; });
+]).map((a) => {
+  const [wie, rest] = a.split(/:(.*)/s);
+  const [pad, klik] = rest.split('@');
+  return { wie, pad, klik };
+});
 
 const dev = spawn('npx', ['next', 'dev', '-p', String(POORT)], { cwd: repo, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, NEXT_TELEMETRY_DISABLED: '1' } });
 let log = '';
@@ -61,21 +71,53 @@ ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (m.id &
 await stuur('Page.enable');
 await stuur('Network.enable');
 
+// {vandaag} in een pad: het id van de monsterdag van vandaag (nepdata zet er altijd een).
+async function vulIn(pad, cookie) {
+  if (!pad.includes('{vandaag}')) return pad;
+  const nu = new Date();
+  const res = await fetch(`${BASIS}/api/sample-plans?year=${nu.getFullYear()}`, { headers: { Cookie: `${cookie[0]}=${cookie[1]}` } });
+  const { dagen } = await res.json();
+  const sleutel = (d) => { const x = new Date(d); return `${x.getFullYear()}-${x.getMonth()}-${x.getDate()}`; };
+  const dag = dagen.find((d) => sleutel(d.date) === sleutel(nu));
+  if (!dag) throw new Error('Geen monsterdag vandaag in de planning. Draai met --seed.');
+  return pad.replace('{vandaag}', String(dag.id));
+}
+
 const verslag = [];
 try {
-  for (const { wie, pad } of SCHERMEN) {
+  for (const { wie, pad: ruwPad, klik } of SCHERMEN) {
     const [naam, waarde] = await sessieCookie(wie);
+    const pad = await vulIn(ruwPad, [naam, waarde]);
     await stuur('Network.clearBrowserCookies');
     await stuur('Network.setCookie', { name: naam, value: waarde, url: BASIS });
     for (const breedte of [1440, 390]) {
       await stuur('Emulation.setDeviceMetricsOverride', { width: breedte, height: breedte > 800 ? 900 : 844, deviceScaleFactor: breedte > 800 ? 1 : 2, mobile: breedte <= 800 });
       await stuur('Page.navigate', { url: BASIS + pad });
       await wacht(5000);
-      const m = (await stuur('Runtime.evaluate', { returnByValue: true, expression: `({ url: location.pathname, sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, h: document.documentElement.scrollHeight, fout: !!document.querySelector('[data-nextjs-dialog], [data-nextjs-toast-errors-parent]') })` })).result.result.value;
-      const shot = await stuur('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: breedte, height: Math.min(m.h, 6000), scale: 1 } });
-      const bestand = `${wie}${pad.replace(/\//g, '_')}-${breedte}.png`;
+      // Klikken (menu openen): alleen als het element op deze breedte zichtbaar is.
+      let geklikt = false;
+      if (klik) {
+        geklikt = (await stuur('Runtime.evaluate', { returnByValue: true, expression: `(() => { const el = document.querySelector(${JSON.stringify(klik)}); if (!el || el.offsetParent === null) return false; el.click(); return true; })()` })).result.result.value;
+        if (!geklikt) continue;
+        await wacht(600);
+      }
+      const m = (await stuur('Runtime.evaluate', { returnByValue: true, expression: `({ url: location.pathname, sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, h: document.documentElement.scrollHeight, fout: !!document.querySelector('[data-nextjs-dialog], [data-nextjs-toast-errors-parent]'), tabel: Math.max(0, ...[...document.querySelectorAll('.table-scroll')].map((t) => t.scrollWidth - t.clientWidth)) })` })).result.result.value;
+      // Een vaste balk onderaan (onderbalk, Monster nemen) hoort onderaan de
+      // opname, niet halverwege: dan eerst het venster zo hoog als de pagina.
+      if (!geklikt && breedte <= 800) {
+        const vast = (await stuur('Runtime.evaluate', { returnByValue: true, expression: `[...document.querySelectorAll('.onderbalk, .veld-actiebalk')].some((el) => getComputedStyle(el).position === 'fixed' && el.offsetParent !== null || getComputedStyle(el).position === 'fixed' && getComputedStyle(el).display !== 'none')` })).result.result.value;
+        if (vast) {
+          await stuur('Emulation.setDeviceMetricsOverride', { width: breedte, height: Math.min(m.h, 6000), deviceScaleFactor: 2, mobile: true });
+          await wacht(800);
+          m.h = (await stuur('Runtime.evaluate', { returnByValue: true, expression: 'document.documentElement.scrollHeight' })).result.result.value;
+        }
+      }
+      // Na een klik alleen wat je op het scherm ziet; anders de hele pagina.
+      const hoogte = geklikt ? (breedte > 800 ? 900 : 844) : Math.min(m.h, 6000);
+      const shot = await stuur('Page.captureScreenshot', { format: 'png', captureBeyondViewport: !geklikt, clip: { x: 0, y: 0, width: breedte, height: hoogte, scale: 1 } });
+      const bestand = `${wie}${ruwPad.replace(/\//g, '_').replace(/[{}]/g, '')}${klik ? '-menu-' + klik.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') : ''}-${breedte}.png`;
       writeFileSync(join(uit, bestand), Buffer.from(shot.result.data, 'base64'));
-      verslag.push(`${bestand}: op ${m.url}, scrollWidth ${m.sw}/${m.cw}${m.sw > m.cw ? ' OVERLOOP' : ''}${m.fout ? ' (Next-foutmelding zichtbaar)' : ''}`);
+      verslag.push(`${bestand}: op ${m.url}, scrollWidth ${m.sw}/${m.cw}${m.sw > m.cw ? ' OVERLOOP' : ''}${m.tabel > 0 ? ` TABEL ${m.tabel}px te breed` : ''}${m.fout ? ' (Next-foutmelding zichtbaar)' : ''}`);
     }
   }
 } finally {
