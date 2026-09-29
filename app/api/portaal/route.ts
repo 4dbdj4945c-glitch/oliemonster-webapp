@@ -6,11 +6,14 @@ import { fotoAdres, klantLogoAdres } from '@/lib/fotoAdres';
 import { haalOpdracht, jarenVanKlant } from '@/lib/klantOpdracht';
 import { teNemen } from '@/lib/klantStatus';
 import { isAlleenLezen, krijgtKlantportaal } from '@/lib/roles';
+import { inspectiesVanKlant, inspectieInLijst } from '@/lib/inspecties/server';
+import { sjabloonVan } from '@/lib/inspecties/sjablonen';
 
 /*
   GET /api/portaal?jaar=2026 - het klantportaal van een kijker: voortgang, stand
-  per object, komende monsterdagen (zonder tijden of route), recente foto's en
-  de rapporten per jaar. Alleen lezen.
+  per object, komende monsterdagen (zonder tijden of route), recente foto's,
+  de rapporten per jaar en de afgeronde inspecties van de klant (met de
+  volgende inspectiedatum en het rapport). Alleen lezen.
 
   - Een kijker krijgt altijd zijn eigen klant; een klantId in de URL doet niets.
     Zonder klant is er geen klantportaal (403). Met een kijkjaar alleen dat jaar.
@@ -54,7 +57,26 @@ export const GET = apiRoute(
         foto: m.photoUrl ? fotoAdres('monster', m.id, 'potje', m.photoUrl) : fotoAdres('monster', m.id, 'onderdeel', m.partPhotoUrl),
       }));
 
+    // Afgeronde inspecties van deze klant, met dezelfde afscherming als het
+    // inspectierapport (lib/inspecties/server.ts). Geen concepten, geen interne
+    // gegevens (wie afrondde, rekeninstellingen, foto's).
+    const inspecties = (await inspectiesVanKlant(sessie, klantId, true)).map((rij) => {
+      const i = inspectieInLijst(rij);
+      return {
+        id: i.id,
+        nummer: i.nummer,
+        naam: sjabloonVan(i.sjabloon).naam,
+        sjabloon: i.sjabloon,
+        datum: i.datum,
+        object: i.object.name,
+        uitkomst: i.uitkomst,
+        volgende: i.volgende,
+        rapport: `/api/inspecties/${i.id}/rapport`,
+      };
+    });
+
     return NextResponse.json({
+      inspecties,
       klant: { id: opdracht.klant.id, naam: opdracht.klant.naam, logo: klantLogoAdres(opdracht.klant) },
       jaar,
       jaren,

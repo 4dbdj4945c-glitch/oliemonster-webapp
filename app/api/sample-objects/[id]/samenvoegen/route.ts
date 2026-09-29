@@ -36,6 +36,13 @@ export const POST = apiRoute(
       data: { objectId: naarId },
     });
 
+    // Inspecties mee (die blokkeren anders ook het verwijderen). De klant van de
+    // inspectie blijft staan: die hoort bij het werk dat toen gedaan is.
+    const inspecties = await prisma.inspectie.updateMany({
+      where: { objectId: vanId },
+      data: { objectId: naarId },
+    });
+
     // Monsters mee
     const monsters = await prisma.oilSample.updateMany({
       where: { objectId: vanId },
@@ -82,6 +89,7 @@ export const POST = apiRoute(
         naar: naar.name,
         monsters: monsters.count,
         installaties: installaties.count,
+        inspecties: inspecties.count,
         stopsVerhuisd,
         stopsSamengevoegd,
       },

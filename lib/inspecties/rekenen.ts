@@ -141,9 +141,9 @@ export function aantalNietGoed(waarden: unknown): number {
 // Voor alle sjablonen
 // ------------------------------------------------------------------
 
-/** Een bedrag in hele euro's: "€ 1.234". */
+/** Een bedrag in hele euro's: "€ 1.234", met een vaste spatie zodat het nooit over twee regels breekt. */
 export function euro(n: number): string {
-  return `€ ${Math.round(n).toLocaleString('nl-NL')}`;
+  return `€\u00a0${Math.round(n).toLocaleString('nl-NL')}`;
 }
 
 /** Een getal met hoogstens `d` decimalen, Nederlands geschreven. */

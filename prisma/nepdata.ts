@@ -68,6 +68,9 @@ function kalenderdagVanaf(n: number): Date {
 /** Wist de database en vult hem met een vaste set nepdata. Geeft de ids terug. */
 export async function vulMetNepdata(prisma: PrismaClient) {
   // Volgorde: eerst wat naar iets anders verwijst.
+  await prisma.inspectieItem.deleteMany();
+  await prisma.inspectie.deleteMany();
+  await prisma.eigenDocument.deleteMany();
   await prisma.samplePlanStop.deleteMany();
   await prisma.samplePlan.deleteMany();
   await prisma.sampleAttempt.deleteMany();
@@ -303,9 +306,112 @@ export async function vulMetNepdata(prisma: PrismaClient) {
     ],
   });
 
+  // Inspecties (fase 4). De tweede klant: een afgeronde lekkeninspectie en een
+  // afgeronde inspectie arbeidsmiddelen (met een luchtketel boven 2.500 liter),
+  // plus een concept dat de kijker kempen niet ziet. Mourik: een concept, dat
+  // geen enkele kijker ziet.
+  const inspectieDag = (n: number) => {
+    const d = dagVanaf(n);
+    return new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), 12));
+  };
+  const lekken = await prisma.inspectie.create({
+    data: {
+      sjabloon: 'persluchtlekken',
+      klantId: tweede.id,
+      objectId: werkplaats.id,
+      datum: inspectieDag(-21),
+      uitvoerder: 'Roel Mandigers',
+      status: 'afgerond',
+      afgerondOp: inspectieDag(-20),
+      afgerondDoor: 'admin',
+      samenvatting: 'Persluchtnet van hal 1 en 2 nagelopen met de ultrasone lekdetector. De grootste lekken zitten bij de snelkoppelingen aan de werkbanken.',
+      instellingen: { drukBar: 7, draaiuren: 4000, prijsmodel: 'kwh', prijsKwh: 0.25, prijsM3: 0.025, kwhPerM3: null, co2PerKwh: 0.268 },
+      volgendeOp: inspectieDag(344),
+      items: {
+        create: [
+          { volgorde: 1, titel: '101', locatie: 'Hal 1, snelkoppeling werkbank 3', oordeel: 'hoog', waarden: { db: 48, verliesLpm: 95 }, fotoUrl: '/nepdata/lek-1.jpg', gerepareerd: true, gerepareerdOp: inspectieDag(-14) },
+          { volgorde: 2, titel: '102', locatie: 'Hal 1, slang boven kantpers', oordeel: 'hoog', waarden: { db: 45, verliesLpm: 70 }, fotoUrl: '/nepdata/lek-2.jpg' },
+          { volgorde: 3, titel: '103', locatie: 'Hal 2, ventiel verdeelblok', oordeel: 'middel', waarden: { db: 38, verliesLpm: 32 }, fotoUrl: '/nepdata/lek-3.jpg', gerepareerd: true, gerepareerdOp: inspectieDag(-14) },
+          { volgorde: 4, titel: '104', locatie: 'Hal 2, filter-regelaar', oordeel: 'middel', waarden: { db: 34, verliesLpm: 18 } },
+          { volgorde: 5, titel: '105', locatie: 'Technische ruimte, condensaatafvoer', oordeel: 'laag', waarden: { db: 29, verliesLpm: 9 }, notitie: 'Afvoer staat half open, bij de volgende onderhoudsbeurt afstellen.' },
+          { volgorde: 6, titel: '106', locatie: 'Hal 2, koppeling spuitcabine', oordeel: 'laag', waarden: { db: 27, verliesLpm: 6 } },
+        ],
+      },
+    },
+  });
+  const [kantpersInst, compressorInst] = [installaties[2], installaties[3]];
+  const arbeidsmiddelen = await prisma.inspectie.create({
+    data: {
+      sjabloon: 'arbeidsmiddelen',
+      klantId: tweede.id,
+      objectId: werkplaats.id,
+      datum: inspectieDag(-10),
+      uitvoerder: 'Roel Mandigers',
+      status: 'afgerond',
+      afgerondOp: inspectieDag(-10),
+      afgerondDoor: 'admin',
+      samenvatting: 'Drie arbeidsmiddelen in orde of met een kleine actie. De grote luchtketel in hal 3 valt buiten deze inspectie en moet door een aangewezen instelling worden gekeurd.',
+      instellingen: { norm: 'NEN-EN-ISO 4413 (hydrauliek), NEN-EN-ISO 4414 (pneumatiek) en het voorschrift van de fabrikant' },
+      volgendeOp: inspectieDag(355),
+      items: {
+        create: [
+          {
+            volgorde: 1, titel: 'Kantpers 1', installatieId: kantpersInst.id, locatie: 'Hal 1', oordeel: 'in-orde', fotoUrl: '/nepdata/arbeidsmiddel-1.jpg',
+            waarden: { werkdrukBar: 210, checklist: { slangen: 'goed', lekkage: 'goed', leidingen: 'goed', beveiliging: 'goed', manometer: 'goed', bediening: 'goed', afscherming: 'goed', olie: 'goed', filters: 'goed', markering: 'goed' } },
+            volgendeOp: inspectieDag(355),
+          },
+          {
+            volgorde: 2, titel: 'Schroefcompressor', installatieId: compressorInst.id, locatie: 'Technische ruimte', oordeel: 'actie-nodig',
+            notitie: 'Condensaatafvoer lekt, afvoer vervangen. Verder in orde.',
+            waarden: { werkdrukBar: 8, ketelLiter: 500, ketelBar: 11, checklist: { slangen: 'goed', lekkage: 'niet-goed', leidingen: 'goed', beveiliging: 'goed', manometer: 'goed', bediening: 'goed', afscherming: 'goed', olie: 'goed', filters: 'goed', markering: 'goed' } },
+            volgendeOp: inspectieDag(172),
+          },
+          {
+            volgorde: 3, titel: 'Heftafel werkbank 2', locatie: 'Hal 2', oordeel: 'in-orde',
+            waarden: { werkdrukBar: 160, checklist: { slangen: 'goed', lekkage: 'goed', leidingen: 'goed', beveiliging: 'nvt', manometer: 'nvt', bediening: 'goed', afscherming: 'goed', olie: 'goed', filters: 'nvt', markering: 'goed' } },
+            volgendeOp: inspectieDag(355),
+          },
+          {
+            volgorde: 4, titel: 'Luchtketel hal 3', locatie: 'Hal 3, buitenwand', oordeel: 'actie-nodig', fotoUrl: '/nepdata/arbeidsmiddel-2.jpg',
+            notitie: 'Ketel valt onder de keuringsplicht van een aangewezen instelling. Alleen visueel bekeken.',
+            waarden: { ketelLiter: 3000, ketelBar: 11, checklist: { lekkage: 'goed', manometer: 'goed', markering: 'goed' } },
+            volgendeOp: inspectieDag(355),
+          },
+        ],
+      },
+    },
+  });
+  const conceptTweede = await prisma.inspectie.create({
+    data: { sjabloon: 'persluchtlekken', klantId: tweede.id, objectId: werkplaats.id, datum: inspectieDag(0), uitvoerder: 'Roel Mandigers', instellingen: { drukBar: 7, draaiuren: 4000, prijsmodel: 'kwh' } },
+  });
+  const conceptMourik = await prisma.inspectie.create({
+    data: {
+      sjabloon: 'arbeidsmiddelen',
+      klantId: mourik.id,
+      objectId: objecten[0].id,
+      installatieId: installaties[0].id,
+      datum: inspectieDag(-2),
+      uitvoerder: 'Roel Mandigers',
+      items: { create: [{ volgorde: 1, titel: 'Aggregaat hefdeur boven', installatieId: installaties[0].id, oordeel: 'in-orde', waarden: { werkdrukBar: 180, checklist: { slangen: 'goed', lekkage: 'goed' } }, volgendeOp: inspectieDag(363) }] },
+    },
+  });
+
+  // Eigen dossier: VCA verloopt binnen 30 dagen, de kalibratie is verlopen.
+  await prisma.eigenDocument.createMany({
+    data: [
+      { soort: 'vca', titel: 'VCA Basis', uitgever: 'SSVV', nummer: 'VCA-1234567', afgegevenOp: inspectieDag(-3630), vervaltOp: inspectieDag(20), bestandUrl: '/nepdata/document-vca.pdf', bestandNaam: 'vca.pdf', bestandType: 'application/pdf' },
+      { soort: 'verzekering', titel: 'Beroeps- en bedrijfsaansprakelijkheid', uitgever: 'Voorbeeldverzekeraar', nummer: 'POL-778899', afgegevenOp: inspectieDag(-200), vervaltOp: inspectieDag(165), bestandUrl: '/nepdata/document-polis.pdf', bestandNaam: 'polis.pdf', bestandType: 'application/pdf' },
+      { soort: 'kvk', titel: 'Uittreksel Kamer van Koophandel', uitgever: 'KvK', afgegevenOp: inspectieDag(-40), vervaltOp: inspectieDag(325), bestandUrl: '/nepdata/document-kvk.pdf', bestandNaam: 'kvk.pdf', bestandType: 'application/pdf', notities: 'Opdrachtgevers willen meestal een uittreksel van hooguit een jaar oud.' },
+      { soort: 'diploma', titel: 'MBO 4 Mechatronica', uitgever: 'Summa College', afgegevenOp: inspectieDag(-6000), bestandUrl: '/nepdata/diploma.jpg', bestandNaam: 'diploma.jpg', bestandType: 'image/jpeg' },
+      { soort: 'cursus', titel: 'Slangen en koppelingen, NPR 5527', uitgever: 'Voorbeeldopleider', afgegevenOp: inspectieDag(-400), vervaltOp: inspectieDag(695), bestandUrl: '/nepdata/document-cursus.pdf', bestandNaam: 'cursus.pdf', bestandType: 'application/pdf' },
+      { soort: 'kalibratie', titel: 'Kalibratie ultrasone lekdetector', uitgever: 'Voorbeeld kalibratielab', nummer: 'KAL-2025-031', afgegevenOp: inspectieDag(-370), vervaltOp: inspectieDag(-5), bestandUrl: '/nepdata/document-kalibratie.pdf', bestandNaam: 'kalibratie.pdf', bestandType: 'application/pdf' },
+    ],
+  });
+
   return {
     gebruikers,
     klanten: { mourik: mourik.id, tweede: tweede.id },
+    inspecties: { lekken: lekken.id, arbeidsmiddelen: arbeidsmiddelen.id, conceptTweede: conceptTweede.id, conceptMourik: conceptMourik.id },
     objecten: objecten.map((o) => o.id),
     werkplaats: werkplaats.id,
     installaties: installaties.map((x) => x.id),

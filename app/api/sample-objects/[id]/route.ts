@@ -74,6 +74,14 @@ export const DELETE = apiRoute({ ...OPTIES, fout: 'Fout bij verwijderen van obje
       `Op "${object.name}" staan nog ${installaties} ${installaties === 1 ? 'installatie' : 'installaties'}. Verplaats die eerst of voeg dit object samen met een ander.`
     );
   }
+  // Inspecties, ook in de prullenbak: die houden dit object vast.
+  const inspecties = await prisma.inspectie.count({ where: { objectId } });
+  if (inspecties > 0) {
+    throw new ApiFout(
+      400,
+      `Bij "${object.name}" horen nog ${inspecties} ${inspecties === 1 ? 'inspectie' : 'inspecties'}. Voeg dit object samen met een ander, dan gaan ze mee.`
+    );
+  }
   // Monsters in de prullenbak verliezen hun object (SetNull), maar houden de klant.
   await bewaarKlantBijLoskoppelen({ objectId });
   await prisma.sampleObject.delete({ where: { id: objectId } });

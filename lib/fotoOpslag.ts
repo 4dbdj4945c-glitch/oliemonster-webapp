@@ -34,6 +34,16 @@ export async function bewaarFoto(naam: string, bestand: File): Promise<string> {
   return blob.url;
 }
 
+/**
+ * Slaat een document (PDF of scan) uit het eigen dossier op, net als een foto
+ * onder een onvindbare naam: documenten/<32 hex>.<ext>.
+ */
+export async function bewaarDocument(extensie: string, bestand: File): Promise<string> {
+  const naam = `documenten/${randomBytes(16).toString('hex')}.${extensie}`;
+  const blob = await put(naam, bestand, { access: 'public', addRandomSuffix: true, contentType: bestand.type });
+  return blob.url;
+}
+
 /** Hoort dit adres bij onze Blob-opslag? Andere adressen raken we nooit aan. */
 export function isBlobAdres(url: string): boolean {
   try {

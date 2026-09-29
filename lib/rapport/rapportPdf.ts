@@ -23,14 +23,14 @@ import { haalFoto } from '../fotoLaden';
 import type { Opdracht, OpdrachtMonster } from '../klantOpdracht';
 import { KLANT_STATUS_KLEUR, KLANT_STATUS_LABELS, KLANT_STATUS_LEGENDA, KLANT_STATUSSEN, teNemen } from '../klantStatus';
 
-type RGB = [number, number, number];
-const NAVY: RGB = [12, 27, 51];
-const ORANJE: RGB = [249, 115, 22];
-const GRIJS_50: RGB = [248, 250, 252];
-const GRIJS_200: RGB = [226, 232, 240];
-const GRIJS_500: RGB = [100, 116, 139];
-const GRIJS_700: RGB = [51, 65, 85];
-const BAND_TEKST: RGB = [184, 196, 214];
+export type RGB = [number, number, number];
+export const NAVY: RGB = [12, 27, 51];
+export const ORANJE: RGB = [249, 115, 22];
+export const GRIJS_50: RGB = [248, 250, 252];
+export const GRIJS_200: RGB = [226, 232, 240];
+export const GRIJS_500: RGB = [100, 116, 139];
+export const GRIJS_700: RGB = [51, 65, 85];
+export const BAND_TEKST: RGB = [184, 196, 214];
 
 /** Tekstkleur per status in de tabel: donkere varianten die 4,5:1 halen op wit. */
 const STATUS_TEKST: Record<OpdrachtMonster['status'], RGB> = {
@@ -41,7 +41,7 @@ const STATUS_TEKST: Record<OpdrachtMonster['status'], RGB> = {
   'in-te-plannen': GRIJS_500,
 };
 
-const MARGE = 16;
+export const MARGE = 16;
 // Klein genoeg voor een jaar met honderden monsters: 400 px, JPEG 60, rond
 // 15 tot 25 KB per foto. Wordt de PDF toch groter dan Vercel in een antwoord
 // toestaat, dan zet de route hem eerst in de opslag (app/api/rapport/route.ts).
@@ -58,10 +58,10 @@ export const CONTACT = {
 // ------------------------------------------------------------------
 
 const NL = { timeZone: 'Europe/Amsterdam' } as const;
-function datumKort(d: Date | null): string {
+export function datumKort(d: Date | null): string {
   return d ? d.toLocaleDateString('nl-NL', { ...NL, day: 'numeric', month: 'numeric', year: 'numeric' }) : '-';
 }
-function datumLang(d: Date): string {
+export function datumLang(d: Date): string {
   return d.toLocaleDateString('nl-NL', { ...NL, day: 'numeric', month: 'long', year: 'numeric' });
 }
 
@@ -72,7 +72,7 @@ function datumLang(d: Date): string {
 const FONT_MAP = path.join(process.cwd(), 'lib', 'rapport', 'fonts');
 let fontCache: Record<string, string> | null = null;
 
-async function laadFonts(): Promise<Record<string, string>> {
+export async function laadFonts(): Promise<Record<string, string>> {
   if (fontCache) return fontCache;
   const namen = ['Inter-Regular.ttf', 'Inter-Bold.ttf', 'Inter-ExtraBold.ttf'];
   const inhoud = await Promise.all(namen.map((n) => readFile(path.join(FONT_MAP, n))));
@@ -80,7 +80,7 @@ async function laadFonts(): Promise<Record<string, string>> {
   return fontCache;
 }
 
-function zetFonts(doc: jsPDF, fonts: Record<string, string>) {
+export function zetFonts(doc: jsPDF, fonts: Record<string, string>) {
   for (const [bestand, stijl] of [
     ['Inter-Regular.ttf', 'normal'],
     ['Inter-Bold.ttf', 'bold'],
@@ -92,14 +92,14 @@ function zetFonts(doc: jsPDF, fonts: Record<string, string>) {
   doc.setFont('Inter', 'normal');
 }
 
-interface Beeld {
+export interface Beeld {
   data: Uint8Array;
   soort: 'PNG' | 'JPEG';
   ratio: number;
 }
 
 /** Een logo als PNG (met doorzichtigheid), maximaal 800 px breed. */
-async function laadLogo(url: string | null | undefined, origin?: string): Promise<Beeld | null> {
+export async function laadLogo(url: string | null | undefined, origin?: string): Promise<Beeld | null> {
   const bestand = await haalFoto(url, origin);
   if (!bestand) return null;
   try {
@@ -111,7 +111,7 @@ async function laadLogo(url: string | null | undefined, origin?: string): Promis
 }
 
 /** Een foto verkleind tot een kleine JPEG, rechtop gedraaid volgens de EXIF. */
-async function laadFotoKlein(url: string | null, origin?: string): Promise<Beeld | null> {
+export async function laadFotoKlein(url: string | null, origin?: string): Promise<Beeld | null> {
   if (!url) return null;
   const bestand = await haalFoto(url, origin);
   if (!bestand) return null;
@@ -129,7 +129,7 @@ async function laadFotoKlein(url: string | null, origin?: string): Promise<Beeld
 }
 
 /** Een paar tegelijk, zodat de server niet honderd verzoeken tegelijk doet. */
-async function perStuk<T, U>(lijst: T[], tegelijk: number, werk: (x: T) => Promise<U>): Promise<U[]> {
+export async function perStuk<T, U>(lijst: T[], tegelijk: number, werk: (x: T) => Promise<U>): Promise<U[]> {
   const uit: U[] = new Array(lijst.length);
   let volgende = 0;
   const werker = async () => {
@@ -143,7 +143,7 @@ async function perStuk<T, U>(lijst: T[], tegelijk: number, werk: (x: T) => Promi
 }
 
 /** Een beeld passend in een vak, gecentreerd. */
-function tekenBeeld(doc: jsPDF, beeld: Beeld, x: number, y: number, b: number, h: number) {
+export function tekenBeeld(doc: jsPDF, beeld: Beeld, x: number, y: number, b: number, h: number) {
   let w = b;
   let hh = b / beeld.ratio;
   if (hh > h) {
@@ -151,6 +151,82 @@ function tekenBeeld(doc: jsPDF, beeld: Beeld, x: number, y: number, b: number, h
     w = h * beeld.ratio;
   }
   doc.addImage(beeld.data, beeld.soort, x + (b - w) / 2, y + (h - hh) / 2, w, hh, undefined, 'FAST');
+}
+
+// ------------------------------------------------------------------
+// Kop en voet, gedeeld met het inspectierapport (lib/rapport/inspectieRapportPdf.ts)
+// ------------------------------------------------------------------
+
+/**
+ * De kop van pagina 1: logo van de klant (of zijn naam) links, "uitgevoerd
+ * door" It's Done Services rechts, daaronder de navy band met titel en een
+ * regel eronder, en de oranje streep. Eindigt op y = 59,2 mm.
+ */
+export function tekenKop(
+  doc: jsPDF,
+  k: { klantLogo: Beeld | null; idsLogo: Beeld | null; klantNaam: string; titel: string; onder: string }
+) {
+  const W = doc.internal.pageSize.getWidth();
+  let y = 12;
+  if (k.klantLogo) {
+    tekenBeeld(doc, k.klantLogo, MARGE, y, Math.min(48, 11 * k.klantLogo.ratio), 11);
+  } else {
+    doc.setFont('Inter', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(...NAVY);
+    doc.text(k.klantNaam, MARGE, y + 7.5);
+  }
+  if (k.idsLogo) {
+    const lb = 38;
+    const lh = lb / k.idsLogo.ratio;
+    tekenBeeld(doc, k.idsLogo, W - MARGE - lb, y + (11 - lh) / 2, lb, lh);
+    doc.setFont('Inter', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...GRIJS_500);
+    doc.text('uitgevoerd door', W - MARGE - lb - 2.5, y + 6.8, { align: 'right' });
+  }
+  y = 28;
+  doc.setFillColor(...NAVY);
+  doc.rect(0, y, W, 30, 'F');
+  doc.setFont('Inter', 'extrabold');
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text(k.titel, MARGE, y + 13);
+  doc.setFont('Inter', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...BAND_TEKST);
+  doc.text(k.onder, MARGE, y + 21);
+  // Oranje streep: het ene accent van de pagina.
+  doc.setFillColor(...ORANJE);
+  doc.rect(0, y + 30, W, 1.2, 'F');
+}
+
+/** Onderaan elke pagina de contactgegevens en het paginanummer (dat laatste kan uit). */
+export function tekenVoet(doc: jsPDF, opties: { nummers?: boolean } = {}) {
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const paginas = doc.getNumberOfPages();
+  for (let p = 1; p <= paginas; p++) {
+    doc.setPage(p);
+    doc.setDrawColor(...GRIJS_200);
+    doc.setLineWidth(0.2);
+    doc.line(MARGE, H - 12, W - MARGE, H - 12);
+    doc.setFont('Inter', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...GRIJS_500);
+    doc.text(`${CONTACT.naam}   ${CONTACT.telefoon}   ${CONTACT.email}`, MARGE, H - 7.5);
+    if (opties.nummers !== false) doc.text(`Pagina ${p} van ${paginas}`, W - MARGE, H - 7.5, { align: 'right' });
+  }
+}
+
+/** Een bestandsnaam zonder rare tekens: mourik-infra-b-v */
+export function schoneNaam(tekst: string): string {
+  return tekst
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
 // ------------------------------------------------------------------
@@ -185,38 +261,8 @@ export async function maakRapportPdf(opdracht: Opdracht, opties: RapportOpties =
   ]);
 
   // ---------- Kop ----------
-  let y = 12;
-  if (klantLogo) {
-    tekenBeeld(doc, klantLogo, MARGE, y, Math.min(48, 11 * klantLogo.ratio), 11);
-  } else {
-    doc.setFont('Inter', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(...NAVY);
-    doc.text(opdracht.klant.naam, MARGE, y + 7.5);
-  }
-  if (idsLogo) {
-    const lb = 38;
-    const lh = lb / idsLogo.ratio;
-    tekenBeeld(doc, idsLogo, W - MARGE - lb, y + (11 - lh) / 2, lb, lh);
-    doc.setFont('Inter', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...GRIJS_500);
-    doc.text('uitgevoerd door', W - MARGE - lb - 2.5, y + 6.8, { align: 'right' });
-  }
-  y = 28;
-  doc.setFillColor(...NAVY);
-  doc.rect(0, y, W, 30, 'F');
-  doc.setFont('Inter', 'extrabold');
-  doc.setFontSize(20);
-  doc.setTextColor(255, 255, 255);
-  doc.text(`Oliemonsters ${opdracht.jaar}`, MARGE, y + 13);
-  doc.setFont('Inter', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(...BAND_TEKST);
-  doc.text(`${opdracht.klant.naam}, stand van ${datumLang(nu)}`, MARGE, y + 21);
-  // Oranje streep: het ene accent van de pagina.
-  doc.setFillColor(...ORANJE);
-  doc.rect(0, y + 30, W, 1.2, 'F');
+  tekenKop(doc, { klantLogo, idsLogo, klantNaam: opdracht.klant.naam, titel: `Oliemonsters ${opdracht.jaar}`, onder: `${opdracht.klant.naam}, stand van ${datumLang(nu)}` });
+  let y: number;
 
   // ---------- Voortgang ----------
   y = 72;
@@ -406,18 +452,7 @@ export async function maakRapportPdf(opdracht: Opdracht, opties: RapportOpties =
   }
 
   // ---------- Voet op elke pagina ----------
-  const paginas = doc.getNumberOfPages();
-  for (let p = 1; p <= paginas; p++) {
-    doc.setPage(p);
-    doc.setDrawColor(...GRIJS_200);
-    doc.setLineWidth(0.2);
-    doc.line(MARGE, H - 12, W - MARGE, H - 12);
-    doc.setFont('Inter', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(...GRIJS_500);
-    doc.text(`${CONTACT.naam}   ${CONTACT.telefoon}   ${CONTACT.email}`, MARGE, H - 7.5);
-    doc.text(`Pagina ${p} van ${paginas}`, W - MARGE, H - 7.5, { align: 'right' });
-  }
+  tekenVoet(doc);
 
   return Buffer.from(doc.output('arraybuffer'));
 }

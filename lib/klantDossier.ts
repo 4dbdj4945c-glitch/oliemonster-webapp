@@ -7,23 +7,29 @@
 // - niet-bereikbaar: de plek was niet te bereiken (reden, omschrijving, foto)
 // - geannuleerd: het monster hoeft niet meer (reden)
 // - open: moet nog, met de monsterdag als het gepland is
-// Keuringen en werkzaamheden komen er later bij (eigen module), met hetzelfde
-// type Moment.
+// - inspectie: een inspectie (persluchtlekken, arbeidsmiddelen), op het object
+//   en, bij arbeidsmiddelen, ook per arbeidsmiddel dat een installatie is (dat
+//   moment heeft `onderdeel`, zodat het bij het object niet dubbel staat)
 
 import { prisma } from './prisma';
 import { actiefFilter } from './verwijderdeMonsters';
 import { monstersVanKlant } from './afscherming';
 import { fotoAdres, metInstallatieFoto } from './fotoAdres';
 import { haalOpdracht, jarenVanKlant, nlDag } from './klantOpdracht';
+import { INSPECTIE_SELECT } from './inspecties/server';
+import { inspectieNummer, oordeelVan, sjabloonVan, type SjabloonSleutel } from './inspecties/sjablonen';
+import { uitkomstTekst, volgendeInspectie } from './inspecties/rekenen';
 
-export type MomentSoort = 'monster' | 'poging' | 'niet-bereikbaar' | 'geannuleerd' | 'open';
+export type MomentSoort = 'monster' | 'poging' | 'niet-bereikbaar' | 'geannuleerd' | 'open' | 'inspectie';
 
 export interface Moment {
   sleutel: string;
   soort: MomentSoort;
   /** jjjj-mm-dd, of null voor een open monster zonder monsterdag */
   datum: string | null;
-  monsterId: number;
+  /** null bij een inspectie */
+  monsterId: number | null;
+  /** O-nummer, of bij een inspectie het nummer (INS-12) */
   oNumber: string;
   jaar: number;
   objectId: number | null;
@@ -34,6 +40,18 @@ export interface Moment {
   gepland?: boolean;
   fotos: { url: string; label: string }[];
   door: string | null;
+  /** Alleen bij een inspectie */
+  inspectie?: {
+    id: number;
+    sjabloon: string;
+    status: string;
+    /** Bij een moment per arbeidsmiddel: de uitslag */
+    oordeel: string | null;
+    volgende: string | null;
+    rapport: string;
+  };
+  /** Moment van één arbeidsmiddel binnen een inspectie: alleen bij de installatie tonen. */
+  onderdeel?: boolean;
 }
 
 export async function haalDossier(klantId: number, jaar: number | null) {
@@ -154,6 +172,51 @@ export async function haalDossier(klantId: number, jaar: number | null) {
       });
     }
   }
+  // Inspecties van deze klant (ook concepten: dit is het dossier van de beheerder).
+  const inspecties = await prisma.inspectie.findMany({
+    where: {
+      klantId,
+      deletedAt: null,
+      ...(jaar !== null ? { datum: { gte: new Date(Date.UTC(jaar, 0, 1)), lt: new Date(Date.UTC(jaar + 1, 0, 1)) } } : {}),
+    },
+    orderBy: { datum: 'desc' },
+    select: INSPECTIE_SELECT,
+  });
+  for (const i of inspecties) {
+    const sjabloon = i.sjabloon as SjabloonSleutel;
+    const s = sjabloonVan(sjabloon);
+    const nummer = inspectieNummer(i.id);
+    const rapport = `/api/inspecties/${i.id}/rapport`;
+    const volgende = volgendeInspectie(sjabloon, i.volgendeOp, i.items);
+    const basis = { monsterId: null, oNumber: nummer, jaar: new Date(i.datum).getUTCFullYear(), objectId: i.objectId, soort: 'inspectie' as const, datum: nlDag(i.datum), door: i.uitvoerder };
+    momenten.push({
+      ...basis,
+      sleutel: `inspectie-${i.id}`,
+      installatieId: i.installatieId,
+      titel: `${s.naam}, ${nummer}`,
+      tekst: [uitkomstTekst(sjabloon, i.items, i.instellingen), i.samenvatting].filter(Boolean).join('. '),
+      fotos: i.items
+        .filter((it) => it.fotoUrl)
+        .slice(0, 4)
+        .map((it) => ({ url: fotoAdres('inspectie', it.id, null, it.fotoUrl)!, label: `${s.item.enkel} ${it.titel}` })),
+      inspectie: { id: i.id, sjabloon, status: i.status, oordeel: null, volgende, rapport },
+    });
+    if (!s.volgendePerItem) continue;
+    for (const it of i.items) {
+      if (!it.installatieId || it.installatieId === i.installatieId) continue;
+      momenten.push({
+        ...basis,
+        sleutel: `inspectie-${i.id}-${it.id}`,
+        installatieId: it.installatieId,
+        titel: `${s.naam}, ${nummer}`,
+        tekst: [oordeelVan(s, it.oordeel)?.label, it.notitie].filter(Boolean).join('. ') || null,
+        fotos: it.fotoUrl ? [{ url: fotoAdres('inspectie', it.id, null, it.fotoUrl)!, label: it.titel }] : [],
+        inspectie: { id: i.id, sjabloon, status: i.status, oordeel: it.oordeel, volgende: it.volgendeOp ? nlDag(it.volgendeOp) : volgende, rapport },
+        onderdeel: true,
+      });
+    }
+  }
+
   // Open zonder datum bovenaan, dan nieuwste eerst.
   momenten.sort((a, b) => {
     if (a.datum === b.datum) return a.oNumber.localeCompare(b.oNumber, 'nl');
@@ -162,8 +225,14 @@ export async function haalDossier(klantId: number, jaar: number | null) {
     return b.datum.localeCompare(a.datum);
   });
 
+  // Jaren met inspecties maar zonder monsters staan er ook in de jaarkeuze.
+  const inspectieJaren = (
+    await prisma.inspectie.findMany({ where: { klantId, deletedAt: null }, select: { datum: true } })
+  ).map((i) => new Date(i.datum).getUTCFullYear());
+
   return {
     jaren,
+    inspectieJaren: [...new Set(inspectieJaren)].sort((a, b) => b - a),
     jaar,
     objecten: objecten.map((o) => ({ ...o, installaties: o.installaties.map(metInstallatieFoto) })),
     heeftLosseMonsters: monsters.some((m) => m.objectId === null),

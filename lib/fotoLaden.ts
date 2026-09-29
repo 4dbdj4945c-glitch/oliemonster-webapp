@@ -1,5 +1,5 @@
-// Een foto ophalen op de server, voor de fotoroute (/api/fotos/...) en het
-// rapport. Alleen op de server.
+// Een foto (of een document uit het eigen dossier) ophalen op de server, voor
+// de fotoroute (/api/fotos/...), de rapporten en het inhuurdossier. Alleen op de server.
 //
 // - Een pad in /public (/mourik_logo.png, /nepdata/potje-1.jpg, oude /uploads/...):
 //   van de schijf gelezen, nooit buiten public/. Op Vercel staat public/ niet
@@ -25,6 +25,7 @@ const TYPES: Record<string, string> = {
   '.gif': 'image/gif',
   '.heic': 'image/heic',
   '.svg': 'image/svg+xml',
+  '.pdf': 'application/pdf',
 };
 
 /** Is dit een pad binnen de eigen portal (public/)? */
