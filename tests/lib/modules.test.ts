@@ -39,7 +39,11 @@ describe('moduleregister', () => {
     expect(gebruiker).not.toContain('klanten');
     expect(gebruiker).not.toContain('instellingen');
     expect(modulesVoor('admin', 'Beheer').map((m) => m.sleutel)).toEqual(['objecten', 'eigen-dossier', 'instellingen']);
-    expect(modulesVoor('admin', 'Rapportage').map((m) => m.sleutel)).toEqual(['inspecties', 'audit-logs']);
+    expect(modulesVoor('admin', 'Rapportage').map((m) => m.sleutel)).toEqual(['inspecties', 'dagrapporten', 'audit-logs']);
+    expect(modulesVoor('admin', 'Klanten').map((m) => m.sleutel)).toEqual(['klanten', 'installaties', 'contracten', 'acquisitie', 'mail']);
+    // Contracten en dagrapporten leest een gebruiker mee; een kijker ziet ze nooit als module.
+    expect(gebruiker).toContain('contracten');
+    expect(gebruiker).toContain('dagrapporten');
     // Inspecties leest een gebruiker mee, het eigen dossier is alleen voor de beheerder.
     expect(gebruiker).toContain('inspecties');
     expect(gebruiker).not.toContain('eigen-dossier');
