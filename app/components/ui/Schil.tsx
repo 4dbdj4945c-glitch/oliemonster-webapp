@@ -25,6 +25,7 @@ import Icon from './Icon';
 import type { IconNaam } from './icons/namen';
 import { MenuItem, ToolbarMenu, initiaal } from './Menu';
 import type { AppShellProps, ShellUser } from './AppShell';
+import AgendaVenster from '../AgendaVenster';
 
 const TAB_INFO: Record<Exclude<NavTab, 'vandaag'>, { naam: string; icoon: IconNaam }> = {
   Werk: { naam: 'Werk', icoon: 'calendar' },
@@ -53,6 +54,7 @@ export default function Schil({
   const [paneelOp, setPaneelOp] = useState<{ tab: Exclude<NavTab, 'vandaag'>; pad: string } | null>(null);
   const paneel = paneelOp && paneelOp.pad === pad ? paneelOp.tab : null;
   const setPaneel = (t: Exclude<NavTab, 'vandaag'> | null) => setPaneelOp(t ? { tab: t, pad } : null);
+  const [agendaOpen, setAgendaOpen] = useState(false);
 
   // Dicht bij Escape.
   useEffect(() => {
@@ -124,6 +126,7 @@ export default function Schil({
           >
             {gebruikerKop}
             <span className="toolbar-menu-scheiding" />
+            <MenuItem icon={<Icon name="agenda-feed" />} onClick={() => setAgendaOpen(true)}>Agenda-abonnement</MenuItem>
             {isAdmin && <MenuItem icon={<Icon name="printer" />} onClick={afdrukken}>Afdrukken</MenuItem>}
             <MenuItem icon={<Icon name="logout" />} danger onClick={uitloggen}>Uitloggen</MenuItem>
           </ToolbarMenu>
@@ -150,6 +153,7 @@ export default function Schil({
           >
             {gebruikerKop}
             <span className="toolbar-menu-scheiding" />
+            <MenuItem icon={<Icon name="agenda-feed" />} onClick={() => setAgendaOpen(true)}>Agenda-abonnement</MenuItem>
             <MenuItem icon={<Icon name="logout" />} danger onClick={uitloggen}>Uitloggen</MenuItem>
           </ToolbarMenu>
         </div>
@@ -226,6 +230,10 @@ export default function Schil({
                     Help bij deze pagina
                   </button>
                 )}
+                <button type="button" className="paneel-item" onClick={() => { setPaneel(null); setAgendaOpen(true); }}>
+                  <Icon name="agenda-feed" />
+                  Agenda-abonnement
+                </button>
                 {isAdmin && (
                   <button type="button" className="paneel-item" onClick={() => { setPaneel(null); afdrukken(); }}>
                     <Icon name="printer" />
@@ -241,6 +249,8 @@ export default function Schil({
           </div>
         </div>
       )}
+
+      {agendaOpen && <AgendaVenster open onClose={() => setAgendaOpen(false)} />}
     </div>
   );
 }

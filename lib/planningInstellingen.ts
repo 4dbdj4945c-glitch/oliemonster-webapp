@@ -32,6 +32,8 @@ export const PLANNING = {
    * (lib/contracten.ts, TAAK_SOORT_INFO).
    */
   inspectieMinuten: 180,
+  /** Hoe laat een werkdag begint, voor de afspraak in de agendafeed (minuten na middernacht) */
+  dagStartMinuut: 8 * 60,
 } as const;
 
 /** Is deze datum een werkdag volgens de instellingen hierboven? */
