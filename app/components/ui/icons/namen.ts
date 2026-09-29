@@ -16,6 +16,7 @@ import {
   CircleCheck,
   CirclePlay,
   CircleQuestionMark,
+  ClipboardCheck,
   ClipboardList,
   Clock,
   Columns3,
@@ -25,7 +26,11 @@ import {
   ExternalLink,
   FileClock,
   FileDown,
+  FileText,
+  Files,
+  FolderCheck,
   Funnel,
+  Gauge,
   Globe,
   Handshake,
   Hash,
@@ -59,6 +64,7 @@ import {
   Upload,
   User,
   UserPlus,
+  Wind,
   X,
 } from 'lucide-react';
 import {
@@ -161,6 +167,12 @@ export const ICONEN = {
   'alert-warning': TriangleAlert,
   'alert-danger': OctagonAlert,
   'empty': Inbox,
+  'module-inspecties': ClipboardCheck,
+  'module-eigen-dossier': FolderCheck,
+  'air-leak': Wind,
+  'gauge': Gauge,
+  'document': FileText,
+  'file-bundle': Files,
 } satisfies Record<string, LucideIcon>;
 
 export type IconNaam = keyof typeof ICONEN;
