@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/toegang';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { foutAntwoord } from '@/lib/planningApi';
+import { TABEL_ONTBREEKT_PLANNING } from '@/lib/planningApi';
+import { apiRoute, ApiFout, leesId, leesJson } from '@/lib/apiRoute';
 
 /**
  * POST - Object samenvoegen: alle monsters en geplande stops van dit object
@@ -11,30 +12,29 @@ import { foutAntwoord } from '@/lib/planningApi';
  * monsters of planning kwijtraakt.
  *
  * Staan beide objecten op dezelfde dag in de planning, dan worden die twee stops
- * een stop en gaan de monsterkeuzes samen.
+ * een stop en gaan de monsterkeuzes samen. Installaties gaan ook mee naar het
+ * doelobject (met de monsters die eraan hangen).
  */
-export const POST = withAuth({ rol: 'admin', module: 'objecten' }, async (
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-  session
-) => {
-  try {
-    const { id } = await params;
-    const vanId = parseInt(id);
-    const body = await request.json().catch(() => ({}));
-    const naarId = parseInt(String(body.doelId ?? ''));
-    if (Number.isNaN(vanId) || Number.isNaN(naarId)) {
-      return NextResponse.json({ error: 'Onbekend object' }, { status: 400 });
-    }
-    if (vanId === naarId) {
-      return NextResponse.json({ error: 'Kies twee verschillende objecten' }, { status: 400 });
-    }
+const SamenvoegSchema = z.object({
+  doelId: z.coerce.number({ error: 'Onbekend object' }).int({ error: 'Onbekend object' }).positive({ error: 'Onbekend object' }),
+});
+
+export const POST = apiRoute(
+  { rol: 'admin', module: 'objecten', fout: 'Fout bij samenvoegen van de objecten', ontbreekt: TABEL_ONTBREEKT_PLANNING },
+  async (request, context, session) => {
+    const vanId = await leesId(context, 'Onbekend object');
+    const { doelId: naarId } = await leesJson(request, SamenvoegSchema);
+    if (vanId === naarId) throw new ApiFout(400, 'Kies twee verschillende objecten');
 
     const van = await prisma.sampleObject.findUnique({ where: { id: vanId }, select: { id: true, name: true } });
     const naar = await prisma.sampleObject.findUnique({ where: { id: naarId }, select: { id: true, name: true } });
-    if (!van || !naar) {
-      return NextResponse.json({ error: 'Object niet gevonden' }, { status: 404 });
-    }
+    if (!van || !naar) throw new ApiFout(404, 'Object niet gevonden');
+
+    // Installaties mee, anders blokkeert de database het verwijderen van het object.
+    const installaties = await prisma.installatie.updateMany({
+      where: { objectId: vanId },
+      data: { objectId: naarId },
+    });
 
     // Monsters mee
     const monsters = await prisma.oilSample.updateMany({
@@ -81,6 +81,7 @@ export const POST = withAuth({ rol: 'admin', module: 'objecten' }, async (
         van: van.name,
         naar: naar.name,
         monsters: monsters.count,
+        installaties: installaties.count,
         stopsVerhuisd,
         stopsSamengevoegd,
       },
@@ -93,10 +94,8 @@ export const POST = withAuth({ rol: 'admin', module: 'objecten' }, async (
       stopsVerhuisd,
       stopsSamengevoegd,
     });
-  } catch (error) {
-    return foutAntwoord(error, 'Fout bij samenvoegen van de objecten');
   }
-});
+);
 
 /** JSON-lijst met monster-ids; null of leeg betekent "alles wat openstaat". */
 function leesIds(waarde: string | null): number[] | null {

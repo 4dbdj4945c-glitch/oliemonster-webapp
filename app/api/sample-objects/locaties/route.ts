@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/toegang';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { foutAntwoord } from '@/lib/planningApi';
+import { TABEL_ONTBREEKT_PLANNING } from '@/lib/planningApi';
+import { apiRoute, ApiFout, jaarSchema, leesJson, leesQuery, optioneelId } from '@/lib/apiRoute';
 import { raadKunstwerk } from '@/lib/sampleObjects';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 
@@ -47,114 +48,103 @@ async function haalGroepen(jaar: number) {
 }
 
 // GET - Alle locatieteksten van een jaar, met voorstel.
-export const GET = withAuth({ rol: 'user', module: 'objecten' }, async (request: NextRequest) => {
-  try {
-    const { searchParams } = new URL(request.url);
-    const jaar = parseInt(searchParams.get('year') ?? '');
-    if (Number.isNaN(jaar)) {
-      return NextResponse.json({ error: 'Kies een analysejaar' }, { status: 400 });
-    }
+const OPTIES = { module: 'objecten', ontbreekt: TABEL_ONTBREEKT_PLANNING } as const;
 
-    const objecten = await prisma.sampleObject.findMany({
-      select: { id: true, name: true, objectType: true, region: true },
-      orderBy: [{ name: 'asc' }],
-    });
-    const opId = new Map(objecten.map((o) => [o.id, o]));
+export const GET = apiRoute({ rol: 'user', ...OPTIES, fout: 'Fout bij ophalen van de locaties' }, async (request) => {
+  const { year: jaar } = leesQuery(request, z.object({ year: jaarSchema }));
 
-    const groepen = await haalGroepen(jaar);
+  const objecten = await prisma.sampleObject.findMany({
+    select: { id: true, name: true, objectType: true, region: true },
+    orderBy: [{ name: 'asc' }],
+  });
+  const opId = new Map(objecten.map((o) => [o.id, o]));
 
-    const regels = [...groepen.values()].map((g) => {
-      const voorstel = g.locatie
-        ? raadKunstwerk([g.locatie, ...g.tekst].join(' '), objecten)
-        : { objectId: null, reden: 'Dit monster heeft geen locatietekst, kies zelf.' };
+  const groepen = await haalGroepen(jaar);
 
-      const huidig = [...g.objecten.entries()]
-        .filter(([id]) => id !== null)
-        .map(([id, aantal]) => ({
-          id: id as number,
-          naam: opId.get(id as number)?.name ?? 'Onbekend object',
-          aantal,
-        }))
-        .sort((a, b) => b.aantal - a.aantal);
+  const regels = [...groepen.values()].map((g) => {
+    const voorstel = g.locatie
+      ? raadKunstwerk([g.locatie, ...g.tekst].join(' '), objecten)
+      : { objectId: null, reden: 'Dit monster heeft geen locatietekst, kies zelf.' };
 
-      return {
-        locatie: g.locatie,
-        aantalMonsters: g.monsterIds.length,
-        huidigeObjecten: huidig,
-        aantalZonderObject: g.objecten.get(null) ?? 0,
-        voorstelObjectId: voorstel.objectId,
-        voorstelReden: voorstel.reden,
-      };
-    });
+    const huidig = [...g.objecten.entries()]
+      .filter(([id]) => id !== null)
+      .map(([id, aantal]) => ({
+        id: id as number,
+        naam: opId.get(id as number)?.name ?? 'Onbekend object',
+        aantal,
+      }))
+      .sort((a, b) => b.aantal - a.aantal);
 
-    regels.sort((a, b) => a.locatie.localeCompare(b.locatie, 'nl'));
+    return {
+      locatie: g.locatie,
+      aantalMonsters: g.monsterIds.length,
+      huidigeObjecten: huidig,
+      aantalZonderObject: g.objecten.get(null) ?? 0,
+      voorstelObjectId: voorstel.objectId,
+      voorstelReden: voorstel.reden,
+    };
+  });
 
-    return NextResponse.json({
-      analysisYear: jaar,
-      objecten,
-      regels,
-      aantalLosseLocaties: regels.filter((r) => r.huidigeObjecten.length === 0).length,
-    });
-  } catch (error) {
-    return foutAntwoord(error, 'Fout bij ophalen van de locaties');
-  }
+  regels.sort((a, b) => a.locatie.localeCompare(b.locatie, 'nl'));
+
+  return NextResponse.json({
+    analysisYear: jaar,
+    objecten,
+    regels,
+    aantalLosseLocaties: regels.filter((r) => r.huidigeObjecten.length === 0).length,
+  });
 });
 
 // POST - Alle monsters van een jaar met deze locatietekst aan een kunstwerk
 // hangen. `objectId: null` maakt ze juist los. Alleen admin.
-export const POST = withAuth({ rol: 'admin', module: 'objecten' }, async (request: NextRequest, _context, session) => {
-  try {
-    const body = await request.json().catch(() => ({}));
-    const jaar = parseInt(String(body.analysisYear ?? ''));
-    if (Number.isNaN(jaar)) {
-      return NextResponse.json({ error: 'Kies een analysejaar' }, { status: 400 });
-    }
-    if (typeof body.location !== 'string') {
-      return NextResponse.json({ error: 'Onbekende locatie' }, { status: 400 });
-    }
-    const locatie = body.location.trim();
+const KoppelSchema = z.object({
+  analysisYear: jaarSchema,
+  location: z.string({ error: 'Onbekende locatie' }),
+  objectId: optioneelId('Onbekend kunstwerk'),
+});
 
-    let objectId: number | null = null;
-    if (body.objectId !== null && body.objectId !== undefined && body.objectId !== '') {
-      objectId = parseInt(String(body.objectId));
-      if (Number.isNaN(objectId)) {
-        return NextResponse.json({ error: 'Onbekend kunstwerk' }, { status: 400 });
-      }
-      const object = await prisma.sampleObject.findUnique({
-        where: { id: objectId },
-        select: { id: true, name: true },
-      });
-      if (!object) {
-        return NextResponse.json({ error: 'Kunstwerk niet gevonden' }, { status: 404 });
-      }
-    }
+export const POST = apiRoute({ rol: 'admin', ...OPTIES, fout: 'Fout bij koppelen van de locatie' }, async (request, _context, session) => {
+  const body = await leesJson(request, KoppelSchema);
+  const jaar = body.analysisYear;
+  const locatie = body.location.trim();
 
-    // De groep opnieuw bepalen op de server, hoofdletterongevoelig, zodat we
-    // precies dezelfde monsters raken als in het overzicht.
-    const groepen = await haalGroepen(jaar);
-    const groep = groepen.get(locatie.toLowerCase());
-    if (!groep) {
-      return NextResponse.json(
-        { error: `Geen monsters van ${jaar} met de locatie "${locatie}"` },
-        { status: 404 }
-      );
-    }
-
-    const resultaat = await prisma.oilSample.updateMany({
-      where: { id: { in: groep.monsterIds } },
-      data: { objectId },
+  const objectId = body.objectId ?? null;
+  if (objectId !== null) {
+    const object = await prisma.sampleObject.findUnique({
+      where: { id: objectId },
+      select: { id: true, name: true },
     });
-
-    await createAuditLog({
-      userId: session.userId,
-      username: session.username || 'unknown',
-      action: AuditActions.LINK_LOCATION_OBJECT,
-      details: { analysisYear: jaar, locatie, objectId, bijgewerkt: resultaat.count },
-      request,
-    });
-
-    return NextResponse.json({ success: true, bijgewerkt: resultaat.count });
-  } catch (error) {
-    return foutAntwoord(error, 'Fout bij koppelen van de locatie');
+    if (!object) throw new ApiFout(404, 'Kunstwerk niet gevonden');
   }
+
+  // De groep opnieuw bepalen op de server, hoofdletterongevoelig, zodat we
+  // precies dezelfde monsters raken als in het overzicht.
+  const groepen = await haalGroepen(jaar);
+  const groep = groepen.get(locatie.toLowerCase());
+  if (!groep) throw new ApiFout(404, `Geen monsters van ${jaar} met de locatie "${locatie}"`);
+
+  // Wie naar een ander object gaat, verliest zijn installatie: die hoort bij het oude object.
+  await prisma.oilSample.updateMany({
+    where: {
+      id: { in: groep.monsterIds },
+      installatieId: { not: null },
+      ...(objectId === null ? {} : { OR: [{ objectId: null }, { objectId: { not: objectId } }] }),
+    },
+    data: { installatieId: null },
+  });
+
+  const resultaat = await prisma.oilSample.updateMany({
+    where: { id: { in: groep.monsterIds } },
+    data: { objectId },
+  });
+
+  await createAuditLog({
+    userId: session.userId,
+    username: session.username || 'unknown',
+    action: AuditActions.LINK_LOCATION_OBJECT,
+    details: { analysisYear: jaar, locatie, objectId, bijgewerkt: resultaat.count },
+    request,
+  });
+
+  return NextResponse.json({ success: true, bijgewerkt: resultaat.count });
 });

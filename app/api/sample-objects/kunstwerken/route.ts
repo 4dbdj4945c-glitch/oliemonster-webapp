@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { withAuth } from '@/lib/toegang';
+import { NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { foutAntwoord } from '@/lib/planningApi';
+import { TABEL_ONTBREEKT_PLANNING } from '@/lib/planningApi';
+import { apiRoute, leesJson } from '@/lib/apiRoute';
 import { KUNSTWERKEN } from '@/lib/sampleObjects';
 
 /**
@@ -12,11 +13,13 @@ import { KUNSTWERKEN } from '@/lib/sampleObjects';
  * plaats.
  *
  * Zonder `uitvoeren: true` krijg je alleen een voorbeeld: wat zou er gebeuren.
- * Een kunstwerk dat al bestaat (zelfde naam) blijft ongemoeid.
+ * Een kunstwerk dat al bestaat (zelfde naam) blijft ongemoeid. Nieuwe
+ * kunstwerken horen bij Mourik, net als de bestaande.
  */
-export const POST = withAuth({ rol: 'admin', module: 'objecten' }, async (request: NextRequest, _context, session) => {
-  try {
-    const body = await request.json().catch(() => ({}));
+export const POST = apiRoute(
+  { rol: 'admin', module: 'objecten', fout: 'Fout bij aanmaken van de kunstwerkenlijst', ontbreekt: TABEL_ONTBREEKT_PLANNING },
+  async (request, _context, session) => {
+    const body = await leesJson(request, z.object({ uitvoeren: z.boolean().optional() }));
     const uitvoeren = body.uitvoeren === true;
 
     const bestaande = await prisma.sampleObject.findMany({ select: { id: true, name: true } });
@@ -39,6 +42,12 @@ export const POST = withAuth({ rol: 'admin', module: 'objecten' }, async (reques
       });
     }
 
+    const mourik = await prisma.klant.findFirst({
+      where: { naam: 'Mourik Infra B.V.', deletedAt: null },
+      orderBy: { id: 'asc' },
+      select: { id: true },
+    });
+
     let aangemaakt = 0;
     for (const k of KUNSTWERKEN) {
       if (opNaam.has(k.naam.toLowerCase())) continue;
@@ -48,6 +57,7 @@ export const POST = withAuth({ rol: 'admin', module: 'objecten' }, async (reques
           region: k.regio,
           objectType: k.type,
           notes: k.notitie ?? null,
+          klantId: mourik?.id ?? null,
         },
       });
       opNaam.add(k.naam.toLowerCase());
@@ -67,7 +77,5 @@ export const POST = withAuth({ rol: 'admin', module: 'objecten' }, async (reques
       aangemaakt,
       overgeslagen: KUNSTWERKEN.length - aangemaakt,
     });
-  } catch (error) {
-    return foutAntwoord(error, 'Fout bij aanmaken van de kunstwerkenlijst');
   }
-});
+);

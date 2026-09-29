@@ -47,57 +47,6 @@ export function tijdInUren(minuten?: number | null): string {
   return `${uren} uur ${rest}`;
 }
 
-/** Leest en controleert de velden van een object uit de request-body. */
-export function leesObject(
-  body: Record<string, unknown>,
-  nieuw: boolean
-): { data: Record<string, unknown> } | { fout: string } {
-  const data: Record<string, unknown> = {};
-
-  if (nieuw || 'name' in body) {
-    const naam = typeof body.name === 'string' ? body.name.trim() : '';
-    if (!naam) return { fout: 'Geef het object een naam' };
-    data.name = naam;
-  }
-
-  for (const veld of ['region', 'address', 'notes'] as const) {
-    if (!(veld in body)) continue;
-    const waarde = typeof body[veld] === 'string' ? (body[veld] as string).trim() : '';
-    data[veld] = waarde === '' ? null : waarde;
-  }
-
-  if ('objectType' in body) {
-    const type = body.objectType;
-    if (type === null || type === '') data.objectType = null;
-    else if (!isObjectType(type)) return { fout: 'Onbekend objecttype' };
-    else data.objectType = type;
-  }
-
-  for (const veld of ['lat', 'lng'] as const) {
-    if (!(veld in body)) continue;
-    const n = getal(body[veld]);
-    if (n === null) { data[veld] = null; continue; }
-    if (veld === 'lat' && (n < -90 || n > 90)) return { fout: 'Breedtegraad ligt buiten het bereik' };
-    if (veld === 'lng' && (n < -180 || n > 180)) return { fout: 'Lengtegraad ligt buiten het bereik' };
-    data[veld] = n;
-  }
-
-  if ('estimatedMinutes' in body) {
-    const n = getal(body.estimatedMinutes);
-    if (n === null) data.estimatedMinutes = null;
-    else if (n < 0 || n > 24 * 60) return { fout: 'De geschatte tijd moet tussen 0 en 24 uur liggen' };
-    else data.estimatedMinutes = Math.round(n);
-  }
-
-  return { data };
-}
-
-function getal(waarde: unknown): number | null {
-  if (waarde === null || waarde === undefined || waarde === '') return null;
-  const n = typeof waarde === 'number' ? waarde : parseFloat(String(waarde).replace(',', '.'));
-  return Number.isNaN(n) ? null : n;
-}
-
 /* ============================================================
    DE VASTE KUNSTWERKENLIJST
    ============================================================
