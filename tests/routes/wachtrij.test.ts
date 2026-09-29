@@ -138,3 +138,20 @@ describe('afgeronde inspectie', () => {
     expect((await wegItem(verzoek(`/api/inspectie-items/${item.id}`, { method: 'DELETE' }), p(item.id))).status).toBe(409);
   });
 });
+
+describe('gestrand verzoek', () => {
+  it('twee herhalingen tegelijk na een gestrand eerste verzoek: één neemt het over, geen dubbele poging', async () => {
+    await inloggenAls('admin', 'admin123');
+    const monsterId = ids.monsters[2026][6];
+    const admin = await prisma.user.findUniqueOrThrow({ where: { username: 'admin' } });
+    await prisma.verzending.create({ data: { sleutel: 'sleutel-gestrand', userId: admin.id, route: `nemen-${monsterId}`, createdAt: new Date(Date.now() - 10 * 60 * 1000) } });
+    const [a, b] = await Promise.all([
+      nemen(nemenVerzoek(monsterId, 'sleutel-gestrand'), p(monsterId)),
+      nemen(nemenVerzoek(monsterId, 'sleutel-gestrand'), p(monsterId)),
+    ]);
+    // De ander krijgt 409 (nog bezig) of, als hij net later kwam, het bewaarde antwoord als herhaling.
+    const tweede = [a, b].filter((r) => r.status === 409 || r.headers.get(HERHALING_HEADER) === '1');
+    expect(tweede).toHaveLength(1);
+    expect(await prisma.sampleAttempt.count({ where: { oilSampleId: monsterId } })).toBe(1);
+  });
+});

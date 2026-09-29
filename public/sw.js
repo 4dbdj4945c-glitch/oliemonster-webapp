@@ -13,10 +13,13 @@
   Alle andere verzoeken (inloggen, opslaan, andere pagina's, foto's, de kijker)
   gaan gewoon door, zonder dat deze worker ze aanraakt.
 
-  Uitloggen wist de bewaarde schermen (wisVeldCache in VeldOffline.tsx).
+  Uitloggen wist de bewaarde schermen (wisVeldCache in VeldOffline.tsx). Elke
+  build heeft een eigen cache; oude caches gaan bij het activeren weg.
 */
 
-const VERSIE = 'ids-veld-v1';
+// Eén cache per build (VeldOffline registreert /sw.js?v=<build>); bij het
+// activeren gaan de caches van eerdere builds weg.
+const VERSIE = `ids-veld-${new URL(self.location.href).searchParams.get('v') || 'v1'}`;
 const PAGINA = /^\/dashboard\/(planning\/dag|inspecties|dagrapporten)\/\d+$/;
 const API = /^\/api\/(sample-plans|inspecties|dagrapporten)\/\d+$/;
 

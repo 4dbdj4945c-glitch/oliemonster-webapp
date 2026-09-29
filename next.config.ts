@@ -4,6 +4,13 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
 
+  // Versie van deze build, voor de cachenaam van de service worker (public/sw.js):
+  // elke deploy een eigen cache, de oude wordt bij het activeren opgeruimd. Geen
+  // nieuwe omgevingsvariabele: de commit van Vercel, anders het bouwmoment.
+  env: {
+    NEXT_PUBLIC_BOUW: (process.env.VERCEL_GIT_COMMIT_SHA ?? String(Date.now())).slice(0, 12),
+  },
+
   // De rapporten (GET /api/rapport, het inspectierapport en het inhuurdossier) lezen de Inter-bestanden van de schijf; die
   // moeten dus mee in de serverfunctie. jsPDF en sharp niet bundelen maar als
   // gewone Node-pakketten laden (jsPDF kiest dan zijn Node-versie).

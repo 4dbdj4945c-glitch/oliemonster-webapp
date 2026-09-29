@@ -17,7 +17,9 @@ export default function VeldOffline({ api }: { api?: string }) {
     if (!window.isSecureContext) return;
     let actueel = true;
     navigator.serviceWorker
-      .register('/sw.js', { scope: '/' })
+      // Per build een eigen adres: de browser ziet dan een nieuwe worker, die de
+      // cache van de vorige build opruimt.
+      .register(`/sw.js?v=${encodeURIComponent(process.env.NEXT_PUBLIC_BOUW ?? 'v1')}`, { scope: '/' })
       .then(() => navigator.serviceWorker.ready)
       .then((reg) => {
         if (!actueel || !reg.active) return;

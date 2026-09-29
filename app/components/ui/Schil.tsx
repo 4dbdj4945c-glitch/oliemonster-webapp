@@ -30,6 +30,7 @@ import Modal from './Modal';
 import WachtrijOverzicht, { wachtTekst } from '../wachtrij/WachtrijOverzicht';
 import { useWachtrij, useWachtrijVerzender } from '../wachtrij/useWachtrij';
 import { wisVeldCache } from '../wachtrij/VeldOffline';
+import { wisWachtrij } from '@/lib/wachtrij';
 
 const TAB_INFO: Record<Exclude<NavTab, 'vandaag'>, { naam: string; icoon: IconNaam }> = {
   Werk: { naam: 'Werk', icoon: 'calendar' },
@@ -81,10 +82,20 @@ export default function Schil({
     return () => document.removeEventListener('keydown', toets);
   }, [paneel]);
 
+  // Eerst wat er op deze telefoon staat (bewaarde veldschermen, de wachtrij),
+  // dan pas uitloggen: zonder bereik mislukt die aanvraag, en dan moet het
+  // wissen toch gebeurd zijn.
   const uitloggen = async () => {
+    if (
+      wachtrij.length > 0 &&
+      !confirm(`Er ${wachtrij.length === 1 ? 'wacht nog 1 invoer' : `wachten nog ${wachtrij.length} invoeren`} op verzending op deze telefoon. Uitloggen wist die. Toch uitloggen?`)
+    ) {
+      return;
+    }
+    await wisVeldCache();
+    await wisWachtrij(user.username);
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
-      await wisVeldCache();
     } finally {
       router.push('/login');
     }

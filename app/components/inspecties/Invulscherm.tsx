@@ -68,8 +68,11 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
 
   // Is er een bevinding uit de wachtrij verstuurd, dan de inspectie opnieuw ophalen.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (inWachtrij < vorigInWachtrij.current && navigator.onLine) laad();
+    if (inWachtrij < vorigInWachtrij.current) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMelding((m) => (m.includes('op deze telefoon bewaard') ? '' : m));
+      if (navigator.onLine) laad();
+    }
     vorigInWachtrij.current = inWachtrij;
   }, [inWachtrij, laad]);
 

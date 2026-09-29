@@ -76,7 +76,7 @@ try {
   await wacht(7000);
   await stuur('Page.reload');
   await wacht(6000);
-  const bewaard = await js(`(async () => { const c = await caches.open('ids-veld-v1'); return (await c.keys()).map((r) => new URL(r.url).pathname); })()`);
+  const bewaard = await js(`(async () => { const c = await caches.keys().then((n) => caches.open(n.find((x) => x.startsWith('ids-veld-')))); return (await c.keys()).map((r) => new URL(r.url).pathname); })()`);
   meld(`Bewaard door de service worker: ${bewaard.filter((p) => !p.startsWith('/_next')).join(', ')} en ${bewaard.filter((p) => p.startsWith('/_next')).length} scripts en stijlen`);
   meld(`Service worker actief: ${await js('!!navigator.serviceWorker.controller')}`);
 

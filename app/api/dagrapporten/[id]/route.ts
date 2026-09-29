@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { apiRoute, ApiFout, leesId, leesJson } from '@/lib/apiRoute';
 import { dagAlsDatum } from '@/lib/inspecties/server';
-import { DagrapportWijzigingSchema, alleenConcept, controleerObject, dagrapportAlsJson, dagrapportNummer, haalDagrapport } from '@/lib/dagrapporten';
+import { DagrapportWijzigingSchema, alleenConcept, wijzigConcept, controleerObject, dagrapportAlsJson, dagrapportNummer, haalDagrapport } from '@/lib/dagrapporten';
 
 /*
   GET    /api/dagrapporten/[id] - het dagrapport met foto's en handtekening (beheerder en gebruiker)
@@ -31,7 +31,7 @@ export const PUT = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout 
   if (invoer.bevindingen !== undefined) data.bevindingen = invoer.bevindingen;
   if (invoer.uren !== undefined) data.minuten = invoer.uren;
   else if (invoer.minuten !== undefined) data.minuten = invoer.minuten;
-  await prisma.dagrapport.update({ where: { id }, data, select: { id: true } });
+  await wijzigConcept(id, data);
   await createAuditLog({ userId: sessie.userId, username: sessie.username, action: AuditActions.UPDATE_DAGRAPPORT, details: { id, velden: Object.keys(data) }, request });
   return NextResponse.json(dagrapportAlsJson(await haalDagrapport(id, sessie)));
 });

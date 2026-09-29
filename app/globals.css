@@ -5309,3 +5309,14 @@ a.rij-tekst.rij-link:hover strong { text-decoration: underline; }
 @media (max-width: 899px) {
   .acq-gebeld { bottom: calc(var(--onderbalk-hoogte) + env(safe-area-inset-bottom) + 12px); left: 16px; right: 16px; width: auto; transform: none; }
 }
+
+/* ---------- Tikdoelen van 44 px op de telefoon (eindtest fase 5) ---------- */
+@media (max-width: 640px) {
+  .moment-links a { min-height: 44px; min-width: 44px; }
+  .vandaag-sectie .sectiekop a { min-width: 44px; justify-content: center; }
+  .contract-kaart-kop .btn { min-height: 44px; }
+  .contract-kaart-kop h2 a { display: inline-flex; align-items: center; min-height: 44px; }
+  .plan-leeg-regel a { display: inline-flex; align-items: center; min-height: 44px; }
+  .eigen-open { min-height: 44px; }
+  .beheer-tabel .kaart-kop .btn-link { display: inline-flex; align-items: center; min-height: 44px; }
+}

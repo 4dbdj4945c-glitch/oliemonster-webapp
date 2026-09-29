@@ -56,8 +56,14 @@ export async function eenmalig(
     if (Date.now() - bestaand.createdAt.getTime() < GESTRAND_MS) {
       throw new ApiFout(409, 'Deze invoer wordt al verwerkt. Probeer het zo nog eens.', { bezig: true });
     }
-    // Gestrand (de server stopte halverwege): opnieuw proberen.
-    await prisma.verzending.update({ where: { sleutel }, data: { createdAt: new Date() } });
+    // Gestrand (de server stopte halverwege): opnieuw proberen. Maar alleen één
+    // herhaling mag hem overnemen: de update lukt alleen als de regel nog precies
+    // zo staat. Komen er twee tegelijk, dan krijgt de tweede een 409.
+    const { count } = await prisma.verzending.updateMany({
+      where: { sleutel, klaarOp: null, createdAt: bestaand.createdAt },
+      data: { createdAt: new Date() },
+    });
+    if (count !== 1) throw new ApiFout(409, 'Deze invoer wordt al verwerkt. Probeer het zo nog eens.', { bezig: true });
   }
 
   let antwoord: Response;

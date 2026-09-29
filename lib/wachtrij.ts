@@ -253,6 +253,15 @@ export const browserOpslag: Opslag = {
   },
 };
 
+/** Bij uitloggen: de wachtrij van deze gebruiker (met de foto's) van de telefoon af. */
+export async function wisWachtrij(gebruiker: string): Promise<void> {
+  try {
+    for (const i of await browserOpslag.alle()) if (i.gebruiker === gebruiker) await browserOpslag.weg(i.sleutel);
+  } catch {
+    // niets te wissen
+  }
+}
+
 /** Zet een invoer in de wachtrij van de browser. */
 export async function inWachtrij(invoer: Omit<Invoer, 'status' | 'pogingen' | 'aangemaakt'> & { aangemaakt?: number }): Promise<void> {
   await browserOpslag.zet({ ...invoer, aangemaakt: invoer.aangemaakt ?? Date.now(), status: 'wacht', pogingen: 0, laatsteFout: null, laatstePoging: null });

@@ -169,9 +169,13 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
     laadDag();
   }, [laadDag]);
 
-  // Is er iets uit de wachtrij verstuurd, dan de dag opnieuw ophalen.
+  // Is er iets uit de wachtrij verstuurd, dan de dag opnieuw ophalen, en de
+  // melding "op deze telefoon bewaard" klopt dan niet meer.
   useEffect(() => {
-    if (aantalInWachtrij < vorigAantal.current && navigator.onLine) laadDag();
+    if (aantalInWachtrij < vorigAantal.current) {
+      setMelding((m) => (m.includes('op deze telefoon bewaard') ? '' : m));
+      if (navigator.onLine) laadDag();
+    }
     vorigAantal.current = aantalInWachtrij;
   }, [aantalInWachtrij, laadDag]);
 
@@ -339,6 +343,9 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
   const genomen = stops.reduce((n, s) => n + s.aantalGenomen, 0);
   const nogTeVersturen = stops.reduce((n, s) => n + s.samples.filter((m) => !m.isTaken && wachtend.has(m.id)).length, 0);
   const bezoeken = stops.filter((s) => !isMonsterStop(s));
+  // Het veldscherm van een andere dag zegt niet Vandaag, maar de datum.
+  const isVandaag = !!dag && datumAlsInvoer(dag.date) === datumAlsInvoer(new Date());
+  const dagWoord = dag ? (isVandaag ? 'vandaag' : korteDatum(dag.date)) : 'vandaag';
   const bezoekStop = stop && !isMonsterStop(stop) ? stop : null;
   const loopt = !!stop?.startedAt && !stop?.endedAt;
   const navigeer = stop ? kaartenLink(stop.object) : null;
@@ -415,7 +422,7 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
 
               <div className="veld-voortgang">
                 <div className="veld-voortgang-tekst">
-                  <span>Vandaag</span>
+                  <span>{isVandaag ? 'Vandaag' : dagWoord.charAt(0).toUpperCase() + dagWoord.slice(1)}</span>
                   <span>
                     <strong>{genomen}</strong> van {totaal} genomen
                   </span>
@@ -617,7 +624,7 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
 
                   {/* De hele dag */}
                   <section className="veld-sectie">
-                    <h2 className="sectiekop">De stops van vandaag</h2>
+                    <h2 className="sectiekop">De stops van {dagWoord}</h2>
                     <ol className="veld-lijst">
                       {stops.map((s, i) => (
                         <li key={s.id}>

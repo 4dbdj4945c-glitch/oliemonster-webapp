@@ -215,9 +215,22 @@ export async function haalDagrapporten(wie: Wie, where: Prisma.DagrapportWhereIn
   return rijen;
 }
 
+export const GETEKEND_MELDING =
+  'Dit dagrapport is getekend. Wis eerst de handtekening als je nog iets wilt wijzigen; de klant tekent dan opnieuw.';
+
+/**
+ * Wijzigt een dagrapport alleen als het op dat moment nog een concept is, in
+ * één update (geen controle en dan los bijwerken): tekent de klant net op een
+ * ander scherm, dan wint niet stil de tweede.
+ */
+export async function wijzigConcept(id: number, data: Prisma.DagrapportUpdateManyMutationInput) {
+  const { count } = await prisma.dagrapport.updateMany({ where: { id, status: 'concept', deletedAt: null }, data });
+  if (count === 0) throw new ApiFout(409, GETEKEND_MELDING);
+}
+
 /** Wijzigen mag alleen bij een concept. */
 export function alleenConcept(rij: Pick<DagrapportRij, 'status'>) {
   if (rij.status === 'getekend') {
-    throw new ApiFout(409, 'Dit dagrapport is getekend. Wis eerst de handtekening als je nog iets wilt wijzigen; de klant tekent dan opnieuw.');
+    throw new ApiFout(409, GETEKEND_MELDING);
   }
 }
