@@ -5279,3 +5279,29 @@ a.rij-tekst.rij-link:hover strong { text-decoration: underline; }
 .wachtrij-balk-kop .wachtrij-balk-lang { display: none; }
 .wachtrij-balk-kop { min-height: 44px; min-width: 44px; justify-content: center; }
 .veld-wachtend { font-size: 14px; color: var(--grijs-700); margin: 6px 0 0; }
+
+/* ---------- Acquisitie: na Bellen in één tik vastleggen (fase 5) ---------- */
+.acq-gebeld {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(560px, calc(100vw - 32px));
+  padding: 10px 10px 10px 16px;
+  background: var(--wit);
+  border: 2px solid var(--navy);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  color: var(--navy);
+  font-size: 15px;
+}
+.acq-gebeld > span { flex: 1; min-width: 0; }
+.acq-gebeld .btn-primary { min-height: 48px; }
+.acq-gebeld-sluit { min-width: 44px; min-height: 44px; }
+@media (max-width: 899px) {
+  .acq-gebeld { bottom: calc(var(--onderbalk-hoogte) + env(safe-area-inset-bottom) + 12px); left: 16px; right: 16px; width: auto; transform: none; }
+}

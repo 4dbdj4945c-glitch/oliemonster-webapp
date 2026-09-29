@@ -43,6 +43,8 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
   const [fout, setFout] = useState('');
   const [bezig, setBezig] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  // Na een tik op het telefoonnummer staat het formulier klaar met kanaal Telefoon.
+  const [contactKanaal, setContactKanaal] = useState<'MAIL' | 'TELEFOON'>('MAIL');
 
   const [status, setStatus] = useState<ProspectStatusNaam>('NIEUW');
   const [volgendeActie, setVolgendeActie] = useState('');
@@ -213,7 +215,15 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
           <Icon name="module-email" size={16} />Mail opstellen
         </a>
         {prospect.telefoon && (
-          <a className="btn btn-sm" href={`tel:${prospect.telefoon.replace(/\s/g, '')}`}>
+          <a
+            className="btn btn-sm"
+            href={`tel:${prospect.telefoon.replace(/\s/g, '')}`}
+            onClick={() => {
+              if (!isAdmin) return;
+              setContactKanaal('TELEFOON');
+              setContactOpen(true);
+            }}
+          >
             <Icon name="phone" size={16} />{prospect.telefoon}
           </a>
         )}
@@ -419,7 +429,7 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
         <div className="card-kop">
           <span className="section-label">Contactmomenten</span>
           {isAdmin && !contactOpen && (
-            <button type="button" className="btn btn-sm" onClick={() => setContactOpen(true)}>
+            <button type="button" className="btn btn-sm" onClick={() => { setContactKanaal('MAIL'); setContactOpen(true); }}>
               <Icon name="plus" size={16} />Contactmoment toevoegen
             </button>
           )}
@@ -428,6 +438,8 @@ export default function ProspectDetail({ prospectId, isAdmin, onGewijzigd, onBew
           {contactOpen && (
             <div style={{ marginBottom: '18px' }}>
               <ProspectContactForm
+                key={contactKanaal}
+                kanaal={contactKanaal}
                 prospect={prospect}
                 onOpgeslagen={async () => { setContactOpen(false); await laad(); onGewijzigd(); }}
                 onAnnuleren={() => setContactOpen(false)}

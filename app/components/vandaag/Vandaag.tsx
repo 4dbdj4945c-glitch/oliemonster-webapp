@@ -262,6 +262,12 @@ export default function Vandaag() {
                             <span className="alleen-desktop">Bellen</span>
                           </a>
                         )}
+                        {p.telefoon && user.role === 'admin' && (
+                          <Link className="btn btn-sm" href={`/dashboard/acquisitie?vastleggen=${p.id}`} aria-label={`Gesprek met ${p.bedrijfsnaam} vastleggen`}>
+                            <Icon name="comment" size={16} />
+                            <span className="alleen-desktop">Vastleggen</span>
+                          </Link>
+                        )}
                         {!p.telefoon && p.email && (
                           <a className="btn btn-sm" href={`mailto:${p.email}`} aria-label={`${p.bedrijfsnaam} mailen`}>
                             <Icon name="mail" size={16} />

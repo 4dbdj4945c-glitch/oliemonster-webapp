@@ -86,6 +86,14 @@ export default function AcquisitiePage() {
   // Vensters
   const [detailId, setDetailId] = useState<number | null>(null);
   const [snelContact, setSnelContact] = useState<ProspectRegel | null>(null);
+  // Bellen in één tik: na een tik op het nummer staat onderaan Gesprek vastleggen klaar.
+  const [snelKanaal, setSnelKanaal] = useState<'MAIL' | 'TELEFOON'>('MAIL');
+  const [gebeld, setGebeld] = useState<ProspectRegel | null>(null);
+  const vastleggen = (p: ProspectRegel, kanaal: 'MAIL' | 'TELEFOON') => {
+    setSnelKanaal(kanaal);
+    setSnelContact(p);
+    setGebeld(null);
+  };
   const [formulierOpen, setFormulierOpen] = useState(false);
   const [bewerktId, setBewerktId] = useState<number | null>(null);
   const [formulier, setFormulier] = useState<Formulier>({ ...leegFormulier });
@@ -109,10 +117,17 @@ export default function AcquisitiePage() {
       setProspects(lijst);
       setGeladen(true);
       setLaadFout('');
-      // Vanaf Vandaag: /dashboard/acquisitie?prospect=12 opent die prospect meteen.
-      const gevraagd = Number(new URLSearchParams(window.location.search).get('prospect'));
+      // Vanaf Vandaag: /dashboard/acquisitie?prospect=12 opent die prospect meteen,
+      // ?vastleggen=12 het gesprek vastleggen (na Bellen op Vandaag).
+      const zoek = new URLSearchParams(window.location.search);
+      const gevraagd = Number(zoek.get('prospect'));
+      const gebeldMet = lijst.find((p) => p.id === Number(zoek.get('vastleggen')));
       if (gevraagd && lijst.some((p) => p.id === gevraagd)) {
         setDetailId(gevraagd);
+        window.history.replaceState(null, '', window.location.pathname);
+      } else if (gebeldMet) {
+        setSnelKanaal('TELEFOON');
+        setSnelContact(gebeldMet);
         window.history.replaceState(null, '', window.location.pathname);
       }
     } catch {
@@ -413,8 +428,18 @@ export default function AcquisitiePage() {
                       </div>
                     </div>
                     <div className="acq-actie-knoppen">
+                      {prospect.telefoon && (
+                        <a
+                          className="btn btn-sm"
+                          href={`tel:${prospect.telefoon.replace(/\s+/g, '')}`}
+                          onClick={() => isAdmin && setGebeld(prospect)}
+                          aria-label={`${prospect.bedrijfsnaam} bellen`}
+                        >
+                          <Icon name="phone" size={16} />Bellen
+                        </a>
+                      )}
                       {isAdmin && (
-                        <button type="button" className="btn btn-sm" onClick={() => setSnelContact(prospect)}>
+                        <button type="button" className="btn btn-sm" onClick={() => vastleggen(prospect, 'MAIL')}>
                           <Icon name="comment" size={16} />Vastleggen
                         </button>
                       )}
@@ -551,11 +576,22 @@ export default function AcquisitiePage() {
                               <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                             ))}
                           </select>
+                          {p.telefoon && (
+                            <a
+                              className="icon-btn"
+                              href={`tel:${p.telefoon.replace(/\s+/g, '')}`}
+                              onClick={() => isAdmin && setGebeld(p)}
+                              title={`Bellen: ${p.telefoon}`}
+                              aria-label={`${p.bedrijfsnaam} bellen`}
+                            >
+                              <Icon name="phone" />
+                            </a>
+                          )}
                           {isAdmin && (
                             <button
                               type="button"
                               className="icon-btn"
-                              onClick={() => setSnelContact(p)}
+                              onClick={() => vastleggen(p, 'MAIL')}
                               title="Contactmoment vastleggen"
                               aria-label={`Contactmoment vastleggen bij ${p.bedrijfsnaam}`}
                             >
@@ -600,12 +636,29 @@ export default function AcquisitiePage() {
       >
         {snelContact && (
           <ProspectContactForm
+            key={`${snelContact.id}-${snelKanaal}`}
+            kanaal={snelKanaal}
             prospect={snelContact}
             onOpgeslagen={async () => { setSnelContact(null); await laadProspects(); }}
             onAnnuleren={() => setSnelContact(null)}
           />
         )}
       </Modal>
+
+      {/* Net gebeld: in één tik het gesprek vastleggen */}
+      {gebeld && !snelContact && (
+        <div className="acq-gebeld" role="status">
+          <Icon name="phone" size={20} />
+          <span>Gebeld met <strong>{gebeld.bedrijfsnaam}</strong>?</span>
+          <button type="button" className="btn btn-primary" onClick={() => vastleggen(gebeld, 'TELEFOON')}>
+            <Icon name="comment" size={16} />
+            Vastleggen
+          </button>
+          <button type="button" className="icon-btn acq-gebeld-sluit" onClick={() => setGebeld(null)} aria-label="Niet vastleggen">
+            <Icon name="close" size={20} />
+          </button>
+        </div>
+      )}
 
       {/* Prospect toevoegen of bewerken */}
       <Modal

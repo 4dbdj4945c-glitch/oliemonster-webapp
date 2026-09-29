@@ -18,6 +18,8 @@ import {
   Contactmoment vastleggen bij een prospect. Bewust kort: kanaal aantikken,
   in een zin opschrijven wat je gedaan hebt en opslaan. Status en volgende actie
   gaan in dezelfde opslagactie mee, zodat het op de telefoon één handeling is.
+  Na een telefoontje (kanaal TELEFOON) staat er al "Gebeld met ..." in, zodat
+  Opslaan meteen kan.
   CSS staat in globals.css (sectie Acquisitie).
 */
 
@@ -41,12 +43,16 @@ interface Props {
   /** Roept de pagina terug zodra er is opgeslagen. */
   onOpgeslagen: () => void;
   onAnnuleren?: () => void;
+  /** Voorgekozen kanaal, bijvoorbeeld TELEFOON na een tik op Bellen. */
+  kanaal?: ProspectKanaalNaam;
 }
 
-export default function ProspectContactForm({ prospect, onOpgeslagen, onAnnuleren }: Props) {
-  const [kanaal, setKanaal] = useState<ProspectKanaalNaam>('MAIL');
+export default function ProspectContactForm({ prospect, onOpgeslagen, onAnnuleren, kanaal: beginKanaal = 'MAIL' }: Props) {
+  const [kanaal, setKanaal] = useState<ProspectKanaalNaam>(beginKanaal);
   const [datum, setDatum] = useState(vandaagISO());
-  const [samenvatting, setSamenvatting] = useState('');
+  const [samenvatting, setSamenvatting] = useState(
+    beginKanaal === 'TELEFOON' ? `Gebeld${prospect.contactpersoon ? ` met ${prospect.contactpersoon}` : ''}` : ''
+  );
   const [uitkomst, setUitkomst] = useState('');
   const [status, setStatus] = useState<ProspectStatusNaam>(prospect.status);
   const [volgendeActie, setVolgendeActie] = useState(prospect.volgendeActie ?? '');
