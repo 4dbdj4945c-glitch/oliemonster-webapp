@@ -342,6 +342,7 @@ export default function MonsterTabel(p: Props) {
                           title={`${sample.oNumber} nemen: datum, type olie, opmerking en beide foto's in één keer`}
                         >
                           <Icon name="oil-sample" size={16} />
+                          {/* Kort, zodat de actiekolom naast de zijbalk binnen de tabel blijft */}
                           <span className="lang">Monster nemen</span>
                           <span className="kort">Nemen</span>
                         </button>

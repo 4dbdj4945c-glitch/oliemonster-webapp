@@ -3704,7 +3704,9 @@ a.beheer-naam:hover {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  padding: 4px max(4px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(4px, env(safe-area-inset-left));
+  align-items: center;
+  height: calc(var(--onderbalk-hoogte) + env(safe-area-inset-bottom));
+  padding: 0 max(4px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(4px, env(safe-area-inset-left));
   background: var(--wit);
   border-top: 1px solid var(--grijs-200);
 }
@@ -4404,7 +4406,7 @@ h2.sectiekop {
 .compact-badge,
 .filterchips,
 .knop-filter { display: none; }
-.knop-nemen .kort { display: none; }
+.knop-nemen .lang { display: none; }
 
 @media (max-width: 640px) {
   /* Zoekveld plakt bovenaan tijdens het scrollen, onder de kopbalk */
@@ -4547,4 +4549,20 @@ h2.sectiekop {
   font-size: 13px;
   font-weight: 600;
   color: var(--rood-tekst);
+}
+
+/* Naast de zijbalk is de inhoud 244px smaller: iets minder ruimte tussen de
+   kolommen, zodat brede tabellen (monsterlijst) binnen hun kader blijven. */
+@media (min-width: 900px) and (max-width: 1600px) {
+  .schil .table th,
+  .schil .table td { padding-left: 12px; padding-right: 12px; }
+}
+
+/* Kopbalk op een smalle telefoon: het logo krimpt, de modulenaam wijkt voor paginaknoppen */
+.schil-kop-merk { flex: 0 1 auto; min-width: 0; overflow: hidden; }
+.schil-kop-merk img { max-width: 100%; object-fit: contain; object-position: left center; }
+.schil-kop-titel { flex: 0 1 auto; }
+.schil-kop:has(.schil-kop-rechts .nav-btn-primary) .schil-kop-titel { display: none; }
+@media (max-width: 380px) {
+  .schil-kop-titel { display: none; }
 }
