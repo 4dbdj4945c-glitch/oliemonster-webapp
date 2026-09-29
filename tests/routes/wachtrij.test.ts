@@ -122,3 +122,19 @@ describe('idempotentie', () => {
     expect(await prisma.verzending.count()).toBe(0);
   });
 });
+
+describe('afgeronde inspectie', () => {
+  it('een bevinding uit de wachtrij bij een afgeronde inspectie: 409, het rapport verandert niet', async () => {
+    await inloggenAls('admin', 'admin123');
+    const id = ids.inspecties.lekken; // afgerond
+    const voor = await prisma.inspectieItem.count({ where: { inspectieId: id } });
+    const res = await nieuwItem(itemVerzoek(id, 'lek-sleutel-afgerond', '399'), p(id));
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ afgerond: true });
+    expect(await prisma.inspectieItem.count({ where: { inspectieId: id } })).toBe(voor);
+    const item = await prisma.inspectieItem.findFirstOrThrow({ where: { inspectieId: id, deletedAt: null } });
+    const { PUT: wijzigItem, DELETE: wegItem } = await import('@/app/api/inspectie-items/[id]/route');
+    expect((await wijzigItem(verzoek(`/api/inspectie-items/${item.id}`, { method: 'PUT', body: { notitie: 'stil anders' } }), p(item.id))).status).toBe(409);
+    expect((await wegItem(verzoek(`/api/inspectie-items/${item.id}`, { method: 'DELETE' }), p(item.id))).status).toBe(409);
+  });
+});

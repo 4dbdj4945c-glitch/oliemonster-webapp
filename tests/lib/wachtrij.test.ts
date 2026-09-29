@@ -69,6 +69,8 @@ describe('verstuur', () => {
     expect((await verstuur(monster('a1', { pogingen: MAX_POGINGEN - 1 }), nepFetch([json(500, { error: 'Stuk' })]).fn)).uitkomst.soort).toBe('mislukt');
     expect((await verstuur(monster('a1'), nepFetch([json(400, { error: 'Dit monster is geannuleerd.' })]).fn)).uitkomst).toEqual({ soort: 'mislukt', melding: 'Dit monster is geannuleerd.' });
     expect((await verstuur(monster('a1'), nepFetch([json(409, { error: 'bezig', bezig: true })]).fn)).uitkomst.soort).toBe('later');
+    // Afgeronde inspectie (409 zonder bezig): definitief, met de melding van de server.
+    expect((await verstuur(monster('a1'), nepFetch([json(409, { error: 'Deze inspectie is afgerond', afgerond: true })]).fn)).uitkomst).toEqual({ soort: 'mislukt', melding: 'Deze inspectie is afgerond' });
     expect((await verstuur(monster('a1'), nepFetch([json(401, { error: 'Niet geautoriseerd' })]).fn)).uitkomst.soort).toBe('later');
   });
 

@@ -4,7 +4,7 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { apiRoute, ApiFout, leesId } from '@/lib/apiRoute';
 import { fotoExtensie, fotoFout } from '@/lib/fotoControle';
 import { bewaarFoto, ruimFotoOpAls } from '@/lib/fotoOpslag';
-import { haalInspectie, inspectieAlsJson } from '@/lib/inspecties/server';
+import { alleenBijConcept, haalInspectie, inspectieAlsJson } from '@/lib/inspecties/server';
 
 // Foto bij een bevinding (een lek, een arbeidsmiddel), via de gewone fotoflow:
 // verkleind in de browser, opgeslagen onder een onvindbare naam, naar de
@@ -16,6 +16,7 @@ async function actiefItem(id: number) {
     select: { id: true, inspectieId: true, fotoUrl: true },
   });
   if (!item) throw new ApiFout(404, 'Bevinding niet gevonden');
+  await alleenBijConcept(item.inspectieId);
   return item;
 }
 

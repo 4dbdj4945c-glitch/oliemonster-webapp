@@ -146,6 +146,20 @@ export function afrondFout(rij: Pick<InspectieRij, 'sjabloon' | 'items'>): strin
   return null;
 }
 
+export const AFGEROND_MELDING =
+  'Deze inspectie is afgerond; bevindingen toevoegen of wijzigen kan niet meer. Zet de inspectie eerst terug naar concept als er nog iets bij moet.';
+
+/**
+ * Een afgeronde inspectie ligt vast: de klant ziet het rapport in het
+ * klantportaal. Bevindingen toevoegen, wijzigen, weghalen of een foto erbij
+ * kan pas weer als hij terug is naar concept (409). Zo verandert het rapport
+ * ook niet stil als de offline wachtrij later nog een lek verstuurt.
+ */
+export async function alleenBijConcept(inspectieId: number, status?: string) {
+  const s = status ?? (await prisma.inspectie.findUnique({ where: { id: inspectieId }, select: { status: true } }))?.status;
+  if (s === 'afgerond') throw new ApiFout(409, AFGEROND_MELDING, { afgerond: true });
+}
+
 /** Een installatie hoort bij hetzelfde object als de inspectie (of in elk geval bij dezelfde klant). */
 export async function controleerInstallatie(installatieId: number | null | undefined, klantId: number) {
   if (!installatieId) return;

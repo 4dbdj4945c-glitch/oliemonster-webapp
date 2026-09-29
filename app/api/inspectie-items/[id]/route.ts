@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { apiRoute, ApiFout, leesId, leesJson } from '@/lib/apiRoute';
 import { sjabloonVan, type SjabloonSleutel } from '@/lib/inspecties/sjablonen';
-import { ItemWijzigingSchema, alsDag, controleerInstallatie, controleerItem, dagAlsDatum, haalInspectie, inspectieAlsJson } from '@/lib/inspecties/server';
+import { ItemWijzigingSchema, alleenBijConcept, alsDag, controleerInstallatie, controleerItem, dagAlsDatum, haalInspectie, inspectieAlsJson } from '@/lib/inspecties/server';
 import { nlDag } from '@/lib/klantOpdracht';
 
 /*
@@ -20,6 +20,7 @@ async function actiefItem(id: number) {
     select: { id: true, inspectieId: true, titel: true, fotoUrl: true, gerepareerdOp: true, oordeel: true, waarden: true },
   });
   if (!item) throw new ApiFout(404, 'Bevinding niet gevonden');
+  await alleenBijConcept(item.inspectieId);
   return item;
 }
 

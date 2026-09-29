@@ -5,7 +5,7 @@ import { apiRoute, leesId, leesJson } from '@/lib/apiRoute';
 import { eenmalig } from '@/lib/idempotentie';
 import { plusMaanden, sjabloonVan, type SjabloonSleutel } from '@/lib/inspecties/sjablonen';
 import { nlDag } from '@/lib/klantOpdracht';
-import { ItemSchema, alsDag, controleerInstallatie, controleerItem, dagAlsDatum, haalInspectie, inspectieAlsJson } from '@/lib/inspecties/server';
+import { ItemSchema, alleenBijConcept, alsDag, controleerInstallatie, controleerItem, dagAlsDatum, haalInspectie, inspectieAlsJson } from '@/lib/inspecties/server';
 
 /*
   POST /api/inspecties/[id]/items - een bevinding toevoegen (admin): een lek of
@@ -20,6 +20,7 @@ export const POST = apiRoute({ rol: 'admin', module: 'inspecties', fout: 'Fout b
   const id = await leesId(context, 'Onbekende inspectie');
   return eenmalig(request, sessie, `inspectie-item-${id}`, async () => {
     const inspectie = await haalInspectie(id, sessie);
+    await alleenBijConcept(id, inspectie.status);
     const sjabloon = inspectie.sjabloon as SjabloonSleutel;
     const s = sjabloonVan(sjabloon);
     const invoer = await leesJson(request, ItemSchema);

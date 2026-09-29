@@ -241,14 +241,14 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
                   <ul className="veld-lijst">
                     {insp.items.map((i) => (
                       <li key={i.id}>
-                        <Regel insp={insp} item={i} onOpen={isAdmin ? () => setVenster({ item: i }) : undefined} />
+                        <Regel insp={insp} item={i} onOpen={isAdmin && insp.status !== 'afgerond' ? () => setVenster({ item: i }) : undefined} />
                       </li>
                     ))}
                   </ul>
                 )}
               </section>
 
-              {isAdmin && (
+              {isAdmin && insp.status !== 'afgerond' && (
                 <div className="veld-actiebalk">
                   <button type="button" className="btn btn-primary veld-hoofdknop" onClick={() => setVenster({ item: null })}>
                     <Icon name="plus" />
