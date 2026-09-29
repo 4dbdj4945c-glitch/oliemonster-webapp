@@ -4,6 +4,7 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { SAMPLE_BASIS_SELECT } from '@/lib/planningApi';
 import { haalSessie, toegangsFout } from '@/lib/toegang';
 import { tabelOntbreekt } from '@/lib/kolommen';
+import { actiefFilter, verwijderKolomBestaat, KOLOM_ONTBREEKT_VERWIJDEREN } from '@/lib/verwijderdeMonsters';
 
 // PUT - Update sample (alleen admin)
 export async function PUT(
@@ -44,21 +45,35 @@ export async function PUT(
     }
 
     // Check of een ander sample in hetzelfde analyse-jaar al dit o-nummer heeft
-    const huidig = await prisma.oilSample.findUnique({ where: { id: parseInt(id) }, select: { analysisYear: true } });
+    const huidig = await prisma.oilSample.findFirst({
+      where: { id: parseInt(id), ...(await actiefFilter()) },
+      select: { analysisYear: true },
+    });
     if (!huidig) {
       return NextResponse.json({ error: 'Monster niet gevonden' }, { status: 404 });
     }
+    // Ook een monster in de prullenbak houdt zijn nummer bezet (uniek per jaar),
+    // dus die tellen hier mee, met een eigen melding.
     const existing = await prisma.oilSample.findFirst({
       where: {
         oNumber,
         analysisYear: huidig.analysisYear,
         id: { not: parseInt(id) },
       },
+      select: { id: true },
     });
 
     if (existing) {
+      const actief = await prisma.oilSample.findFirst({
+        where: { id: existing.id, ...(await actiefFilter()) },
+        select: { id: true },
+      });
       return NextResponse.json(
-        { error: 'O-nummer bestaat al' },
+        {
+          error: actief
+            ? 'O-nummer bestaat al'
+            : `O-nummer ${oNumber} staat in de prullenbak. Zet dat monster terug of kies een ander nummer.`,
+        },
         { status: 400 }
       );
     }
@@ -123,7 +138,12 @@ export async function PUT(
   }
 }
 
-// DELETE - Verwijder sample (alleen admin)
+// DELETE - Monster naar de prullenbak (alleen admin)
+//
+// Zacht verwijderen: het monster krijgt deletedAt en deletedBy en blijft met
+// pogingen, datums en foto's staan. Een admin zet het terug via de prullenbak.
+// Staat de kolom nog niet in de database (db push nog niet gedraaid), dan
+// weigeren we: terugvallen op een harde delete is precies wat misging.
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -134,26 +154,56 @@ export async function DELETE(
 
   try {
     const { id } = await params;
+    const sampleId = parseInt(id);
+    if (Number.isNaN(sampleId)) {
+      return NextResponse.json({ error: 'Onbekend monster' }, { status: 400 });
+    }
 
-    // Haal sample op voor logging
-    const sample = await prisma.oilSample.findUnique({
-      where: { id: parseInt(id) },
-      select: { oNumber: true, location: true },
+    if (!(await verwijderKolomBestaat())) {
+      return NextResponse.json({ error: KOLOM_ONTBREEKT_VERWIJDEREN, tabelOntbreekt: true }, { status: 503 });
+    }
+
+    const sample = await prisma.oilSample.findFirst({
+      where: { id: sampleId, deletedAt: null },
+      select: { oNumber: true, location: true, analysisYear: true, _count: { select: { attempts: true } } },
     });
+    if (!sample) {
+      return NextResponse.json({ error: 'Monster niet gevonden of al verwijderd' }, { status: 404 });
+    }
 
-    await prisma.oilSample.delete({
-      where: { id: parseInt(id) },
+    // Het O-nummer moet ter bevestiging meekomen, zodat een losse aanroep of
+    // een verkeerde rij nooit per ongeluk een monster weghaalt.
+    const body = await request.json().catch(() => ({}));
+    const bevestiging = typeof body?.bevestigONummer === 'string' ? body.bevestigONummer.trim() : '';
+    if (bevestiging.toLowerCase() !== sample.oNumber.trim().toLowerCase()) {
+      return NextResponse.json(
+        { error: `Typ het O-nummer ${sample.oNumber} over om het verwijderen te bevestigen.` },
+        { status: 400 }
+      );
+    }
+
+    await prisma.oilSample.update({
+      where: { id: sampleId },
+      data: { deletedAt: new Date(), deletedBy: session.username || 'onbekend' },
+      select: { id: true },
     });
 
     await createAuditLog({
       userId: session.userId,
       username: session.username || 'unknown',
       action: AuditActions.DELETE_SAMPLE,
-      details: { id: parseInt(id), oNumber: sample?.oNumber, location: sample?.location },
+      details: {
+        id: sampleId,
+        oNumber: sample.oNumber,
+        location: sample.location,
+        analysisYear: sample.analysisYear,
+        pogingen: sample._count.attempts,
+        zacht: true,
+      },
       request,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, id: sampleId, oNumber: sample.oNumber });
   } catch (error) {
     console.error('Error deleting sample:', error);
     return NextResponse.json(

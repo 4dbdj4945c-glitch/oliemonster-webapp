@@ -58,7 +58,11 @@ export const AuditActions = {
   CLEAR_SAMPLE_UNREACHABLE: 'CLEAR_SAMPLE_UNREACHABLE',
   // Knop Monster nemen: datum, type olie, opmerking en beide foto's in één keer.
   TAKE_SAMPLE: 'TAKE_SAMPLE',
+  // Verwijderen is zacht: het monster gaat naar de prullenbak en kan terug.
   DELETE_SAMPLE: 'DELETE_SAMPLE',
+  RESTORE_SAMPLE: 'RESTORE_SAMPLE',
+  // Afname ongedaan maken: de laatste poging terug naar niet genomen.
+  UNDO_TAKE_SAMPLE: 'UNDO_TAKE_SAMPLE',
   COPY_SAMPLES: 'COPY_SAMPLES',
   VIEW_SAMPLES: 'VIEW_SAMPLES',
   
