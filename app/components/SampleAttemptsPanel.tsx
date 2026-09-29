@@ -51,6 +51,8 @@ export default function SampleAttemptsPanel({
   const [uploadingPhotoId, setUploadingPhotoId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [foutmelding, setFoutmelding] = useState('');
+  // Pas true als de lijst echt geladen is; bij een fout geen "Nog geen ..." en geen knop om toe te voegen.
+  const [geladen, setGeladen] = useState(false);
   // Afname ongedaan maken van de laatste monstername (bevestiging met wat er verdwijnt)
   const [afnameDoel, setAfnameDoel] = useState<AfnameDoel | null>(null);
 
@@ -67,6 +69,7 @@ export default function SampleAttemptsPanel({
         return;
       }
       setAttempts(await res.json());
+      setGeladen(true);
       setFoutmelding('');
     } catch (e) {
       setFoutmelding(GEEN_VERBINDING);
@@ -228,12 +231,14 @@ export default function SampleAttemptsPanel({
         <div>
           <p className="section-label" style={{ margin: 0 }}>Monsternames (pogingen)</p>
           <p className="hint" style={{ margin: '3px 0 0' }}>
-            {attempts.length === 0
+            {!geladen
+              ? ''
+              : attempts.length === 0
               ? 'Nog geen monsternames vastgelegd.'
               : `${attempts.length} monstername${attempts.length === 1 ? '' : 's'} voor ${oNumber}.`}
           </p>
         </div>
-        {isAdmin && (
+        {isAdmin && geladen && (
           <div className="knoppenrij">
             <button
               type="button"

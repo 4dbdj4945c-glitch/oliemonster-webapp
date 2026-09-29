@@ -32,6 +32,8 @@ export default function VerwijderdeMonsters({
   const [monsters, setMonsters] = useState<Verwijderd[]>([]);
   const [laden, setLaden] = useState(true);
   const [fout, setFout] = useState('');
+  // Pas true als de lijst echt geladen is; bij een fout geen "prullenbak is leeg".
+  const [geladen, setGeladen] = useState(false);
   const [kolomOntbreekt, setKolomOntbreekt] = useState(false);
   const [bezig, setBezig] = useState<number | null>(null);
 
@@ -46,6 +48,7 @@ export default function VerwijderdeMonsters({
       const data = await res.json();
       setMonsters(data.monsters ?? []);
       setKolomOntbreekt(!!data.kolomOntbreekt);
+      setGeladen(true);
       setFout('');
     } catch {
       setFout(GEEN_VERBINDING);
@@ -89,7 +92,7 @@ export default function VerwijderdeMonsters({
 
       {laden ? (
         <p className="laden">Laden...</p>
-      ) : kolomOntbreekt ? (
+      ) : !geladen ? null : kolomOntbreekt ? (
         <div className="alert alert-info">
           De prullenbak staat nog niet in de database. Draai ./db-push-veilig-verwijderen.sh in de projectmap. Tot die
           tijd kan er ook niets verwijderd worden.

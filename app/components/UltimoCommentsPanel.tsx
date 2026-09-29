@@ -52,6 +52,8 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
 
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [foutmelding, setFoutmelding] = useState('');
+  // Pas true als de lijst echt geladen is; bij een fout geen "Nog geen ..." en geen knop om toe te voegen.
+  const [geladen, setGeladen] = useState(false);
   // Na het verwijderen van een opmerking: tien seconden Ongedaan maken
   const [ongedaan, setOngedaan] = useState<OngedaanInhoud | null>(null);
 
@@ -69,6 +71,7 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
         return;
       }
       setComments(await res.json());
+      setGeladen(true);
       setFoutmelding('');
     } catch (e) {
       setFoutmelding(GEEN_VERBINDING);
@@ -235,12 +238,14 @@ export default function UltimoCommentsPanel({ taskId, isAdmin, onChange }: Props
         <div>
           <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--navy)', margin: 0 }}>Opmerkingen-historie</h3>
           <p style={{ fontSize: '12px', color: 'var(--grijs-500)', margin: '2px 0 0' }}>
-            {comments.length === 0
+            {!geladen
+              ? ''
+              : comments.length === 0
               ? 'Nog geen opmerkingen vastgelegd.'
               : `${comments.length} opmerking${comments.length === 1 ? '' : 'en'}, nieuwste bovenaan.`}
           </p>
         </div>
-        {isAdmin && !adding && (
+        {isAdmin && geladen && !adding && (
           <button
             type="button"
             className="btn btn-blue btn-sm"

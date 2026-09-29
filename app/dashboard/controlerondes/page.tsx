@@ -142,6 +142,10 @@ export default function ControleRondesPage() {
     if (user) loadRounds();
   }, [user]);
 
+  // Pas true als de lijst echt geladen is; tot dan alleen de foutmelding, geen
+  // "Nog geen rondes" en geen knop Nieuwe ronde.
+  const [rondesGeladen, setRondesGeladen] = useState(false);
+
   const loadRounds = async () => {
     try {
       const res = await apiFetch('/api/control-rounds');
@@ -150,6 +154,7 @@ export default function ControleRondesPage() {
         return;
       }
       setRounds(await res.json());
+      setRondesGeladen(true);
       setFoutmelding('');
     } catch (e) {
       setFoutmelding(GEEN_VERBINDING);
@@ -633,9 +638,6 @@ export default function ControleRondesPage() {
         }
       `}</style>
 
-      {/* Ophalen of opslaan mislukt */}
-      {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={herlaad} />}
-
       {/* ============ LIJST ============ */}
       {view === 'list' && (
         <>
@@ -644,10 +646,15 @@ export default function ControleRondesPage() {
               <h1 className="page-title">Controlerondes</h1>
               <p className="page-subtitle">Plan een route langs straten en houd tijdens het rijden je voortgang bij.</p>
             </div>
-            <button className="btn btn-primary" onClick={startNewRound}>{plusIcon} Nieuwe ronde</button>
+            {rondesGeladen && (
+              <button className="btn btn-primary" onClick={startNewRound}>{plusIcon} Nieuwe ronde</button>
+            )}
           </div>
 
-          {rounds.length === 0 ? (
+          {/* Ophalen of opslaan mislukt: onder de titel, zoals in de andere modules */}
+          {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={herlaad} />}
+
+          {!rondesGeladen ? null : rounds.length === 0 ? (
             // Bij een laadfout geen "nog geen rondes" tonen: de melding staat er al boven.
             foutmelding ? null : (
               <div className="leeg"><Icon name="empty" size={32} />Nog geen rondes. Maak er een aan om te beginnen.</div>
@@ -688,6 +695,7 @@ export default function ControleRondesPage() {
           <p className="page-subtitle">
             {wizardStep === 'place' ? 'Stap 1. Kies een plaats' : `Stap 2. Kies straten in ${selectedPlace}`}
           </p>
+          {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={herlaad} />}
 
           {wizardStep === 'place' && (
             <div className="card card-padded" style={{ maxWidth: 560 }}>
@@ -873,6 +881,7 @@ export default function ControleRondesPage() {
             </div>
           </div>
 
+          {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={herlaad} />}
           {gpsError && <div className="alert alert-danger" style={{ marginBottom: 12 }}>{gpsError}</div>}
 
           <div className="card" style={{ marginBottom: 14 }}>

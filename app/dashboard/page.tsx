@@ -33,6 +33,9 @@ export default function DashboardPage() {
   // Welke tellingen niet geladen zijn. Zonder deze melding staat er gewoon nul
   // in de tegels en lijkt het alsof er niets te doen is.
   const [foutmelding, setFoutmelding] = useState('');
+  // Modules waarvan de telling niet binnenkwam. Die tegels tonen geen getal:
+  // een 0 zou betekenen dat er niets is, terwijl we het gewoon niet weten.
+  const [mislukteModules, setMislukteModules] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
@@ -127,15 +130,20 @@ export default function DashboardPage() {
           prospectActies: data.filter((p: any) => actieStaatOpen(p, grens)).length,
         }));
       }
+      setMislukteModules(mislukt);
       setFoutmelding(
         mislukt.length === 0
           ? ''
-          : `Deze tellingen konden niet worden opgehaald: ${mislukt.join(', ')}. De getallen hieronder zijn dus niet volledig.`
+          : `Deze tellingen konden niet worden opgehaald: ${mislukt.join(', ')}. Bij die modules staat daarom geen getal.`
       );
     } catch (error) {
+      setMislukteModules(['Oliemonsters 2025', 'Oliemonsters 2026', 'Controlerondes', 'Ultimo-opmerkingen', 'Acquisitie']);
       setFoutmelding(GEEN_VERBINDING);
     }
   };
+
+  /** Toon de tellingen alleen als ze echt geladen zijn. */
+  const geladen = (module: string) => !mislukteModules.includes(module);
 
   if (loading) {
     return (
@@ -323,12 +331,14 @@ export default function DashboardPage() {
               <span className="card-icon"><Icon name="module-rounds" size={24} /></span>
               <h2 className="card-title">Controlerondes</h2>
               <p className="card-description">Plan en rijd controlerondes langs geselecteerde straten met live route en voortgang</p>
+              {geladen('Controlerondes') && (
               <div className="card-stats">
                 <div className="stat-item">
                   <div className="stat-value">{stats.controlRounds}</div>
                   <div className="stat-label">Rondes</div>
                 </div>
               </div>
+              )}
             </div>
             <div
               className="module-card"
@@ -338,6 +348,7 @@ export default function DashboardPage() {
               <span className="card-icon"><Icon name="module-acquisitie" size={24} /></span>
               <h2 className="card-title">Acquisitie</h2>
               <p className="card-description">Prospects, pijplijn en contactmomenten voor nieuwe vaste klanten</p>
+              {geladen('Acquisitie') && (
               <div className="card-stats">
                 <div className="stat-item">
                   <div className="stat-value">{stats.prospects}</div>
@@ -348,6 +359,7 @@ export default function DashboardPage() {
                   <div className="stat-label">Open acties</div>
                 </div>
               </div>
+              )}
             </div>
             {/* Mail opstellen (de e-mail editor): losstaand HTML-bestand in public/, opent in een nieuw tabblad.
                 Bron en uitleg: Documents/Claude/email-templates/ (sync-webapp.sh kopieert 'm hierheen). */}
@@ -392,6 +404,7 @@ export default function DashboardPage() {
               <span className="card-icon"><Icon name="oil-sample" size={24} /></span>
               <h2 className="card-title">Oliemonsters 2025</h2>
               <p className="card-description">Overzicht en beheer van oliemonsteranalyses 2025</p>
+              {geladen('Oliemonsters 2025') && (
               <div className="card-stats">
                 <div className="stat-item">
                   <div className="stat-value">{stats.oilSamples2025}</div>
@@ -402,6 +415,7 @@ export default function DashboardPage() {
                   <div className="stat-label">Genomen</div>
                 </div>
               </div>
+              )}
             </div>
             <div
               className="module-card"
@@ -411,6 +425,7 @@ export default function DashboardPage() {
               <span className="card-icon"><Icon name="oil-sample" size={24} /></span>
               <h2 className="card-title">Oliemonsters 2026</h2>
               <p className="card-description">Overzicht en beheer van oliemonsteranalyses 2026</p>
+              {geladen('Oliemonsters 2026') && (
               <div className="card-stats">
                 <div className="stat-item">
                   <div className="stat-value">{stats.oilSamples2026}</div>
@@ -421,6 +436,7 @@ export default function DashboardPage() {
                   <div className="stat-label">Genomen</div>
                 </div>
               </div>
+              )}
             </div>
             {!alleenLezen && (
             <div
@@ -431,12 +447,14 @@ export default function DashboardPage() {
               <span className="card-icon"><Icon name="module-ultimo" size={24} /></span>
               <h2 className="card-title">Ultimo-opmerkingen</h2>
               <p className="card-description">Opmerkingen per onderhoudstaak (looprouteregel) bijhouden en exact terugvinden</p>
+              {geladen('Ultimo-opmerkingen') && (
               <div className="card-stats">
                 <div className="stat-item">
                   <div className="stat-value">{stats.ultimoTasks}</div>
                   <div className="stat-label">Taken</div>
                 </div>
               </div>
+              )}
             </div>
             )}
           </div>

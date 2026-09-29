@@ -196,6 +196,9 @@ export default function PlanningPaneel({
   const [laden, setLaden] = useState(true);
   const [foutmelding, setFoutmelding] = useState('');
   const [melding, setMelding] = useState('');
+  // Pas true als de planning echt geladen is. Bij een fout of offline alleen de
+  // foutmelding: geen "nog geen objecten", geen nultellers, geen Dag toevoegen.
+  const [geladen, setGeladen] = useState(false);
   // Dagscherm: een tik op een open monster opent Monster nemen (datum, olie,
   // foto's). Vroeger zette die tik het monster direct op genomen, zonder bewijs.
   const [neemDoel, setNeemDoel] = useState<NeemDoel | null>(null);
@@ -244,6 +247,7 @@ export default function PlanningPaneel({
       const data = await res.json();
       setDagen(data.dagen ?? []);
       setObjecten(data.objecten ?? []);
+      setGeladen(true);
       setFoutmelding('');
     } catch {
       setFoutmelding(GEEN_VERBINDING);
@@ -641,6 +645,8 @@ export default function PlanningPaneel({
     <div className="plan">
       {foutmelding && <LaadFout melding={foutmelding} onOpnieuw={laadPlanning} />}
       {melding && <div className="alert alert-info plan-melding">{melding}</div>}
+
+      {geladen && (<>
 
       {/* ============ DAGEN ============ */}
       {weergave === 'dagen' && (
@@ -1171,6 +1177,7 @@ export default function PlanningPaneel({
         onClose={() => setNeemDoel(null)}
         onKlaar={naMonsterNemen}
       />
+      </>)}
     </div>
   );
 }
