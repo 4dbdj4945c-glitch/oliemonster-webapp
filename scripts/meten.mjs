@@ -338,17 +338,23 @@ try {
 
   // Planning.
   await ga(`/dashboard/planning?jaar=${jaar}`);
-  await wachtOp('#plan-datum');
+  await wachtOp('.plan-kal');
   await meet(
     'Planning: dag toevoegen',
     async () => {
-      // Een werkdag ver weg die er zeker nog niet staat.
+      // Een werkdag ver weg die er zeker nog niet staat: in de kalender naar
+      // december bladeren en die dag aanklikken.
       const dag = new Date(jaar, 11, 15);
       while (dag.getDay() === 0 || dag.getDay() === 6) dag.setDate(dag.getDate() + 1);
       const iso = `${dag.getFullYear()}-${String(dag.getMonth() + 1).padStart(2, '0')}-${String(dag.getDate()).padStart(2, '0')}`;
-      await vul('#plan-datum', iso);
+      for (let i = 0; i < 12 && !(await js(`!!document.querySelector('[data-datum="${iso}"]')`)); i++) {
+        await klik(`document.querySelector('button[aria-label="Volgende maand"]')`);
+        await wacht(50);
+      }
+      await klik(`document.querySelector('[data-datum="${iso}"]')`);
+      await wachtOp('.plan-kal-keuze .btn-primary');
     },
-    () => klik(knopMetTekst('Toevoegen', `document.querySelector('.plan-nieuwe-dag')`)),
+    () => klik(knopMetTekst('Toevoegen', `document.querySelector('.plan-kal-keuze')`)),
     '.plan'
   );
   await meet(

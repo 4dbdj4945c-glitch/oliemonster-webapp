@@ -145,3 +145,25 @@ export function stopNaam(stop: Pick<PlanStop, 'soort' | 'taak' | 'inspectie' | '
 export function isMonsterStop(stop: Pick<PlanStop, 'soort'>): boolean {
   return !stop.soort || stop.soort === 'monsters';
 }
+
+/** "1 monster" of "3 monsters" */
+export function monsters(aantal: number): string {
+  return `${aantal} ${aantal === 1 ? 'monster' : 'monsters'}`;
+}
+
+/** "1 object" of "3 objecten" */
+export function objectenWoord(aantal: number): string {
+  return `${aantal} ${aantal === 1 ? 'object' : 'objecten'}`;
+}
+
+/** "3 objecten, 1 taak, 4 monsters" */
+export function dagInhoud(d: Pick<PlanDag, 'stops'>): string {
+  const olie = d.stops.filter(isMonsterStop);
+  const taken = d.stops.filter((s) => s.soort === 'taak').length;
+  const inspecties = d.stops.filter((s) => s.soort === 'inspectie').length;
+  const delen = [objectenWoord(olie.length)];
+  if (taken > 0) delen.push(`${taken} ${taken === 1 ? 'taak' : 'taken'}`);
+  if (inspecties > 0) delen.push(`${inspecties} ${inspecties === 1 ? 'inspectie' : 'inspecties'}`);
+  delen.push(monsters(olie.reduce((n, s) => n + s.aantalMonsters, 0)));
+  return delen.join(', ');
+}
