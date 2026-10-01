@@ -12,8 +12,10 @@
 // Hoe het meet:
 // - Tussen de portal en PostgreSQL zit een kleine proxy die elk pakket van de
 //   portal naar de database MEET_VERTRAGING ms laat wachten, zoals een netwerkhop
-//   naar Supabase. Hij telt de roundtrips: elk Sync-bericht (extended protocol,
-//   zo stuurt Prisma een query) en elke losse Query.
+//   naar Supabase. Hij telt de query's (elk Execute-bericht en elke losse
+//   Query) en de roundtrips (elk Sync-bericht en elke losse Query: zo vaak
+//   wacht de portal op de database). Prisma krijgt pgbouncer=true, zoals bij
+//   de pooler van Supabase.
 // - OSRM (route) en Vercel Blob (foto's) worden lokaal nagebootst: OSRM met
 //   150 ms per aanroep (en geteld), Blob met een nepserver.
 // - Chrome telt de verzoeken naar de portal zelf (pagina, fetch, RSC), zonder
@@ -56,6 +58,9 @@ execSync('npx tsx prisma/seed.ts', { cwd: app, env: dbEnv, stdio: 'pipe' });
 
 // ---------- Proxy met vertraging en teller ----------
 let roundtrips = 0;
+let queries = 0;
+// De SQL van elk verzoek (de eerste 120 tekens), per actie in het uitvoerbestand.
+let sql = [];
 const proxy = net.createServer((client) => {
   const server = net.connect(5432, 'localhost');
   let opstart = true; // de eerste berichten hebben geen typebyte
@@ -77,6 +82,13 @@ const proxy = net.createServer((client) => {
       const lengte = buffer.readInt32BE(1);
       if (buffer.length < lengte + 1) return;
       if (type === 'S' || type === 'Q') roundtrips += 1;
+      if (type === 'E' || type === 'Q') queries += 1;
+      if (type === 'Q') sql.push(buffer.subarray(5, lengte).toString('utf8').replace(/\0.*$/s, '').slice(0, 120));
+      if (type === 'P') {
+        // Parse: naam\0 query\0 ...
+        const deel = buffer.subarray(5, lengte + 1).toString('utf8');
+        sql.push(deel.slice(deel.indexOf('\0') + 1).replace(/\0.*$/s, '').replace(/\s+/g, ' ').slice(0, 120));
+      }
       buffer = buffer.subarray(lengte + 1);
     }
   };
@@ -133,7 +145,9 @@ const server = spawn('npx', ['next', 'start', '-p', String(POORT)], {
     ...process.env,
     NODE_ENV: 'production',
     NEXT_TELEMETRY_DISABLED: '1',
-    DATABASE_URL: `postgresql://${userInfo().username}@localhost:${PROXY_POORT}/${DB}`,
+    // pgbouncer=true zoals de pooler van Supabase: geen bewaarde prepared
+    // statements, dus elke query telt zoals in productie.
+    DATABASE_URL: `postgresql://${userInfo().username}@localhost:${PROXY_POORT}/${DB}?pgbouncer=true`,
     SESSION_SECRET: 'meetsleutel-alleen-lokaal-0123456789abcdef',
     BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_meet0000_alleenlokaal',
     VERCEL_BLOB_API_URL: `http://localhost:${BLOB_POORT}`,
@@ -225,6 +239,8 @@ async function meet(naam, voorbereiden, actie) {
   if (voorbereiden) await voorbereiden();
   await rustig();
   roundtrips = 0;
+  queries = 0;
+  sql = [];
   verzoeken = [];
   const osrmVoor = osrmAantal();
   const t0 = Date.now();
@@ -235,9 +251,9 @@ async function meet(naam, voorbereiden, actie) {
   // of opslaat); de rest zijn de pagina zelf en RSC-verzoeken (ook het
   // vooraf ophalen van links in de navigatie).
   const api = verzoeken.filter((v) => v.split(' ')[1].startsWith('/api/')).length;
-  const rij = { actie: naam, db: roundtrips, http: verzoeken.length, api, osrm: osrmAantal() - osrmVoor, ms: Math.max(0, laatsteAntwoord - t0), verzoeken };
+  const rij = { actie: naam, db: queries, roundtrips, http: verzoeken.length, api, osrm: osrmAantal() - osrmVoor, ms: Math.max(0, laatsteAntwoord - t0), verzoeken, sql };
   uitkomsten.push(rij);
-  console.log(`${naam.padEnd(34)} db ${String(rij.db).padStart(4)}  http ${String(rij.http).padStart(3)} (api ${String(api).padStart(2)})  osrm ${rij.osrm}  ${String(rij.ms).padStart(6)} ms`);
+  console.log(`${naam.padEnd(34)} query's ${String(rij.db).padStart(4)}  roundtrips ${String(roundtrips).padStart(4)}  http ${String(rij.http).padStart(3)} (api ${String(api).padStart(2)})  osrm ${rij.osrm}  ${String(rij.ms).padStart(6)} ms`);
 }
 
 const jaar = new Date().getFullYear();
