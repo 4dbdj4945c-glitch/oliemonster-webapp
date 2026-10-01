@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { apiRoute, ApiFout, jaarSchema, leesJson, leesQuery } from '@/lib/apiRoute';
+import { apiRoute, ApiFout, jaarSchema, leesJson, leesQuery, tegelijk } from '@/lib/apiRoute';
 import { controleerInstallatie, controleerObject, MonsterSchema } from '@/lib/monsterInvoer';
 import { controleerKlant } from '@/lib/klanten';
 import { wijzigLaatstePoging } from '@/lib/sampleAttempts';
@@ -14,30 +14,8 @@ import {
   SAMPLE_PLANNING_LEEG,
   SAMPLE_WENSEN2_LEEG,
 } from '@/lib/planningApi';
-import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { monsterFilter } from '@/lib/afscherming';
-import { metMonsterFotos } from '@/lib/fotoAdres';
-import { isAlleenLezen, krijgtKlantportaal } from '@/lib/roles';
-
-/**
- * Wat een kijker (rol alleen lezen) niet krijgt: wie annuleerde of iets als niet
- * bereikbaar vastlegde (gebruikersnamen; main toonde die de kijker ook nergens).
- * De reden van annuleren:
- * - klassieke weergave (de Mourik-kijker): altijd, precies zoals op main, waar
- *   de lijst de reden toonde ongeacht de keuze voor de PDF;
- * - klantportaal: alleen als hij in de PDF mag (cancelReasonInPdf), dezelfde
- *   regel als het rapport voor de klant.
- */
-function voorKijker<T extends { cancelledBy?: string | null; unreachableBy?: string | null; cancelReason?: string | null; cancelReasonInPdf?: boolean }>(
-  m: T,
-  klantportaal: boolean
-): T {
-  const { cancelledBy: _a, unreachableBy: _b, ...rest } = m;
-  void _a;
-  void _b;
-  if (!klantportaal) return rest as T;
-  return { ...rest, cancelReason: m.cancelReasonInPdf === false ? null : m.cancelReason ?? null } as T;
-}
+import { alsLijstRij, haalLijstRij, LIJST_EXTRA } from '@/lib/monsterLijst';
 
 const LijstQuery = z.object({
   search: z.string().max(200).optional(),
@@ -79,10 +57,7 @@ export const GET = apiRoute(
     // Alles erbij: het object, de tweede foto en de velden van Niet bereikbaar.
     // Staat de database nog niet bij, dan in twee stappen terugvallen, zodat er
     // telkens zo veel mogelijk blijft werken.
-    const extra = {
-      _count: { select: { attempts: true } },
-      object: { select: { id: true, name: true, objectType: true } },
-    } as const;
+    const extra = LIJST_EXTRA;
     const zoek = { where: whereClause, orderBy: { sampleDate: 'desc' as const } };
 
     let samples;
@@ -111,13 +86,7 @@ export const GET = apiRoute(
 
     // attemptsCount als veld op het monster voor de schermen. De foto's gaan
     // via /api/fotos/... (lib/fotoAdres.ts), nooit het echte opslagadres.
-    const kijker = isAlleenLezen(session.role);
-    const response = samples.map(({ _count, ...rest }) => ({
-      ...(kijker ? voorKijker(metMonsterFotos(rest), krijgtKlantportaal(session)) : metMonsterFotos(rest)),
-      attemptsCount: _count.attempts,
-    }));
-
-    return NextResponse.json(response);
+    return NextResponse.json(samples.map((s) => alsLijstRij(s, session)));
   }
 );
 
@@ -128,23 +97,24 @@ export const POST = apiRoute(
   async (request, _context, session) => {
     const invoer = await leesJson(request, MonsterSchema);
     const jaar = invoer.analysisYear ?? 2025;
-    await controleerObject(invoer.objectId);
-    await controleerInstallatie(invoer.installatieId, invoer.objectId ?? null);
-    await controleerKlant(invoer.klantId);
+    // De controles hangen niet van elkaar af: tegelijk.
+    const [, , , zelfdeNummer] = await tegelijk([
+      controleerObject(invoer.objectId),
+      controleerInstallatie(invoer.installatieId, invoer.objectId ?? null),
+      controleerKlant(invoer.klantId),
+      // O-nummers zijn uniek per analysejaar (2025 en 2026 mogen hetzelfde nummer
+      // hebben). Ook een monster in de prullenbak houdt zijn nummer bezet.
+      prisma.oilSample.findMany({
+        where: { oNumber: invoer.oNumber, analysisYear: jaar },
+        select: { id: true, deletedAt: true },
+      }),
+    ]);
 
-    // O-nummers zijn uniek per analysejaar (2025 en 2026 mogen hetzelfde nummer hebben)
-    const existing = await prisma.oilSample.findFirst({
-      where: { oNumber: invoer.oNumber, analysisYear: jaar, ...(await actiefFilter()) },
-      select: { id: true },
-    });
-    if (existing) throw new ApiFout(400, `O-nummer bestaat al in ${jaar}`);
+    if (zelfdeNummer.some((m) => m.deletedAt === null)) throw new ApiFout(400, `O-nummer bestaat al in ${jaar}`);
     // Staat dit nummer in de prullenbak, dan is het in de database nog bezet
     // (uniek per jaar). Een nieuw monster zou de oude pogingen en foto's
     // verbergen; terugzetten is dan de bedoeling. De pagina toont een knop.
-    const inPrullenbak = await prisma.oilSample.findFirst({
-      where: { oNumber: invoer.oNumber, analysisYear: jaar },
-      select: { id: true },
-    });
+    const inPrullenbak = zelfdeNummer[0];
     if (inPrullenbak) {
       throw new ApiFout(
         409,
@@ -176,7 +146,8 @@ export const POST = apiRoute(
       remarks: invoer.remarks ?? null,
     });
 
-    const sample = await prisma.oilSample.findUniqueOrThrow({ where: { id: nieuw.id }, select: SAMPLE_BASIS_SELECT });
+    // In de vorm van de lijst, zodat het scherm hem meteen kan tonen.
+    const sample = await haalLijstRij(nieuw.id, session);
 
     await createAuditLog({
       userId: session.userId,

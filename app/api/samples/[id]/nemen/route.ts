@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { NIEUWSTE_EERST, syncLatestAttemptToSample } from '@/lib/sampleAttempts';
-import { tabelOntbreekt, KOLOM_ONTBREEKT_WENSEN2 } from '@/lib/kolommen';
+import { KOLOM_ONTBREEKT_WENSEN2 } from '@/lib/kolommen';
+import { haalLijstRij } from '@/lib/monsterLijst';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
 import { bewaarFoto, ruimFotoOpAls } from '@/lib/fotoOpslag';
-import { apiRoute, ApiFout, leesId } from '@/lib/apiRoute';
+import { apiRoute, ApiFout, leesId, tegelijk } from '@/lib/apiRoute';
 import { eenmalig } from '@/lib/idempotentie';
 
 /**
@@ -62,7 +63,7 @@ export const POST = apiRoute(
 
       const sample = await prisma.oilSample.findUnique({
         where: { id: sampleId, ...(await actiefFilter()) },
-        select: { id: true, oNumber: true, analysisYear: true, isDisabled: true },
+        select: { id: true, oNumber: true, analysisYear: true, isDisabled: true, unreachablePhotoUrl: true },
     });
     if (!sample) throw new ApiFout(404, 'Monster niet gevonden');
     if (sample.isDisabled) throw new ApiFout(400, 'Dit monster is geannuleerd. Draai de annulering eerst terug.');
@@ -76,15 +77,17 @@ export const POST = apiRoute(
       return bewaarFoto(`sample-${sampleId}-${soort}-${Date.now()}.${fotoExtensie(file)}`, file);
     };
 
-    const partPhotoUrl = await uploaden(fotoOnderdeel, 'onderdeel');
-    const photoUrl = await uploaden(fotoPotje, 'potje');
-
-    // Een nog openstaande poging vullen we in; anders komt er een poging bij.
-    const laatste = await prisma.sampleAttempt.findFirst({
-      where: { oilSampleId: sampleId },
-      orderBy: NIEUWSTE_EERST,
-      select: { id: true, isTaken: true, photoUrl: true, partPhotoUrl: true },
-    });
+    // De twee foto's en het opzoeken van de laatste poging tegelijk. Een nog
+    // openstaande poging vullen we in; anders komt er een poging bij.
+    const [partPhotoUrl, photoUrl, laatste] = await tegelijk([
+      uploaden(fotoOnderdeel, 'onderdeel'),
+      uploaden(fotoPotje, 'potje'),
+      prisma.sampleAttempt.findFirst({
+        where: { oilSampleId: sampleId },
+        orderBy: NIEUWSTE_EERST,
+        select: { id: true, isTaken: true, photoUrl: true, partPhotoUrl: true },
+      }),
+    ]);
 
     const pogingData = {
       sampleDate,
@@ -112,22 +115,14 @@ export const POST = apiRoute(
       nieuwePoging = true;
     }
 
-    // Spiegelt datum, foto's, opmerking en status naar het monster.
-    await syncLatestAttemptToSample(sampleId);
-
-    // Een openstaande poging die een nieuwe foto kreeg: de oude foto opruimen.
-    if (!nieuwePoging && laatste) {
-      await ruimFotoOpAls(photoUrl ? laatste.photoUrl : null, partPhotoUrl ? laatste.partPhotoUrl : null);
-    }
-
     // Type olie staat op het monster zelf, niet op de poging. En een genomen
     // monster is niet meer onbereikbaar. De bewijsfoto van Niet bereikbaar
     // blijft in de opslag staan, met het adres in het logboek (zelfde regel als
     // bij Weer bereikbaar en Afname ongedaan): het is bewijs, geen wees.
-    const oudeBewijsfoto = (
-      await prisma.oilSample.findUnique({ where: { id: sampleId }, select: { unreachablePhotoUrl: true } })
-    )?.unreachablePhotoUrl;
-    const monsterData = {
+    const oudeBewijsfoto = sample.unreachablePhotoUrl;
+    // Spiegelt datum, foto's, opmerking en status naar het monster, in dezelfde
+    // update als het type olie en het wissen van Niet bereikbaar.
+    await syncLatestAttemptToSample(sampleId, {
       ...(oilType ? { oilType } : {}),
       isUnreachable: false,
       unreachableReason: null,
@@ -135,23 +130,15 @@ export const POST = apiRoute(
       unreachablePhotoUrl: null,
       unreachableAt: null,
       unreachableBy: null,
-    };
-    try {
-      await prisma.oilSample.update({
-        where: { id: sampleId },
-        data: monsterData,
-        select: { id: true },
-      });
-    } catch (error) {
-      if (!tabelOntbreekt(error)) throw error;
-      if (oilType) {
-        await prisma.oilSample.update({
-          where: { id: sampleId },
-          data: { oilType },
-          select: { id: true },
-        });
-      }
+    });
+
+    // Een openstaande poging die een nieuwe foto kreeg: de oude foto opruimen.
+    if (!nieuwePoging && laatste) {
+      await ruimFotoOpAls(photoUrl ? laatste.photoUrl : null, partPhotoUrl ? laatste.partPhotoUrl : null);
     }
+
+    // Het monster zoals de lijst het toont, zodat het scherm alleen die regel vervangt.
+    const monster = await haalLijstRij(sampleId, session);
 
     await createAuditLog({
       userId: session.userId,
@@ -171,7 +158,7 @@ export const POST = apiRoute(
       request,
     });
 
-    return NextResponse.json({ id: sampleId, attemptId, isTaken: true, sampleDate });
+    return NextResponse.json({ id: sampleId, attemptId, isTaken: true, sampleDate, monster });
     });
   }
 );

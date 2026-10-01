@@ -21,8 +21,8 @@ interface Props {
   objecten: SampleObject[];
   objectenBeschikbaar: boolean;
   onClose: () => void;
-  /** Na opslaan */
-  onOpgeslagen: () => void;
+  /** Na opslaan, met het monster zoals de server het nu teruggeeft */
+  onOpgeslagen: (monster: OilSample | null) => void;
   /** Lijst verversen; geeft de nieuwe lijst terug */
   onVernieuw: () => Promise<OilSample[] | null>;
   onVerwijderd: (doel: VerwijderDoel) => void;
@@ -142,7 +142,8 @@ export default function MonsterFormulier(p: Props) {
         return;
       }
 
-      p.onOpgeslagen();
+      // De server geeft het monster in de vorm van de lijst terug (met id).
+      p.onOpgeslagen(data && typeof data.id === 'number' ? data : null);
     } catch {
       setFormError('Er is een fout opgetreden');
     }

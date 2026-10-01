@@ -78,6 +78,17 @@ export function apiRoute<C = unknown>(
   });
 }
 
+/**
+ * Een paar controles of opzoekingen tegelijk, die niet van elkaar afhangen.
+ * Gaat er iets mis, dan geldt de fout van de eerste in de lijst (dezelfde
+ * melding als wanneer ze na elkaar liepen), niet die van de snelste.
+ */
+export async function tegelijk<T extends readonly unknown[]>(taken: readonly [...{ [K in keyof T]: Promise<T[K]> }]): Promise<T> {
+  const uitkomsten = await Promise.allSettled(taken);
+  for (const u of uitkomsten) if (u.status === 'rejected') throw u.reason;
+  return uitkomsten.map((u) => (u as PromiseFulfilledResult<unknown>).value) as unknown as T;
+}
+
 // ------------------------------------------------------------------
 // Invoer lezen
 // ------------------------------------------------------------------

@@ -13,6 +13,7 @@ import { verkleinFoto } from '@/lib/fotoVerkleinen';
 import { IDEMPOTENTIE_HEADER, inWachtrij, isNetwerkFout, nieuweSleutel, type Bestand } from '@/lib/wachtrij';
 import { useGebruiker } from './GebruikerProvider';
 import { useOnline } from './GeenVerbinding';
+import type { OilSample } from './oliemonsters/types';
 
 export interface NeemDoel {
   id: number;
@@ -31,8 +32,11 @@ interface Props {
   /** Welk monster; null betekent dat het venster dicht is. */
   doel: NeemDoel | null;
   onClose: () => void;
-  /** Gelukt: de lijst verversen en de melding tonen. */
-  onKlaar: (melding: string) => void;
+  /**
+   * Gelukt: de melding tonen en de lijst bijwerken. Bij opslaan met verbinding
+   * komt het bijgewerkte monster mee (in de vorm van GET /api/samples).
+   */
+  onKlaar: (melding: string, monster?: OilSample | null) => void;
 }
 
 /** Vandaag als jjjj-mm-dd, in de eigen tijdzone en niet in UTC. */
@@ -125,7 +129,8 @@ export default function MonsterNemenModal({ doel, onClose, onKlaar }: Props) {
         setFout(await foutTekst(res, 'Het monster is niet opgeslagen.'));
         return;
       }
-      onKlaar(`${doel.oNumber} staat op genomen.`);
+      const data = await res.json().catch(() => null);
+      onKlaar(`${doel.oNumber} staat op genomen.`, data?.monster ?? null);
     } catch (e) {
       // Verbinding weg tijdens het versturen: misschien kwam het wel aan. Met
       // dezelfde sleutel in de wachtrij, dan gebeurt er op de server niets dubbel.

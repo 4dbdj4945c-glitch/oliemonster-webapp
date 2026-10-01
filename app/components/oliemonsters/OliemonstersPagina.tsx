@@ -168,6 +168,17 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
     setSelectedPhoto({ fotos, oNumber: sample.oNumber, start: start < 0 ? 0 : start });
   };
 
+  // Na een wijziging: de bijgewerkte regel uit het antwoord in de lijst zetten,
+  // in plaats van de hele lijst opnieuw op te halen. Zonder regel (oudere
+  // server) of met een zoekopdracht (past hij er nog in?) toch de hele lijst.
+  const zetRegel = async (monster: OilSample | null | undefined) => {
+    if (!monster || search.trim() !== '') {
+      await loadSamples();
+      return;
+    }
+    setSamples((prev) => (prev.some((s) => s.id === monster.id) ? prev.map((s) => (s.id === monster.id ? monster : s)) : [monster, ...prev]));
+  };
+
   // Eén tik op de status: meteen omzetten in het scherm, en terugdraaien met een
   // melding als de server het niet aanneemt.
   const toggleStatus = async (sample: OilSample) => {
@@ -197,7 +208,8 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
         return;
       }
       setFoutmelding('');
-      await loadSamples();
+      const data = await response.json().catch(() => null);
+      await zetRegel(data?.monster);
     } catch {
       setSamples((prev) => prev.map((s) => (s.id === sample.id ? sample : s)));
       setFoutmelding(`${sample.oNumber} is niet opgeslagen: geen verbinding met de server.`);
@@ -263,12 +275,13 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
     }
   };
 
-  // Na Monster nemen of Niet bereikbaar: melding, venster dicht, lijst verversen.
-  const naVeldwerk = async (tekst: string) => {
+  // Na Monster nemen of Niet bereikbaar: melding, venster dicht, en de regel
+  // uit het antwoord (Monster nemen), anders de lijst verversen.
+  const naVeldwerk = async (tekst: string, monster?: OilSample | null) => {
     setNeemDoel(null);
     setOnbereikbaarDoel(null);
     setMelding(tekst);
-    await loadSamples();
+    await zetRegel(monster);
   };
 
   // Draait Niet bereikbaar terug: het monster is weer gewoon niet genomen.
@@ -563,9 +576,9 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
           objecten={objecten}
           objectenBeschikbaar={objectenBeschikbaar}
           onClose={() => setEditing(null)}
-          onOpgeslagen={() => {
+          onOpgeslagen={(monster) => {
             setEditing(null);
-            loadSamples();
+            zetRegel(monster);
           }}
           onVernieuw={loadSamples}
           onVerwijderd={naVerwijderen}

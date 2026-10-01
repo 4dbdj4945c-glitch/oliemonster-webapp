@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server';
-import { metMonsterFotos } from '@/lib/fotoAdres';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
-import { SAMPLE_BASIS_SELECT } from '@/lib/planningApi';
-import { tabelOntbreekt } from '@/lib/kolommen';
-import { apiRoute, ApiFout, leesId, leesJson } from '@/lib/apiRoute';
+import { apiRoute, ApiFout, leesId, leesJson, tegelijk } from '@/lib/apiRoute';
+import { haalLijstRij } from '@/lib/monsterLijst';
 import { controleerInstallatie, controleerObject, MonsterSchema, bewaarKlantBijLoskoppelen } from '@/lib/monsterInvoer';
 import { wijzigLaatstePoging, type PogingVelden } from '@/lib/sampleAttempts';
-import { actiefFilter, verwijderKolomBestaat, KOLOM_ONTBREEKT_VERWIJDEREN } from '@/lib/verwijderdeMonsters';
+import { verwijderKolomBestaat, KOLOM_ONTBREEKT_VERWIJDEREN } from '@/lib/verwijderdeMonsters';
 
 const zelfdeDag = (a: Date | null, b: Date | null) =>
   (a === null && b === null) || (!!a && !!b && a.toISOString().slice(0, 10) === b.toISOString().slice(0, 10));
@@ -27,36 +25,37 @@ export const PUT = apiRoute(
     const id = await leesId(context, 'Onbekend monster');
     const invoer = await leesJson(request, MonsterSchema);
 
-    const huidig = await prisma.oilSample.findFirst({
-      where: { id, ...(await actiefFilter()) },
-      select: { analysisYear: true, objectId: true, sampleDate: true, isTaken: true, remarks: true },
+    // In één query: dit monster en alle monsters met hetzelfde o-nummer (het jaar
+    // filteren we hieronder, dat weten we pas als we het monster hebben). Ook
+    // een monster in de prullenbak houdt zijn nummer bezet (uniek per jaar).
+    // De objectcontrole loopt alvast mee; zijn fout telt pas na de controles
+    // hieronder, net als toen alles na elkaar ging.
+    const objectControle = controleerObject(invoer.objectId);
+    objectControle.catch(() => {});
+    const rijen = await prisma.oilSample.findMany({
+      where: { OR: [{ id }, { oNumber: invoer.oNumber }] },
+      select: { id: true, analysisYear: true, objectId: true, sampleDate: true, isTaken: true, remarks: true, deletedAt: true },
     });
+    const huidig = rijen.find((r) => r.id === id && r.deletedAt === null);
     if (!huidig) throw new ApiFout(404, 'Monster niet gevonden');
 
-    // Ook een monster in de prullenbak houdt zijn nummer bezet (uniek per jaar),
-    // dus die tellen hier mee, met een eigen melding.
-    const existing = await prisma.oilSample.findFirst({
-      where: { oNumber: invoer.oNumber, analysisYear: huidig.analysisYear, id: { not: id } },
-      select: { id: true },
-    });
+    const existing = rijen.find((r) => r.id !== id && r.analysisYear === huidig.analysisYear);
     if (existing) {
-      const actief = await prisma.oilSample.findFirst({
-        where: { id: existing.id, ...(await actiefFilter()) },
-        select: { id: true },
-      });
       throw new ApiFout(
         400,
-        actief
+        existing.deletedAt === null
           ? 'O-nummer bestaat al'
           : `O-nummer ${invoer.oNumber} staat in de prullenbak. Zet dat monster terug of kies een ander nummer.`
       );
     }
 
+    await objectControle;
     const objectId = invoer.objectId === undefined ? huidig.objectId : invoer.objectId;
-    await controleerObject(invoer.objectId);
-    // Het object gaat eraf: de klant van dat object blijft op het monster staan.
-    if (invoer.objectId === null && huidig.objectId !== null) await bewaarKlantBijLoskoppelen({ id });
-    await controleerInstallatie(invoer.installatieId, objectId);
+    await tegelijk([
+      // Het object gaat eraf: de klant van dat object blijft op het monster staan.
+      invoer.objectId === null && huidig.objectId !== null ? bewaarKlantBijLoskoppelen({ id }) : Promise.resolve(),
+      controleerInstallatie(invoer.installatieId, objectId),
+    ]);
 
     const gegevens = {
       oNumber: invoer.oNumber,
@@ -71,32 +70,19 @@ export const PUT = apiRoute(
         : invoer.objectId !== undefined && invoer.objectId !== huidig.objectId
         ? { installatieId: null }
         : {}),
+      // Zet je hier op genomen, dan is het monster niet meer onbereikbaar. Zelfde
+      // regel als in de statusroute, zodat een monster nooit twee statussen heeft.
+      ...(invoer.isTaken
+        ? {
+            isUnreachable: false,
+            unreachableReason: null,
+            unreachableNote: null,
+            unreachablePhotoUrl: null,
+            unreachableAt: null,
+            unreachableBy: null,
+          }
+        : {}),
     };
-
-    // Zet je hier op genomen, dan is het monster niet meer onbereikbaar. Zelfde
-    // regel als in de statusroute, zodat een monster nooit twee statussen heeft.
-    try {
-      await prisma.oilSample.update({
-        where: { id },
-        data: {
-          ...gegevens,
-          ...(invoer.isTaken
-            ? {
-                isUnreachable: false,
-                unreachableReason: null,
-                unreachableNote: null,
-                unreachablePhotoUrl: null,
-                unreachableAt: null,
-                unreachableBy: null,
-              }
-            : {}),
-        },
-        select: { id: true },
-      });
-    } catch (error) {
-      if (!tabelOntbreekt(error)) throw error;
-      await prisma.oilSample.update({ where: { id }, data: gegevens, select: { id: true } });
-    }
 
     // Wat uit de laatste poging komt: alleen wat veranderd is. Bij niet genomen
     // blijft de datum van de poging staan (zoals bij de statusknop); de lijst
@@ -107,9 +93,12 @@ export const PUT = apiRoute(
       naarPoging.sampleDate = invoer.sampleDate ?? null;
     }
     if ((invoer.remarks ?? null) !== (huidig.remarks ?? null)) naarPoging.remarks = invoer.remarks ?? null;
-    if (Object.keys(naarPoging).length > 0) await wijzigLaatstePoging(id, naarPoging);
+    // De velden van het monster gaan mee in de update die de poging spiegelt.
+    if (Object.keys(naarPoging).length > 0) await wijzigLaatstePoging(id, naarPoging, gegevens);
+    else await prisma.oilSample.update({ where: { id }, data: gegevens, select: { id: true } });
 
-    const sample = metMonsterFotos(await prisma.oilSample.findUniqueOrThrow({ where: { id }, select: SAMPLE_BASIS_SELECT }));
+    // In de vorm van de lijst, zodat het scherm alleen deze regel hoeft te vervangen.
+    const sample = await haalLijstRij(id, session);
 
     await createAuditLog({
       userId: session.userId,

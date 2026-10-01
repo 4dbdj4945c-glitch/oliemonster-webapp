@@ -5,7 +5,8 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { tabelOntbreekt } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { apiRoute, ApiFout, leesId, leesJson, optioneleDatum } from '@/lib/apiRoute';
-import { NIEUWSTE_EERST, wijzigLaatstePoging } from '@/lib/sampleAttempts';
+import { wijzigLaatstePoging } from '@/lib/sampleAttempts';
+import { haalLijstRij } from '@/lib/monsterLijst';
 
 const StatusSchema = z.object({
   isTaken: z.boolean({ error: 'Geef mee of het monster genomen is' }),
@@ -48,37 +49,36 @@ export const PATCH = apiRoute(
     if (!sample) throw new ApiFout(404, 'Monster niet gevonden');
     if (sample.isDisabled) throw new ApiFout(400, 'Dit monster is geannuleerd. Draai de annulering eerst terug.');
 
-    const laatste = await prisma.sampleAttempt.findFirst({
-      where: { oilSampleId: sampleId },
-      orderBy: NIEUWSTE_EERST,
-      select: { sampleDate: true },
-    });
-
     // Datum bij "genomen": de meegestuurde datum, anders de datum die er al
-    // stond, anders vandaag. Bij "niet genomen" blijft de datum staan.
-    const bestaandeDatum = laatste ? laatste.sampleDate : sample.sampleDate;
-    const sampleDate: Date | null = isTaken ? invoer.sampleDate ?? bestaandeDatum ?? new Date() : bestaandeDatum;
-
-    await wijzigLaatstePoging(sampleId, { isTaken, sampleDate });
-
+    // stond (van de laatste poging, of zonder poging van het monster), anders
+    // vandaag. Bij "niet genomen" blijft de datum staan.
+    //
     // Een genomen monster is niet meer onbereikbaar: die registratie gaat eruit,
     // anders houdt het monster twee statussen tegelijk. De reden blijft in het
-    // logboek staan.
+    // logboek staan. Dat gaat mee in dezelfde update die de poging spiegelt.
     const wisOnbereikbaar = isTaken && sample.isUnreachable === true;
-    if (wisOnbereikbaar) {
-      await prisma.oilSample.update({
-        where: { id: sampleId },
-        data: {
-          isUnreachable: false,
-          unreachableReason: null,
-          unreachableNote: null,
-          unreachablePhotoUrl: null,
-          unreachableAt: null,
-          unreachableBy: null,
-        },
-        select: { id: true },
-      });
-    }
+    const { vorige, wijziging } = await wijzigLaatstePoging(
+      sampleId,
+      (stond) => ({
+        isTaken,
+        sampleDate: isTaken ? invoer.sampleDate ?? stond.sampleDate ?? new Date() : stond.sampleDate,
+      }),
+      wisOnbereikbaar
+        ? {
+            isUnreachable: false,
+            unreachableReason: null,
+            unreachableNote: null,
+            unreachablePhotoUrl: null,
+            unreachableAt: null,
+            unreachableBy: null,
+          }
+        : {}
+    );
+    const bestaandeDatum = vorige?.sampleDate ?? null;
+    const sampleDate = wijziging.sampleDate ?? null;
+
+    // Het monster zoals de lijst het toont, zodat het scherm alleen deze regel vervangt.
+    const monster = await haalLijstRij(sampleId, session);
 
     await createAuditLog({
       userId: session.userId,
@@ -97,6 +97,6 @@ export const PATCH = apiRoute(
       request,
     });
 
-    return NextResponse.json({ id: sampleId, isTaken, sampleDate });
+    return NextResponse.json({ id: sampleId, isTaken, sampleDate, monster });
   }
 );

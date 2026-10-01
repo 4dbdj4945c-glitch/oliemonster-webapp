@@ -37,6 +37,7 @@ import { useWachtrij } from '@/app/components/wachtrij/useWachtrij';
 import VeldOffline from '@/app/components/wachtrij/VeldOffline';
 import { kaartenLink, korteDatum } from '@/lib/vandaag';
 import type { MapStreet } from '@/app/components/RouteMap';
+import type { OilSample } from '@/app/components/oliemonsters/types';
 import { isMonsterStop, stopNaam, type PlanDag, type PlanMonster, type PlanStop } from './types';
 import { dagKort, intervalTekst, taakSoortInfo } from '@/lib/contracten';
 import { sjabloonVan } from '@/lib/inspecties/sjablonen';
@@ -248,7 +249,9 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
           );
         }
         setFoutmelding('');
-        await laadDag();
+        // De dag zoals hij nu is staat in het antwoord; anders opnieuw ophalen.
+        if (uitkomst?.dag) setDag(uitkomst.dag);
+        else await laadDag();
       } catch {
         setFoutmelding(`${stopNaam(stop)} is niet opgeslagen: geen verbinding met de server.`);
       }
@@ -320,11 +323,37 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
     }
   };
 
-  const naVeldwerk = async (tekst: string) => {
+  const naVeldwerk = async (tekst: string, bijgewerkt?: OilSample | null) => {
     setNeemDoel(null);
     setOnbereikbaarDoel(null);
     setGekozenMonster(null);
     setMelding(tekst);
+    // Monster nemen geeft het monster terug: alleen dat monster bijwerken in
+    // plaats van de hele dag opnieuw op te halen.
+    if (bijgewerkt && dag) {
+      const naarPlan = (m: PlanMonster): PlanMonster =>
+        m.id !== bijgewerkt.id
+          ? m
+          : {
+              ...m,
+              isTaken: bijgewerkt.isTaken,
+              sampleDate: bijgewerkt.sampleDate,
+              oilType: bijgewerkt.oilType ?? null,
+              remarks: bijgewerkt.remarks ?? null,
+              photoUrl: bijgewerkt.photoUrl ?? null,
+              partPhotoUrl: bijgewerkt.partPhotoUrl ?? null,
+              isUnreachable: bijgewerkt.isUnreachable ?? false,
+              unreachableReason: bijgewerkt.unreachableReason ?? null,
+            };
+      setDag({
+        ...dag,
+        stops: dag.stops.map((s) => {
+          const samples = s.samples.map(naarPlan);
+          return { ...s, samples, aantalGenomen: samples.filter((m) => m.isTaken).length };
+        }),
+      });
+      return;
+    }
     // Zonder bereik lukt ophalen toch niet; de wachtrij toont wat er klaarstaat.
     if (navigator.onLine) await laadDag();
   };
