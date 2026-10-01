@@ -326,6 +326,18 @@ hieronder. Pas die twee nooit aan; wijzigingen komen altijd in een nieuwe migrat
   `Verzending`) en twee nieuwe, lege kolommen op `SamplePlanStop` (`taakId`, `inspectieId`).
   Elke bestaande stop blijft een oliemonsterstop; aan bestaande gegevens verandert niets.
 
+**Migratie oktober 2026 (modules opgeheven):**
+
+- `20261003090000_controlerondes_ultimo_opheffen`: de modules Controlerondes en
+  Ultimo-opmerkingen zijn weg. De tabellen `ControlRound`, `ControlRoundStreet`,
+  `UltimoTask` en `UltimoComment` gaan eruit, met hun foreign keys. Vóór die migratie
+  bewaart `./db-bijwerken.sh` hun volledige inhoud als JSON in
+  `../backups/controlerondes-ultimo-<datum>.json` (scripts/backup-opgeheven.mjs, alleen
+  lezen, overschrijft nooit een bestaand bestand) en stopt als dat niet lukt. De regels
+  in het logboek blijven staan. De oude adressen `/dashboard/controlerondes` en
+  `/dashboard/ultimo` sturen door naar Vandaag. Wie de code terug wil: git-tag
+  `archief-controlerondes-ultimo`.
+
 **Productie bijwerken (Roel, op zijn Mac):**
 
 ```bash

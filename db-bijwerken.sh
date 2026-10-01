@@ -67,6 +67,18 @@ echo ""
 node scripts/cache-telling.mjs voor || echo "(De telling lukte niet; de migraties gaan gewoon door.)"
 echo ""
 
+# Alleen lezen: de inhoud van de opgeheven modules Controlerondes en
+# Ultimo-opmerkingen als JSON in ../backups/, VOOR de migratie die hun tabellen
+# weghaalt (scripts/backup-opgeheven.mjs). Mislukt dat, dan stopt alles hier.
+if ! node scripts/backup-opgeheven.mjs; then
+  echo ""
+  echo "GESTOPT: de back-up van de controlerondes en Ultimo-opmerkingen is niet gelukt."
+  echo "Er is niets gewijzigd: de migraties zijn NIET uitgevoerd. Los de melding hierboven"
+  echo "op en draai dit script daarna opnieuw."
+  exit 1
+fi
+echo ""
+
 echo "Openstaande migraties uitvoeren..."
 if ! npx prisma migrate deploy; then
   echo ""
