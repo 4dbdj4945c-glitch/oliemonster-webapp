@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 import { tabelOntbreekt } from './kolommen';
+import { LIJST_SELECT } from './monsterLijst';
 
 /**
  * De velden van een poging zoals die bestonden vóór wensenronde 2. Zolang
@@ -32,7 +33,15 @@ type CacheBron = {
  * er geen poging meer is), samen met `extra`: andere velden van het monster
  * die in dezelfde update mee kunnen (bijvoorbeeld Niet bereikbaar wissen).
  */
-async function spiegel(oilSampleId: number, latest: CacheBron, extra: Prisma.OilSampleUpdateInput = {}) {
+/** Het monster zoals de update het teruggeeft als om de lijstvorm gevraagd is. */
+export type SpiegelRij = Prisma.OilSampleGetPayload<{ select: typeof LIJST_SELECT }>;
+
+async function spiegel(
+  oilSampleId: number,
+  latest: CacheBron,
+  extra: Prisma.OilSampleUpdateInput = {},
+  lijstRij = false
+): Promise<SpiegelRij | null> {
   const data = latest
     ? {
         sampleDate: latest.sampleDate,
@@ -50,11 +59,17 @@ async function spiegel(oilSampleId: number, latest: CacheBron, extra: Prisma.Oil
       };
 
   try {
+    // Met lijstRij geeft dezelfde update het monster terug in de vorm van de
+    // lijst (lib/monsterLijst.ts): geen aparte query meer om het op te halen.
+    if (lijstRij) {
+      return await prisma.oilSample.update({ where: { id: oilSampleId }, data: { ...extra, ...data }, select: LIJST_SELECT });
+    }
     await prisma.oilSample.update({
       where: { id: oilSampleId },
       data: { ...extra, ...data },
       select: { id: true },
     });
+    return null;
   } catch (error) {
     if (!tabelOntbreekt(error)) throw error;
     // Kolom partPhotoUrl staat er nog niet: de rest wel bijwerken.
@@ -69,6 +84,7 @@ async function spiegel(oilSampleId: number, latest: CacheBron, extra: Prisma.Oil
       },
       select: { id: true },
     });
+    return null;
   }
 }
 
@@ -85,7 +101,7 @@ async function spiegel(oilSampleId: number, latest: CacheBron, extra: Prisma.Oil
  * hermonstering bijkomt. Met `extra` gaan andere velden van het monster in
  * dezelfde update mee.
  */
-export async function syncLatestAttemptToSample(oilSampleId: number, extra: Prisma.OilSampleUpdateInput = {}) {
+export async function syncLatestAttemptToSample(oilSampleId: number, extra: Prisma.OilSampleUpdateInput = {}, lijstRij = false) {
   let latest: CacheBron;
   try {
     latest = await prisma.sampleAttempt.findFirst({
@@ -101,7 +117,7 @@ export async function syncLatestAttemptToSample(oilSampleId: number, extra: Pris
       select: { sampleDate: true, photoUrl: true, remarks: true, isTaken: true },
     });
   }
-  await spiegel(oilSampleId, latest, extra);
+  return spiegel(oilSampleId, latest, extra, lijstRij);
 }
 
 /** De velden van een monster die uit de laatste poging komen (de cache). */
@@ -137,16 +153,37 @@ const zelfdeTijd = (a: Date | null | undefined, b: Date | null) =>
  *
  * Geeft de poging terug zoals hij was, zodat de route oude foto's kan opruimen.
  */
+/** Wat wijzigLaatstePoging van de laatste poging nodig heeft (LAATSTE_POGING_SELECT). */
+export const LAATSTE_POGING_SELECT = { id: true, sampleDate: true, photoUrl: true, partPhotoUrl: true, remarks: true, isTaken: true } as const;
+type LaatstePoging = {
+  id: number;
+  sampleDate: Date | null;
+  photoUrl: string | null;
+  partPhotoUrl: string | null;
+  remarks: string | null;
+  isTaken: boolean;
+};
+
 export async function wijzigLaatstePoging(
   oilSampleId: number,
   wijziging: PogingVelden | ((vorige: Required<PogingVelden>) => PogingVelden),
-  extra: Prisma.OilSampleUpdateInput = {}
-): Promise<{ attemptId: number | null; vorige: Required<PogingVelden> | null; wijziging: PogingVelden }> {
-  const laatste = await prisma.sampleAttempt.findFirst({
-    where: { oilSampleId },
-    orderBy: NIEUWSTE_EERST,
-    select: { id: true, sampleDate: true, photoUrl: true, partPhotoUrl: true, remarks: true, isTaken: true },
-  });
+  extra: Prisma.OilSampleUpdateInput = {},
+  opties: {
+    /** De laatste poging als de route hem al heeft (null: er is er geen); anders zoeken we hem op. */
+    laatste?: LaatstePoging | null;
+    /** Het bijgewerkte monster in de vorm van de lijst teruggeven (`monster`). */
+    lijstRij?: boolean;
+  } = {}
+): Promise<{ attemptId: number | null; vorige: Required<PogingVelden> | null; wijziging: PogingVelden; monster: SpiegelRij | null }> {
+  const lijstRij = opties.lijstRij ?? false;
+  const laatste =
+    opties.laatste !== undefined
+      ? opties.laatste
+      : await prisma.sampleAttempt.findFirst({
+          where: { oilSampleId },
+          orderBy: NIEUWSTE_EERST,
+          select: LAATSTE_POGING_SELECT,
+        });
 
   if (laatste) {
     const { id, ...vorige } = laatste;
@@ -158,9 +195,11 @@ export async function wijzigLaatstePoging(
     });
     // Blijft de datum gelijk, dan blijft deze poging de laatste: meteen
     // spiegelen, zonder de laatste opnieuw te zoeken.
-    if (w.sampleDate === undefined || zelfdeTijd(w.sampleDate, vorige.sampleDate)) await spiegel(oilSampleId, bijgewerkt, extra);
-    else await syncLatestAttemptToSample(oilSampleId, extra);
-    return { attemptId: id, vorige, wijziging: w };
+    const monster =
+      w.sampleDate === undefined || zelfdeTijd(w.sampleDate, vorige.sampleDate)
+        ? await spiegel(oilSampleId, bijgewerkt, extra, lijstRij)
+        : await syncLatestAttemptToSample(oilSampleId, extra, lijstRij);
+    return { attemptId: id, vorige, wijziging: w, monster };
   }
 
   const monster = await prisma.oilSample.findUniqueOrThrow({
@@ -173,14 +212,14 @@ export async function wijzigLaatstePoging(
     !nieuw.isTaken && !nieuw.sampleDate && !nieuw.remarks && !nieuw.photoUrl && !nieuw.partPhotoUrl;
   if (leeg) {
     // Niets om te bewaren; het monster zelf ook leeg zetten, zodat het klopt.
-    await spiegel(oilSampleId, null, extra);
-    return { attemptId: null, vorige: monster, wijziging: w };
+    const rij = await spiegel(oilSampleId, null, extra, lijstRij);
+    return { attemptId: null, vorige: monster, wijziging: w, monster: rij };
   }
   const poging = await prisma.sampleAttempt.create({
     data: { oilSampleId, ...nieuw, isTaken: nieuw.isTaken ?? false },
     select: { id: true, sampleDate: true, photoUrl: true, partPhotoUrl: true, remarks: true, isTaken: true },
   });
   // Er was geen poging, dus deze nieuwe is de laatste.
-  await spiegel(oilSampleId, poging, extra);
-  return { attemptId: poging.id, vorige: monster, wijziging: w };
+  const rij = await spiegel(oilSampleId, poging, extra, lijstRij);
+  return { attemptId: poging.id, vorige: monster, wijziging: w, monster: rij };
 }

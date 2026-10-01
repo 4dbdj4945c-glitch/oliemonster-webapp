@@ -3,9 +3,9 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { apiRoute, ApiFout, leesId, leesJson, tegelijk } from '@/lib/apiRoute';
-import { haalLijstRij } from '@/lib/monsterLijst';
+import { alsLijstRij, haalLijstRij, LIJST_SELECT } from '@/lib/monsterLijst';
 import { controleerInstallatie, controleerObject, MonsterSchema, bewaarKlantBijLoskoppelen } from '@/lib/monsterInvoer';
-import { wijzigLaatstePoging, type PogingVelden } from '@/lib/sampleAttempts';
+import { LAATSTE_POGING_SELECT, NIEUWSTE_EERST, wijzigLaatstePoging, type PogingVelden } from '@/lib/sampleAttempts';
 import { verwijderKolomBestaat, KOLOM_ONTBREEKT_VERWIJDEREN } from '@/lib/verwijderdeMonsters';
 
 const zelfdeDag = (a: Date | null, b: Date | null) =>
@@ -34,7 +34,17 @@ export const PUT = apiRoute(
     objectControle.catch(() => {});
     const rijen = await prisma.oilSample.findMany({
       where: { OR: [{ id }, { oNumber: invoer.oNumber }] },
-      select: { id: true, analysisYear: true, objectId: true, sampleDate: true, isTaken: true, remarks: true, deletedAt: true },
+      select: {
+        id: true,
+        analysisYear: true,
+        objectId: true,
+        sampleDate: true,
+        isTaken: true,
+        remarks: true,
+        deletedAt: true,
+        // De laatste poging (alleen van dit monster gebruikt), voor wijzigLaatstePoging.
+        attempts: { orderBy: NIEUWSTE_EERST, take: 1, select: LAATSTE_POGING_SELECT },
+      },
     });
     const huidig = rijen.find((r) => r.id === id && r.deletedAt === null);
     if (!huidig) throw new ApiFout(404, 'Monster niet gevonden');
@@ -93,12 +103,14 @@ export const PUT = apiRoute(
       naarPoging.sampleDate = invoer.sampleDate ?? null;
     }
     if ((invoer.remarks ?? null) !== (huidig.remarks ?? null)) naarPoging.remarks = invoer.remarks ?? null;
-    // De velden van het monster gaan mee in de update die de poging spiegelt.
-    if (Object.keys(naarPoging).length > 0) await wijzigLaatstePoging(id, naarPoging, gegevens);
-    else await prisma.oilSample.update({ where: { id }, data: gegevens, select: { id: true } });
-
-    // In de vorm van de lijst, zodat het scherm alleen deze regel hoeft te vervangen.
-    const sample = await haalLijstRij(id, session);
+    // De velden van het monster gaan mee in de update die de poging spiegelt;
+    // die update geeft het monster meteen in de vorm van de lijst terug, zodat
+    // het scherm alleen deze regel hoeft te vervangen.
+    const rij =
+      Object.keys(naarPoging).length > 0
+        ? (await wijzigLaatstePoging(id, naarPoging, gegevens, { laatste: huidig.attempts[0] ?? null, lijstRij: true })).monster
+        : await prisma.oilSample.update({ where: { id }, data: gegevens, select: LIJST_SELECT });
+    const sample = rij ? alsLijstRij(rij, session) : await haalLijstRij(id, session);
 
     await createAuditLog({
       userId: session.userId,

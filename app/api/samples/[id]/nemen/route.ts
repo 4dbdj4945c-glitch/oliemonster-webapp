@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { NIEUWSTE_EERST, syncLatestAttemptToSample } from '@/lib/sampleAttempts';
 import { KOLOM_ONTBREEKT_WENSEN2 } from '@/lib/kolommen';
-import { haalLijstRij } from '@/lib/monsterLijst';
+import { alsLijstRij, haalLijstRij } from '@/lib/monsterLijst';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { fotoFout, fotoExtensie } from '@/lib/fotoControle';
 import { bewaarFoto, ruimFotoOpAls } from '@/lib/fotoOpslag';
@@ -122,7 +122,7 @@ export const POST = apiRoute(
     const oudeBewijsfoto = sample.unreachablePhotoUrl;
     // Spiegelt datum, foto's, opmerking en status naar het monster, in dezelfde
     // update als het type olie en het wissen van Niet bereikbaar.
-    await syncLatestAttemptToSample(sampleId, {
+    const rij = await syncLatestAttemptToSample(sampleId, {
       ...(oilType ? { oilType } : {}),
       isUnreachable: false,
       unreachableReason: null,
@@ -130,7 +130,7 @@ export const POST = apiRoute(
       unreachablePhotoUrl: null,
       unreachableAt: null,
       unreachableBy: null,
-    });
+    }, true);
 
     // Een openstaande poging die een nieuwe foto kreeg: de oude foto opruimen.
     if (!nieuwePoging && laatste) {
@@ -138,7 +138,7 @@ export const POST = apiRoute(
     }
 
     // Het monster zoals de lijst het toont, zodat het scherm alleen die regel vervangt.
-    const monster = await haalLijstRij(sampleId, session);
+    const monster = rij ? alsLijstRij(rij, session) : await haalLijstRij(sampleId, session);
 
     await createAuditLog({
       userId: session.userId,

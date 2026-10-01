@@ -5,8 +5,8 @@ import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { tabelOntbreekt } from '@/lib/kolommen';
 import { actiefFilter } from '@/lib/verwijderdeMonsters';
 import { apiRoute, ApiFout, leesId, leesJson, optioneleDatum } from '@/lib/apiRoute';
-import { wijzigLaatstePoging } from '@/lib/sampleAttempts';
-import { haalLijstRij } from '@/lib/monsterLijst';
+import { LAATSTE_POGING_SELECT, NIEUWSTE_EERST, wijzigLaatstePoging } from '@/lib/sampleAttempts';
+import { alsLijstRij, haalLijstRij } from '@/lib/monsterLijst';
 
 const StatusSchema = z.object({
   isTaken: z.boolean({ error: 'Geef mee of het monster genomen is' }),
@@ -36,11 +36,21 @@ export const PATCH = apiRoute(
     const isTaken = invoer.isTaken;
 
     const basis = { id: true, oNumber: true, isTaken: true, isDisabled: true, analysisYear: true, sampleDate: true } as const;
-    let sample: { id: number; oNumber: string; isTaken: boolean; isDisabled: boolean; analysisYear: number; sampleDate: Date | null; isUnreachable?: boolean } | null;
+    let sample: {
+      id: number;
+      oNumber: string;
+      isTaken: boolean;
+      isDisabled: boolean;
+      analysisYear: number;
+      sampleDate: Date | null;
+      isUnreachable?: boolean;
+      attempts?: { id: number; sampleDate: Date | null; photoUrl: string | null; partPhotoUrl: string | null; remarks: string | null; isTaken: boolean }[];
+    } | null;
     try {
+      // Het monster met zijn laatste poging in één query.
       sample = await prisma.oilSample.findUnique({
         where: { id: sampleId, ...(await actiefFilter()) },
-        select: { ...basis, isUnreachable: true },
+        select: { ...basis, isUnreachable: true, attempts: { orderBy: NIEUWSTE_EERST, take: 1, select: LAATSTE_POGING_SELECT } },
       });
     } catch (error) {
       if (!tabelOntbreekt(error)) throw error;
@@ -57,7 +67,7 @@ export const PATCH = apiRoute(
     // anders houdt het monster twee statussen tegelijk. De reden blijft in het
     // logboek staan. Dat gaat mee in dezelfde update die de poging spiegelt.
     const wisOnbereikbaar = isTaken && sample.isUnreachable === true;
-    const { vorige, wijziging } = await wijzigLaatstePoging(
+    const { vorige, wijziging, monster: rij } = await wijzigLaatstePoging(
       sampleId,
       (stond) => ({
         isTaken,
@@ -72,13 +82,15 @@ export const PATCH = apiRoute(
             unreachableAt: null,
             unreachableBy: null,
           }
-        : {}
+        : {},
+      // De laatste poging hebben we al; het monster komt in de vorm van de lijst terug.
+      { laatste: sample.attempts ? sample.attempts[0] ?? null : undefined, lijstRij: true }
     );
     const bestaandeDatum = vorige?.sampleDate ?? null;
     const sampleDate = wijziging.sampleDate ?? null;
 
     // Het monster zoals de lijst het toont, zodat het scherm alleen deze regel vervangt.
-    const monster = await haalLijstRij(sampleId, session);
+    const monster = rij ? alsLijstRij(rij, session) : await haalLijstRij(sampleId, session);
 
     await createAuditLog({
       userId: session.userId,
