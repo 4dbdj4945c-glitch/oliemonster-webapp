@@ -4,11 +4,12 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { apiRoute, ApiFout, leesId, leesJson } from '@/lib/apiRoute';
 import { dagAlsDatum } from '@/lib/inspecties/server';
-import { DagrapportWijzigingSchema, alleenConcept, wijzigConcept, controleerObject, dagrapportAlsJson, dagrapportNummer, haalDagrapport } from '@/lib/dagrapporten';
+import { Prisma } from '@prisma/client';
+import { DagrapportWijzigingSchema, alleenConcept, wijzigConcept, controleerObject, dagrapportAlsJson, dagrapportNummer, haalDagrapport, tijdData } from '@/lib/dagrapporten';
 
 /*
   GET    /api/dagrapporten/[id] - het dagrapport met foto's en handtekening (beheerder en gebruiker)
-  PUT    /api/dagrapporten/[id] - werkzaamheden, bevindingen, uren, datum, plek (admin, alleen een concept)
+  PUT    /api/dagrapporten/[id] - alle velden van de werkbon (admin, alleen een concept)
   DELETE /api/dagrapporten/[id] - naar de prullenbak (admin, body { bevestig: "DR-12" })
 */
 
@@ -29,8 +30,11 @@ export const PUT = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout 
   if (invoer.uitvoerder !== undefined) data.uitvoerder = invoer.uitvoerder;
   if (invoer.werkzaamheden !== undefined) data.werkzaamheden = invoer.werkzaamheden;
   if (invoer.bevindingen !== undefined) data.bevindingen = invoer.bevindingen;
-  if (invoer.uren !== undefined) data.minuten = invoer.uren;
-  else if (invoer.minuten !== undefined) data.minuten = invoer.minuten;
+  Object.assign(data, tijdData(invoer, huidig));
+  for (const k of ['soortWerk', 'referentie', 'contactpersoon', 'reisMinuten', 'kilometers', 'vervolgNodig', 'vervolgActie', 'handtekeningVragen'] as const) {
+    if (invoer[k] !== undefined) data[k] = invoer[k];
+  }
+  if (invoer.materialen !== undefined) data.materialen = invoer.materialen ?? Prisma.DbNull;
   await wijzigConcept(id, data);
   await createAuditLog({ userId: sessie.userId, username: sessie.username, action: AuditActions.UPDATE_DAGRAPPORT, details: { id, velden: Object.keys(data) }, request });
   return NextResponse.json(dagrapportAlsJson(await haalDagrapport(id, sessie)));

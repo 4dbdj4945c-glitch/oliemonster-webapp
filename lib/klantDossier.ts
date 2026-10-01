@@ -254,9 +254,9 @@ export async function haalDossier(klantId: number, gevraagd: number | null | 'ni
       jaar: new Date(r.datum).getUTCFullYear(),
       objectId: r.objectId,
       installatieId: null,
-      titel: `Dagrapport ${nummer}`,
+      titel: `Werkbon ${nummer}`,
       tekst: [r.werkzaamheden, r.bevindingen].filter(Boolean).join(' ') || null,
-      fotos: r.fotos.slice(0, 4).map((f) => ({ url: fotoAdres('dagrapport', f.id, null, f.url)!, label: f.bijschrift ?? 'Foto dagrapport' })),
+      fotos: r.fotos.slice(0, 4).map((f) => ({ url: fotoAdres('dagrapport', f.id, null, f.url)!, label: f.bijschrift ?? 'Foto werkbon' })),
       door: r.uitvoerder,
       dagrapport: { id: r.id, status: r.status, getekendDoor: r.getekendDoor, pdf: `/api/dagrapporten/${r.id}/pdf` },
     });

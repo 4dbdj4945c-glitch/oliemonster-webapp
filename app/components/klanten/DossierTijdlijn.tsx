@@ -32,6 +32,7 @@ const SOORT: Record<MomentSoort, { icoon: IconNaam; badge: string; label: string
 };
 
 const DAGRAPPORT_CONCEPT = { icoon: 'module-dagrapport' as IconNaam, badge: 'badge-gray', label: 'Concept' };
+const DAGRAPPORT_AFGEROND = { icoon: 'module-dagrapport' as IconNaam, badge: 'badge-success', label: 'Afgerond' };
 
 /** Badge van een inspectiemoment: de uitslag van het arbeidsmiddel, anders de status. */
 function inspectieBadge(m: Moment): { icoon: IconNaam; badge: string; label: string } {
@@ -54,7 +55,7 @@ const FILTERS: { sleutel: Filter; naam: string }[] = [
   { sleutel: 'niet-bereikbaar', naam: 'Niet bereikbaar' },
   { sleutel: 'geannuleerd', naam: 'Geannuleerd' },
   { sleutel: 'inspectie', naam: 'Inspecties' },
-  { sleutel: 'dagrapport', naam: 'Dagrapporten' },
+  { sleutel: 'dagrapport', naam: 'Werkbonnen' },
 ];
 
 function past(m: Moment, f: Filter): boolean {
@@ -293,8 +294,10 @@ export default function DossierTijdlijn({
                   const w =
                     m.soort === 'inspectie'
                       ? inspectieBadge(m)
-                      : m.soort === 'dagrapport' && m.dagrapport?.status !== 'getekend'
+                      : m.soort === 'dagrapport' && m.dagrapport?.status === 'concept'
                         ? DAGRAPPORT_CONCEPT
+                        : m.soort === 'dagrapport' && m.dagrapport?.status === 'afgerond'
+                          ? DAGRAPPORT_AFGEROND
                         : m.soort === 'open' && m.gepland
                           ? GEPLAND
                           : SOORT[m.soort];

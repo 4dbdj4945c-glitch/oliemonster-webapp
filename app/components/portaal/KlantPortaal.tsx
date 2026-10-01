@@ -544,10 +544,10 @@ export default function KlantPortaal({
                   <li key={`dagrapport-${r.id}`} className="rij">
                     <span className="icoonvak"><Icon name="module-dagrapport" size={20} /></span>
                     <span className="rij-tekst">
-                      <strong>Dagrapport, {dagDatum(r.datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                      <strong>Werkbon, {dagDatum(r.datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
                       <span>{[r.plek, r.getekendDoor ? `getekend door ${r.getekendDoor}` : null].filter(Boolean).join(', ')}</span>
                     </span>
-                    <a className="icon-btn" href={r.pdf} download title={`Dagrapport ${r.nummer} downloaden`} aria-label={`Dagrapport van ${r.datum} downloaden`}>
+                    <a className="icon-btn" href={r.pdf} download title={`Werkbon ${r.nummer} downloaden`} aria-label={`Werkbon van ${r.datum} downloaden`}>
                       <Icon name="download" size={20} />
                     </a>
                   </li>

@@ -5237,6 +5237,41 @@ a.rij-tekst.rij-link:hover strong { text-decoration: underline; }
 }
 .dr-veldknop { margin-top: 12px; }
 
+/* ---------- Werkbon: blokken, tijd en materialen ---------- */
+.dr-sectie { margin: 4px 0 12px; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--blue); }
+.veld-kaart .dr-sectie { margin-top: 14px; }
+.dr-blok { padding: 20px; }
+.dr-blok .veldwerk { gap: 14px; }
+.dr-drie { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.dr-totaal { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: var(--radius-md); background: var(--grijs-50); font-size: 14px; font-weight: 600; color: var(--navy); }
+.dr-materialen { list-style: none; margin: 0 0 12px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.dr-materiaal {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72px 72px 110px 36px;
+  gap: 8px;
+  align-items: end;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--grijs-200);
+}
+.dr-materiaal .veld { margin: 0; }
+.dr-materiaal .label { font-size: 12px; }
+.dr-mat-weg { margin-bottom: 4px; }
+.dr-mat-lijst { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--grijs-200); }
+.dr-mat-lijst li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--grijs-200); font-size: 15px; color: var(--grijs-700); }
+.dr-mat-lijst small { color: var(--grijs-500); }
+.dr-mat-lijst strong { color: var(--navy); white-space: nowrap; }
+.dr-lijst-ref { display: block; font-size: 12px; color: var(--grijs-500); }
+.dr-teken .keuze { margin-bottom: 4px; }
+@media (max-width: 640px) {
+  .dr-blok { padding: 18px; }
+  .dr-drie { grid-template-columns: 1fr 1fr; }
+  .dr-drie .veld:last-child { grid-column: 1 / -1; }
+  .dr-materiaal { grid-template-columns: 1fr 1fr 44px; }
+  .dr-materiaal .dr-mat-omschrijving { grid-column: 1 / -1; }
+  .dr-materiaal .veld:nth-child(4) { grid-column: 1 / 3; }
+  .dr-mat-weg { grid-column: 3; grid-row: 2 / 4; align-self: center; }
+}
+
 /* ---------- Offline wachtrij (fase 5) ---------- */
 .wachtrij {
   display: flex;

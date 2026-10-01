@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
@@ -11,12 +12,14 @@ import {
   dagrapportInLijst,
   haalDagrapport,
   haalDagrapporten,
+  tijdData,
 } from '@/lib/dagrapporten';
 
 /*
   GET  /api/dagrapporten?klantId=&planId= - dagrapporten (beheerder en gebruiker)
-  POST /api/dagrapporten                  - nieuw dagrapport bij een bezoek (admin): een
-       planningsdag (planId) of een losse klant. Geeft het dagrapport terug.
+  POST /api/dagrapporten                  - nieuwe werkbon bij een bezoek (admin): een
+       planningsdag (planId) of een losse klant. Geeft de werkbon terug. Of er
+       een handtekening gevraagd wordt komt van de klant, tenzij meegestuurd.
 */
 
 const Query = z.object({
@@ -32,7 +35,7 @@ export const GET = apiRoute({ rol: 'user', module: 'dagrapporten', fout: 'Fout b
 
 export const POST = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout bij aanmaken van het dagrapport' }, async (request, _context, sessie) => {
   const invoer = await leesJson(request, NieuwDagrapportSchema);
-  const klant = await prisma.klant.findFirst({ where: { id: invoer.klantId, deletedAt: null }, select: { id: true } });
+  const klant = await prisma.klant.findFirst({ where: { id: invoer.klantId, deletedAt: null }, select: { id: true, werkbonHandtekening: true } });
   if (!klant) throw new ApiFout(400, 'Onbekende klant', { velden: { klantId: 'Onbekende klant' } });
   await controleerObject(invoer.objectId, invoer.klantId);
   if (invoer.planId) {
@@ -48,7 +51,16 @@ export const POST = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout
       uitvoerder: invoer.uitvoerder,
       werkzaamheden: invoer.werkzaamheden ?? null,
       bevindingen: invoer.bevindingen ?? null,
-      minuten: invoer.uren ?? null,
+      ...tijdData(invoer),
+      soortWerk: invoer.soortWerk ?? null,
+      referentie: invoer.referentie ?? null,
+      contactpersoon: invoer.contactpersoon ?? null,
+      reisMinuten: invoer.reisMinuten ?? null,
+      kilometers: invoer.kilometers ?? null,
+      materialen: (invoer.materialen ?? undefined) as Prisma.InputJsonValue | undefined,
+      vervolgNodig: invoer.vervolgNodig ?? false,
+      vervolgActie: invoer.vervolgActie ?? null,
+      handtekeningVragen: invoer.handtekeningVragen ?? klant.werkbonHandtekening,
     },
     select: { id: true },
   });

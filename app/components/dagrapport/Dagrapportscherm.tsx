@@ -1,15 +1,19 @@
 'use client';
 
 /*
-  Een dagrapport invullen en laten tekenen (/dashboard/dagrapporten/[id]), in de
-  vorm van het veldscherm (STIJL.md, Veldscherm): op de telefoon een eigen navy
-  kop, velden van 52 tot 56 px en onderaan in duimbereik de enige oranje knop.
+  Een werkbon invullen en afronden (/dashboard/dagrapporten/[id]; in de code nog
+  dagrapport), in de vorm van het veldscherm (STIJL.md, Veldscherm): op de
+  telefoon een eigen navy kop, velden van 52 tot 56 px en onderaan in
+  duimbereik de enige oranje knop.
 
-  Concept: wat je deed, bevindingen, uren, foto's, en de klant tekent met de
-  vinger op het scherm (HandtekeningVeld). Tekenen slaat eerst de velden op en
-  legt het rapport daarna vast. Getekend: alles alleen te lezen, PDF
-  downloaden, en onder Beheer de handtekening wissen (dan tekent de klant
-  opnieuw) of het rapport verwijderen. Een gebruiker ziet alles alleen.
+  Concept: opdracht (soort werk, referentie, plek, contactpersoon), tijd (uren,
+  begin en eind, of n.v.t.), wat je deed, bevindingen, materialen, vervolg en
+  foto's. Afronden kan op twee manieren: de klant tekent met de vinger op het
+  scherm (HandtekeningVeld), of zonder handtekening als de klant daar niet om
+  vraagt (standaard per klant, per werkbon te veranderen). Afronden slaat eerst
+  de velden op. Daarna ligt de werkbon vast: alleen lezen, PDF downloaden, en
+  onder Beheer heropenen of de handtekening wissen, of verwijderen. Een
+  gebruiker ziet alles alleen.
 */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -26,29 +30,108 @@ import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { verkleinFoto } from '@/lib/fotoVerkleinen';
 import { dagKort } from '@/lib/contracten';
 import { ROLE_ADMIN } from '@/lib/roles';
+import { SOORTEN_WERK, aantalTekst, duurTekst, minutenUitTijden, soortWerkLabel, werktijdTekst, type Tijdsoort } from '@/lib/werkbon';
 import HandtekeningVeld, { type HandtekeningVeldRef } from './HandtekeningVeld';
 import VeldOffline from '@/app/components/wachtrij/VeldOffline';
-import { urenTekst, urenVeld, type Dagrapport } from './types';
+import { urenVeld, type Dagrapport } from './types';
+
+interface MateriaalRegel {
+  sleutel: number;
+  omschrijving: string;
+  aantal: string;
+  eenheid: string;
+  artikelnummer: string;
+}
 
 interface Velden {
   datum: string;
   objectId: string;
   uitvoerder: string;
+  soortWerk: string;
+  referentie: string;
+  contactpersoon: string;
+  tijdsoort: Tijdsoort;
   uren: string;
+  beginTijd: string;
+  eindTijd: string;
+  pauzeMinuten: string;
+  reisMinuten: string;
+  kilometers: string;
   werkzaamheden: string;
   bevindingen: string;
+  materialen: MateriaalRegel[];
+  vervolgNodig: boolean;
+  vervolgActie: string;
+  handtekeningVragen: boolean;
 }
+
+let volgendeSleutel = 1;
+const legeRegel = (): MateriaalRegel => ({ sleutel: volgendeSleutel++, omschrijving: '', aantal: '', eenheid: '', artikelnummer: '' });
+
+const getal = (n: number | null) => (n === null ? '' : String(n));
 
 function beginVelden(d: Dagrapport): Velden {
   return {
     datum: d.datum,
     objectId: d.object ? String(d.object.id) : '',
     uitvoerder: d.uitvoerder,
+    soortWerk: d.soortWerk ?? '',
+    referentie: d.referentie ?? '',
+    contactpersoon: d.contactpersoon ?? '',
+    tijdsoort: d.tijdsoort,
     uren: urenVeld(d.minuten),
+    beginTijd: d.beginTijd ?? '',
+    eindTijd: d.eindTijd ?? '',
+    pauzeMinuten: getal(d.pauzeMinuten),
+    reisMinuten: getal(d.reisMinuten),
+    kilometers: getal(d.kilometers),
     werkzaamheden: d.werkzaamheden ?? '',
     bevindingen: d.bevindingen ?? '',
+    materialen: d.materialen.map((m) => ({
+      sleutel: volgendeSleutel++,
+      omschrijving: m.omschrijving,
+      aantal: m.aantal === null ? '' : m.aantal.toLocaleString('nl-NL'),
+      eenheid: m.eenheid ?? '',
+      artikelnummer: m.artikelnummer ?? '',
+    })),
+    vervolgNodig: d.vervolgNodig,
+    vervolgActie: d.vervolgActie ?? '',
+    handtekeningVragen: d.handtekeningVragen,
   };
 }
+
+/** Wat naar de server gaat: lege materiaalregels vallen weg. */
+function alsInvoer(v: Velden) {
+  return {
+    datum: v.datum,
+    objectId: v.objectId || null,
+    uitvoerder: v.uitvoerder,
+    soortWerk: v.soortWerk || null,
+    referentie: v.referentie,
+    contactpersoon: v.contactpersoon,
+    tijdsoort: v.tijdsoort,
+    ...(v.tijdsoort === 'uren' ? { uren: v.uren } : {}),
+    beginTijd: v.beginTijd,
+    eindTijd: v.eindTijd,
+    pauzeMinuten: v.pauzeMinuten,
+    reisMinuten: v.reisMinuten,
+    kilometers: v.kilometers,
+    werkzaamheden: v.werkzaamheden,
+    bevindingen: v.bevindingen,
+    materialen: v.materialen
+      .filter((m) => m.omschrijving.trim() || m.aantal.trim() || m.artikelnummer.trim())
+      .map(({ omschrijving, aantal, eenheid, artikelnummer }) => ({ omschrijving, aantal, eenheid, artikelnummer })),
+    vervolgNodig: v.vervolgNodig,
+    vervolgActie: v.vervolgActie,
+    handtekeningVragen: v.handtekeningVragen,
+  };
+}
+
+const TIJD_KEUZES: { waarde: Tijdsoort; label: string; icoon: 'clock' | 'calendar' | 'close' }[] = [
+  { waarde: 'uren', label: 'Uren', icoon: 'clock' },
+  { waarde: 'tijden', label: 'Begin en eind', icoon: 'calendar' },
+  { waarde: 'nvt', label: 'N.v.t.', icoon: 'close' },
+];
 
 export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: number }) {
   const user = useGebruiker();
@@ -80,7 +163,7 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
     try {
       const res = await fetch(`/api/dagrapporten/${dagrapportId}`);
       if (!res.ok) {
-        setFout(await foutTekst(res, 'Het dagrapport kon niet worden opgehaald.'));
+        setFout(await foutTekst(res, 'De werkbon kon niet worden opgehaald.'));
         return;
       }
       const d: Dagrapport = await res.json();
@@ -107,13 +190,21 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
     return () => { actueel = false; };
   }, [isAdmin]);
 
-  const zet = (k: keyof Velden) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const w = e.target.value;
-    setVelden((v) => (v ? { ...v, [k]: w } : v));
+  const wijzig = (deel: Partial<Velden>) => {
+    setVelden((v) => (v ? { ...v, ...deel } : v));
+    setGewijzigd(true);
+    setMelding('');
+  };
+
+  const zet = (k: keyof Velden) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+    wijzig({ [k]: e.target.value } as Partial<Velden>);
+
+  const zetMateriaal = (sleutel: number, deel: Partial<MateriaalRegel>) => {
+    setVelden((v) => (v ? { ...v, materialen: v.materialen.map((m) => (m.sleutel === sleutel ? { ...m, ...deel } : m)) } : v));
     setGewijzigd(true);
   };
 
-  /** Slaat de velden op; geeft het rapport terug, of null bij een fout (die staat dan in beeld). */
+  /** Slaat de velden op; geeft de werkbon terug, of null bij een fout (die staat dan in beeld). */
   const opslaan = async (stil = false): Promise<Dagrapport | null> => {
     if (!rapport || !velden) return null;
     setVeldFouten({});
@@ -122,12 +213,12 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
       const res = await fetch(`/api/dagrapporten/${rapport.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...velden, objectId: velden.objectId || null }),
+        body: JSON.stringify(alsInvoer(velden)),
       });
       if (!res.ok) {
         const data = await res.clone().json().catch(() => null);
         if (data?.velden) setVeldFouten(data.velden);
-        setFout(await foutTekst(res, 'Het dagrapport is niet opgeslagen.'));
+        setFout(await foutTekst(res, 'De werkbon is niet opgeslagen.'));
         return null;
       }
       const d: Dagrapport = await res.json();
@@ -165,7 +256,7 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
   };
 
   const fotoWeg = async (fotoId: number) => {
-    if (!rapport || !confirm('Deze foto uit het dagrapport halen? Dat kan niet ongedaan worden gemaakt.')) return;
+    if (!rapport || !confirm('Deze foto uit de werkbon halen? Dat kan niet ongedaan worden gemaakt.')) return;
     try {
       const res = await fetch(`/api/dagrapport-fotos/${fotoId}`, { method: 'DELETE' });
       if (!res.ok) {
@@ -178,34 +269,40 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
     }
   };
 
-  const tekenen = async () => {
-    if (!rapport) return;
-    const png = tekening.current?.alsPng();
-    if (!png) {
-      setFout('Laat de klant eerst tekenen.');
-      return;
-    }
-    if (!naam.trim()) {
-      setVeldFouten({ naam: 'Vul de naam in van wie tekent' });
-      return;
+  /** Afronden: met handtekening (tekenen) of zonder. Slaat eerst op wat nog niet opgeslagen is. */
+  const afronden = async () => {
+    if (!rapport || !velden) return;
+    const metHandtekening = velden.handtekeningVragen;
+    let body: string | undefined;
+    if (metHandtekening) {
+      const png = tekening.current?.alsPng();
+      if (!png) {
+        setFout('Laat de klant eerst tekenen.');
+        return;
+      }
+      if (!naam.trim()) {
+        setVeldFouten({ naam: 'Vul de naam in van wie tekent' });
+        return;
+      }
+      body = JSON.stringify({ naam: naam.trim(), handtekening: png });
     }
     setBezig(true);
     try {
       // Eerst wat er nog niet opgeslagen is, anders tekent de klant voor iets anders.
       if (gewijzigd && !(await opslaan(true))) return;
-      const res = await fetch(`/api/dagrapporten/${rapport.id}/handtekening`, {
+      const res = await fetch(`/api/dagrapporten/${rapport.id}/${metHandtekening ? 'handtekening' : 'afronden'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ naam: naam.trim(), handtekening: png }),
+        body,
       });
       if (!res.ok) {
         const data = await res.clone().json().catch(() => null);
         if (data?.velden) setVeldFouten(data.velden);
-        setFout(await foutTekst(res, 'De handtekening is niet opgeslagen.'));
+        setFout(await foutTekst(res, metHandtekening ? 'De handtekening is niet opgeslagen.' : 'De werkbon is niet afgerond.'));
         return;
       }
       zetRapport(await res.json());
-      setMelding('Getekend. Het dagrapport ligt vast en staat in het klantdossier en het klantportaal.');
+      setMelding(`${metHandtekening ? 'Getekend' : 'Afgerond'}. De werkbon ligt vast en staat in het klantdossier en het klantportaal.`);
       window.scrollTo({ top: 0 });
     } catch {
       setFout(GEEN_VERBINDING);
@@ -214,18 +311,23 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
     }
   };
 
-  const handtekeningWissen = async () => {
+  /** Weer een concept maken: handtekening wissen (getekend) of heropenen (afgerond). */
+  const heropenen = async () => {
     if (!rapport) return;
-    if (!confirm('Handtekening wissen? Het dagrapport wordt weer een concept en de klant moet opnieuw tekenen. De oude handtekening staat in het logboek.')) return;
+    const getekend = rapport.status === 'getekend';
+    const vraag = getekend
+      ? 'Handtekening wissen? De werkbon wordt weer een concept en de klant moet opnieuw tekenen. De oude handtekening staat in het logboek.'
+      : 'Werkbon heropenen? Hij wordt weer een concept en verdwijnt uit het klantportaal tot je hem opnieuw afrondt.';
+    if (!confirm(vraag)) return;
     try {
-      const res = await fetch(`/api/dagrapporten/${rapport.id}/handtekening`, { method: 'DELETE' });
+      const res = await fetch(`/api/dagrapporten/${rapport.id}/${getekend ? 'handtekening' : 'afronden'}`, { method: 'DELETE' });
       if (!res.ok) {
-        setFout(await foutTekst(res, 'De handtekening is niet gewist.'));
+        setFout(await foutTekst(res, getekend ? 'De handtekening is niet gewist.' : 'De werkbon is niet heropend.'));
         return;
       }
       zetRapport(await res.json());
       setNaam('');
-      setMelding('De handtekening is gewist. Je kunt het dagrapport weer aanpassen.');
+      setMelding(getekend ? 'De handtekening is gewist. Je kunt de werkbon weer aanpassen.' : 'De werkbon is heropend. Je kunt hem weer aanpassen.');
     } catch {
       setFout(GEEN_VERBINDING);
     }
@@ -239,7 +341,7 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bevestig: getypt }),
       });
-      if (!res.ok) return foutTekst(res, 'Het dagrapport is niet verwijderd.');
+      if (!res.ok) return foutTekst(res, 'De werkbon is niet verwijderd.');
       setVerwijderd(true);
       setOngedaan({
         sleutel: `dagrapport-${rapport.id}`,
@@ -259,118 +361,318 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
   };
 
   const terugHref = rapport?.planId ? `/dashboard/planning/dag/${rapport.planId}` : '/dashboard/dagrapporten';
-  const concept = rapport?.status !== 'getekend';
+  const concept = rapport?.status === 'concept';
   const bewerkbaar = isAdmin && concept;
   const klantObjecten = objecten.filter((o) => o.klantId === rapport?.klant.id);
   const fout1 = (k: string) => veldFouten[k] && <p className="veld-fout">{veldFouten[k]}</p>;
+  const invoerKlasse = (k: string) => `input${veldFouten[k] ? ' input-fout' : ''}`;
+  const berekend = velden && velden.tijdsoort === 'tijden' ? minutenUitTijden(velden.beginTijd, velden.eindTijd, velden.pauzeMinuten ? Number(velden.pauzeMinuten) : null) : null;
+  const metHandtekening = velden?.handtekeningVragen ?? true;
+  const klaarOmAfTeRonden = metHandtekening ? !tekeningLeeg && !!naam.trim() : !!velden?.werkzaamheden.trim();
 
   const kop = (
     <header className="veld-kop">
-      <Link prefetch={false} href={terugHref} className="veld-terug" aria-label={rapport?.planId ? 'Terug naar de dag' : 'Terug naar de dagrapporten'}>
+      <Link prefetch={false} href={terugHref} className="veld-terug" aria-label={rapport?.planId ? 'Terug naar de dag' : 'Terug naar de werkbonnen'}>
         <Icon name="arrow-left" size={24} />
       </Link>
       <div className="veld-kop-tekst">
-        <h1>Dagrapport</h1>
+        <h1>Werkbon</h1>
         <p>{rapport ? `${rapport.klant.naam}, ${dagKort(rapport.datum)}, ${rapport.nummer}` : ''}</p>
       </div>
     </header>
   );
 
+  const statusLabel = !rapport
+    ? ''
+    : rapport.status === 'getekend'
+      ? `Getekend door ${rapport.getekendDoor}`
+      : rapport.status === 'afgerond'
+        ? 'Afgerond zonder handtekening'
+        : 'Concept, nog niet afgerond';
+
   return (
-    <AppShell title="Dagrapport" wide veld user={user}>
+    <AppShell title="Werkbon" wide veld user={user}>
       <VeldOffline api={`/api/dagrapporten/${dagrapportId}`} />
       <div className="veld">
         {kop}
-        <GeenVerbinding tekst="Wat je invult, blijft staan. Opslaan en tekenen lukt pas weer als je bereik hebt." />
+        <GeenVerbinding tekst="Wat je invult, blijft staan. Opslaan en afronden lukt pas weer als je bereik hebt." />
 
         {verwijderd ? (
           <div className="leeg">
             <Icon name="trash" size={32} />
-            <p style={{ margin: '0 0 12px' }}>Dit dagrapport is verwijderd.</p>
+            <p style={{ margin: '0 0 12px' }}>Deze werkbon is verwijderd.</p>
             <Link prefetch={false} href="/dashboard/dagrapporten" className="btn btn-sm">
               <Icon name="arrow-left" size={16} />
-              Naar de dagrapporten
+              Naar de werkbonnen
             </Link>
           </div>
         ) : !rapport || !velden ? (
-          fout ? <LaadFout melding={fout} onOpnieuw={laad} /> : <Laden label="Dagrapport laden" regels={3} />
+          fout ? <LaadFout melding={fout} onOpnieuw={laad} /> : <Laden label="Werkbon laden" regels={3} />
         ) : (
           <div className="veld-indeling dr-indeling">
             <div className="veld-kolom">
               {fout && <div className="alert alert-danger" role="alert">{fout}</div>}
               {melding && <div className="alert alert-success" role="status">{melding}</div>}
 
-              {/* ---------- Het bezoek ---------- */}
-              <section className={`veld-kaart${concept ? '' : ' veld-kaart-klaar'}`} aria-label="Het bezoek">
-                <span className="veld-kaart-label">
-                  <Icon name={concept ? 'module-dagrapport' : 'signature'} size={16} />
-                  {concept ? 'Concept, nog niet getekend' : `Getekend door ${rapport.getekendDoor}`}
-                </span>
-                {bewerkbaar ? (
-                  <div className="veldwerk dr-velden">
-                    <div className="veld">
-                      <label className="label" htmlFor="dr-werk">Wat heb je gedaan</label>
-                      <textarea id="dr-werk" className="textarea" rows={5} value={velden.werkzaamheden} onChange={zet('werkzaamheden')} placeholder="Bijv. hydraulische slangen hefdeur vervangen, systeem ontlucht en op druk gecontroleerd" />
-                    </div>
-                    <div className="veld">
-                      <label className="label" htmlFor="dr-bevindingen">Bevindingen</label>
-                      <textarea id="dr-bevindingen" className="textarea" rows={3} value={velden.bevindingen} onChange={zet('bevindingen')} placeholder="Wat je zag en wat er nog moet gebeuren" />
-                    </div>
-                    <div className="dr-twee">
-                      <div className="veld">
-                        <label className="label" htmlFor="dr-uren">Uren</label>
-                        <input id="dr-uren" className={`input${veldFouten.uren ? ' input-fout' : ''}`} inputMode="decimal" value={velden.uren} onChange={zet('uren')} placeholder="2,5" />
-                        {fout1('uren')}
+              {bewerkbaar ? (
+                <>
+                  {/* ---------- Opdracht ---------- */}
+                  <section className="veld-kaart" aria-labelledby="dr-opdracht-kop">
+                    <span className="veld-kaart-label">
+                      <Icon name="module-dagrapport" size={16} />
+                      {statusLabel}
+                    </span>
+                    <h2 id="dr-opdracht-kop" className="dr-sectie">Opdracht</h2>
+                    <div className="veldwerk">
+                      <div className="dr-twee">
+                        <div className="veld">
+                          <label className="label" htmlFor="dr-soort">Soort werk</label>
+                          <select id="dr-soort" className="select" value={velden.soortWerk} onChange={zet('soortWerk')}>
+                            <option value="">Kies...</option>
+                            {SOORTEN_WERK.map((s) => (
+                              <option key={s.waarde} value={s.waarde}>{s.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="veld">
+                          <label className="label" htmlFor="dr-datum">Datum</label>
+                          <input id="dr-datum" type="date" className={invoerKlasse('datum')} value={velden.datum} onChange={zet('datum')} />
+                          {fout1('datum')}
+                        </div>
                       </div>
                       <div className="veld">
-                        <label className="label" htmlFor="dr-datum">Datum</label>
-                        <input id="dr-datum" type="date" className={`input${veldFouten.datum ? ' input-fout' : ''}`} value={velden.datum} onChange={zet('datum')} />
-                        {fout1('datum')}
+                        <label className="label" htmlFor="dr-referentie">Werkorder- of ordernummer klant <span className="label-bij">(mag leeg)</span></label>
+                        <input id="dr-referentie" className={invoerKlasse('referentie')} value={velden.referentie} onChange={zet('referentie')} placeholder="Bijv. WO-2026-0412 of PO 45001234" autoComplete="off" />
+                        {fout1('referentie')}
+                      </div>
+                      <div className="veld">
+                        <label className="label" htmlFor="dr-plek">Plek</label>
+                        <select id="dr-plek" className="select" value={velden.objectId} onChange={zet('objectId')}>
+                          <option value="">Geen vaste plek</option>
+                          {klantObjecten.map((o) => (
+                            <option key={o.id} value={String(o.id)}>{o.name}</option>
+                          ))}
+                          {rapport.object && !klantObjecten.some((o) => o.id === rapport.object!.id) && (
+                            <option value={String(rapport.object.id)}>{rapport.object.name}</option>
+                          )}
+                        </select>
+                      </div>
+                      <div className="dr-twee">
+                        <div className="veld">
+                          <label className="label" htmlFor="dr-contact">Contactpersoon klant <span className="label-bij">(mag leeg)</span></label>
+                          <input id="dr-contact" className={invoerKlasse('contactpersoon')} value={velden.contactpersoon} onChange={zet('contactpersoon')} placeholder="Wie was er namens de klant" />
+                          {fout1('contactpersoon')}
+                        </div>
+                        <div className="veld">
+                          <label className="label" htmlFor="dr-uitvoerder">Uitgevoerd door</label>
+                          <input id="dr-uitvoerder" className={invoerKlasse('uitvoerder')} value={velden.uitvoerder} onChange={zet('uitvoerder')} />
+                          {fout1('uitvoerder')}
+                        </div>
                       </div>
                     </div>
-                    <div className="veld">
-                      <label className="label" htmlFor="dr-plek">Plek</label>
-                      <select id="dr-plek" className="select" value={velden.objectId} onChange={zet('objectId')}>
-                        <option value="">Geen vaste plek</option>
-                        {klantObjecten.map((o) => (
-                          <option key={o.id} value={String(o.id)}>{o.name}</option>
+                  </section>
+
+                  {/* ---------- Tijd ---------- */}
+                  <section className="card dr-blok" aria-labelledby="dr-tijd-kop">
+                    <h2 id="dr-tijd-kop" className="dr-sectie">Tijd</h2>
+                    <div className="veldwerk">
+                      <div className="keuzeknoppen keuzeknoppen-klein" role="group" aria-label="Hoe leg je de tijd vast">
+                        {TIJD_KEUZES.map((k) => (
+                          <button key={k.waarde} type="button" className={`keuzeknop${velden.tijdsoort === k.waarde ? ' on' : ''}`} aria-pressed={velden.tijdsoort === k.waarde} onClick={() => wijzig({ tijdsoort: k.waarde })}>
+                            <Icon name={k.icoon} size={16} />
+                            {k.label}
+                          </button>
                         ))}
-                        {rapport.object && !klantObjecten.some((o) => o.id === rapport.object!.id) && (
-                          <option value={String(rapport.object.id)}>{rapport.object.name}</option>
-                        )}
-                      </select>
+                      </div>
+                      {velden.tijdsoort === 'uren' && (
+                        <div className="veld">
+                          <label className="label" htmlFor="dr-uren">Gewerkte uren</label>
+                          <input id="dr-uren" className={invoerKlasse('uren')} inputMode="decimal" value={velden.uren} onChange={zet('uren')} placeholder="2,5" />
+                          {fout1('uren')}
+                        </div>
+                      )}
+                      {velden.tijdsoort === 'tijden' && (
+                        <>
+                          <div className="dr-drie">
+                            <div className="veld">
+                              <label className="label" htmlFor="dr-begin">Begin</label>
+                              <input id="dr-begin" type="time" className={invoerKlasse('beginTijd')} value={velden.beginTijd} onChange={zet('beginTijd')} />
+                              {fout1('beginTijd')}
+                            </div>
+                            <div className="veld">
+                              <label className="label" htmlFor="dr-eind">Eind</label>
+                              <input id="dr-eind" type="time" className={invoerKlasse('eindTijd')} value={velden.eindTijd} onChange={zet('eindTijd')} />
+                              {fout1('eindTijd')}
+                            </div>
+                            <div className="veld">
+                              <label className="label" htmlFor="dr-pauze">Pauze (min)</label>
+                              <input id="dr-pauze" className={invoerKlasse('pauzeMinuten')} inputMode="numeric" value={velden.pauzeMinuten} onChange={zet('pauzeMinuten')} placeholder="30" />
+                              {fout1('pauzeMinuten')}
+                            </div>
+                          </div>
+                          <p className="dr-totaal">
+                            <Icon name="clock" size={16} />
+                            {berekend !== null ? `Gewerkt: ${duurTekst(berekend)}` : 'Vul begin en eind in, dan rekent de werkbon de uren uit.'}
+                          </p>
+                        </>
+                      )}
+                      {velden.tijdsoort === 'nvt' && <p className="dr-uitleg">Geen urenafspraak bij dit werk. Op de werkbon staat bij tijd n.v.t.</p>}
+                      <div className="dr-twee">
+                        <div className="veld">
+                          <label className="label" htmlFor="dr-reis">Reistijd (min) <span className="label-bij">(mag leeg)</span></label>
+                          <input id="dr-reis" className={invoerKlasse('reisMinuten')} inputMode="numeric" value={velden.reisMinuten} onChange={zet('reisMinuten')} placeholder="45" />
+                          {fout1('reisMinuten')}
+                        </div>
+                        <div className="veld">
+                          <label className="label" htmlFor="dr-km">Kilometers <span className="label-bij">(mag leeg)</span></label>
+                          <input id="dr-km" className={invoerKlasse('kilometers')} inputMode="numeric" value={velden.kilometers} onChange={zet('kilometers')} placeholder="62" />
+                          {fout1('kilometers')}
+                        </div>
+                      </div>
                     </div>
-                    <div className="veld">
-                      <label className="label" htmlFor="dr-uitvoerder">Uitgevoerd door</label>
-                      <input id="dr-uitvoerder" className={`input${veldFouten.uitvoerder ? ' input-fout' : ''}`} value={velden.uitvoerder} onChange={zet('uitvoerder')} />
-                      {fout1('uitvoerder')}
+                  </section>
+
+                  {/* ---------- Werk ---------- */}
+                  <section className="card dr-blok" aria-labelledby="dr-werk-kop">
+                    <h2 id="dr-werk-kop" className="dr-sectie">Werkzaamheden</h2>
+                    <div className="veldwerk">
+                      <div className="veld">
+                        <label className="label" htmlFor="dr-werk">Wat heb je gedaan</label>
+                        <textarea id="dr-werk" className={`textarea${veldFouten.werkzaamheden ? ' input-fout' : ''}`} rows={5} value={velden.werkzaamheden} onChange={zet('werkzaamheden')} placeholder="Bijv. hydraulische slangen hefdeur vervangen, systeem ontlucht en op druk gecontroleerd" />
+                        {fout1('werkzaamheden')}
+                      </div>
+                      <div className="veld">
+                        <label className="label" htmlFor="dr-bevindingen">Bevindingen</label>
+                        <textarea id="dr-bevindingen" className="textarea" rows={3} value={velden.bevindingen} onChange={zet('bevindingen')} placeholder="Wat je zag, staat van de installatie" />
+                      </div>
                     </div>
-                    <button type="button" className="btn btn-block" onClick={() => opslaan()} disabled={!gewijzigd || bezig}>
-                      <Icon name="check" size={16} />
-                      {gewijzigd ? 'Opslaan' : 'Opgeslagen'}
+                  </section>
+
+                  {/* ---------- Materialen ---------- */}
+                  <section className="card dr-blok" aria-labelledby="dr-mat-kop">
+                    <h2 id="dr-mat-kop" className="dr-sectie">Materialen en onderdelen</h2>
+                    {velden.materialen.length === 0 ? (
+                      <p className="dr-uitleg">Geen materialen gebruikt. Voeg een regel toe voor elk onderdeel dat je plaatste of verbruikte.</p>
+                    ) : (
+                      <ul className="dr-materialen">
+                        {velden.materialen.map((m, i) => (
+                          <li key={m.sleutel} className="dr-materiaal">
+                            <div className="veld dr-mat-omschrijving">
+                              <label className="label" htmlFor={`dr-mat-${m.sleutel}`}>Omschrijving</label>
+                              <input id={`dr-mat-${m.sleutel}`} className="input" value={m.omschrijving} onChange={(e) => zetMateriaal(m.sleutel, { omschrijving: e.target.value })} placeholder="Bijv. hydraulische slang 1/2 inch" />
+                            </div>
+                            <div className="veld">
+                              <label className="label" htmlFor={`dr-mat-aantal-${m.sleutel}`}>Aantal</label>
+                              <input id={`dr-mat-aantal-${m.sleutel}`} className="input" inputMode="decimal" value={m.aantal} onChange={(e) => zetMateriaal(m.sleutel, { aantal: e.target.value })} placeholder="1" />
+                            </div>
+                            <div className="veld">
+                              <label className="label" htmlFor={`dr-mat-eenheid-${m.sleutel}`}>Eenheid</label>
+                              <input id={`dr-mat-eenheid-${m.sleutel}`} className="input" value={m.eenheid} onChange={(e) => zetMateriaal(m.sleutel, { eenheid: e.target.value })} placeholder="st" list="dr-eenheden" />
+                            </div>
+                            <div className="veld">
+                              <label className="label" htmlFor={`dr-mat-art-${m.sleutel}`}>Artikelnr. <span className="label-bij">(mag leeg)</span></label>
+                              <input id={`dr-mat-art-${m.sleutel}`} className="input" value={m.artikelnummer} onChange={(e) => zetMateriaal(m.sleutel, { artikelnummer: e.target.value })} />
+                            </div>
+                            <button
+                              type="button"
+                              className="icon-btn icon-btn-verwijder dr-mat-weg"
+                              onClick={() => wijzig({ materialen: velden.materialen.filter((x) => x.sleutel !== m.sleutel) })}
+                              aria-label={`Regel ${i + 1} weghalen`}
+                              title="Regel weghalen"
+                            >
+                              <Icon name="close" size={16} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <datalist id="dr-eenheden">
+                      {['st', 'm', 'l', 'kg', 'set', 'doos'].map((e) => <option key={e} value={e} />)}
+                    </datalist>
+                    <button type="button" className="btn btn-sm" onClick={() => wijzig({ materialen: [...velden.materialen, legeRegel()] })}>
+                      <Icon name="plus" size={16} />
+                      Materiaal toevoegen
                     </button>
-                  </div>
-                ) : (
-                  <>
-                    <dl className="veld-gegevens">
-                      <dt>Klant</dt>
-                      <dd>{rapport.klant.naam}</dd>
-                      <dt>Plek</dt>
-                      <dd>{rapport.object?.name ?? 'Geen vaste plek'}</dd>
-                      <dt>Datum</dt>
-                      <dd>{dagKort(rapport.datum)}</dd>
-                      <dt>Uren</dt>
-                      <dd>{urenTekst(rapport.minuten)}</dd>
-                      <dt>Door</dt>
-                      <dd>{rapport.uitvoerder}</dd>
-                    </dl>
-                    <h2 className="dr-kop">Wat er gedaan is</h2>
-                    <p className="dr-tekst">{rapport.werkzaamheden || 'Niet ingevuld.'}</p>
-                    <h2 className="dr-kop">Bevindingen</h2>
-                    <p className="dr-tekst">{rapport.bevindingen || 'Geen bijzonderheden.'}</p>
-                  </>
-                )}
-              </section>
+                    {fout1('materialen')}
+                  </section>
+
+                  {/* ---------- Vervolg ---------- */}
+                  <section className="card dr-blok" aria-labelledby="dr-vervolg-kop">
+                    <h2 id="dr-vervolg-kop" className="dr-sectie">Vervolg</h2>
+                    <div className="veldwerk">
+                      <label className="keuze">
+                        <input type="checkbox" checked={velden.vervolgNodig} onChange={(e) => wijzig({ vervolgNodig: e.target.checked })} />
+                        <span>
+                          <strong>Er is vervolgwerk nodig</strong>
+                          <small>Het werk is nog niet helemaal klaar, of je raadt de klant iets aan.</small>
+                        </span>
+                      </label>
+                      {(velden.vervolgNodig || velden.vervolgActie) && (
+                        <div className="veld">
+                          <label className="label" htmlFor="dr-vervolg">Wat moet er nog gebeuren</label>
+                          <textarea id="dr-vervolg" className="textarea" rows={3} value={velden.vervolgActie} onChange={zet('vervolgActie')} placeholder="Bijv. verdeelblok hal 2 vervangen, onderdeel besteld, terugkomen in week 42" />
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  <button type="button" className="btn btn-block" onClick={() => opslaan()} disabled={!gewijzigd || bezig}>
+                    <Icon name="check" size={16} />
+                    {gewijzigd ? 'Opslaan' : 'Opgeslagen'}
+                  </button>
+                </>
+              ) : (
+                <section className={`veld-kaart${concept ? '' : ' veld-kaart-klaar'}`} aria-label="De werkbon">
+                  <span className="veld-kaart-label">
+                    <Icon name={rapport.status === 'getekend' ? 'signature' : rapport.status === 'afgerond' ? 'check' : 'module-dagrapport'} size={16} />
+                    {statusLabel}
+                  </span>
+                  <dl className="veld-gegevens">
+                    <dt>Klant</dt>
+                    <dd>{rapport.klant.naam}</dd>
+                    <dt>Plek</dt>
+                    <dd>{rapport.object?.name ?? 'Geen vaste plek'}</dd>
+                    <dt>Datum</dt>
+                    <dd>{dagKort(rapport.datum)}</dd>
+                    {rapport.soortWerk && (<><dt>Soort werk</dt><dd>{soortWerkLabel(rapport.soortWerk)}</dd></>)}
+                    {rapport.referentie && (<><dt>Werkorder</dt><dd>{rapport.referentie}</dd></>)}
+                    {rapport.contactpersoon && (<><dt>Contact</dt><dd>{rapport.contactpersoon}</dd></>)}
+                    <dt>Tijd</dt>
+                    <dd>{werktijdTekst(rapport)}</dd>
+                    {(rapport.reisMinuten !== null || rapport.kilometers !== null) && (
+                      <>
+                        <dt>Reis</dt>
+                        <dd>{[rapport.reisMinuten !== null ? duurTekst(rapport.reisMinuten) : null, rapport.kilometers !== null ? `${rapport.kilometers} km` : null].filter(Boolean).join(', ')}</dd>
+                      </>
+                    )}
+                    <dt>Door</dt>
+                    <dd>{rapport.uitvoerder}</dd>
+                  </dl>
+                  <h2 className="dr-kop">Wat er gedaan is</h2>
+                  <p className="dr-tekst">{rapport.werkzaamheden || 'Niet ingevuld.'}</p>
+                  <h2 className="dr-kop">Bevindingen</h2>
+                  <p className="dr-tekst">{rapport.bevindingen || 'Geen bijzonderheden.'}</p>
+                  {rapport.materialen.length > 0 && (
+                    <>
+                      <h2 className="dr-kop">Materialen en onderdelen</h2>
+                      <ul className="dr-mat-lijst">
+                        {rapport.materialen.map((m, i) => (
+                          <li key={i}>
+                            <span>{m.omschrijving}{m.artikelnummer && <small> {m.artikelnummer}</small>}</span>
+                            <strong>{aantalTekst(m)}</strong>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {(rapport.vervolgNodig || rapport.vervolgActie) && (
+                    <>
+                      <h2 className="dr-kop">Vervolg</h2>
+                      <p className="dr-tekst">{rapport.vervolgActie || 'Er is vervolgwerk nodig.'}</p>
+                    </>
+                  )}
+                </section>
+              )}
 
               {/* ---------- Foto's ---------- */}
               <section className="veld-sectie" aria-labelledby="dr-fotos-kop">
@@ -424,13 +726,13 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
             </div>
 
             <div className="veld-kolom">
-              {/* ---------- Handtekening ---------- */}
+              {/* ---------- Afronden ---------- */}
               <section className="card dr-teken" aria-labelledby="dr-teken-kop">
                 <h2 id="dr-teken-kop" className="dr-kop">
-                  <Icon name="signature" size={20} />
-                  Akkoord van de klant
+                  <Icon name={rapport.status === 'afgerond' || (concept && !metHandtekening) ? 'check' : 'signature'} size={20} />
+                  {rapport.status === 'getekend' ? 'Akkoord van de klant' : rapport.status === 'afgerond' ? 'Afgerond' : 'Afronden'}
                 </h2>
-                {!concept ? (
+                {rapport.status === 'getekend' ? (
                   <>
                     {rapport.handtekening && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -445,25 +747,45 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
                       </span>
                     </p>
                   </>
+                ) : rapport.status === 'afgerond' ? (
+                  <p className="dr-uitleg">
+                    Afgerond zonder handtekening van de klant
+                    {rapport.afgerondOp &&
+                      ` op ${new Date(rapport.afgerondOp).toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`}
+                    .
+                  </p>
                 ) : bewerkbaar ? (
                   <div className="veldwerk">
-                    <p className="dr-uitleg">Geef de telefoon aan de klant. Met de handtekening bevestigt de klant dat het werk is gedaan zoals hierboven staat.</p>
-                    <div className="veld">
-                      <label className="label" htmlFor="dr-naam">Naam van wie tekent</label>
-                      <input
-                        id="dr-naam"
-                        className={`input${veldFouten.naam ? ' input-fout' : ''}`}
-                        value={naam}
-                        onChange={(e) => setNaam(e.target.value)}
-                        autoComplete="off"
-                        placeholder="Voor- en achternaam"
-                      />
-                      {fout1('naam')}
-                    </div>
-                    <HandtekeningVeld ref={tekening} uitgeschakeld={bezig} onVerander={setTekeningLeeg} />
+                    <label className="keuze">
+                      <input type="checkbox" checked={velden.handtekeningVragen} onChange={(e) => wijzig({ handtekeningVragen: e.target.checked })} />
+                      <span>
+                        <strong>Handtekening van de klant vragen</strong>
+                        <small>Uit als de klant geen handtekening nodig heeft; je rondt de werkbon dan zelf af.</small>
+                      </span>
+                    </label>
+                    {velden.handtekeningVragen ? (
+                      <>
+                        <p className="dr-uitleg">Geef de telefoon aan de klant. Met de handtekening bevestigt de klant dat het werk is gedaan zoals hierboven staat.</p>
+                        <div className="veld">
+                          <label className="label" htmlFor="dr-naam">Naam van wie tekent</label>
+                          <input
+                            id="dr-naam"
+                            className={`input${veldFouten.naam ? ' input-fout' : ''}`}
+                            value={naam}
+                            onChange={(e) => setNaam(e.target.value)}
+                            autoComplete="off"
+                            placeholder={velden.contactpersoon || 'Voor- en achternaam'}
+                          />
+                          {fout1('naam')}
+                        </div>
+                        <HandtekeningVeld ref={tekening} uitgeschakeld={bezig} onVerander={setTekeningLeeg} />
+                      </>
+                    ) : (
+                      <p className="dr-uitleg">De werkbon wordt afgerond zonder handtekening. Hij komt daarna in het klantdossier en het klantportaal.</p>
+                    )}
                   </div>
                 ) : (
-                  <p className="dr-uitleg">Nog niet getekend.</p>
+                  <p className="dr-uitleg">Nog niet afgerond.</p>
                 )}
               </section>
 
@@ -474,21 +796,25 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
                     <section className="gevarenzone">
                       <p className="gevarenzone-kop">
                         <Icon name="reset" size={16} />
-                        Handtekening wissen
+                        {rapport.status === 'getekend' ? 'Handtekening wissen' : 'Heropenen'}
                       </p>
-                      <p className="gevarenzone-tekst">Nodig als er nog iets moet veranderen. Het rapport wordt weer een concept en de klant tekent opnieuw.</p>
-                      <button type="button" className="btn btn-sm btn-danger-soft" onClick={handtekeningWissen}>
+                      <p className="gevarenzone-tekst">
+                        {rapport.status === 'getekend'
+                          ? 'Nodig als er nog iets moet veranderen. De werkbon wordt weer een concept en de klant tekent opnieuw.'
+                          : 'Nodig als er nog iets moet veranderen. De werkbon wordt weer een concept tot je hem opnieuw afrondt.'}
+                      </p>
+                      <button type="button" className="btn btn-sm btn-danger-soft" onClick={heropenen}>
                         <Icon name="reset" size={16} />
-                        Handtekening wissen
+                        {rapport.status === 'getekend' ? 'Handtekening wissen' : 'Heropenen'}
                       </button>
                     </section>
                   )}
                   <VeiligVerwijderBlok
                     id={`dagrapport-${rapport.id}`}
-                    kop="Dagrapport verwijderen"
+                    kop="Werkbon verwijderen"
                     uitleg={<>Haalt {rapport.nummer} uit het klantdossier en het klantportaal, met de foto&apos;s en de handtekening. Direct daarna kun je het ongedaan maken.</>}
                     bevestig={rapport.nummer}
-                    knop="Dagrapport verwijderen"
+                    knop="Werkbon verwijderen"
                     onVerwijder={verwijder}
                   />
                 </details>
@@ -501,9 +827,9 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
         {rapport && !verwijderd && (bewerkbaar || !concept) && (
           <div className="veld-actiebalk">
             {concept ? (
-              <button type="button" className="btn btn-primary veld-hoofdknop" onClick={tekenen} disabled={bezig || tekeningLeeg || !naam.trim()}>
-                <Icon name="signature" size={24} />
-                {bezig ? 'Bezig...' : 'Tekenen en afronden'}
+              <button type="button" className="btn btn-primary veld-hoofdknop" onClick={afronden} disabled={bezig || !klaarOmAfTeRonden}>
+                <Icon name={metHandtekening ? 'signature' : 'check'} size={24} />
+                {bezig ? 'Bezig...' : metHandtekening ? 'Tekenen en afronden' : 'Werkbon afronden'}
               </button>
             ) : (
               <a className="btn btn-primary veld-hoofdknop" href={rapport.pdf} download>
@@ -511,7 +837,15 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
                 PDF downloaden
               </a>
             )}
-            <p>{concept ? (tekeningLeeg || !naam.trim() ? 'Eerst de naam en de handtekening van de klant' : 'Slaat alles op en legt het rapport vast') : 'Ook te vinden in het klantdossier en het klantportaal'}</p>
+            <p>
+              {concept
+                ? klaarOmAfTeRonden
+                  ? 'Slaat alles op en legt de werkbon vast'
+                  : metHandtekening
+                    ? 'Eerst de naam en de handtekening van de klant'
+                    : 'Eerst invullen wat je gedaan hebt'
+                : 'Ook te vinden in het klantdossier en het klantportaal'}
+            </p>
           </div>
         )}
       </div>

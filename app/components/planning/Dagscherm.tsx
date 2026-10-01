@@ -32,6 +32,7 @@ import { objectTypeIcoon } from '@/lib/sampleObjects';
 import { datumAlsInvoer, datumAlsTekst, minutenAlsTekst } from '@/lib/planningInstellingen';
 import { magModule, moduleVan } from '@/lib/modules';
 import { STANDAARD_UITVOERDER, type DagrapportInLijst } from '@/app/components/dagrapport/types';
+import WerkbonStatusBadge from '@/app/components/dagrapport/WerkbonStatus';
 import WachtrijOverzicht from '@/app/components/wachtrij/WachtrijOverzicht';
 import { useWachtrij } from '@/app/components/wachtrij/useWachtrij';
 import VeldOffline from '@/app/components/wachtrij/VeldOffline';
@@ -191,8 +192,8 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
     return () => { actueel = false; };
   }, [dagId, magDagrapport]);
 
-  // Een dagrapport voor de klant van de stop: de dag, de plek en de gemeten tijd
-  // van zijn stops op deze dag staan er al in.
+  // Een werkbon voor de klant van de stop: de dag, de plek, het soort werk en de
+  // gemeten tijd van zijn stops op deze dag staan er al in.
   const maakDagrapport = async (s: PlanStop) => {
     if (!dag || !s.object.klantId) return;
     setRapportBezig(true);
@@ -210,10 +211,11 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
           datum: datumAlsInvoer(dag.date),
           uitvoerder: STANDAARD_UITVOERDER,
           uren: gemeten > 0 ? Math.round((gemeten / 60) * 100) / 100 : null,
+          soortWerk: s.soort === 'taak' ? 'onderhoud' : s.soort === 'inspectie' ? 'inspectie' : 'oliemonsters',
         }),
       });
       if (!res.ok) {
-        setFoutmelding(await foutTekst(res, 'Het dagrapport is niet aangemaakt.'));
+        setFoutmelding(await foutTekst(res, 'De werkbon is niet aangemaakt.'));
         return;
       }
       const nieuw = await res.json();
@@ -693,10 +695,10 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
                 </>
               )}
 
-              {/* Dagrapport: bewijs van het bezoek met de handtekening van de klant */}
+              {/* Werkbon: verslag van het bezoek, getekend of afgerond zonder handtekening */}
               {magDagrapport && stops.length > 0 && (
                 <section className="veld-sectie" aria-labelledby="veld-dagrapport-kop">
-                  <h2 className="sectiekop" id="veld-dagrapport-kop">Dagrapport</h2>
+                  <h2 className="sectiekop" id="veld-dagrapport-kop">Werkbon</h2>
                   {dagrapporten.length > 0 && (
                     <ul className="veld-lijst">
                       {dagrapporten.map((r) => (
@@ -706,11 +708,7 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
                               <strong><Icon name="module-dagrapport" size={16} /> {r.nummer}, {r.klant.naam}</strong>
                               <span>{r.object?.name ?? 'Geen vaste plek'}</span>
                             </span>
-                            {r.status === 'getekend' ? (
-                              <span className="badge badge-success">Getekend</span>
-                            ) : (
-                              <span className="badge badge-gray">Concept</span>
-                            )}
+                            <WerkbonStatusBadge status={r.status} />
                           </Link>
                         </li>
                       ))}
@@ -720,7 +718,7 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
                     stop.object.klantId ? (
                       <button type="button" className="btn btn-block veld-knop dr-veldknop" onClick={() => maakDagrapport(stop)} disabled={rapportBezig}>
                         <Icon name="module-dagrapport" size={24} />
-                        {rapportBezig ? 'Bezig...' : `Dagrapport voor ${stop.object.klantNaam ?? stop.object.name}`}
+                        {rapportBezig ? 'Bezig...' : `Werkbon voor ${stop.object.klantNaam ?? stop.object.name}`}
                       </button>
                     ) : (
                       <p className="hint">{stop.object.name} hoort nog niet bij een klant; koppel het object eerst in het klantdossier.</p>

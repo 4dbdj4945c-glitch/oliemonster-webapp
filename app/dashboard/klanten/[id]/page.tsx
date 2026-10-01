@@ -352,7 +352,7 @@ export default function KlantPagina() {
                 )}
                 <button type="button" className="btn" onClick={() => setNieuwDagrapport(true)}>
                   <Icon name="module-dagrapport" size={16} />
-                  Dagrapport
+                  Werkbon
                 </button>
                 <button type="button" className="btn" onClick={() => router.push(`/dashboard/klanten/${klant.id}/portaal`)}>
                   <Icon name="external-link" size={16} />

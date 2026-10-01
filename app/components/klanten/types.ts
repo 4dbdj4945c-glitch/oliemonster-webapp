@@ -8,6 +8,8 @@ export interface Klant {
   plaats: string | null;
   kvkNummer: string | null;
   notities: string | null;
+  /** Werkbonnen standaard laten tekenen door de klant. */
+  werkbonHandtekening: boolean;
 }
 
 export interface KlantInLijst extends Klant {

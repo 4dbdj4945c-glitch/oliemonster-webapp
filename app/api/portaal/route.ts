@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { VASTE_STATUSSEN } from '@/lib/werkbon';
 import { z } from 'zod';
 import { apiRoute, ApiFout, jaarSchema, leesQuery } from '@/lib/apiRoute';
 import { magJaar } from '@/lib/afscherming';
@@ -84,9 +85,9 @@ export const GET = apiRoute(
     // geen interval, geen contractnaam (lib/contractenServer.ts).
     const onderhoud = await onderhoudVoorKlant(klantId, sessie.viewYear);
 
-    // Getekende dagrapporten van deze klant (lib/dagrapporten.ts); een concept
-    // ziet de klant nooit, ook niet in het voorbeeld van de beheerder.
-    const dagrapporten = (await haalDagrapporten(sessie, { klantId, status: 'getekend' })).map((r) => ({
+    // Afgeronde en getekende werkbonnen van deze klant (lib/dagrapporten.ts); een
+    // concept ziet de klant nooit, ook niet in het voorbeeld van de beheerder.
+    const dagrapporten = (await haalDagrapporten(sessie, { klantId, status: { in: VASTE_STATUSSEN } })).map((r) => ({
       id: r.id,
       nummer: dagrapportNummer(r.id),
       datum: nlDag(r.datum),

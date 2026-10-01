@@ -27,6 +27,7 @@ export default function KlantFormulier({
     kvkNummer: klant?.kvkNummer ?? '',
     notities: klant?.notities ?? '',
   });
+  const [werkbonHandtekening, setWerkbonHandtekening] = useState(klant?.werkbonHandtekening ?? true);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState('');
 
@@ -41,7 +42,7 @@ export default function KlantFormulier({
       const res = await fetch(klant ? `/api/klanten/${klant.id}` : '/api/klanten', {
         method: klant ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(velden),
+        body: JSON.stringify({ ...velden, werkbonHandtekening }),
       });
       if (!res.ok) {
         setFout(await foutTekst(res, 'De klant is niet opgeslagen.'));
@@ -96,6 +97,13 @@ export default function KlantFormulier({
           <label className="label" htmlFor="klant-notities">Notities</label>
           <textarea id="klant-notities" className="textarea" rows={3} value={velden.notities} onChange={zet('notities')} />
         </div>
+        <label className="keuze beheer-veld-breed">
+          <input type="checkbox" checked={werkbonHandtekening} onChange={(e) => setWerkbonHandtekening(e.target.checked)} />
+          <span>
+            <strong>Werkbonnen laten tekenen</strong>
+            <small>Uit als deze klant geen handtekening vraagt (bijvoorbeeld bij oliemonsters). Je rondt de werkbon dan zelf af; per werkbon blijft het te veranderen.</small>
+          </span>
+        </label>
         {fout && <div className="alert alert-danger beheer-veld-breed" role="alert">{fout}</div>}
       </form>
     </Modal>

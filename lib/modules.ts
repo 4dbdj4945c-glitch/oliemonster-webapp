@@ -130,8 +130,8 @@ export const MODULES: ModuleInfo[] = [
   },
   {
     sleutel: 'dagrapporten',
-    naam: 'Dagrapporten',
-    beschrijving: "Per bezoek wat er gedaan is, met foto's, uren en de handtekening van de klant",
+    naam: 'Werkbonnen',
+    beschrijving: "Per bezoek wat er gedaan is: tijd, materialen, foto's en zo nodig de handtekening van de klant",
     icoon: 'module-dagrapport',
     route: '/dashboard/dagrapporten',
     sectie: 'Rapportage',

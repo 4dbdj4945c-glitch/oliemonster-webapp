@@ -1,8 +1,9 @@
 'use client';
 
-// Dagrapporten (sectie Rapportage): het bewijs per bezoek, met de handtekening
-// van de klant. Een tik op een regel opent het rapport; nieuw dagrapport voor
-// een losse klant alleen als beheerder (bij een planningsdag: in het veldscherm).
+// Werkbonnen (sectie Rapportage, in de code nog dagrapporten): het verslag per
+// bezoek, getekend door de klant of afgerond zonder handtekening. Een tik op een
+// regel opent de werkbon; een nieuwe werkbon voor een losse klant alleen als
+// beheerder (bij een planningsdag: in het veldscherm).
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,11 +12,13 @@ import { AppShell, Icon, Laden } from '@/app/components/ui';
 import LaadFout from '@/app/components/LaadFout';
 import NieuwDagrapport from '@/app/components/dagrapport/NieuwDagrapport';
 import { urenTekst, type DagrapportInLijst } from '@/app/components/dagrapport/types';
+import WerkbonStatusBadge from '@/app/components/dagrapport/WerkbonStatus';
+import { soortWerkLabel, STATUS_LABEL, WERKBON_STATUSSEN, type WerkbonStatus } from '@/lib/werkbon';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { dagKort } from '@/lib/contracten';
 import { ROLE_ADMIN } from '@/lib/roles';
 
-type Filter = 'alle' | 'concept' | 'getekend';
+type Filter = 'alle' | WerkbonStatus;
 
 export default function DagrapportenPagina() {
   const user = useGebruiker();
@@ -30,7 +33,7 @@ export default function DagrapportenPagina() {
     try {
       const res = await fetch('/api/dagrapporten');
       if (!res.ok) {
-        setFout(await foutTekst(res, 'De dagrapporten konden niet worden opgehaald.'));
+        setFout(await foutTekst(res, 'De werkbonnen konden niet worden opgehaald.'));
         return;
       }
       const data: DagrapportInLijst[] = await res.json();
@@ -50,17 +53,17 @@ export default function DagrapportenPagina() {
   const open = (d: DagrapportInLijst) => router.push(`/dashboard/dagrapporten/${d.id}`);
 
   return (
-    <AppShell title="Dagrapporten" wide user={user}>
+    <AppShell title="Werkbonnen" wide user={user}>
       <div className="beheer-kop">
         <div>
-          <h1 className="page-title">Dagrapporten</h1>
-          <p className="page-subtitle">Wat er bij een bezoek gedaan is, met foto&apos;s, uren en de handtekening van de klant. Geen factuur.</p>
+          <h1 className="page-title">Werkbonnen</h1>
+          <p className="page-subtitle">Wat er bij een bezoek gedaan is: tijd, materialen, foto&apos;s en zo nodig de handtekening van de klant. Geen factuur.</p>
         </div>
         {isAdmin && (
           <div className="knoppenrij beheer-knoppen">
             <button type="button" className="btn btn-primary" onClick={() => setNieuw(true)}>
               <Icon name="plus" size={16} />
-              Nieuw dagrapport
+              Nieuwe werkbon
             </button>
           </div>
         )}
@@ -73,14 +76,14 @@ export default function DagrapportenPagina() {
       ) : lijst.length === 0 ? (
         <div className="leeg">
           <Icon name="module-dagrapport" size={32} />
-          <p style={{ margin: 0 }}>Nog geen dagrapporten. Begin er een in het veldscherm van een planningsdag, of hier voor een losse klant.</p>
+          <p style={{ margin: 0 }}>Nog geen werkbonnen. Begin er een in het veldscherm van een planningsdag, of hier voor een losse klant.</p>
         </div>
       ) : (
         <>
           <div className="dossier-chips" role="group" aria-label="Filter op status" style={{ marginBottom: '16px' }}>
-            {(['alle', 'concept', 'getekend'] as Filter[]).map((f) => (
+            {(['alle', ...WERKBON_STATUSSEN] as Filter[]).map((f) => (
               <button key={f} type="button" className={`dossier-chip${filter === f ? ' on' : ''}`} aria-pressed={filter === f} onClick={() => setFilter(f)}>
-                {f === 'alle' ? 'Alle' : f === 'concept' ? 'Concept' : 'Getekend'}{' '}
+                {f === 'alle' ? 'Alle' : STATUS_LABEL[f]}{' '}
                 <span className="dossier-chip-aantal">{f === 'alle' ? lijst.length : lijst.filter((d) => d.status === f).length}</span>
               </button>
             ))}
@@ -93,6 +96,7 @@ export default function DagrapportenPagina() {
                     <th>Datum</th>
                     <th>Klant</th>
                     <th>Plek</th>
+                    <th>Soort werk</th>
                     <th>Uren</th>
                     <th>Status</th>
                     <th aria-label="PDF" />
@@ -108,13 +112,14 @@ export default function DagrapportenPagina() {
                       </td>
                       <td data-label="Klant">{d.klant.naam}</td>
                       <td data-label="Plek">{d.object?.name ?? '-'}</td>
-                      <td data-label="Uren">{urenTekst(d.minuten)}</td>
+                      <td data-label="Soort werk">
+                        {soortWerkLabel(d.soortWerk) ?? '-'}
+                        {d.referentie && <span className="dr-lijst-ref">{d.referentie}</span>}
+                      </td>
+                      <td data-label="Uren">{urenTekst(d.minuten, d.tijdsoort)}</td>
                       <td data-label="Status" className="kaart-status">
-                        {d.status === 'getekend' ? (
-                          <span className="badge badge-success"><Icon name="signature" size={16} />Getekend</span>
-                        ) : (
-                          <span className="badge badge-gray">Concept</span>
-                        )}
+                        <WerkbonStatusBadge status={d.status} />
+                        {d.vervolgNodig && <span className="badge badge-warning">Vervolg nodig</span>}
                       </td>
                       <td data-label="PDF" className="kaart-acties">
                         <a className="btn btn-sm" href={d.pdf} download onClick={(e) => e.stopPropagation()} aria-label={`PDF van ${d.nummer}`}>

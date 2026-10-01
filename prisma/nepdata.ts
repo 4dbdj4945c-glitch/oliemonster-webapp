@@ -97,7 +97,7 @@ export async function vulMetNepdata(prisma: PrismaClient) {
 
   // Klanten: Mourik (zoals de migratie hem aanmaakt) en een tweede, verzonnen klant.
   const mourik = await prisma.klant.create({
-    data: { naam: 'Mourik Infra B.V.', adres: 'Trambaan 15', postcode: '6101 AJ', plaats: 'Echt', logoUrl: '/mourik_logo.png' },
+    data: { naam: 'Mourik Infra B.V.', adres: 'Trambaan 15', postcode: '6101 AJ', plaats: 'Echt', logoUrl: '/mourik_logo.png', werkbonHandtekening: false },
   });
   const tweede = await prisma.klant.create({
     data: {
@@ -462,9 +462,9 @@ export async function vulMetNepdata(prisma: PrismaClient) {
     data: { planId: dag1.id, objectId: werkplaats.id, orderIndex: 2, taakId: taakCompressor.id },
   });
 
-  // Dagrapporten (fase 5): een getekend rapport bij de tweede klant (dat ziet de
-  // kijker kempen in zijn portaal) en een concept bij Mourik (dat ziet niemand
-  // buiten It's Done Services).
+  // Werkbonnen (fase 5, in de code dagrapporten): een getekende bij de tweede
+  // klant (dat ziet de kijker kempen in zijn portaal) en een concept bij Mourik
+  // zonder handtekening (dat ziet niemand buiten It's Done Services).
   const handtekening = `data:image/png;base64,${readFileSync(path.join(process.cwd(), 'public', 'nepdata', 'handtekening.png')).toString('base64')}`;
   const dagrapportTweede = await prisma.dagrapport.create({
     data: {
@@ -475,6 +475,21 @@ export async function vulMetNepdata(prisma: PrismaClient) {
       werkzaamheden: 'Persluchtnet hal 1 en 2 nagelopen op lekken, drie lekken gelabeld. Twee snelkoppelingen direct vervangen.',
       bevindingen: 'Lek bij het verdeelblok in hal 2 moet nog gerepareerd worden; onderdeel besteld.',
       minuten: 150,
+      tijdsoort: 'tijden',
+      beginTijd: '08:00',
+      eindTijd: '11:00',
+      pauzeMinuten: 30,
+      reisMinuten: 40,
+      kilometers: 38,
+      soortWerk: 'inspectie',
+      referentie: 'PO 4500-1187',
+      contactpersoon: 'Piet Verhoeven',
+      materialen: [
+        { omschrijving: 'Snelkoppeling 1/2 inch, messing', aantal: 2, eenheid: 'st', artikelnummer: 'SK-12-MS' },
+        { omschrijving: 'Lekzoekspray', aantal: 1, eenheid: 'st', artikelnummer: null },
+      ],
+      vervolgNodig: true,
+      vervolgActie: 'Verdeelblok hal 2 vervangen zodra het onderdeel binnen is.',
       status: 'getekend',
       handtekening,
       getekendDoor: 'Piet Verhoeven',
@@ -483,7 +498,7 @@ export async function vulMetNepdata(prisma: PrismaClient) {
     },
   });
   const dagrapportMourik = await prisma.dagrapport.create({
-    data: { klantId: mourik.id, planId: dag1.id, objectId: objecten[2].id, datum: inspectieDag(0), uitvoerder: 'Roel Mandigers', werkzaamheden: 'Monstername Sluis Sambeek.', minuten: 60 },
+    data: { klantId: mourik.id, planId: dag1.id, objectId: objecten[2].id, datum: inspectieDag(0), uitvoerder: 'Roel Mandigers', werkzaamheden: 'Monstername Sluis Sambeek.', minuten: null, tijdsoort: 'nvt', soortWerk: 'oliemonsters', handtekeningVragen: false },
   });
 
   // Eigen dossier: VCA verloopt binnen 30 dagen, de kalibratie is verlopen.

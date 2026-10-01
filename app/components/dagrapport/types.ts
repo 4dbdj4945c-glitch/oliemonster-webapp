@@ -1,4 +1,7 @@
-// Dagrapporten zoals /api/dagrapporten ze teruggeeft (lib/dagrapporten.ts).
+// Werkbonnen (in de code nog Dagrapport) zoals /api/dagrapporten ze teruggeeft
+// (lib/dagrapporten.ts). Keuzes en rekenregels: lib/werkbon.ts.
+
+import { duurTekst, type Materiaal, type Tijdsoort, type WerkbonStatus } from '@/lib/werkbon';
 
 export interface Dagrapport {
   id: number;
@@ -12,7 +15,21 @@ export interface Dagrapport {
   werkzaamheden: string | null;
   bevindingen: string | null;
   minuten: number | null;
-  status: 'concept' | 'getekend';
+  tijdsoort: Tijdsoort;
+  beginTijd: string | null;
+  eindTijd: string | null;
+  pauzeMinuten: number | null;
+  reisMinuten: number | null;
+  kilometers: number | null;
+  soortWerk: string | null;
+  referentie: string | null;
+  contactpersoon: string | null;
+  materialen: Materiaal[];
+  vervolgNodig: boolean;
+  vervolgActie: string | null;
+  handtekeningVragen: boolean;
+  afgerondOp: string | null;
+  status: WerkbonStatus;
   handtekening: string | null;
   getekendDoor: string | null;
   getekendOp: string | null;
@@ -29,7 +46,11 @@ export interface DagrapportInLijst {
   datum: string;
   uitvoerder: string;
   minuten: number | null;
-  status: 'concept' | 'getekend';
+  tijdsoort: Tijdsoort;
+  soortWerk: string | null;
+  referentie: string | null;
+  vervolgNodig: boolean;
+  status: WerkbonStatus;
   getekendDoor: string | null;
   aantalFotos: number;
   pdf: string;
@@ -41,10 +62,11 @@ export function urenVeld(minuten: number | null): string {
   return (Math.round((minuten / 60) * 100) / 100).toLocaleString('nl-NL');
 }
 
-/** 150 als "2,5 uur" */
-export function urenTekst(minuten: number | null): string {
+/** De tijd in een lijst: "2,5 uur", "n.v.t." of "geen uren". */
+export function urenTekst(minuten: number | null, tijdsoort?: Tijdsoort): string {
+  if (tijdsoort === 'nvt') return 'n.v.t.';
   if (minuten === null) return 'geen uren';
-  return `${urenVeld(minuten)} uur`;
+  return duurTekst(minuten);
 }
 
 /** Wie het werk doet, als voorstel. */

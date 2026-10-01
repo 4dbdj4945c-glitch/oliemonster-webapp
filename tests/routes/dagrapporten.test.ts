@@ -12,6 +12,7 @@ import { POST as login } from '@/app/api/auth/login/route';
 import { GET as lijst, POST as nieuw } from '@/app/api/dagrapporten/route';
 import { GET as een, PUT as wijzig, DELETE as weg } from '@/app/api/dagrapporten/[id]/route';
 import { POST as teken, DELETE as wis } from '@/app/api/dagrapporten/[id]/handtekening/route';
+import { POST as rondAf, DELETE as heropen } from '@/app/api/dagrapporten/[id]/afronden/route';
 import { GET as pdf } from '@/app/api/dagrapporten/[id]/pdf/route';
 import { GET as portaal } from '@/app/api/portaal/route';
 import { GET as dossier } from '@/app/api/klanten/[id]/dossier/route';
@@ -55,7 +56,7 @@ describe('dagrapport invullen en tekenen (admin)', () => {
     );
     expect(res.status).toBe(201);
     const d = await res.json();
-    expect(d).toMatchObject({ nummer: `DR-${d.id}`, status: 'concept', minuten: 150, planId: ids.dagen.vandaag, object: { id: ids.werkplaats } });
+    expect(d).toMatchObject({ nummer: `WB-${d.id}`, status: 'concept', minuten: 150, planId: ids.dagen.vandaag, object: { id: ids.werkplaats } });
 
     // Object van een andere klant: nee.
     expect((await wijzig(verzoek(`/api/dagrapporten/${d.id}`, { method: 'PUT', body: { objectId: ids.objecten[0] } }), p(d.id))).status).toBe(400);
@@ -93,15 +94,76 @@ describe('dagrapport invullen en tekenen (admin)', () => {
     expect(r.status).toBe(200);
     const bytes = Buffer.from(await r.arrayBuffer());
     bewaar('dagrapport.pdf', bytes);
-    expect(r.headers.get('content-disposition')).toMatch(/dagrapport-\d{4}-\d{2}-\d{2}-kempen-metaalbewerking-b-v\.pdf/);
+    expect(r.headers.get('content-disposition')).toMatch(/werkbon-wb-\d+-\d{4}-\d{2}-\d{2}-kempen-metaalbewerking-b-v\.pdf/);
   });
 
   it('verwijderen vraagt het nummer', async () => {
     await admin();
     const id = ids.dagrapporten.mourik;
-    expect((await weg(verzoek(`/api/dagrapporten/${id}`, { method: 'DELETE', body: { bevestig: 'DR-0' } }), p(id))).status).toBe(400);
-    expect((await weg(verzoek(`/api/dagrapporten/${id}`, { method: 'DELETE', body: { bevestig: `dr-${id}` } }), p(id))).status).toBe(200);
+    expect((await weg(verzoek(`/api/dagrapporten/${id}`, { method: 'DELETE', body: { bevestig: 'WB-0' } }), p(id))).status).toBe(400);
+    expect((await weg(verzoek(`/api/dagrapporten/${id}`, { method: 'DELETE', body: { bevestig: `wb-${id}` } }), p(id))).status).toBe(200);
     expect((await een(verzoek(`/api/dagrapporten/${id}`), p(id))).status).toBe(404);
+  });
+});
+
+describe('werkbon: tijd, materialen en afronden zonder handtekening', () => {
+  it('begin en eind met pauze rekent de minuten uit; n.v.t. heeft geen uren', async () => {
+    await admin();
+    const d = await (await nieuw(verzoek('/api/dagrapporten', { body: { klantId: ids.klanten.tweede, datum: '2026-09-29', uitvoerder: 'Roel', soortWerk: 'storing', referentie: ' PO 123 ' } }), undefined)).json();
+    expect(d).toMatchObject({ soortWerk: 'storing', referentie: 'PO 123', handtekeningVragen: true, tijdsoort: 'uren' });
+    const t = await (await wijzig(verzoek(`/api/dagrapporten/${d.id}`, { method: 'PUT', body: { tijdsoort: 'tijden', beginTijd: '7.30', eindTijd: '16:00', pauzeMinuten: '30' } }), p(d.id))).json();
+    expect(t).toMatchObject({ tijdsoort: 'tijden', beginTijd: '07:30', eindTijd: '16:00', pauzeMinuten: 30, minuten: 480 });
+    // Pauze langer dan de tijd ertussen: nee.
+    expect((await wijzig(verzoek(`/api/dagrapporten/${d.id}`, { method: 'PUT', body: { pauzeMinuten: 600 } }), p(d.id))).status).toBe(400);
+    expect((await wijzig(verzoek(`/api/dagrapporten/${d.id}`, { method: 'PUT', body: { beginTijd: '25:00' } }), p(d.id))).status).toBe(400);
+    const n = await (await wijzig(verzoek(`/api/dagrapporten/${d.id}`, { method: 'PUT', body: { tijdsoort: 'nvt' } }), p(d.id))).json();
+    expect(n).toMatchObject({ tijdsoort: 'nvt', minuten: null });
+    const u = await (await wijzig(verzoek(`/api/dagrapporten/${d.id}`, { method: 'PUT', body: { tijdsoort: 'uren', uren: '1,5' } }), p(d.id))).json();
+    expect(u).toMatchObject({ tijdsoort: 'uren', minuten: 90 });
+  });
+
+  it('materialen: lege lijst wordt leeg, aantal met komma, omschrijving verplicht', async () => {
+    await admin();
+    const id = ids.dagrapporten.mourik;
+    const m = await (await wijzig(verzoek(`/api/dagrapporten/${id}`, { method: 'PUT', body: { materialen: [{ omschrijving: 'Monsterpotje 250 ml', aantal: '2,5', eenheid: 'st', artikelnummer: '' }] } }), p(id))).json();
+    expect(m.materialen).toEqual([{ omschrijving: 'Monsterpotje 250 ml', aantal: 2.5, eenheid: 'st', artikelnummer: null }]);
+    expect((await wijzig(verzoek(`/api/dagrapporten/${id}`, { method: 'PUT', body: { materialen: [{ omschrijving: '', aantal: 1 }] } }), p(id))).status).toBe(400);
+    const leeg = await (await wijzig(verzoek(`/api/dagrapporten/${id}`, { method: 'PUT', body: { materialen: [] } }), p(id))).json();
+    expect(leeg.materialen).toEqual([]);
+  });
+
+  it('klant zonder handtekening: nieuwe werkbon vraagt er geen; afronden legt vast, heropenen maakt weer concept', async () => {
+    await admin();
+    const d = await (await nieuw(verzoek('/api/dagrapporten', { body: { klantId: ids.klanten.mourik, datum: '2026-09-29', uitvoerder: 'Roel' } }), undefined)).json();
+    expect(d.handtekeningVragen).toBe(false);
+    // Zonder werkzaamheden: niet afronden.
+    expect((await rondAf(verzoek(`/api/dagrapporten/${d.id}/afronden`, { body: {} }), p(d.id))).status).toBe(400);
+    await wijzig(verzoek(`/api/dagrapporten/${d.id}`, { method: 'PUT', body: { werkzaamheden: 'Drie monsters genomen' } }), p(d.id));
+    const a = await rondAf(verzoek(`/api/dagrapporten/${d.id}/afronden`, { body: {} }), p(d.id));
+    expect(a.status).toBe(200);
+    const af = await a.json();
+    expect(af.status).toBe('afgerond');
+    expect(af.afgerondOp).toBeTruthy();
+    expect((await wijzig(verzoek(`/api/dagrapporten/${d.id}`, { method: 'PUT', body: { werkzaamheden: 'Anders' } }), p(d.id))).status).toBe(409);
+    expect((await teken(verzoek(`/api/dagrapporten/${d.id}/handtekening`, { body: { naam: 'Iemand', handtekening: HANDTEKENING } }), p(d.id))).status).toBe(409);
+    const r = await pdf(verzoek(`/api/dagrapporten/${d.id}/pdf`), p(d.id));
+    expect(r.status).toBe(200);
+    bewaar('werkbon-afgerond.pdf', Buffer.from(await r.arrayBuffer()));
+    const h = await (await heropen(verzoek(`/api/dagrapporten/${d.id}/afronden`, { method: 'DELETE' }), p(d.id))).json();
+    expect(h).toMatchObject({ status: 'concept', afgerondOp: null });
+    expect(await prisma.auditLog.count({ where: { action: { in: ['DAGRAPPORT_AFGEROND', 'DAGRAPPORT_HEROPEND'] } } })).toBe(2);
+  });
+
+  it('kijker kempen ziet een afgeronde werkbon van de eigen klant wel, een concept niet', async () => {
+    await prisma.dagrapport.update({ where: { id: ids.dagrapporten.tweede }, data: { status: 'afgerond', handtekening: null, getekendDoor: null, getekendOp: null, afgerondOp: new Date() } });
+    await inloggenAls('kempen', 'kempen123');
+    expect((await (await portaal(verzoek('/api/portaal'), undefined)).json()).dagrapporten.map((r: { id: number }) => r.id)).toEqual([ids.dagrapporten.tweede]);
+    expect((await pdf(verzoek(`/api/dagrapporten/${ids.dagrapporten.tweede}/pdf`), p(ids.dagrapporten.tweede))).status).toBe(200);
+  });
+
+  it('gebruiker rondt niet af', async () => {
+    await inloggenAls('gebruiker', 'user123');
+    expect((await rondAf(verzoek(`/api/dagrapporten/${ids.dagrapporten.mourik}/afronden`, { body: {} }), p(ids.dagrapporten.mourik))).status).toBe(403);
   });
 });
 

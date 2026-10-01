@@ -1,14 +1,16 @@
 'use client';
 
-// Een dagrapport beginnen voor een losse klant (vanuit Dagrapporten of het
-// klantdossier). Vanuit het veldscherm maakt de knop Dagrapport het rapport
-// meteen, met de klant en de dag van de stop.
+// Een werkbon beginnen voor een losse klant (vanuit Werkbonnen of het
+// klantdossier). Vanuit het veldscherm maakt de knop Werkbon hem meteen, met de
+// klant en de dag van de stop. Of er een handtekening gevraagd wordt, komt van
+// de klant (Klant, werkbonHandtekening).
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Icon, Modal } from '@/app/components/ui';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { vandaagNl } from '@/lib/contracten';
+import { SOORTEN_WERK } from '@/lib/werkbon';
 import { STANDAARD_UITVOERDER, type Dagrapport } from './types';
 
 interface Keuzes {
@@ -22,6 +24,8 @@ export default function NieuwDagrapport({ vasteKlant, onClose }: { vasteKlant?: 
   const [klantId, setKlantId] = useState(vasteKlant ? String(vasteKlant.id) : '');
   const [objectId, setObjectId] = useState('');
   const [datum, setDatum] = useState(vandaagNl());
+  const [soortWerk, setSoortWerk] = useState('');
+  const [referentie, setReferentie] = useState('');
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState('');
 
@@ -48,10 +52,10 @@ export default function NieuwDagrapport({ vasteKlant, onClose }: { vasteKlant?: 
       const res = await fetch('/api/dagrapporten', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ klantId, objectId: objectId || null, datum, uitvoerder: STANDAARD_UITVOERDER }),
+        body: JSON.stringify({ klantId, objectId: objectId || null, datum, uitvoerder: STANDAARD_UITVOERDER, soortWerk: soortWerk || null, referentie }),
       });
       if (!res.ok) {
-        setFout(await foutTekst(res, 'Het dagrapport is niet aangemaakt.'));
+        setFout(await foutTekst(res, 'De werkbon is niet aangemaakt.'));
         return;
       }
       const d: Dagrapport = await res.json();
@@ -67,7 +71,7 @@ export default function NieuwDagrapport({ vasteKlant, onClose }: { vasteKlant?: 
     <Modal
       open
       onClose={onClose}
-      title="Nieuw dagrapport"
+      title="Nieuwe werkbon"
       footer={
         <>
           <button type="button" className="btn" onClick={onClose} disabled={bezig}>Annuleren</button>
@@ -99,6 +103,19 @@ export default function NieuwDagrapport({ vasteKlant, onClose }: { vasteKlant?: 
       <div className="veld">
         <label className="label" htmlFor="dr-datum">Datum van het bezoek</label>
         <input id="dr-datum" type="date" className="input" value={datum} onChange={(e) => setDatum(e.target.value)} />
+      </div>
+      <div className="veld">
+        <label className="label" htmlFor="dr-nieuw-soort">Soort werk <span className="label-bij">(optioneel)</span></label>
+        <select id="dr-nieuw-soort" className="select" value={soortWerk} onChange={(e) => setSoortWerk(e.target.value)}>
+          <option value="">Later kiezen</option>
+          {SOORTEN_WERK.map((s) => (
+            <option key={s.waarde} value={s.waarde}>{s.label}</option>
+          ))}
+        </select>
+      </div>
+      <div className="veld">
+        <label className="label" htmlFor="dr-nieuw-ref">Werkorder- of ordernummer klant <span className="label-bij">(optioneel)</span></label>
+        <input id="dr-nieuw-ref" className="input" value={referentie} onChange={(e) => setReferentie(e.target.value)} autoComplete="off" />
       </div>
       {fout && <div className="alert alert-danger" role="alert">{fout}</div>}
     </Modal>

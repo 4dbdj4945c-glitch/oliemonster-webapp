@@ -31,6 +31,7 @@ const klantVelden = {
   plaats: optioneleTekst(200),
   kvkNummer: kvk,
   notities: optioneleTekst(),
+  werkbonHandtekening: z.boolean().optional(),
 };
 
 export const NieuweKlantSchema = z.object(klantVelden);
