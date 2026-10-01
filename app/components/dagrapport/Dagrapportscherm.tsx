@@ -514,7 +514,11 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
                           </div>
                           <p className="dr-totaal">
                             <Icon name="clock" size={16} />
-                            {berekend !== null ? `Gewerkt: ${duurTekst(berekend)}` : 'Vul begin en eind in, dan rekent de werkbon de uren uit.'}
+                            {berekend !== null
+                              ? `Gewerkt: ${duurTekst(berekend)}${velden.eindTijd < velden.beginTijd ? ' (over middernacht)' : ''}`
+                              : velden.beginTijd && velden.eindTijd
+                                ? 'De pauze is langer dan de tijd tussen begin en eind.'
+                                : 'Vul begin en eind in, dan rekent de werkbon de uren uit.'}
                           </p>
                         </>
                       )}

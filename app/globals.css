@@ -2016,7 +2016,9 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   margin-top: 2px;
   font-size: 14px;
   color: var(--navy);
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .acq-links {
@@ -5248,6 +5250,7 @@ a.rij-tekst.rij-link:hover strong { text-decoration: underline; }
 .dr-mat-lijst strong { color: var(--navy); white-space: nowrap; }
 .dr-lijst-ref { display: block; font-size: 12px; color: var(--grijs-500); }
 .dr-teken .keuze { margin-bottom: 4px; }
+.dr-blok > .btn-sm { min-height: 44px; }
 @media (max-width: 640px) {
   .dr-blok { padding: 18px; }
   .dr-drie { grid-template-columns: 1fr 1fr; }

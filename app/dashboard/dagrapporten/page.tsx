@@ -88,6 +88,12 @@ export default function DagrapportenPagina() {
               </button>
             ))}
           </div>
+          {zichtbaar.length === 0 ? (
+            <div className="leeg">
+              <Icon name="module-dagrapport" size={32} />
+              <p style={{ margin: 0 }}>Geen werkbonnen met de status {filter !== 'alle' ? STATUS_LABEL[filter].toLowerCase() : ''}.</p>
+            </div>
+          ) : (
           <div className="table-container">
             <div className="table-scroll">
               <table className="table table-kaarten beheer-tabel">
@@ -133,6 +139,7 @@ export default function DagrapportenPagina() {
               </table>
             </div>
           </div>
+          )}
         </>
       )}
 
