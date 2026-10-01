@@ -26,6 +26,11 @@ import { POST as volgorde } from '@/app/api/sample-plans/[id]/volgorde/route';
 import { POST as routeBerekenen } from '@/app/api/sample-plans/route-berekenen/route';
 import { GET as dossier } from '@/app/api/klanten/[id]/dossier/route';
 import { zetStopVolgorde } from '@/lib/samplePlans';
+import { haalOliemonsterBegin } from '@/lib/oliemonsterBegin';
+import { haalGebruiker } from '@/lib/toegang';
+import { GET as instellingen } from '@/app/api/settings/route';
+import { GET as objectenKort } from '@/app/api/sample-objects/route';
+import { GET as jarenRoute } from '@/app/api/samples/jaren/route';
 import { fotoVerzoek, metParams, nepFoto, uitloggen, verzoek } from '../hulp/verzoek';
 
 let ids: Awaited<ReturnType<typeof vulMetNepdata>>;
@@ -190,6 +195,35 @@ describe('klantdossier in één verzoek', () => {
     const d = await json(await dossier(verzoek(`/api/klanten/${k}/dossier?jaar=nieuwste`), metParams({ id: k })));
     expect(d.jaar).toBeNull();
     expect(d.momenten).toEqual([]);
+  });
+});
+
+describe('de oliemonsterpagina krijgt bij het openen hetzelfde als de API geeft', () => {
+  it('beheerder', async () => {
+    const kolommen = JSON.stringify(['status', 'oNumber', 'location']);
+    await prisma.settings.upsert({ where: { key: 'columns' }, update: { value: kolommen }, create: { key: 'columns', value: kolommen } });
+    const admin = (await haalGebruiker({ isLoggedIn: true, username: 'admin' }))!;
+    const begin = await haalOliemonsterBegin(admin, 2026);
+    await prisma.settings.delete({ where: { key: 'columns' } });
+    expect(begin.kolommen).toEqual(['status', 'oNumber', 'location']);
+    expect(begin.samples).toEqual(await json(await lijst(verzoek('/api/samples?year=2026'), {})));
+    expect((await json(await instellingen(verzoek('/api/settings'), {}))).columns).toBeUndefined();
+    expect(begin.objecten).toEqual(await json(await objectenKort(verzoek('/api/sample-objects?kort=1'), {})));
+    expect(begin.jaren).toEqual((await json(await jarenRoute(verzoek('/api/samples/jaren'), {}))).jaren);
+  });
+
+  it('de Mourik-kijker: alleen zijn jaar en klant, geen objecten en geen jaarkeuze', async () => {
+    uitloggen();
+    await login(verzoek('/api/auth/login', { body: { username: 'kijker', password: 'kijker123' } }));
+    const kijker = (await haalGebruiker({ isLoggedIn: true, username: 'kijker' }))!;
+    // Ook als hij om een ander jaar vraagt: alleen 2025.
+    const begin = await haalOliemonsterBegin(kijker, 2026);
+    expect(begin.samples).toEqual(await json(await lijst(verzoek('/api/samples?year=2026'), {})));
+    expect(begin.samples.length).toBeGreaterThan(0);
+    expect((begin.samples as { analysisYear: number }[]).every((m) => m.analysisYear === 2025)).toBe(true);
+    expect(JSON.stringify(begin.samples)).not.toMatch(/cancelledBy|unreachableBy|blob\.vercel/);
+    expect(begin.objecten).toBeNull();
+    expect(begin.jaren).toBeNull();
   });
 });
 

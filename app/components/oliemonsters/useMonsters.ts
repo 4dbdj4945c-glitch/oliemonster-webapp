@@ -3,17 +3,23 @@
 // De monsters van één analysejaar ophalen, met de foutmelding erbij. Zonder die
 // melding is "kon niet laden" niet te onderscheiden van "er zijn geen monsters".
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import type { OilSample } from './types';
 
-export function useMonsters(jaar: number, search: string) {
-  const [samples, setSamples] = useState<OilSample[]>([]);
-  const [loading, setLoading] = useState(true);
+/**
+ * `begin`: de lijst zoals de pagina hem van de server meekreeg (zonder
+ * zoekopdracht). Dan hoeft hij bij het openen niet nog eens opgehaald te worden.
+ */
+export function useMonsters(jaar: number, search: string, begin?: OilSample[] | null) {
+  const [samples, setSamples] = useState<OilSample[]>(begin ?? []);
+  const [loading, setLoading] = useState(!begin);
   // Pas true als de lijst echt geladen is. Zolang dat niet zo is (fout,
   // offline) toont de pagina alleen de foutmelding: geen tegels met 0, geen lege
   // tabel en geen knoppen die iets aanmaken of overnemen.
-  const [lijstGeladen, setLijstGeladen] = useState(false);
+  const [lijstGeladen, setLijstGeladen] = useState(!!begin);
+  // De eerste keer overslaan als de lijst al meekwam.
+  const alGeladen = useRef(!!begin);
   const [foutmelding, setFoutmelding] = useState('');
 
   /** Haalt de lijst opnieuw op en geeft hem terug (null als dat mislukte). */
@@ -41,6 +47,10 @@ export function useMonsters(jaar: number, search: string) {
 
   useEffect(() => {
     // Ophalen bij het openen en bij elke zoekopdracht; de state verandert pas na de fetch.
+    if (alGeladen.current) {
+      alGeladen.current = false;
+      return;
+    }
     loadSamples();
   }, [loadSamples]);
 

@@ -6,16 +6,7 @@ import { apiRoute, ApiFout, jaarSchema, leesJson, leesQuery, tegelijk } from '@/
 import { controleerInstallatie, controleerObject, MonsterSchema } from '@/lib/monsterInvoer';
 import { controleerKlant } from '@/lib/klanten';
 import { wijzigLaatstePoging } from '@/lib/sampleAttempts';
-import {
-  tabelOntbreekt,
-  SAMPLE_BASIS_SELECT,
-  SAMPLE_PLANNING_SELECT,
-  SAMPLE_VOL_SELECT,
-  SAMPLE_PLANNING_LEEG,
-  SAMPLE_WENSEN2_LEEG,
-} from '@/lib/planningApi';
-import { monsterFilter } from '@/lib/afscherming';
-import { alsLijstRij, haalLijstRij, LIJST_EXTRA } from '@/lib/monsterLijst';
+import { haalLijstRij, haalMonsterLijst } from '@/lib/monsterLijst';
 
 const LijstQuery = z.object({
   search: z.string().max(200).optional(),
@@ -37,56 +28,7 @@ export const GET = apiRoute(
     // Verwijderde monsters (prullenbak) ziet niemand in de lijst, ook de rol
     // alleen lezen niet; alleen een admin ziet ze via /api/samples/verwijderd.
     const gevraagdJaar = query.year ? jaarSchema.parse(query.year) : null;
-    const yearFilter = await monsterFilter(session, gevraagdJaar);
-
-    const whereClause = search
-      ? {
-          AND: [
-            yearFilter,
-            {
-              OR: [
-                { oNumber: { contains: search, mode: 'insensitive' as const } },
-                { location: { contains: search, mode: 'insensitive' as const } },
-                { description: { contains: search, mode: 'insensitive' as const } },
-              ],
-            },
-          ],
-        }
-      : yearFilter;
-
-    // Alles erbij: het object, de tweede foto en de velden van Niet bereikbaar.
-    // Staat de database nog niet bij, dan in twee stappen terugvallen, zodat er
-    // telkens zo veel mogelijk blijft werken.
-    const extra = LIJST_EXTRA;
-    const zoek = { where: whereClause, orderBy: { sampleDate: 'desc' as const } };
-
-    let samples;
-    try {
-      samples = await prisma.oilSample.findMany({
-        ...zoek,
-        select: { ...SAMPLE_VOL_SELECT, ...extra },
-      });
-    } catch (error) {
-      if (!tabelOntbreekt(error)) throw error;
-      try {
-        const zonderWensen2 = await prisma.oilSample.findMany({
-          ...zoek,
-          select: { ...SAMPLE_PLANNING_SELECT, ...extra },
-        });
-        samples = zonderWensen2.map((s) => ({ ...s, ...SAMPLE_WENSEN2_LEEG }));
-      } catch (tweede) {
-        if (!tabelOntbreekt(tweede)) throw tweede;
-        const oud = await prisma.oilSample.findMany({
-          ...zoek,
-          select: { ...SAMPLE_BASIS_SELECT, _count: { select: { attempts: true } } },
-        });
-        samples = oud.map((s) => ({ ...s, ...SAMPLE_PLANNING_LEEG, ...SAMPLE_WENSEN2_LEEG }));
-      }
-    }
-
-    // attemptsCount als veld op het monster voor de schermen. De foto's gaan
-    // via /api/fotos/... (lib/fotoAdres.ts), nooit het echte opslagadres.
-    return NextResponse.json(samples.map((s) => alsLijstRij(s, session)));
+    return NextResponse.json(await haalMonsterLijst(session, gevraagdJaar, search));
   }
 );
 

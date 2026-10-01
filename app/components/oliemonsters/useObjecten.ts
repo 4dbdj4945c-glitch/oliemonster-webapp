@@ -5,13 +5,15 @@
 // dan over, anders krijgt hij een 403 en een rode balk. Hij ziet de kolom en het
 // filter ook niet.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { foutTekst } from '@/lib/foutmelding';
 import type { SampleObject } from './types';
 
-export function useObjecten(overslaan: boolean, onFout: (melding: string) => void) {
-  const [objecten, setObjecten] = useState<SampleObject[]>([]);
-  const [objectenBeschikbaar, setObjectenBeschikbaar] = useState(false);
+/** `begin`: de objecten zoals de pagina ze van de server meekreeg. */
+export function useObjecten(overslaan: boolean, onFout: (melding: string) => void, begin?: SampleObject[] | null) {
+  const [objecten, setObjecten] = useState<SampleObject[]>(begin ?? []);
+  const [objectenBeschikbaar, setObjectenBeschikbaar] = useState(!!begin);
+  const alGeladen = useRef(!!begin);
   // De planning bestaat, tenzij de server zegt dat de tabellen ontbreken (503).
   // Een storing of geen verbinding laat het tabblad staan; de planning toont
   // dan zelf zijn foutmelding.
@@ -38,6 +40,10 @@ export function useObjecten(overslaan: boolean, onFout: (melding: string) => voi
   }, [overslaan, onFout]);
 
   useEffect(() => {
+    if (alGeladen.current) {
+      alGeladen.current = false;
+      return;
+    }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadObjecten();
   }, [loadObjecten]);

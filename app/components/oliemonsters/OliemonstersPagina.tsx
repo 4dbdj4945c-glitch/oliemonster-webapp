@@ -8,7 +8,7 @@
 // jaarpagina zag: de lijst, de tellingen, de filters en de foto's. Geen tabs,
 // geen objectkolom, geen PDF en geen knoppen die iets wijzigen.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
 import PhotoModal, { type FotoInVenster } from '@/app/components/PhotoModal';
@@ -39,23 +39,39 @@ import { useKolommen } from './useKolommen';
 import { useMonsters } from './useMonsters';
 import { useObjecten } from './useObjecten';
 import type { OilSample, Sortering } from './types';
+import type { OliemonsterBegin } from '@/lib/oliemonsterBegin';
 
-export default function OliemonstersPagina({ jaar }: { jaar: number }) {
+const geenAbonnement = () => () => {};
+
+/** De jaren in de keuzelijst: met monsters, het huidige en het volgende jaar, en het jaar van deze pagina. */
+function keuzeJaren(data: { jaar: number }[], jaar: number): number[] {
+  const nu = new Date().getFullYear();
+  const set = new Set([...data.map((j) => j.jaar), nu, nu + 1, jaar]);
+  return [...set].sort((a, b) => b - a);
+}
+
+export default function OliemonstersPagina({ jaar, begin }: { jaar: number; begin?: OliemonsterBegin | null }) {
   const user = useGebruiker();
   const router = useRouter();
   const isAdmin = user.role === 'admin';
   const alleenLezen = isAlleenLezen(user.role);
 
   const [search, setSearch] = useState('');
+  // Wat de pagina van de server meekreeg (zie app/dashboard/oliemonsters/[jaar]/page.tsx).
   const { samples, setSamples, loading, lijstGeladen, foutmelding, setFoutmelding, loadSamples } =
-    useMonsters(jaar, search);
-  const { visibleColumns, loadSettings } = useKolommen(setFoutmelding);
+    useMonsters(jaar, search, begin?.samples as OilSample[] | undefined);
+  const { visibleColumns, loadSettings } = useKolommen(setFoutmelding, begin ? begin.kolommen : undefined);
   // Een kijker mag de objecten niet ophalen: overslaan, anders een 403 en een rode balk.
-  const { objecten, objectenBeschikbaar, planningBestaat, loadObjecten } = useObjecten(alleenLezen, setFoutmelding);
+  const { objecten, objectenBeschikbaar, planningBestaat, loadObjecten } = useObjecten(alleenLezen, setFoutmelding, begin?.objecten);
 
   // Welke jaren je kunt kiezen. Een kijker met een vast jaar krijgt geen keuze.
-  const [jaren, setJaren] = useState<number[] | null>(null);
+  const [jaren, setJaren] = useState<number[] | null>(begin?.jaren ? keuzeJaren(begin.jaren, jaar) : null);
   const magJaarKiezen = !(alleenLezen && user.viewYear !== null);
+  const jarenMeegekregen = !!begin?.jaren;
+  // Op de server en tijdens het hydrateren het laadscherm, net als vroeger:
+  // zo toont de server nooit een lijst die er in de browser anders uitziet
+  // (datums in een andere tijdzone). Direct daarna de meegekregen lijst.
+  const inDeBrowser = useSyncExternalStore(geenAbonnement, () => true, () => false);
 
   const [editing, setEditing] = useState<{ sample: OilSample | null } | null>(null);
   // Het fotovenster kan meer dan één foto tonen: het onderdeel, het potje en het
@@ -88,7 +104,7 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
   const compact = !alleenLezen;
 
   useEffect(() => {
-    if (!magJaarKiezen) return;
+    if (!magJaarKiezen || jarenMeegekregen) return;
     let actueel = true;
     fetch('/api/samples/jaren')
       .then((r) => (r.ok ? r.json() : null))
@@ -96,15 +112,13 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
         if (!actueel || !data) return;
         // De jaren met monsters, het huidige en het volgende jaar, en het jaar
         // van deze pagina (ook als dat leeg is).
-        const nu = new Date().getFullYear();
-        const set = new Set([...data.jaren.map((j) => j.jaar), nu, nu + 1, jaar]);
-        setJaren([...set].sort((a, b) => b - a));
+        setJaren(keuzeJaren(data.jaren, jaar));
       })
       .catch(() => {});
     return () => {
       actueel = false;
     };
-  }, [jaar, magJaarKiezen]);
+  }, [jaar, magJaarKiezen, jarenMeegekregen]);
 
   // Knop "Opnieuw proberen" in de foutmelding: alles opnieuw ophalen.
   const herlaad = useCallback(() => {
@@ -352,10 +366,10 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
 
   // Laden: de kijker houdt het oude laadscherm; de rest ziet de schil met de
   // titel en een skelet van de lijst.
-  if (loading && alleenLezen) {
+  if ((loading || !inDeBrowser) && alleenLezen) {
     return <div className="laadscherm">Laden...</div>;
   }
-  if (loading) {
+  if (loading || !inDeBrowser) {
     return (
       <AppShell title={`Oliemonsters ${jaar}`} wide user={user}>
         <h1 className="page-title">Oliemonsters {jaar}</h1>

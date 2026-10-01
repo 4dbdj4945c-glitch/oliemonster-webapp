@@ -5,7 +5,15 @@
 // ene regel kan vervangen in plaats van de hele lijst opnieuw op te halen.
 
 import { prisma } from './prisma';
-import { SAMPLE_VOL_SELECT } from './planningApi';
+import {
+  tabelOntbreekt,
+  SAMPLE_BASIS_SELECT,
+  SAMPLE_PLANNING_SELECT,
+  SAMPLE_VOL_SELECT,
+  SAMPLE_PLANNING_LEEG,
+  SAMPLE_WENSEN2_LEEG,
+} from './planningApi';
+import { monsterFilter } from './afscherming';
 import { metMonsterFotos } from './fotoAdres';
 import { isAlleenLezen, krijgtKlantportaal } from './roles';
 import type { Gebruiker } from './toegang';
@@ -61,4 +69,83 @@ export function alsLijstRij<T extends { id: number; _count: { attempts: number }
 export async function haalLijstRij(id: number, wie: Wie) {
   const rij = await prisma.oilSample.findFirst({ where: { id, deletedAt: null }, select: LIJST_SELECT });
   return rij ? alsLijstRij(rij, wie) : null;
+}
+
+/**
+ * De monsterlijst (GET /api/samples) voor deze gebruiker: kijkjaar en klant
+ * worden hier afgedwongen (lib/afscherming.ts), wat hij ook vraagt. Ook voor
+ * de oliemonsterpagina zelf, die de lijst meteen meegeeft bij het openen.
+ */
+export async function haalMonsterLijst(wie: Wie & Pick<Gebruiker, 'viewYear'>, jaar: number | null, search: string) {
+  const yearFilter = await monsterFilter(wie, jaar);
+
+  const whereClause = search
+    ? {
+        AND: [
+          yearFilter,
+          {
+            OR: [
+              { oNumber: { contains: search, mode: 'insensitive' as const } },
+              { location: { contains: search, mode: 'insensitive' as const } },
+              { description: { contains: search, mode: 'insensitive' as const } },
+            ],
+          },
+        ],
+      }
+    : yearFilter;
+
+  // Alles erbij: het object, de tweede foto en de velden van Niet bereikbaar.
+  // Staat de database nog niet bij, dan in twee stappen terugvallen, zodat er
+  // telkens zo veel mogelijk blijft werken.
+  const extra = LIJST_EXTRA;
+  const zoek = { where: whereClause, orderBy: { sampleDate: 'desc' as const } };
+
+  let samples;
+  try {
+    samples = await prisma.oilSample.findMany({
+      ...zoek,
+      select: { ...SAMPLE_VOL_SELECT, ...extra },
+    });
+  } catch (error) {
+    if (!tabelOntbreekt(error)) throw error;
+    try {
+      const zonderWensen2 = await prisma.oilSample.findMany({
+        ...zoek,
+        select: { ...SAMPLE_PLANNING_SELECT, ...extra },
+      });
+      samples = zonderWensen2.map((s) => ({ ...s, ...SAMPLE_WENSEN2_LEEG }));
+    } catch (tweede) {
+      if (!tabelOntbreekt(tweede)) throw tweede;
+      const oud = await prisma.oilSample.findMany({
+        ...zoek,
+        select: { ...SAMPLE_BASIS_SELECT, _count: { select: { attempts: true } } },
+      });
+      samples = oud.map((s) => ({ ...s, ...SAMPLE_PLANNING_LEEG, ...SAMPLE_WENSEN2_LEEG }));
+    }
+  }
+
+  // attemptsCount als veld op het monster voor de schermen. De foto's gaan
+  // via /api/fotos/... (lib/fotoAdres.ts), nooit het echte opslagadres.
+  return samples.map((s) => alsLijstRij(s, wie));
+}
+
+/**
+ * De analysejaren met monsters, met per jaar het aantal en hoeveel er genomen
+ * zijn (geannuleerde tellen niet als genomen), voor wat deze gebruiker mag zien
+ * (GET /api/samples/jaren).
+ */
+export async function haalMonsterJaren(wie: Pick<Gebruiker, 'klantId' | 'viewYear'>) {
+  const where = await monsterFilter(wie);
+  const [totaal, genomen] = await Promise.all([
+    prisma.oilSample.groupBy({ by: ['analysisYear'], where, _count: { _all: true } }),
+    prisma.oilSample.groupBy({
+      by: ['analysisYear'],
+      where: { ...where, isTaken: true, isDisabled: false },
+      _count: { _all: true },
+    }),
+  ]);
+  const genomenPerJaar = new Map(genomen.map((g) => [g.analysisYear, g._count._all]));
+  return totaal
+    .map((t) => ({ jaar: t.analysisYear, totaal: t._count._all, genomen: genomenPerJaar.get(t.analysisYear) ?? 0 }))
+    .sort((a, b) => b.jaar - a.jaar);
 }

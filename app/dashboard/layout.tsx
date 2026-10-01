@@ -8,7 +8,7 @@
 
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { haalGebruiker, haalSessie } from '@/lib/toegang';
+import { gebruikerVanVerzoek } from '@/lib/toegang';
 import { paginaBesluit } from '@/lib/paginaToegang';
 import GebruikerProvider from '../components/GebruikerProvider';
 import Doorsturen from '../components/Doorsturen';
@@ -29,7 +29,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect(naar);
   };
 
-  const gebruiker = await haalGebruiker(await haalSessie());
+  const gebruiker = await gebruikerVanVerzoek();
   if (!gebruiker) return stuurDoor('/login');
   if (gebruiker.requiresPasswordChange) return stuurDoor('/set-password');
 

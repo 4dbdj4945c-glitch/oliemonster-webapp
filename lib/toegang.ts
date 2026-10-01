@@ -22,6 +22,7 @@
 // De auth-routes zelf (inloggen, uitloggen, sessie, wachtwoord instellen,
 // uitnodiging) gebruiken withAuth niet; die werken juist zonder volledige sessie.
 
+import { cache } from 'react';
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
 import { cookies } from 'next/headers';
@@ -165,6 +166,13 @@ export function alsGebruiker(rij: {
     requiresPasswordChange: rij.requiresPasswordChange,
   };
 }
+
+/**
+ * De gebruiker van dit paginaverzoek, één keer per verzoek opgehaald: de
+ * dashboardlayout en een pagina die zelf al gegevens meegeeft, delen hem
+ * (React cache). Voor API-routes geldt gewoon withAuth.
+ */
+export const gebruikerVanVerzoek = cache(async () => haalGebruiker(await haalSessie()));
 
 /**
  * Het besluit zelf, zonder database: mag deze gebruiker dit? null = ja,
