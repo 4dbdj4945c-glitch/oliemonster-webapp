@@ -126,24 +126,35 @@ export async function haalGebruiker(session: SessionData): Promise<Gebruiker | n
       : null;
   if (!where) return null;
 
-  type Rij = {
-    id: number;
-    username: string;
-    role: string;
-    viewYear?: number | null;
-    klantId?: number | null;
-    portaalWeergave?: string | null;
-    requiresPasswordChange: boolean;
-  };
   // Geen terugval als een kolom ontbreekt: zonder klantId zou een kijker met
   // een klant ineens alle klanten zien. De volgorde is altijd eerst
   // ./db-bijwerken.sh en dan deployen; ontbreekt er toch iets, dan liever een
   // 500 dan te veel laten zien.
-  const rij: Rij | null = await prisma.user.findUnique({
-    where,
-    select: { id: true, username: true, role: true, requiresPasswordChange: true, viewYear: true, klantId: true, portaalWeergave: true },
-  });
-  if (!rij) return null;
+  const rij = await prisma.user.findUnique({ where, select: GEBRUIKER_SELECT });
+  return rij ? alsGebruiker(rij) : null;
+}
+
+/** De kolommen van User die haalGebruiker (en het inloggen) leest. */
+export const GEBRUIKER_SELECT = {
+  id: true,
+  username: true,
+  role: true,
+  requiresPasswordChange: true,
+  viewYear: true,
+  klantId: true,
+  portaalWeergave: true,
+} as const;
+
+/** Een rij uit User (met GEBRUIKER_SELECT) als Gebruiker. */
+export function alsGebruiker(rij: {
+  id: number;
+  username: string;
+  role: string;
+  viewYear?: number | null;
+  klantId?: number | null;
+  portaalWeergave?: string | null;
+  requiresPasswordChange: boolean;
+}): Gebruiker {
   return {
     userId: rij.id,
     username: rij.username,

@@ -1,4 +1,4 @@
-import { haalGebruiker } from '@/lib/toegang';
+import { alsGebruiker, GEBRUIKER_SELECT } from '@/lib/toegang';
 import { startpagina } from '@/lib/paginaToegang';
 import { NextRequest, NextResponse } from 'next/server';
 import { getIronSession } from 'iron-session';
@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
     const user = typeof username === 'string'
       ? await prisma.user.findUnique({
           where: { username },
-          select: { id: true, username: true, password: true, role: true, requiresPasswordChange: true },
+          // Ook wat de startpagina nodig heeft (rol, kijkjaar, klant, weergave): één query.
+          select: { ...GEBRUIKER_SELECT, password: true },
         })
       : null;
 
@@ -144,8 +145,7 @@ export async function POST(request: NextRequest) {
 
     // De startpagina meteen meegeven, zodat het scherm er in één keer heen gaat
     // (volledige paginalading, zie app/login/page.tsx).
-    const gebruiker = await haalGebruiker({ isLoggedIn: true, userId: user.id });
-    const start = user.requiresPasswordChange ? '/set-password' : gebruiker ? startpagina(gebruiker) : '/dashboard';
+    const start = user.requiresPasswordChange ? '/set-password' : startpagina(alsGebruiker(user));
 
     return NextResponse.json({
       success: true,

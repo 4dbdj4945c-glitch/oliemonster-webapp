@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { foutTekst } from '@/lib/foutmelding';
 import type { SampleObject } from './types';
 
-export function useObjecten(jaar: number, overslaan: boolean, onFout: (melding: string) => void) {
+export function useObjecten(overslaan: boolean, onFout: (melding: string) => void) {
   const [objecten, setObjecten] = useState<SampleObject[]>([]);
   const [objectenBeschikbaar, setObjectenBeschikbaar] = useState(false);
   // De planning bestaat, tenzij de server zegt dat de tabellen ontbreken (503).
@@ -20,7 +20,8 @@ export function useObjecten(jaar: number, overslaan: boolean, onFout: (melding: 
   const loadObjecten = useCallback(async () => {
     if (overslaan) return;
     try {
-      const response = await fetch(`/api/sample-objects?year=${jaar}`);
+      // Alleen id, naam en soort: meer gebruikt de monsterlijst niet.
+      const response = await fetch('/api/sample-objects?kort=1');
       if (!response.ok) {
         // 503 betekent: de tabellen staan er nog niet. Dan laten we de kolom en
         // het filter weg in plaats van een melding te tonen.
@@ -34,7 +35,7 @@ export function useObjecten(jaar: number, overslaan: boolean, onFout: (melding: 
     } catch {
       setObjectenBeschikbaar(false);
     }
-  }, [jaar, overslaan, onFout]);
+  }, [overslaan, onFout]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

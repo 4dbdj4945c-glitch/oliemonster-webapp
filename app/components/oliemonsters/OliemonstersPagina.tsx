@@ -51,11 +51,7 @@ export default function OliemonstersPagina({ jaar }: { jaar: number }) {
     useMonsters(jaar, search);
   const { visibleColumns, loadSettings } = useKolommen(setFoutmelding);
   // Een kijker mag de objecten niet ophalen: overslaan, anders een 403 en een rode balk.
-  const { objecten, objectenBeschikbaar, planningBestaat, loadObjecten } = useObjecten(
-    jaar,
-    alleenLezen,
-    setFoutmelding
-  );
+  const { objecten, objectenBeschikbaar, planningBestaat, loadObjecten } = useObjecten(alleenLezen, setFoutmelding);
 
   // Welke jaren je kunt kiezen. Een kijker met een vast jaar krijgt geen keuze.
   const [jaren, setJaren] = useState<number[] | null>(null);

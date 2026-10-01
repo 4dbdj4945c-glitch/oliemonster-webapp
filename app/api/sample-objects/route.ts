@@ -17,9 +17,16 @@ import { controleerKlant } from '@/lib/klanten';
 const OPTIES = { module: 'objecten', ontbreekt: TABEL_ONTBREEKT_PLANNING } as const;
 
 // GET - Alle objecten, met het aantal monsters per object en de klant.
-// Met ?year=2026 tellen we alleen de monsters van dat analysejaar.
+// Met ?year=2026 tellen we alleen de monsters van dat analysejaar. Met ?kort=1
+// alleen id, naam en soort (de keuzelijst en het filter van de monsterlijst),
+// zonder de tellingen: dat scheelt het ophalen van alle monsters.
 export const GET = apiRoute({ rol: 'user', ...OPTIES, fout: 'Fout bij ophalen van objecten' }, async (request) => {
-  const { year: gekozenJaar } = leesQuery(request, z.object({ year: jaarSchema.optional() }));
+  const { year: gekozenJaar, kort } = leesQuery(request, z.object({ year: jaarSchema.optional(), kort: z.string().optional() }));
+  if (kort === '1') {
+    return NextResponse.json(
+      await prisma.sampleObject.findMany({ orderBy: [{ name: 'asc' }], select: { id: true, name: true, objectType: true } })
+    );
+  }
 
   const objecten = await prisma.sampleObject.findMany({
     orderBy: [{ name: 'asc' }],
