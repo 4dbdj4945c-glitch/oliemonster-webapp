@@ -330,7 +330,7 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
     setMelding(tekst);
     // Monster nemen geeft het monster terug: alleen dat monster bijwerken in
     // plaats van de hele dag opnieuw op te halen.
-    if (bijgewerkt && dag) {
+    if (bijgewerkt) {
       const naarPlan = (m: PlanMonster): PlanMonster =>
         m.id !== bijgewerkt.id
           ? m
@@ -345,13 +345,16 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
               isUnreachable: bijgewerkt.isUnreachable ?? false,
               unreachableReason: bijgewerkt.unreachableReason ?? null,
             };
-      setDag({
-        ...dag,
-        stops: dag.stops.map((s) => {
-          const samples = s.samples.map(naarPlan);
-          return { ...s, samples, aantalGenomen: samples.filter((m) => m.isTaken).length };
-        }),
-      });
+      // Op de dag zoals hij NU is: intussen kan de GPS een stop gestart hebben.
+      setDag((vorige) =>
+        vorige && {
+          ...vorige,
+          stops: vorige.stops.map((s) => {
+            const samples = s.samples.map(naarPlan);
+            return { ...s, samples, aantalGenomen: samples.filter((m) => m.isTaken).length };
+          }),
+        }
+      );
       return;
     }
     // Zonder bereik lukt ophalen toch niet; de wachtrij toont wat er klaarstaat.

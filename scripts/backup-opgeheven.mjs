@@ -40,7 +40,7 @@ try {
       inhoud[t] = (await tx.$queryRawUnsafe(`SELECT row_to_json(r) AS rij FROM "${t}" r ORDER BY r.id`)).map((x) => x.rij);
     }
     return { bestaan, inhoud };
-  });
+  }, { timeout: 60_000 });
 
   const aanwezig = TABELLEN.filter((t) => uitkomst.bestaan[t]);
   if (aanwezig.length === 0) {

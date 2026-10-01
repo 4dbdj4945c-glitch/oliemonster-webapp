@@ -70,6 +70,8 @@ echo ""
 # Alleen lezen: de inhoud van de opgeheven modules Controlerondes en
 # Ultimo-opmerkingen als JSON in ../backups/, VOOR de migratie die hun tabellen
 # weghaalt (scripts/backup-opgeheven.mjs). Mislukt dat, dan stopt alles hier.
+# Wat de oude code in de seconden tussen back-up en migratie nog in die
+# tabellen zou zetten, zit niet in de back-up (de modules worden niet meer gebruikt).
 if ! node scripts/backup-opgeheven.mjs; then
   echo ""
   echo "GESTOPT: de back-up van de controlerondes en Ultimo-opmerkingen is niet gelukt."

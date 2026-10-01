@@ -309,13 +309,13 @@ export default function PlanningPaneel({
     ) {
       return;
     }
-    // Meteen van de dag af in het scherm; lukt het niet, dan komt hij terug.
-    const vorige = dagen;
+    // Meteen van de dag af in het scherm; lukt het niet, dan komt alleen die dag terug.
+    const terug = () => setDagen((lijst) => lijst.map((x) => (x.id === d.id ? d : x)));
     setDagen((lijst) => lijst.map((x) => (x.id === d.id ? { ...x, stops: x.stops.filter((st) => st.id !== stop.id) } : x)));
     try {
       const res = await fetch(`/api/sample-plans/${d.id}/stops/${stop.id}`, { method: 'DELETE' });
       if (!res.ok) {
-        setDagen(vorige);
+        terug();
         setFoutmelding(await foutTekst(res, 'Het object kon niet van de dag worden gehaald.'));
         return;
       }
@@ -327,7 +327,7 @@ export default function PlanningPaneel({
         onOngedaan: () => zetStopTerug(d, stop, volgorde),
       });
     } catch {
-      setDagen(vorige);
+      terug();
       setFoutmelding(GEEN_VERBINDING);
     }
   };
@@ -372,7 +372,7 @@ export default function PlanningPaneel({
   // Meteen in de nieuwe volgorde in het scherm; de server rekent daarna de
   // route en de tijden uit. Lukt het niet, dan terug naar de oude volgorde.
   const zetVolgorde = async (d: PlanDag, stopIds: number[]) => {
-    const vorige = dagen;
+    const terug = () => setDagen((lijst) => lijst.map((x) => (x.id === d.id ? d : x)));
     const perId = new Map(d.stops.map((st) => [st.id, st]));
     setDagen((lijst) =>
       lijst.map((x) =>
@@ -388,14 +388,14 @@ export default function PlanningPaneel({
         body: JSON.stringify({ stopIds }),
       });
       if (!res.ok) {
-        setDagen(vorige);
+        terug();
         setFoutmelding(await foutTekst(res, 'De volgorde kon niet worden opgeslagen.'));
         return;
       }
       setFoutmelding('');
       await naWijziging(await res.json().catch(() => null));
     } catch {
-      setDagen(vorige);
+      terug();
       setFoutmelding(GEEN_VERBINDING);
     }
   };
