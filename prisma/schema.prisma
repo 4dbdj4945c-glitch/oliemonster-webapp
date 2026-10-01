@@ -3,6 +3,10 @@
 
 generator client {
   provider = "prisma-client-js"
+  // relationJoins: een query met relaties (include, geneste select) gaat als
+  // één SQL-query met joins naar de database, in plaats van één query per
+  // relatie. Scheelt roundtrips naar Supabase bij vrijwel elk scherm.
+  previewFeatures = ["relationJoins"]
 }
 
 datasource db {
