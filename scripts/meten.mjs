@@ -8,6 +8,7 @@
 //   node scripts/meten.mjs --app ../kopie         meet een andere kopie (bijvoorbeeld main)
 //   node scripts/meten.mjs --uit meting.json      bewaar de getallen
 //   MEET_VERTRAGING=20 node scripts/meten.mjs     vertraging per databaseverzoek in ms (standaard 20)
+//   MEET_PGBOUNCER=0 node scripts/meten.mjs       zonder pgbouncer=true (directe verbinding)
 //
 // Hoe het meet:
 // - Tussen de portal en PostgreSQL zit een kleine proxy die elk pakket van de
@@ -147,7 +148,8 @@ const server = spawn('npx', ['next', 'start', '-p', String(POORT)], {
     NEXT_TELEMETRY_DISABLED: '1',
     // pgbouncer=true zoals de pooler van Supabase: geen bewaarde prepared
     // statements, dus elke query telt zoals in productie.
-    DATABASE_URL: `postgresql://${userInfo().username}@localhost:${PROXY_POORT}/${DB}?pgbouncer=true`,
+    // MEET_PGBOUNCER=0: zonder, zoals een directe verbinding.
+    DATABASE_URL: `postgresql://${userInfo().username}@localhost:${PROXY_POORT}/${DB}${process.env.MEET_PGBOUNCER === '0' ? '' : '?pgbouncer=true'}`,
     SESSION_SECRET: 'meetsleutel-alleen-lokaal-0123456789abcdef',
     BLOB_READ_WRITE_TOKEN: 'vercel_blob_rw_meet0000_alleenlokaal',
     VERCEL_BLOB_API_URL: `http://localhost:${BLOB_POORT}`,
