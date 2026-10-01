@@ -2444,18 +2444,6 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   gap: 12px;
 }
 
-.plan-datumrij {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.plan-datumrij .input {
-  width: auto;
-  flex: 1 1 180px;
-}
-
 /* Dag die over de werkdag heen gaat: oranje streep links */
 .plan-dag-vol {
   border-left: 4px solid var(--oranje);
@@ -2840,9 +2828,6 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
   }
   .plan-knoppen .btn {
     flex: 1 1 auto;
-  }
-  .plan-datumrij .input {
-    flex: 1 1 100%;
   }
   .plan-stop {
     min-height: 52px;
@@ -5318,4 +5303,205 @@ a.rij-tekst.rij-link:hover strong { text-decoration: underline; }
   .plan-leeg-regel a { display: inline-flex; align-items: center; min-height: 44px; }
   .eigen-open { min-height: 44px; }
   .beheer-tabel .kaart-kop .btn-link { display: inline-flex; align-items: center; min-height: 44px; }
+}
+
+/* ---------- Planning: maandkalender (planning/PlanningKalender.tsx) ----------
+   Altijd zichtbaar boven de dagen. Gepland blauw, te vol amber met een oranje
+   streep (zoals .plan-dag-vol), alles klaar groen. Op de telefoon alleen een
+   stip met het aantal; de inhoud staat dan onder de kalender. */
+.plan-kal { padding: 16px; }
+.plan-kal-kop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.plan-kal-maand { margin: 0; font-size: 17px; font-weight: 700; color: var(--navy); }
+.plan-kal-nav { display: flex; align-items: center; gap: 4px; }
+.plan-kal-vorige { transform: rotate(90deg); }
+.plan-kal-volgende { transform: rotate(-90deg); }
+.plan-kal-raster {
+  display: grid;
+  grid-template-columns: 28px repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.plan-kal-week { display: contents; }
+.plan-kal-weekdag {
+  padding: 0 6px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--grijs-500);
+}
+.plan-kal-wk {
+  display: flex;
+  justify-content: center;
+  padding-top: 9px;
+  font-size: 11px;
+  color: var(--grijs-500);
+  font-variant-numeric: tabular-nums;
+}
+.plan-kal-weekdag.plan-kal-wk { padding: 0 0 4px; }
+.plan-kal-leeg { min-height: 96px; }
+.plan-kal-dag {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  min-height: 96px;
+  padding: 6px;
+  overflow: hidden;
+  text-align: left;
+  font-family: inherit;
+  color: var(--navy);
+  background: var(--wit);
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.plan-kal-dag:hover { border-color: var(--grijs-400); }
+.plan-kal-dag.plan-kal-weekend { background: var(--grijs-50); }
+.plan-kal-weekend .plan-kal-getal { color: var(--grijs-500); }
+.plan-kal-nr { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.plan-kal-getal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.plan-kal-vandaag .plan-kal-getal,
+.plan-kal-weekend.plan-kal-vandaag .plan-kal-getal { background: var(--navy); color: #fff; }
+
+.plan-kal-dag.plan-kal-gepland { background: var(--blue-light); border-left: 3px solid var(--blue); }
+.plan-kal-dag.plan-kal-vol { background: var(--oranje-light); border-left-color: var(--oranje); }
+.plan-kal-dag.plan-kal-klaar { background: var(--groen-light); border-left-color: var(--groen); }
+.plan-kal-vol .plan-kal-nr .icon { color: var(--geel-tekst); }
+.plan-kal-klaar .plan-kal-nr .icon { color: var(--groen-tekst); }
+.plan-kal-dag.plan-kal-gekozen { outline: 2px solid var(--navy); outline-offset: -1px; }
+
+.plan-kal-inhoud { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.plan-kal-aantal { font-size: 12px; font-weight: 700; color: var(--navy); }
+.plan-kal-naam,
+.plan-kal-meer {
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--grijs-700);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.plan-kal-meer { color: var(--grijs-500); }
+.plan-kal-soorten { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
+.plan-kal-soort {
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--navy);
+  white-space: nowrap;
+}
+.plan-kal-stip { display: none; }
+
+.plan-kal-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--grijs-500);
+}
+.plan-kal-legenda span { display: inline-flex; align-items: center; gap: 6px; }
+.plan-kal-teken { display: inline-block; width: 14px; height: 14px; border-radius: 3px; }
+.plan-kal-teken-gepland { background: var(--blue-light); border-left: 3px solid var(--blue); }
+.plan-kal-teken-vol { background: var(--oranje-light); border-left: 3px solid var(--oranje); }
+.plan-kal-teken-klaar { background: var(--groen-light); border-left: 3px solid var(--groen); }
+.plan-kal-teken-vandaag { border-radius: 999px; background: var(--navy); }
+
+.plan-kal-keuze {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--grijs-200);
+}
+.plan-kal-keuze-kop { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.plan-kal-keuze-knoppen { display: flex; gap: 8px; flex-wrap: wrap; }
+.plan-kal-keuze .hint { margin: 0; }
+.plan-kal-fout { margin: 0; }
+.plan-kal-inlijst { display: none; }
+.plan-kal-stops { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.plan-kal-stops li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--navy);
+  border-bottom: 1px solid var(--grijs-200);
+}
+.plan-kal-stops li:last-child { border-bottom: none; }
+.plan-kal-stop-naam { font-weight: 600; }
+.plan-kal-stop-klaar .plan-kal-stop-naam { color: var(--grijs-500); }
+.plan-kal-uitleg { margin: 12px 0 0; font-size: 12px; color: var(--grijs-500); }
+
+/* Dagkaart na een klik in de kalender: kort een blauwe rand en vlak */
+.plan-dag { scroll-margin-top: 16px; }
+.plan-kal-markeer { outline: 2px solid var(--blue); outline-offset: 2px; animation: plan-kal-markeer 2s ease-out; }
+@keyframes plan-kal-markeer {
+  0%, 50% { background: var(--blue-light); }
+  100% { background: var(--wit); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plan-kal-markeer { animation: none; }
+}
+
+@media (max-width: 899px) {
+  .plan-dag { scroll-margin-top: 72px; }
+}
+
+@media (max-width: 640px) {
+  .plan-kal { padding: 12px; }
+  .plan-kal-nav .btn,
+  .plan-kal-pijl { min-height: 44px; min-width: 44px; }
+  .plan-kal-raster { grid-template-columns: 20px repeat(7, minmax(0, 1fr)); gap: 3px; }
+  .plan-kal-weekdag { padding: 0 0 4px; text-align: center; letter-spacing: 0.04em; }
+  .plan-kal-wk { padding-top: 6px; font-size: 10px; }
+  .plan-kal-leeg { min-height: 48px; }
+  .plan-kal-dag { align-items: center; gap: 3px; min-height: 48px; padding: 4px 2px; }
+  .plan-kal-dag.plan-kal-gepland { border-left-width: 1px; border-left-color: var(--blue); }
+  .plan-kal-dag.plan-kal-vol { border-left-color: var(--oranje); }
+  .plan-kal-dag.plan-kal-klaar { border-left-color: var(--groen); }
+  .plan-kal-nr { justify-content: center; }
+  .plan-kal-nr .icon,
+  .plan-kal-inhoud { display: none; }
+  .plan-kal-stip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--blue);
+  }
+  .plan-kal-stip:empty { min-width: 8px; width: 8px; height: 8px; padding: 0; }
+  .plan-kal-vol .plan-kal-stip { background: var(--geel-tekst); }
+  .plan-kal-klaar .plan-kal-stip { background: var(--groen-diep); }
+  .plan-kal-inlijst { display: inline-flex; }
+  .plan-kal-keuze-knoppen .btn { flex: 1 1 auto; min-height: 44px; }
 }

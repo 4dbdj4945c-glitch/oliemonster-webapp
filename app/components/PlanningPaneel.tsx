@@ -11,13 +11,13 @@ import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { objectTypeIcoon } from '@/lib/sampleObjects';
 import {
   PLANNING,
-  isWerkdag,
   minutenAlsTekst,
   datumAlsTekst,
   datumAlsInvoer,
 } from '@/lib/planningInstellingen';
 import { TAAK_STATUS_BADGE, TAAK_STATUS_LABEL, dagKort, dagenTot, taakSoortInfo, vandaagNl } from '@/lib/contracten';
 import { sjabloonVan } from '@/lib/inspecties/sjablonen';
+import PlanningKalender from './planning/PlanningKalender';
 
 /*
   Planning van de oliemonsters: de pagina Planning en de tab binnen
@@ -26,38 +26,16 @@ import { sjabloonVan } from '@/lib/inspecties/sjablonen';
   kunnen geen styled-jsx gebruiken, zie STIJL.md.
 */
 
-import { isMonsterStop, stopNaam, type PlanDag, type PlanMonster, type PlanObject, type PlanStop, type TePlannen } from './planning/types';
+import { dagInhoud, isMonsterStop, monsters, objectenWoord, stopNaam, type PlanDag, type PlanMonster, type PlanObject, type PlanStop, type TePlannen } from './planning/types';
 import type { IconNaam } from './ui';
 
 export type { PlanMonster };
-
-/** "1 monster" of "3 monsters" */
-function monsters(aantal: number): string {
-  return `${aantal} ${aantal === 1 ? 'monster' : 'monsters'}`;
-}
-
-/** "1 object" of "3 objecten" */
-function objectenWoord(aantal: number): string {
-  return `${aantal} ${aantal === 1 ? 'object' : 'objecten'}`;
-}
 
 /** Het icoon van een stop: het objecttype, of de soort taak of inspectie. */
 function stopIcoon(stop: PlanStop): IconNaam {
   if (stop.soort === 'taak' && stop.taak) return taakSoortInfo(stop.taak.soort).icoon;
   if (stop.soort === 'inspectie' && stop.inspectie) return sjabloonVan(stop.inspectie.sjabloon).icoon;
   return objectTypeIcoon(stop.object.objectType);
-}
-
-/** "3 objecten, 1 taak, 4 monsters" */
-function dagInhoud(d: PlanDag): string {
-  const olie = d.stops.filter(isMonsterStop);
-  const taken = d.stops.filter((s) => s.soort === 'taak').length;
-  const inspecties = d.stops.filter((s) => s.soort === 'inspectie').length;
-  const delen = [objectenWoord(olie.length)];
-  if (taken > 0) delen.push(`${taken} ${taken === 1 ? 'taak' : 'taken'}`);
-  if (inspecties > 0) delen.push(`${inspecties} ${inspecties === 1 ? 'inspectie' : 'inspecties'}`);
-  delen.push(monsters(olie.reduce((n, s) => n + s.aantalMonsters, 0)));
-  return delen.join(', ');
 }
 
 /** Taken tot zover vooruit staan in het blok Nog in te plannen; de rest staat bij Contracten. */
@@ -124,7 +102,9 @@ export default function PlanningPaneel({
 
   const [weergave, setWeergave] = useState<'dagen' | 'tijd'>('dagen');
 
-  const [nieuweDatum, setNieuweDatum] = useState('');
+  // De dagkaart die na een klik in de kalender kort gemarkeerd is
+  const [gemarkeerd, setGemarkeerd] = useState<number | null>(null);
+  const markeerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Invoerfouten (datum vergeten, dag bestaat al) horen niet in het laadfoutvak:
   // daar staat een knop Opnieuw proberen die er niets mee te maken heeft.
   const [invoerFout, setInvoerFout] = useState('');
@@ -185,11 +165,7 @@ export default function PlanningPaneel({
 
   /* ---------- Dagen ---------- */
 
-  const nieuweDag = async () => {
-    if (!nieuweDatum) {
-      setInvoerFout('Kies eerst een datum.');
-      return;
-    }
+  const nieuweDag = async (nieuweDatum: string) => {
     setBezig(true);
     try {
       const res = await fetch('/api/sample-plans', {
@@ -201,7 +177,6 @@ export default function PlanningPaneel({
         setInvoerFout(await foutTekst(res, 'De dag kon niet worden toegevoegd.'));
         return;
       }
-      setNieuweDatum('');
       setInvoerFout('');
       await naWijziging(await res.json().catch(() => null));
     } catch {
@@ -210,6 +185,21 @@ export default function PlanningPaneel({
       setBezig(false);
     }
   };
+
+  // Vanuit de kalender: naar de dagkaart scrollen en hem kort markeren.
+  const toonInLijst = (d: PlanDag) => {
+    document.getElementById(`plan-dag-${d.id}`)?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      block: 'start',
+    });
+    setGemarkeerd(d.id);
+    if (markeerTimer.current) clearTimeout(markeerTimer.current);
+    markeerTimer.current = setTimeout(() => setGemarkeerd(null), 2000);
+  };
+
+  useEffect(() => () => {
+    if (markeerTimer.current) clearTimeout(markeerTimer.current);
+  }, []);
 
   /* ---------- Stops ---------- */
 
@@ -641,32 +631,16 @@ export default function PlanningPaneel({
 
             {/* De dagen */}
             <div className="plan-dagen">
-              {isAdmin && (
-                <div className="card plan-nieuwe-dag">
-                  <label className="label" htmlFor="plan-datum">Dag toevoegen</label>
-                  <div className="plan-datumrij">
-                    <input
-                      id="plan-datum"
-                      type="date"
-                      className="input"
-                      value={nieuweDatum}
-                      onChange={(e) => setNieuweDatum(e.target.value)}
-                    />
-                    <button type="button" className="btn btn-primary" onClick={nieuweDag} disabled={bezig}>
-                      <Icon name="plus" size={16} />
-                      Toevoegen
-                    </button>
-                  </div>
-                  {nieuweDatum && !isWerkdag(new Date(`${nieuweDatum}T00:00:00`)) && (
-                    <p className="hint">Let op: dit is geen werkdag (maandag tot en met vrijdag).</p>
-                  )}
-                  {invoerFout && (
-                    <div className="alert alert-danger" role="alert" style={{ marginTop: '10px' }}>
-                      {invoerFout}
-                    </div>
-                  )}
-                </div>
-              )}
+              <PlanningKalender
+                dagen={dagen}
+                analysisYear={analysisYear}
+                isAdmin={isAdmin}
+                bezig={bezig}
+                invoerFout={invoerFout}
+                onToevoegen={nieuweDag}
+                onToonInLijst={toonInLijst}
+                onWisFout={() => setInvoerFout('')}
+              />
 
               {dagen.length === 0 ? (
                 <div className="leeg">
@@ -675,7 +649,11 @@ export default function PlanningPaneel({
                 </div>
               ) : (
                 dagen.map((d) => (
-                  <div key={d.id} className={`card plan-dag${d.teVol ? ' plan-dag-vol' : ''}`}>
+                  <div
+                    key={d.id}
+                    id={`plan-dag-${d.id}`}
+                    className={`card plan-dag${d.teVol ? ' plan-dag-vol' : ''}${gemarkeerd === d.id ? ' plan-kal-markeer' : ''}`}
+                  >
                     <div className="plan-dag-kop">
                       <div>
                         <div className="plan-dag-datum">{datumAlsTekst(d.date)}</div>
