@@ -10,13 +10,15 @@
   Telefoon en tablet: navy kopbalk met logo, modulenaam, paginaknoppen, Help en
   de avatar (gebruikersmenu). Onderaan een vaste balk met Vandaag, Werk, Klanten
   en Meer, binnen de veilige zone. Werk, Klanten en Meer openen een paneel met de
-  modules van die sectie; Meer bevat Rapportage, Beheer, Help en Uitloggen.
+  modules van die sectie; Meer bevat Rapportage, Beheer, Help en Uitloggen. Voor
+  de beheerder staat in het midden de knop Nieuw (werkbon, inspectie, klant, dag
+  plannen): het snelste begin van elk werk, los van klant of opdracht.
 
   De kijker (rol alleen lezen) krijgt deze schil niet: die houdt de oude balk
   (AppShell, KlassiekeBalk).
 */
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ROLE_LABELS } from '@/lib/roles';
@@ -26,6 +28,7 @@ import type { IconNaam } from './icons/namen';
 import { MenuItem, ToolbarMenu, initiaal } from './Menu';
 import type { AppShellProps, ShellUser } from './AppShell';
 import AgendaVenster from '../AgendaVenster';
+import NieuwDagrapport from '../dagrapport/NieuwDagrapport';
 import Modal from './Modal';
 import WachtrijOverzicht, { wachtTekst } from '../wachtrij/WachtrijOverzicht';
 import { useWachtrij, useWachtrijVerzender } from '../wachtrij/useWachtrij';
@@ -60,6 +63,8 @@ export default function Schil({
   const paneel = paneelOp && paneelOp.pad === pad ? paneelOp.tab : null;
   const setPaneel = (t: Exclude<NavTab, 'vandaag'> | null) => setPaneelOp(t ? { tab: t, pad } : null);
   const [agendaOpen, setAgendaOpen] = useState(false);
+  const [nieuwOpen, setNieuwOpen] = useState(false);
+  const [werkbonOpen, setWerkbonOpen] = useState(false);
   // Offline wachtrij (Monster nemen, bevindingen): alleen de beheerder vult in.
   useWachtrijVerzender(user.username, isAdmin);
   const wachtrij = useWachtrij(isAdmin ? user.username : '');
@@ -74,13 +79,16 @@ export default function Schil({
 
   // Dicht bij Escape.
   useEffect(() => {
-    if (!paneel) return;
+    if (!paneel && !nieuwOpen) return;
     const toets = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPaneelOp(null);
+      if (e.key === 'Escape') {
+        setPaneelOp(null);
+        setNieuwOpen(false);
+      }
     };
     document.addEventListener('keydown', toets);
     return () => document.removeEventListener('keydown', toets);
-  }, [paneel]);
+  }, [paneel, nieuwOpen]);
 
   // Eerst wat er op deze telefoon staat (bewaarde veldschermen, de wachtrij),
   // dan pas uitloggen: zonder bereik mislukt die aanvraag, en dan moet het
@@ -216,18 +224,31 @@ export default function Schil({
           <Icon name="home" size={24} />
           <span>Vandaag</span>
         </Link>
-        {tabs.map((t) => (
-          <button
-            key={t}
-            type="button"
-            className={`onderbalk-tab${tab === t ? ' on' : ''}${paneel === t ? ' open' : ''}`}
-            aria-expanded={paneel === t}
-            aria-haspopup="dialog"
-            onClick={() => setPaneel(paneel === t ? null : t)}
-          >
-            <Icon name={TAB_INFO[t].icoon} size={24} />
-            <span>{TAB_INFO[t].naam}</span>
-          </button>
+        {tabs.map((t, i) => (
+          <Fragment key={t}>
+            {isAdmin && i === 1 && (
+              <button
+                type="button"
+                className={`onderbalk-nieuw${nieuwOpen ? ' open' : ''}`}
+                aria-label="Nieuw"
+                aria-expanded={nieuwOpen}
+                aria-haspopup="dialog"
+                onClick={() => { setPaneel(null); setNieuwOpen(!nieuwOpen); }}
+              >
+                <Icon name={nieuwOpen ? 'close' : 'plus'} size={24} />
+              </button>
+            )}
+            <button
+              type="button"
+              className={`onderbalk-tab${tab === t ? ' on' : ''}${paneel === t ? ' open' : ''}`}
+              aria-expanded={paneel === t}
+              aria-haspopup="dialog"
+              onClick={() => { setNieuwOpen(false); setPaneel(paneel === t ? null : t); }}
+            >
+              <Icon name={TAB_INFO[t].icoon} size={24} />
+              <span>{TAB_INFO[t].naam}</span>
+            </button>
+          </Fragment>
         ))}
       </nav>
 
@@ -285,6 +306,32 @@ export default function Schil({
         </div>
       )}
 
+      {nieuwOpen && (
+        <div className="onderbalk-achter" onClick={() => setNieuwOpen(false)}>
+          <div className="onderbalk-paneel nieuw-paneel" role="dialog" aria-modal="true" aria-label="Nieuw" onClick={(e) => e.stopPropagation()}>
+            <p className="onderbalk-paneel-kop">Nieuw</p>
+            <div className="nieuw-keuzes">
+              <button type="button" className="nieuw-keuze" onClick={() => { setNieuwOpen(false); setWerkbonOpen(true); }}>
+                <Icon name="module-dagrapport" size={24} />
+                <span><strong>Werkbon</strong><small>Verslag van werk bij een klant</small></span>
+              </button>
+              <Link prefetch={false} href="/dashboard/inspecties?nieuw=1" className="nieuw-keuze" onClick={() => setNieuwOpen(false)}>
+                <Icon name="module-inspecties" size={24} />
+                <span><strong>Inspectie</strong><small>Persluchtlekken of arbeidsmiddelen</small></span>
+              </Link>
+              <Link prefetch={false} href="/dashboard/klanten?nieuw=1" className="nieuw-keuze" onClick={() => setNieuwOpen(false)}>
+                <Icon name="company" size={24} />
+                <span><strong>Klant</strong><small>Nieuwe klant toevoegen</small></span>
+              </Link>
+              <Link prefetch={false} href="/dashboard/planning" className="nieuw-keuze" onClick={() => setNieuwOpen(false)}>
+                <Icon name="calendar" size={24} />
+                <span><strong>Dag plannen</strong><small>Werk op een dag zetten</small></span>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+      {werkbonOpen && <NieuwDagrapport onClose={() => setWerkbonOpen(false)} />}
       {agendaOpen && <AgendaVenster open onClose={() => setAgendaOpen(false)} />}
       <Modal open={wachtrijOpen && wachtrij.length > 0} onClose={() => setWachtrijOpen(false)} title="Wachtrij" size="md">
         <WachtrijOverzicht lijst={wachtrij} gebruiker={user.username} />

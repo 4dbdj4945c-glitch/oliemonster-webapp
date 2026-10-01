@@ -21,6 +21,12 @@ export default function KlantenPagina() {
   const [zoek, setZoek] = useState('');
   const [nieuw, setNieuw] = useState(false);
 
+  // Vanuit de knop Nieuw in de onderbalk: /dashboard/klanten?nieuw=1 opent meteen Nieuwe klant.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (new URLSearchParams(window.location.search).get('nieuw') === '1') setNieuw(true);
+  }, []);
+
   const laad = useCallback(async () => {
     try {
       const res = await fetch('/api/klanten');

@@ -63,6 +63,13 @@ export default function InspectiesPagina() {
     }
   };
 
+  // Vanuit de knop Nieuw in de onderbalk: /dashboard/inspecties?nieuw=1 opent meteen Nieuwe inspectie.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (new URLSearchParams(window.location.search).get('nieuw') === '1') openNieuw();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const klanten = useMemo(() => {
     const m = new Map<number, string>();
     for (const i of lijst ?? []) m.set(i.klant.id, i.klant.naam);
