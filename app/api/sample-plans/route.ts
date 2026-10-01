@@ -3,8 +3,7 @@ import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { foutAntwoord } from '@/lib/planningApi';
-import { haalPlanning } from '@/lib/samplePlans';
-import { haalTePlannen } from '@/lib/contractenServer';
+import { haalPlanningScherm } from '@/lib/planningScherm';
 
 /**
  * De dagen van de planning. Lezen mag iedereen die is ingelogd behalve de
@@ -22,8 +21,7 @@ export const GET = withAuth({ rol: 'user', module: 'planning' }, async (request:
     if (Number.isNaN(jaar)) {
       return NextResponse.json({ error: 'Kies een analysejaar' }, { status: 400 });
     }
-    const [planning, tePlannen] = await Promise.all([haalPlanning(jaar), haalTePlannen()]);
-    return NextResponse.json({ ...planning, tePlannen });
+    return NextResponse.json(await haalPlanningScherm(jaar));
   } catch (error) {
     return foutAntwoord(error, 'Fout bij ophalen van de planning');
   }
@@ -67,7 +65,8 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (reques
       request,
     });
 
-    return NextResponse.json(plan, { status: 201 });
+    // De planning zoals hij nu is, zodat het scherm hem niet opnieuw hoeft op te halen.
+    return NextResponse.json({ ...plan, planning: await haalPlanningScherm(jaar) }, { status: 201 });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij aanmaken van de dag');
   }

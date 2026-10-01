@@ -402,19 +402,22 @@ export async function onderhoudVoorKlant(klantId: number, kijkjaar: number | nul
  */
 export async function haalTePlannen() {
   const vandaag = vandaagNl();
-  const taken = (await haalTaken()).filter((t) => t.gepland === null);
-  const concepten = await prisma.inspectie.findMany({
-    where: { deletedAt: null, status: 'concept' },
-    orderBy: [{ datum: 'asc' }, { id: 'asc' }],
-    select: {
-      id: true,
-      sjabloon: true,
-      datum: true,
-      klant: { select: { id: true, naam: true } },
-      object: { select: { id: true, name: true } },
-      stops: { select: { isDone: true, plan: { select: { date: true } } } },
-    },
-  });
+  const [alleTaken, concepten] = await Promise.all([
+    haalTaken(),
+    prisma.inspectie.findMany({
+      where: { deletedAt: null, status: 'concept' },
+      orderBy: [{ datum: 'asc' }, { id: 'asc' }],
+      select: {
+        id: true,
+        sjabloon: true,
+        datum: true,
+        klant: { select: { id: true, naam: true } },
+        object: { select: { id: true, name: true } },
+        stops: { select: { isDone: true, plan: { select: { date: true } } } },
+      },
+    }),
+  ]);
+  const taken = alleTaken.filter((t) => t.gepland === null);
   const inspecties = concepten
     .filter((i) => !i.stops.some((s) => !s.isDone && nlDag(s.plan.date) >= vandaag))
     .map((i) => ({ id: i.id, sjabloon: i.sjabloon, datum: nlDag(i.datum), klant: i.klant, object: i.object }));

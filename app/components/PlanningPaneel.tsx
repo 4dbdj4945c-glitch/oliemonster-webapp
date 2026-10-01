@@ -87,7 +87,7 @@ function routeHerkomst(dag: PlanDag): { achtervoegsel: string; titel: string } |
         'Geen van deze objecten heeft coordinaten, dus er valt geen route te berekenen. Vul ze aan bij Beheer, Objecten.',
     };
   }
-  if (dag.routeGeometry === null) {
+  if (!dag.routeBerekend) {
     return {
       achtervoegsel: 'route nog niet berekend',
       titel: 'Druk op "Route berekenen" om de afstand en de rijtijd van deze dag op te halen.',
@@ -146,6 +146,15 @@ export default function PlanningPaneel({
   // Slepen (desktop)
   const sleepStop = useRef<number | null>(null);
 
+  // De planning uit een antwoord overnemen: GET /api/sample-plans, en elke
+  // wijziging geeft hem mee (`planning`), zodat er niet nog een keer opgehaald
+  // hoeft te worden. Zonder tePlannen (Route berekenen) blijft dat staan.
+  const pasToe = useCallback((data: { dagen?: PlanDag[]; objecten?: PlanObject[]; tePlannen?: TePlannen }) => {
+    setDagen(data.dagen ?? []);
+    setObjecten(data.objecten ?? []);
+    if (data.tePlannen) setTePlannen(data.tePlannen);
+  }, []);
+
   const laadPlanning = useCallback(async () => {
     try {
       const res = await fetch(`/api/sample-plans?year=${analysisYear}`);
@@ -154,9 +163,7 @@ export default function PlanningPaneel({
         return;
       }
       const data = await res.json();
-      setDagen(data.dagen ?? []);
-      setObjecten(data.objecten ?? []);
-      setTePlannen(data.tePlannen ?? { taken: [], inspecties: [] });
+      pasToe({ tePlannen: { taken: [], inspecties: [] }, ...data });
       setGeladen(true);
       setFoutmelding('');
     } catch {
@@ -164,11 +171,17 @@ export default function PlanningPaneel({
     } finally {
       setLaden(false);
     }
-  }, [analysisYear]);
+  }, [analysisYear, pasToe]);
 
   useEffect(() => {
     laadPlanning();
   }, [laadPlanning]);
+
+  /** Na een wijziging: de planning uit het antwoord, of (oudere server) opnieuw ophalen. */
+  const naWijziging = async (data: { planning?: Parameters<typeof pasToe>[0] } | null) => {
+    if (data?.planning) pasToe(data.planning);
+    else await laadPlanning();
+  };
 
   /* ---------- Dagen ---------- */
 
@@ -190,7 +203,7 @@ export default function PlanningPaneel({
       }
       setNieuweDatum('');
       setInvoerFout('');
-      await laadPlanning();
+      await naWijziging(await res.json().catch(() => null));
     } catch {
       setFoutmelding(GEEN_VERBINDING);
     } finally {
@@ -238,7 +251,7 @@ export default function PlanningPaneel({
       );
       setKiesObject(null);
       setFoutmelding('');
-      await laadPlanning();
+      await naWijziging(uitkomst);
     } catch {
       setFoutmelding(GEEN_VERBINDING);
     } finally {
@@ -275,7 +288,7 @@ export default function PlanningPaneel({
       setMelding('');
       setKiesBezoek(null);
       setFoutmelding('');
-      await laadPlanning();
+      await naWijziging(await res.json().catch(() => null));
     } catch {
       setFoutmelding(GEEN_VERBINDING);
     } finally {
@@ -296,13 +309,17 @@ export default function PlanningPaneel({
     ) {
       return;
     }
+    // Meteen van de dag af in het scherm; lukt het niet, dan komt hij terug.
+    const vorige = dagen;
+    setDagen((lijst) => lijst.map((x) => (x.id === d.id ? { ...x, stops: x.stops.filter((st) => st.id !== stop.id) } : x)));
     try {
       const res = await fetch(`/api/sample-plans/${d.id}/stops/${stop.id}`, { method: 'DELETE' });
       if (!res.ok) {
+        setDagen(vorige);
         setFoutmelding(await foutTekst(res, 'Het object kon niet van de dag worden gehaald.'));
         return;
       }
-      await laadPlanning();
+      await naWijziging(await res.json().catch(() => null));
       const volgorde = d.stops.map((st) => st.id);
       setOngedaan({
         sleutel: `stop-${stop.id}`,
@@ -310,6 +327,7 @@ export default function PlanningPaneel({
         onOngedaan: () => zetStopTerug(d, stop, volgorde),
       });
     } catch {
+      setDagen(vorige);
       setFoutmelding(GEEN_VERBINDING);
     }
   };
@@ -334,14 +352,16 @@ export default function PlanningPaneel({
         return false;
       }
       const nieuw = await res.json().catch(() => null);
+      let laatste = nieuw;
       if (d.manualOrder && nieuw?.id && !nieuw.samengevoegd) {
-        await fetch(`/api/sample-plans/${d.id}/volgorde`, {
+        const terug = await fetch(`/api/sample-plans/${d.id}/volgorde`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ stopIds: volgorde.map((id) => (id === stop.id ? nieuw.id : id)) }),
         });
+        laatste = terug.ok ? await terug.json().catch(() => null) : null;
       }
-      await laadPlanning();
+      await naWijziging(laatste);
       return true;
     } catch {
       setFoutmelding(GEEN_VERBINDING);
@@ -349,7 +369,18 @@ export default function PlanningPaneel({
     }
   };
 
+  // Meteen in de nieuwe volgorde in het scherm; de server rekent daarna de
+  // route en de tijden uit. Lukt het niet, dan terug naar de oude volgorde.
   const zetVolgorde = async (d: PlanDag, stopIds: number[]) => {
+    const vorige = dagen;
+    const perId = new Map(d.stops.map((st) => [st.id, st]));
+    setDagen((lijst) =>
+      lijst.map((x) =>
+        x.id === d.id
+          ? { ...x, manualOrder: true, stops: stopIds.map((id, i) => ({ ...perId.get(id)!, orderIndex: i })) }
+          : x
+      )
+    );
     try {
       const res = await fetch(`/api/sample-plans/${d.id}/volgorde`, {
         method: 'POST',
@@ -357,12 +388,14 @@ export default function PlanningPaneel({
         body: JSON.stringify({ stopIds }),
       });
       if (!res.ok) {
+        setDagen(vorige);
         setFoutmelding(await foutTekst(res, 'De volgorde kon niet worden opgeslagen.'));
         return;
       }
       setFoutmelding('');
-      await laadPlanning();
+      await naWijziging(await res.json().catch(() => null));
     } catch {
+      setDagen(vorige);
       setFoutmelding(GEEN_VERBINDING);
     }
   };
@@ -381,7 +414,7 @@ export default function PlanningPaneel({
         return;
       }
       setFoutmelding('');
-      await laadPlanning();
+      await naWijziging(await res.json().catch(() => null));
     } catch {
       setFoutmelding(GEEN_VERBINDING);
     }
@@ -447,7 +480,7 @@ export default function PlanningPaneel({
             : '')
       );
       setFoutmelding('');
-      await laadPlanning();
+      await naWijziging(data);
     } catch {
       setFoutmelding(GEEN_VERBINDING);
     } finally {

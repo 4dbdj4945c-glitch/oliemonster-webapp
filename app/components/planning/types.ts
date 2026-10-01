@@ -91,7 +91,10 @@ export interface PlanDag {
   date: string;
   analysisYear: number;
   notes: string | null;
-  routeGeometry: string | null;
+  /** Het traject; alleen in het antwoord voor één dag (het dagscherm), niet in de lijst. */
+  routeGeometry?: string | null;
+  /** Is de route van deze dag al berekend (er is een traject bewaard)? */
+  routeBerekend: boolean;
   routeDistance: number | null;
   routeDuration: number | null;
   manualOrder: boolean;

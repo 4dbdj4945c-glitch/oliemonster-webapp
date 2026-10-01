@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { foutAntwoord } from '@/lib/planningApi';
 import { schrijfSampleIds, leesSampleIds } from '@/lib/samplePlans';
+import { haalPlanningScherm } from '@/lib/planningScherm';
 import { taakTitel } from '@/lib/contracten';
 import { inspectieNummer } from '@/lib/inspecties/sjablonen';
 
@@ -92,7 +93,7 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
         details: { planId, stopId: stop.id, ...(taakId !== null ? { taakId } : { inspectieId }), naam },
         request,
       });
-      return NextResponse.json(stop, { status: 201 });
+      return NextResponse.json({ ...stop, planning: await haalPlanningScherm(plan.analysisYear) }, { status: 201 });
     }
 
     const objectId = parseInt(String(body.objectId ?? ''));
@@ -142,7 +143,7 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
         details: { planId, stopId: bestaande.id, object: object.name, samengevoegd: true },
         request,
       });
-      return NextResponse.json({ ...bijgewerkt, samengevoegd: true });
+      return NextResponse.json({ ...bijgewerkt, samengevoegd: true, planning: await haalPlanningScherm(plan.analysisYear) });
     }
 
     // Achteraan in de volgorde van die dag.
@@ -170,7 +171,8 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
       request,
     });
 
-    return NextResponse.json(stop, { status: 201 });
+    // De planning zoals hij nu is, zodat het scherm hem niet opnieuw hoeft op te halen.
+    return NextResponse.json({ ...stop, planning: await haalPlanningScherm(plan.analysisYear) }, { status: 201 });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij inplannen van het object');
   }

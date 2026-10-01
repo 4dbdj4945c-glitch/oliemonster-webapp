@@ -3,7 +3,8 @@ import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { foutAntwoord } from '@/lib/planningApi';
-import { schrijfSampleIds } from '@/lib/samplePlans';
+import { haalPlanDag, schrijfSampleIds, zetStopVolgorde } from '@/lib/samplePlans';
+import { haalPlanningScherm } from '@/lib/planningScherm';
 import { maakUitvoeringOngedaan, registreerUitvoering } from '@/lib/contractenServer';
 import { nlDag } from '@/lib/klantOpdracht';
 import { vandaagNl } from '@/lib/contracten';
@@ -103,7 +104,13 @@ export const PATCH = withAuth({ rol: 'admin', module: 'planning' }, async (
       request,
     });
 
-    return NextResponse.json({ ...stop, ...(taak ? { volgendeOp: taak.volgendeOp } : {}), ...(taakTerug !== null ? { taakTerug } : {}) });
+    // De dag zoals hij nu is, voor het dagscherm: dat hoeft hem dan niet opnieuw op te halen.
+    return NextResponse.json({
+      ...stop,
+      ...(taak ? { volgendeOp: taak.volgendeOp } : {}),
+      ...(taakTerug !== null ? { taakTerug } : {}),
+      dag: await haalPlanDag(planId),
+    });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij bijwerken van de stop');
   }
@@ -125,7 +132,7 @@ export const DELETE = withAuth({ rol: 'admin', module: 'planning' }, async (
 
     const bestaand = await prisma.samplePlanStop.findUnique({
       where: { id: sId },
-      select: { id: true, planId: true, isDone: true, taakId: true, object: { select: { name: true } } },
+      select: { id: true, planId: true, isDone: true, taakId: true, object: { select: { name: true } }, plan: { select: { analysisYear: true } } },
     });
     if (!bestaand || bestaand.planId !== planId) {
       return NextResponse.json({ error: 'Stop niet gevonden' }, { status: 404 });
@@ -141,13 +148,7 @@ export const DELETE = withAuth({ rol: 'admin', module: 'planning' }, async (
       orderBy: { orderIndex: 'asc' },
       select: { id: true },
     });
-    for (let i = 0; i < over.length; i++) {
-      await prisma.samplePlanStop.update({
-        where: { id: over[i].id },
-        data: { orderIndex: i },
-        select: { id: true },
-      });
-    }
+    await zetStopVolgorde(over.map((s, i) => ({ id: s.id, orderIndex: i })));
 
     await createAuditLog({
       userId: session.userId,
@@ -157,7 +158,7 @@ export const DELETE = withAuth({ rol: 'admin', module: 'planning' }, async (
       request,
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, planning: await haalPlanningScherm(bestaand.plan.analysisYear) });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij weghalen van de stop');
   }

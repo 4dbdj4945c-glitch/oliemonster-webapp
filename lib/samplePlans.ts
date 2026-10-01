@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 import { PLANNING, geschatteMinuten } from './planningInstellingen';
 import { optimizePointRoute, LatLng } from './routePlanner';
@@ -85,70 +86,74 @@ export function rijMinuten(duration: number | null, distance: number | null): nu
   return 0;
 }
 
-/**
- * Alle dagen van een analysejaar met hun stops, monsters en tijden, plus de
- * objecten met wat er nog te doen is. Eén aanroep voor het hele planningsscherm.
- */
-export async function haalPlanning(analysisYear: number) {
-  const plannen = await prisma.samplePlan.findMany({
-    where: { analysisYear },
-    orderBy: { date: 'asc' },
+/** Wat een dag van de planning meeneemt aan stops, objecten, taken en inspecties. */
+const PLAN_INCLUDE = {
+  stops: {
+    orderBy: { orderIndex: 'asc' as const },
     include: {
-      stops: {
-        orderBy: { orderIndex: 'asc' },
-        include: {
-          object: { include: { klant: { select: { naam: true } } } },
-          taak: {
-            select: {
-              id: true,
-              soort: true,
-              omschrijving: true,
-              geschatteMinuten: true,
-              intervalMaanden: true,
-              volgendeOp: true,
-              installatie: { select: { id: true, naam: true } },
-              contract: { select: { id: true, naam: true, klant: { select: { id: true, naam: true } } } },
-            },
-          },
-          inspectie: {
-            select: { id: true, sjabloon: true, status: true, klant: { select: { id: true, naam: true } } },
-          },
+      object: { include: { klant: { select: { naam: true } } } },
+      taak: {
+        select: {
+          id: true,
+          soort: true,
+          omschrijving: true,
+          geschatteMinuten: true,
+          intervalMaanden: true,
+          volgendeOp: true,
+          installatie: { select: { id: true, naam: true } },
+          contract: { select: { id: true, naam: true, klant: { select: { id: true, naam: true } } } },
         },
       },
+      inspectie: {
+        select: { id: true, sjabloon: true, status: true, klant: { select: { id: true, naam: true } } },
+      },
     },
-  });
+  },
+} satisfies Prisma.SamplePlanInclude;
 
-  // Alle monsters van dit jaar die aan een object hangen en niet geannuleerd zijn.
-  // Geannuleerde monsters tellen niet mee in de planning en de tijdsberekening.
-  const monsters = await prisma.oilSample.findMany({
-    where: { analysisYear, objectId: { not: null }, isDisabled: false, ...(await actiefFilter()) },
-    select: {
-      id: true,
-      oNumber: true,
-      description: true,
-      location: true,
-      isTaken: true,
-      sampleDate: true,
-      objectId: true,
-      oilType: true,
-      remarks: true,
-      photoUrl: true,
-      partPhotoUrl: true,
-      isUnreachable: true,
-      unreachableReason: true,
-    },
-    orderBy: { oNumber: 'asc' },
-  });
+type PlanMetStops = Prisma.SamplePlanGetPayload<{ include: typeof PLAN_INCLUDE }>;
 
-  // Hoeveel monsters hoorden er oorspronkelijk bij dit object, inclusief de
-  // geannuleerde? Dat is de noemer bij een eigen inschatting op het object:
-  // annuleer je drie van de vier monsters, dan hoort de geplande tijd mee te
-  // zakken. Zonder deze telling zou de deling altijd 1 opleveren.
-  const geteld = await prisma.oilSample.groupBy({
-    by: ['objectId'],
-    where: { analysisYear, objectId: { not: null }, ...(await actiefFilter()) },
-    _count: { _all: true },
-  });
+/**
+ * De monsters per object (niet geannuleerd, niet in de prullenbak) en per
+ * object hoeveel monsters er oorspronkelijk bij hoorden. Met `objectIds` alleen
+ * die objecten (het dagscherm), anders alle objecten van het jaar. De twee
+ * queries gaan tegelijk.
+ */
+async function monstersPerObject(analysisYear: number, objectIds?: number[]) {
+  const objectFilter = objectIds ? { objectId: { in: objectIds } } : { objectId: { not: null } };
+  const [monsters, geteld] = await Promise.all([
+    // Alle monsters van dit jaar die aan een object hangen en niet geannuleerd zijn.
+    // Geannuleerde monsters tellen niet mee in de planning en de tijdsberekening.
+    prisma.oilSample.findMany({
+      where: { analysisYear, ...objectFilter, isDisabled: false, ...(await actiefFilter()) },
+      select: {
+        id: true,
+        oNumber: true,
+        description: true,
+        location: true,
+        isTaken: true,
+        sampleDate: true,
+        objectId: true,
+        oilType: true,
+        remarks: true,
+        photoUrl: true,
+        partPhotoUrl: true,
+        isUnreachable: true,
+        unreachableReason: true,
+      },
+      orderBy: { oNumber: 'asc' },
+    }),
+    // Hoeveel monsters hoorden er oorspronkelijk bij dit object, inclusief de
+    // geannuleerde? Dat is de noemer bij een eigen inschatting op het object:
+    // annuleer je drie van de vier monsters, dan hoort de geplande tijd mee te
+    // zakken. Zonder deze telling zou de deling altijd 1 opleveren.
+    prisma.oilSample.groupBy({
+      by: ['objectId'],
+      where: { analysisYear, ...objectFilter, ...(await actiefFilter()) },
+      _count: { _all: true },
+    }),
+  ]);
+
   const noemerPerObject = new Map<number, number>();
   for (const rij of geteld) {
     if (rij.objectId !== null) noemerPerObject.set(rij.objectId, rij._count._all);
@@ -175,6 +180,139 @@ export async function haalPlanning(analysisYear: number) {
     });
     perObject.set(m.objectId, lijst);
   }
+  return { perObject, noemerPerObject };
+}
+
+/**
+ * Eén dag met zijn stops, monsters en tijden. `metRoute`: ook het bewaarde
+ * traject (routeGeometry, groot) voor de kaart van het dagscherm; de lijsten
+ * krijgen alleen `routeBerekend`.
+ */
+function bouwDag(
+  plan: PlanMetStops,
+  perObject: Map<number, StopMonster[]>,
+  noemerPerObject: Map<number, number>,
+  metRoute: boolean
+) {
+  const stops = plan.stops.map((stop) => {
+    const soort = stopSoort(stop);
+    const alle = soort === 'monsters' ? perObject.get(stop.objectId) ?? [] : [];
+    const ids = leesSampleIds(stop.sampleIds);
+    const samples = ids ? alle.filter((m) => ids.includes(m.id)) : alle;
+
+    // Werktijd: eigen inschatting voor dit bezoek gaat voor. Anders die van het
+    // object, naar rato als je maar een deel van de monsters meeneemt (een
+    // object met zestien monsters past nu eenmaal niet altijd op één dag).
+    // Een taak of inspectie heeft een eigen tijd (bezoekMinuten).
+    let werkMinuten: number;
+    if (soort !== 'monsters') {
+      werkMinuten = bezoekMinuten(stop);
+    } else if (stop.plannedMinutes && stop.plannedMinutes > 0) {
+      werkMinuten = stop.plannedMinutes;
+    } else if (samples.length === 0) {
+      // Niets meer te doen op dit object: dan kost het ook geen tijd.
+      werkMinuten = 0;
+    } else if (stop.object.estimatedMinutes && stop.object.estimatedMinutes > 0) {
+      const noemer = noemerPerObject.get(stop.objectId) ?? alle.length;
+      const deel = noemer > 0 ? samples.length / noemer : 1;
+      werkMinuten = Math.round(stop.object.estimatedMinutes * deel);
+    } else {
+      werkMinuten = geschatteMinuten(null, samples.length);
+    }
+
+    const werkelijkeMinuten =
+      stop.startedAt && stop.endedAt
+        ? Math.max(0, Math.round((stop.endedAt.getTime() - stop.startedAt.getTime()) / 60000))
+        : null;
+
+    const taak = stop.taak
+      ? {
+          id: stop.taak.id,
+          soort: stop.taak.soort,
+          soortLabel: taakSoortInfo(stop.taak.soort).label,
+          titel: taakTitel(stop.taak),
+          intervalMaanden: stop.taak.intervalMaanden,
+          installatie: stop.taak.installatie,
+          contract: { id: stop.taak.contract.id, naam: stop.taak.contract.naam },
+          klant: stop.taak.contract.klant,
+        }
+      : null;
+    const inspectie = stop.inspectie
+      ? {
+          id: stop.inspectie.id,
+          nummer: inspectieNummer(stop.inspectie.id),
+          sjabloon: stop.inspectie.sjabloon,
+          naam: sjabloonVan(stop.inspectie.sjabloon).naam,
+          status: stop.inspectie.status,
+          klant: stop.inspectie.klant,
+        }
+      : null;
+
+    return {
+      id: stop.id,
+      soort,
+      taak,
+      inspectie,
+      objectId: stop.objectId,
+      object: {
+        id: stop.object.id,
+        name: stop.object.name,
+        objectType: stop.object.objectType,
+        lat: stop.object.lat,
+        lng: stop.object.lng,
+        address: stop.object.address,
+        estimatedMinutes: stop.object.estimatedMinutes,
+        klantId: stop.object.klantId,
+        klantNaam: stop.object.klant?.naam ?? null,
+      },
+      sampleIds: ids,
+      orderIndex: stop.orderIndex,
+      plannedMinutes: stop.plannedMinutes,
+      isDone: stop.isDone,
+      doneAt: stop.doneAt,
+      startedAt: stop.startedAt,
+      endedAt: stop.endedAt,
+      samples,
+      aantalMonsters: samples.length,
+      aantalGenomen: samples.filter((m) => m.isTaken).length,
+      werkMinuten,
+      werkelijkeMinuten,
+    };
+  });
+
+  const werkMinutenTotaal = stops.reduce((n, s) => n + s.werkMinuten, 0);
+  const rij = rijMinuten(plan.routeDuration, plan.routeDistance);
+
+  return {
+    id: plan.id,
+    date: plan.date,
+    analysisYear: plan.analysisYear,
+    notes: plan.notes,
+    ...(metRoute ? { routeGeometry: plan.routeGeometry } : {}),
+    routeBerekend: plan.routeGeometry !== null,
+    routeDistance: plan.routeDistance,
+    routeDuration: plan.routeDuration,
+    manualOrder: plan.manualOrder,
+    stops,
+    werkMinuten: werkMinutenTotaal,
+    rijMinuten: rij,
+    totaalMinuten: werkMinutenTotaal + rij,
+    teVol: werkMinutenTotaal + rij > PLANNING.werkdagMinuten,
+  };
+}
+
+/**
+ * Alle dagen van een analysejaar met hun stops, monsters en tijden, plus de
+ * objecten met wat er nog te doen is. Eén aanroep voor het hele planningsscherm.
+ * De queries gaan tegelijk; het routetraject zit er niet in (dat is groot en
+ * alleen het dagscherm tekent het, zie haalPlanDag).
+ */
+export async function haalPlanning(analysisYear: number) {
+  const [plannen, { perObject, noemerPerObject }, objecten] = await Promise.all([
+    prisma.samplePlan.findMany({ where: { analysisYear }, orderBy: { date: 'asc' }, include: PLAN_INCLUDE }),
+    monstersPerObject(analysisYear),
+    prisma.sampleObject.findMany({ orderBy: { name: 'asc' }, include: { klant: { select: { naam: true } } } }),
+  ]);
 
   // Welke monsters staan al op een dag? Die hoeven niet nog eens ingepland.
   const geplandeMonsters = new Set<number>();
@@ -193,117 +331,8 @@ export async function haalPlanning(analysisYear: number) {
     }
   }
 
-  const dagen = plannen.map((plan) => {
-    const stops = plan.stops.map((stop) => {
-      const soort = stopSoort(stop);
-      const alle = soort === 'monsters' ? perObject.get(stop.objectId) ?? [] : [];
-      const ids = leesSampleIds(stop.sampleIds);
-      const samples = ids ? alle.filter((m) => ids.includes(m.id)) : alle;
+  const dagen = plannen.map((plan) => bouwDag(plan, perObject, noemerPerObject, false));
 
-      // Werktijd: eigen inschatting voor dit bezoek gaat voor. Anders die van het
-      // object, naar rato als je maar een deel van de monsters meeneemt (een
-      // object met zestien monsters past nu eenmaal niet altijd op één dag).
-      // Een taak of inspectie heeft een eigen tijd (bezoekMinuten).
-      let werkMinuten: number;
-      if (soort !== 'monsters') {
-        werkMinuten = bezoekMinuten(stop);
-      } else if (stop.plannedMinutes && stop.plannedMinutes > 0) {
-        werkMinuten = stop.plannedMinutes;
-      } else if (samples.length === 0) {
-        // Niets meer te doen op dit object: dan kost het ook geen tijd.
-        werkMinuten = 0;
-      } else if (stop.object.estimatedMinutes && stop.object.estimatedMinutes > 0) {
-        const noemer = noemerPerObject.get(stop.objectId) ?? alle.length;
-        const deel = noemer > 0 ? samples.length / noemer : 1;
-        werkMinuten = Math.round(stop.object.estimatedMinutes * deel);
-      } else {
-        werkMinuten = geschatteMinuten(null, samples.length);
-      }
-
-      const werkelijkeMinuten =
-        stop.startedAt && stop.endedAt
-          ? Math.max(0, Math.round((stop.endedAt.getTime() - stop.startedAt.getTime()) / 60000))
-          : null;
-
-      const taak = stop.taak
-        ? {
-            id: stop.taak.id,
-            soort: stop.taak.soort,
-            soortLabel: taakSoortInfo(stop.taak.soort).label,
-            titel: taakTitel(stop.taak),
-            intervalMaanden: stop.taak.intervalMaanden,
-            installatie: stop.taak.installatie,
-            contract: { id: stop.taak.contract.id, naam: stop.taak.contract.naam },
-            klant: stop.taak.contract.klant,
-          }
-        : null;
-      const inspectie = stop.inspectie
-        ? {
-            id: stop.inspectie.id,
-            nummer: inspectieNummer(stop.inspectie.id),
-            sjabloon: stop.inspectie.sjabloon,
-            naam: sjabloonVan(stop.inspectie.sjabloon).naam,
-            status: stop.inspectie.status,
-            klant: stop.inspectie.klant,
-          }
-        : null;
-
-      return {
-        id: stop.id,
-        soort,
-        taak,
-        inspectie,
-        objectId: stop.objectId,
-        object: {
-          id: stop.object.id,
-          name: stop.object.name,
-          objectType: stop.object.objectType,
-          lat: stop.object.lat,
-          lng: stop.object.lng,
-          address: stop.object.address,
-          estimatedMinutes: stop.object.estimatedMinutes,
-          klantId: stop.object.klantId,
-          klantNaam: stop.object.klant?.naam ?? null,
-        },
-        sampleIds: ids,
-        orderIndex: stop.orderIndex,
-        plannedMinutes: stop.plannedMinutes,
-        isDone: stop.isDone,
-        doneAt: stop.doneAt,
-        startedAt: stop.startedAt,
-        endedAt: stop.endedAt,
-        samples,
-        aantalMonsters: samples.length,
-        aantalGenomen: samples.filter((m) => m.isTaken).length,
-        werkMinuten,
-        werkelijkeMinuten,
-      };
-    });
-
-    const werkMinutenTotaal = stops.reduce((n, s) => n + s.werkMinuten, 0);
-    const rij = rijMinuten(plan.routeDuration, plan.routeDistance);
-
-    return {
-      id: plan.id,
-      date: plan.date,
-      analysisYear: plan.analysisYear,
-      notes: plan.notes,
-      routeGeometry: plan.routeGeometry,
-      routeDistance: plan.routeDistance,
-      routeDuration: plan.routeDuration,
-      manualOrder: plan.manualOrder,
-      stops,
-      werkMinuten: werkMinutenTotaal,
-      rijMinuten: rij,
-      totaalMinuten: werkMinutenTotaal + rij,
-      teVol: werkMinutenTotaal + rij > PLANNING.werkdagMinuten,
-    };
-  });
-
-  const objecten = await prisma.sampleObject.findMany({
-    orderBy: { name: 'asc' },
-    include: { klant: { select: { naam: true } } },
-  });
   const objectenMetWerk = objecten.map((o) => {
     const alle = perObject.get(o.id) ?? [];
     const open = alle.filter((m) => !geplandeMonsters.has(m.id));
@@ -335,6 +364,22 @@ export async function haalPlanning(analysisYear: number) {
   });
 
   return { dagen, objecten: objectenMetWerk };
+}
+
+/**
+ * Eén dag voor het dagscherm, met het routetraject. Dezelfde getallen als
+ * haalPlanning (zelfde bouwDag), maar alleen de monsters van de objecten op
+ * deze dag. null als de dag niet bestaat.
+ */
+export async function haalPlanDag(planId: number) {
+  const plan = await prisma.samplePlan.findUnique({ where: { id: planId }, include: PLAN_INCLUDE });
+  if (!plan) return null;
+  const objectIds = [...new Set(plan.stops.map((s) => s.objectId))];
+  const { perObject, noemerPerObject } =
+    objectIds.length > 0
+      ? await monstersPerObject(plan.analysisYear, objectIds)
+      : { perObject: new Map<number, StopMonster[]>(), noemerPerObject: new Map<number, number>() };
+  return bouwDag(plan, perObject, noemerPerObject, true);
 }
 
 /* ============================================================
@@ -401,12 +446,36 @@ function werkMinutenVanStop(
  * Met `houdVolgordeAan` blijft de bestaande volgorde staan (dat is wat er gebeurt
  * zodra jij zelf gesleept hebt); anders bepaalt de planner de volgorde.
  */
-export async function berekenRouteVoorDag(planId: number, houdVolgordeAan: boolean) {
-  const stops = await prisma.samplePlanStop.findMany({
-    where: { planId },
+type RouteStop = { id: number; object: { lat: number | null; lng: number | null } };
+
+/** De stops van een dag in volgorde, met de plek van het object: wat de route nodig heeft. */
+function routeStopsVan(where: Prisma.SamplePlanStopWhereInput) {
+  return prisma.samplePlanStop.findMany({
+    where,
     orderBy: { orderIndex: 'asc' },
-    include: { object: { select: { id: true, lat: true, lng: true } } },
+    select: { id: true, planId: true, object: { select: { lat: true, lng: true } } },
   });
+}
+
+/**
+ * Zet de volgorde (en met `planId` ook de dag) van een reeks stops in één
+ * query, in plaats van één update per stop.
+ */
+export async function zetStopVolgorde(rijen: { id: number; orderIndex: number; planId?: number }[]) {
+  if (rijen.length === 0) return;
+  const waarden = Prisma.join(
+    rijen.map((r) => Prisma.sql`(${r.id}::int, ${r.orderIndex}::int, ${r.planId ?? null}::int)`)
+  );
+  await prisma.$executeRaw`
+    UPDATE "SamplePlanStop" AS s
+    SET "orderIndex" = v.idx, "planId" = COALESCE(v.plan, s."planId"), "updatedAt" = (now() AT TIME ZONE 'UTC')
+    FROM (VALUES ${waarden}) AS v(id, idx, plan)
+    WHERE s.id = v.id`;
+}
+
+export async function berekenRouteVoorDag(planId: number, houdVolgordeAan: boolean, bekendeStops?: RouteStop[]) {
+  // De stops mogen meekomen (berekenPlanning heeft ze al); anders zelf ophalen.
+  const stops = bekendeStops ?? (await routeStopsVan({ planId }));
 
   const metPunt = stops.filter((s) => s.object.lat !== null && s.object.lng !== null);
   const zonderPunt = stops.filter((s) => s.object.lat === null || s.object.lng === null);
@@ -425,21 +494,11 @@ export async function berekenRouteVoorDag(planId: number, houdVolgordeAan: boole
   const route = await optimizePointRoute(punten, PLANNING.thuis, vast);
 
   if (!houdVolgordeAan) {
-    for (let i = 0; i < metPunt.length; i++) {
-      await prisma.samplePlanStop.update({
-        where: { id: metPunt[i].id },
-        data: { orderIndex: route.order[i] },
-        select: { id: true },
-      });
-    }
     // Objecten zonder coordinaat kunnen we niet plaatsen; die gaan achteraan.
-    for (let i = 0; i < zonderPunt.length; i++) {
-      await prisma.samplePlanStop.update({
-        where: { id: zonderPunt[i].id },
-        data: { orderIndex: metPunt.length + i },
-        select: { id: true },
-      });
-    }
+    await zetStopVolgorde([
+      ...metPunt.map((stop, i) => ({ id: stop.id, orderIndex: route.order[i] })),
+      ...zonderPunt.map((stop, i) => ({ id: stop.id, orderIndex: metPunt.length + i })),
+    ]);
   }
 
   await prisma.samplePlan.update({
@@ -517,7 +576,7 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
   // geannuleerd zijn, hoort niet op een dag te blijven staan: het telt mee in de
   // rijroute terwijl je er niet heen hoeft. Weghalen doen we alleen bij een stop
   // die nog niet gestart of afgevinkt is, anders gooien we geschiedenis weg.
-  let opgeruimd = 0;
+  const opruimen: number[] = [];
   for (const plan of plannen) {
     for (const stop of plan.stops) {
       if (stop.isDone || stop.startedAt || stop.endedAt) continue;
@@ -527,11 +586,12 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
       const ids = leesSampleIds(stop.sampleIds);
       const aantal = ids ? alle.filter((m) => ids.includes(m.id)).length : alle.length;
       if (aantal > 0) continue;
-      await prisma.samplePlanStop.delete({ where: { id: stop.id } });
-      opgeruimd += 1;
+      opruimen.push(stop.id);
     }
   }
+  const opgeruimd = opruimen.length;
   if (opgeruimd > 0) {
+    await prisma.samplePlanStop.deleteMany({ where: { id: { in: opruimen } } });
     plannen = await prisma.samplePlan.findMany({
       where: { analysisYear },
       orderBy: { date: 'asc' },
@@ -603,13 +663,11 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
       for (let i = 0; i < geordend.length; i++) {
         const stop = geordend[i];
         if (stop.planId !== plan.id || stop.orderIndex !== i) verplaatst += 1;
-        await prisma.samplePlanStop.update({
-          where: { id: stop.id },
-          // Een vastgezette stop krijgt alleen zijn plek in de rij; verhuizen doet hij niet.
-          data: staatVast(stop) ? { orderIndex: i } : { planId: plan.id, orderIndex: i },
-          select: { id: true },
-        });
       }
+      // Een vastgezette stop krijgt alleen zijn plek in de rij; verhuizen doet hij niet.
+      await zetStopVolgorde(
+        geordend.map((stop, i) => (staatVast(stop) ? { id: stop.id, orderIndex: i } : { id: stop.id, orderIndex: i, planId: plan.id }))
+      );
     };
 
     // Werktijd plus één rit vanaf Heeze langs alle punten van die dag en terug.
@@ -706,8 +764,13 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
   // Route per dag uitrekenen. Zelf gesleept of net herverdeeld: volgorde aanhouden.
   let dagenHemelsbreed = 0;
   let zonderCoordinaat = 0;
+  // De stops van alle dagen in één keer, na het verdelen.
+  const stopsPerDag = new Map<number, RouteStop[]>();
+  for (const stop of await routeStopsVan({ plan: { analysisYear } })) {
+    stopsPerDag.set(stop.planId, [...(stopsPerDag.get(stop.planId) ?? []), stop]);
+  }
   for (const plan of plannen) {
-    const uitkomst = await berekenRouteVoorDag(plan.id, plan.manualOrder || herverdeel);
+    const uitkomst = await berekenRouteVoorDag(plan.id, plan.manualOrder || herverdeel, stopsPerDag.get(plan.id) ?? []);
     // Alleen tellen als er iets te routeren viel: een dag zonder object op de
     // kaart is geen storing van de routedienst.
     if (uitkomst.metPunt > 0 && !uitkomst.followsRoads) dagenHemelsbreed += 1;
@@ -728,5 +791,7 @@ export async function berekenPlanning(analysisYear: number, herverdeel: boolean)
     // object buiten de route valt.
     dagenHemelsbreed,
     zonderCoordinaat,
+    // De planning zoals hij nu is: het scherm hoeft hem niet nog eens op te halen.
+    planning: na,
   };
 }

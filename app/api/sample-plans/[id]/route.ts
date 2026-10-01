@@ -3,10 +3,12 @@ import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { foutAntwoord } from '@/lib/planningApi';
-import { haalPlanning } from '@/lib/samplePlans';
+import { haalPlanDag } from '@/lib/samplePlans';
+import { haalPlanningScherm } from '@/lib/planningScherm';
 
 // GET - Eén dag met stops, monsters en tijden, voor het dagscherm. Dezelfde
-// getallen als het planningsoverzicht, omdat hij uit haalPlanning komt.
+// getallen als het planningsoverzicht (haalPlanDag rekent met dezelfde code als
+// haalPlanning), maar alleen de monsters van de objecten op deze dag.
 export const GET = withAuth({ rol: 'user', module: 'planning' }, async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -17,12 +19,7 @@ export const GET = withAuth({ rol: 'user', module: 'planning' }, async (
     if (Number.isNaN(planId)) {
       return NextResponse.json({ error: 'Onbekende dag' }, { status: 400 });
     }
-    const plan = await prisma.samplePlan.findUnique({ where: { id: planId }, select: { analysisYear: true } });
-    if (!plan) {
-      return NextResponse.json({ error: 'Deze dag staat niet (meer) in de planning' }, { status: 404 });
-    }
-    const { dagen } = await haalPlanning(plan.analysisYear);
-    const dag = dagen.find((d) => d.id === planId);
+    const dag = await haalPlanDag(planId);
     if (!dag) {
       return NextResponse.json({ error: 'Deze dag staat niet (meer) in de planning' }, { status: 404 });
     }
@@ -90,7 +87,7 @@ export const PUT = withAuth({ rol: 'admin', module: 'planning' }, async (
       request,
     });
 
-    return NextResponse.json(plan);
+    return NextResponse.json({ ...plan, planning: await haalPlanningScherm(bestaand.analysisYear) });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij bijwerken van de dag');
   }

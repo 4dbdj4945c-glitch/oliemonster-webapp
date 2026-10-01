@@ -25,7 +25,7 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (reques
     }
     const herverdeel = body.herverdeel === true;
 
-    const resultaat = await berekenPlanning(jaar, herverdeel);
+    const { planning, ...resultaat } = await berekenPlanning(jaar, herverdeel);
 
     await createAuditLog({
       userId: session.userId,
@@ -35,7 +35,8 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (reques
       request,
     });
 
-    return NextResponse.json(resultaat);
+    // De planning zoals hij nu is (zonder tePlannen: dat verandert hier niet).
+    return NextResponse.json({ ...resultaat, ...(planning ? { planning } : {}) });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij uitrekenen van de route');
   }

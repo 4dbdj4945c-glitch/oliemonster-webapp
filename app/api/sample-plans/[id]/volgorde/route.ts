@@ -3,7 +3,8 @@ import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { foutAntwoord } from '@/lib/planningApi';
-import { berekenRouteVoorDag } from '@/lib/samplePlans';
+import { berekenRouteVoorDag, zetStopVolgorde } from '@/lib/samplePlans';
+import { haalPlanningScherm } from '@/lib/planningScherm';
 
 /**
  * POST - Volgorde van de objecten op een dag met de hand zetten (alleen admin).
@@ -32,30 +33,31 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
       return NextResponse.json({ error: 'Geef de volgorde van de stops mee' }, { status: 400 });
     }
 
-    const stops = await prisma.samplePlanStop.findMany({
-      where: { planId },
-      select: { id: true },
-    });
+    const [plan, stops] = await Promise.all([
+      prisma.samplePlan.findUnique({ where: { id: planId }, select: { analysisYear: true } }),
+      prisma.samplePlanStop.findMany({
+        where: { planId },
+        select: { id: true, object: { select: { lat: true, lng: true } } },
+      }),
+    ]);
+    if (!plan) {
+      return NextResponse.json({ error: 'Dag niet gevonden' }, { status: 404 });
+    }
     const bekend = new Set(stops.map((s) => s.id));
     if (stopIds.length !== stops.length || stopIds.some((sid) => !bekend.has(sid))) {
       return NextResponse.json({ error: 'De volgorde klopt niet met de stops van deze dag' }, { status: 400 });
     }
 
-    for (let i = 0; i < stopIds.length; i++) {
-      await prisma.samplePlanStop.update({
-        where: { id: stopIds[i] },
-        data: { orderIndex: i },
-        select: { id: true },
-      });
-    }
-    await prisma.samplePlan.update({
-      where: { id: planId },
-      data: { manualOrder: true },
-      select: { id: true },
-    });
+    // De nieuwe volgorde in één query, en de dag op handmatig.
+    await Promise.all([
+      zetStopVolgorde(stopIds.map((sid, i) => ({ id: sid, orderIndex: i }))),
+      prisma.samplePlan.update({ where: { id: planId }, data: { manualOrder: true }, select: { id: true } }),
+    ]);
 
-    // Route bij de nieuwe volgorde ophalen, zonder de volgorde te wijzigen.
-    const route = await berekenRouteVoorDag(planId, true);
+    // Route bij de nieuwe volgorde ophalen, zonder de volgorde te wijzigen. De
+    // stops hebben we al, in de nieuwe volgorde.
+    const perId = new Map(stops.map((s) => [s.id, s]));
+    const route = await berekenRouteVoorDag(planId, true, stopIds.map((sid) => perId.get(sid)!));
 
     await createAuditLog({
       userId: session.userId,
@@ -65,7 +67,7 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
       request,
     });
 
-    return NextResponse.json({ success: true, ...route });
+    return NextResponse.json({ success: true, ...route, planning: await haalPlanningScherm(plan.analysisYear) });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij opslaan van de volgorde');
   }
