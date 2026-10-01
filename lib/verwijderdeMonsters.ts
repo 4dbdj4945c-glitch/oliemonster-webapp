@@ -5,35 +5,17 @@
 // een nieuw jaar en de O-nummercontrole. Een admin zet het terug via de
 // prullenbak (GET /api/samples/verwijderd, POST /api/samples/[id]/herstellen).
 //
-// Zolang ./db-push-veilig-verwijderen.sh nog niet gedraaid is, bestaat de kolom
-// deletedAt niet. Een where met deletedAt loopt dan stuk. Daarom vraagt elke
-// query het filter hier op: met de kolom is dat { deletedAt: null }, zonder
-// kolom een leeg filter (er kan dan ook nog niets verwijderd zijn).
-
-import { prisma } from './prisma';
-import { tabelOntbreekt } from './kolommen';
+// De kolom deletedAt staat sinds 0_basis in elke database (de migraties zijn
+// verplicht, zie README), dus er hoeft niets meer gecontroleerd te worden: het
+// filter is altijd { deletedAt: null }. Vroeger kostte de controle een extra
+// query per serverinstantie. De functies blijven async, zodat de aanroepen
+// gelijk blijven.
 
 export const KOLOM_ONTBREEKT_VERWIJDEREN =
-  'Verwijderen kan pas als de prullenbak in de database staat. Draai ./db-push-veilig-verwijderen.sh in de projectmap en probeer het opnieuw. Er is niets verwijderd.';
-
-// Eén keer per serverinstantie vaststellen. "Bestaat" onthouden we voorgoed;
-// "bestaat niet" maar een minuut, zodat de portal het na de db push vanzelf
-// oppikt zonder nieuwe deploy.
-let kolomBestaat: boolean | null = null;
-let gecontroleerdOp = 0;
+  'Verwijderen kan pas als de prullenbak in de database staat. Draai ./db-bijwerken.sh in de projectmap en probeer het opnieuw. Er is niets verwijderd.';
 
 export async function verwijderKolomBestaat(): Promise<boolean> {
-  if (kolomBestaat === true) return true;
-  if (kolomBestaat === false && Date.now() - gecontroleerdOp < 60_000) return false;
-  try {
-    await prisma.oilSample.findFirst({ where: { deletedAt: null }, select: { id: true } });
-    kolomBestaat = true;
-  } catch (error) {
-    if (!tabelOntbreekt(error)) throw error;
-    kolomBestaat = false;
-    gecontroleerdOp = Date.now();
-  }
-  return kolomBestaat;
+  return true;
 }
 
 /**
@@ -41,5 +23,5 @@ export async function verwijderKolomBestaat(): Promise<boolean> {
  * OilSample die over zichtbare monsters gaat: `where: { ...jaar, ...(await actiefFilter()) }`.
  */
 export async function actiefFilter(): Promise<{ deletedAt?: null }> {
-  return (await verwijderKolomBestaat()) ? { deletedAt: null } : {};
+  return { deletedAt: null };
 }

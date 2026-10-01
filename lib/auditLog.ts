@@ -1,6 +1,13 @@
+import { after, type NextRequest } from 'next/server';
 import { prisma } from './prisma';
-import { NextRequest } from 'next/server';
 
+/**
+ * Schrijft een regel in het logboek. Binnen een verzoek gebeurt dat met
+ * after() van Next.js: pas nadat het antwoord weg is, zodat niemand op het
+ * logboek wacht (op Vercel loopt de functie daarvoor door tot het klaar is).
+ * Buiten een verzoek (scripts, tests) gewoon meteen. Een mislukte regel breekt
+ * nooit de actie zelf.
+ */
 export async function createAuditLog({
   userId,
   username,
@@ -16,26 +23,35 @@ export async function createAuditLog({
   request?: NextRequest;
   success?: boolean;
 }) {
+  // Alles wat van het verzoek komt nu al lezen, niet pas na het antwoord.
+  let data;
   try {
-    const ipAddress = request?.headers.get('x-forwarded-for') || 
-                     request?.headers.get('x-real-ip') || 
-                     'unknown';
-    const userAgent = request?.headers.get('user-agent') || 'unknown';
-
-    await prisma.auditLog.create({
-      data: {
-        userId,
-        username,
-        action,
-        details: details ? JSON.stringify(details) : null,
-        ipAddress,
-        userAgent,
-        success,
-      },
-    });
+    data = {
+      userId,
+      username,
+      action,
+      details: details ? JSON.stringify(details) : null,
+      ipAddress: request?.headers.get('x-forwarded-for') || request?.headers.get('x-real-ip') || 'unknown',
+      userAgent: request?.headers.get('user-agent') || 'unknown',
+      success,
+    };
   } catch (error) {
-    // Fail silently - we don't want audit log failures to break the app
     console.error('Failed to create audit log:', error);
+    return;
+  }
+  const schrijf = async () => {
+    try {
+      await prisma.auditLog.create({ data, select: { id: true } });
+    } catch (error) {
+      // Fail silently - we don't want audit log failures to break the app
+      console.error('Failed to create audit log:', error);
+    }
+  };
+  try {
+    after(schrijf);
+  } catch {
+    // Geen verzoek om op te wachten (test of script): meteen schrijven.
+    await schrijf();
   }
 }
 
