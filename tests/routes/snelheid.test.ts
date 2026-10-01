@@ -24,6 +24,7 @@ import { POST as inplannen } from '@/app/api/sample-plans/[id]/stops/route';
 import { DELETE as stopWeg, PATCH as stopWijzig } from '@/app/api/sample-plans/[id]/stops/[stopId]/route';
 import { POST as volgorde } from '@/app/api/sample-plans/[id]/volgorde/route';
 import { POST as routeBerekenen } from '@/app/api/sample-plans/route-berekenen/route';
+import { GET as dossier } from '@/app/api/klanten/[id]/dossier/route';
 import { zetStopVolgorde } from '@/lib/samplePlans';
 import { fotoVerzoek, metParams, nepFoto, uitloggen, verzoek } from '../hulp/verzoek';
 
@@ -172,6 +173,23 @@ describe('een wijziging aan de planning geeft de planning mee', () => {
     void _t;
     expect(terug.planning).toEqual(vers);
     expect(terug.dagen).toBe(3);
+  });
+});
+
+describe('klantdossier in één verzoek', () => {
+  it('?jaar=nieuwste is het dossier van het jongste jaar met monsters', async () => {
+    const k = String(ids.klanten.mourik);
+    const nieuwste = await json(await dossier(verzoek(`/api/klanten/${k}/dossier?jaar=nieuwste`), metParams({ id: k })));
+    expect(nieuwste.jaar).toBe(nieuwste.jaren[0].jaar);
+    const vast = await json(await dossier(verzoek(`/api/klanten/${k}/dossier?jaar=${nieuwste.jaar}`), metParams({ id: k })));
+    expect(nieuwste).toEqual(vast);
+  });
+  it('zonder monsters: alle jaren', async () => {
+    const leeg = await prisma.klant.create({ data: { naam: 'Leeg BV' } });
+    const k = String(leeg.id);
+    const d = await json(await dossier(verzoek(`/api/klanten/${k}/dossier?jaar=nieuwste`), metParams({ id: k })));
+    expect(d.jaar).toBeNull();
+    expect(d.momenten).toEqual([]);
   });
 });
 

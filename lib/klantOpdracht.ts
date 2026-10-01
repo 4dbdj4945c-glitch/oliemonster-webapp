@@ -89,14 +89,73 @@ function redenVan(m: {
   return null;
 }
 
-export async function haalOpdracht(klantId: number, jaar: number, nu = new Date()): Promise<Opdracht | null> {
-  const klant = await prisma.klant.findFirst({
-    where: { id: klantId, deletedAt: null },
-    select: { id: true, naam: true, logoUrl: true, plaats: true },
+/**
+ * De komende monsterdagen van deze klant (alleen oliemonsterstops, alleen dag
+ * en object). Met meer jaren tegelijk in één query (het klantdossier).
+ */
+export function komendePlannen(klantId: number, jaren: number[]) {
+  return prisma.samplePlan.findMany({
+    // Alleen oliemonsterstops: een contracttaak of inspectie op de planning
+    // staat bij de klant onder Onderhoud, niet bij de monsterdagen.
+    where: { analysisYear: { in: jaren }, stops: { some: { object: { klantId }, taakId: null, inspectieId: null } } },
+    orderBy: { date: 'asc' },
+    select: {
+      date: true,
+      analysisYear: true,
+      stops: {
+        where: { object: { klantId }, taakId: null, inspectieId: null },
+        orderBy: { orderIndex: 'asc' },
+        select: { objectId: true, sampleIds: true, object: { select: { name: true } } },
+      },
+    },
   });
-  if (!klant) return null;
+}
 
-  const ruw = await prisma.oilSample.findMany({
+/**
+ * Elk open monster (niet genomen, niet geannuleerd, met object) krijgt de
+ * eerste komende dag waarop het staat. Geeft per monster die dag en per dag de
+ * objecten en het aantal monsters. Eén jaar: geef alleen de plannen en de
+ * monsters van dat jaar mee.
+ */
+export function planOpenMonsters(
+  plannen: Awaited<ReturnType<typeof komendePlannen>>,
+  monsters: { id: number; isTaken: boolean; isDisabled: boolean; objectId: number | null }[],
+  vandaag: string
+) {
+  const openPerObject = new Map<number, number[]>();
+  for (const m of monsters) {
+    if (m.isTaken || m.isDisabled || m.objectId === null) continue;
+    openPerObject.set(m.objectId, [...(openPerObject.get(m.objectId) ?? []), m.id]);
+  }
+
+  const geplandOp = new Map<number, string>();
+  const planning: OpdrachtDag[] = [];
+  for (const plan of plannen) {
+    const dag = nlDag(plan.date);
+    if (dag < vandaag) continue;
+    const namen: string[] = [];
+    let aantal = 0;
+    for (const stop of plan.stops) {
+      const open = openPerObject.get(stop.objectId) ?? [];
+      const gekozen = leesSampleIds(stop.sampleIds);
+      const ids = gekozen ? open.filter((id) => gekozen.includes(id)) : open;
+      const nieuw = ids.filter((id) => !geplandOp.has(id));
+      for (const id of nieuw) geplandOp.set(id, dag);
+      if (ids.length > 0) {
+        aantal += ids.length;
+        if (!namen.includes(stop.object.name)) namen.push(stop.object.name);
+      }
+    }
+    if (aantal > 0) planning.push({ dag, objecten: namen, aantal });
+  }
+  return { geplandOp, planning };
+}
+
+export async function haalOpdracht(klantId: number, jaar: number, nu = new Date()): Promise<Opdracht | null> {
+  // De klant, zijn monsters en de komende dagen tegelijk.
+  const plannenVanJaar = komendePlannen(klantId, [jaar]);
+  plannenVanJaar.catch(() => {});
+  const ruwVerzoek = prisma.oilSample.findMany({
     where: { analysisYear: jaar, ...(await actiefFilter()), ...monstersVanKlant(klantId) },
     orderBy: [{ oNumber: 'asc' }],
     select: {
@@ -121,52 +180,17 @@ export async function haalOpdracht(klantId: number, jaar: number, nu = new Date(
       installatie: { select: { naam: true } },
     },
   });
+  ruwVerzoek.catch(() => {});
+  const klant = await prisma.klant.findFirst({
+    where: { id: klantId, deletedAt: null },
+    select: { id: true, naam: true, logoUrl: true, plaats: true },
+  });
+  if (!klant) return null;
+  const ruw = await ruwVerzoek;
 
   // Komende monsterdagen met objecten van deze klant. Alleen dag en object; de
   // tijden, de route en de notities blijven intern.
-  const vandaag = nlDag(nu);
-  const plannen = await prisma.samplePlan.findMany({
-    // Alleen oliemonsterstops: een contracttaak of inspectie op de planning
-    // staat bij de klant onder Onderhoud, niet bij de monsterdagen.
-    where: { analysisYear: jaar, stops: { some: { object: { klantId }, taakId: null, inspectieId: null } } },
-    orderBy: { date: 'asc' },
-    select: {
-      date: true,
-      stops: {
-        where: { object: { klantId }, taakId: null, inspectieId: null },
-        orderBy: { orderIndex: 'asc' },
-        select: { objectId: true, sampleIds: true, object: { select: { name: true } } },
-      },
-    },
-  });
-
-  const openPerObject = new Map<number, number[]>();
-  for (const m of ruw) {
-    if (m.isTaken || m.isDisabled || m.objectId === null) continue;
-    openPerObject.set(m.objectId, [...(openPerObject.get(m.objectId) ?? []), m.id]);
-  }
-
-  // Elk open monster krijgt de eerste komende dag waarop het staat.
-  const geplandOp = new Map<number, string>();
-  const planning: OpdrachtDag[] = [];
-  for (const plan of plannen) {
-    const dag = nlDag(plan.date);
-    if (dag < vandaag) continue;
-    const namen: string[] = [];
-    let aantal = 0;
-    for (const stop of plan.stops) {
-      const open = openPerObject.get(stop.objectId) ?? [];
-      const gekozen = leesSampleIds(stop.sampleIds);
-      const ids = gekozen ? open.filter((id) => gekozen.includes(id)) : open;
-      const nieuw = ids.filter((id) => !geplandOp.has(id));
-      for (const id of nieuw) geplandOp.set(id, dag);
-      if (ids.length > 0) {
-        aantal += ids.length;
-        if (!namen.includes(stop.object.name)) namen.push(stop.object.name);
-      }
-    }
-    if (aantal > 0) planning.push({ dag, objecten: namen, aantal });
-  }
+  const { geplandOp, planning } = planOpenMonsters(await plannenVanJaar, ruw, nlDag(nu));
 
   const monsters: OpdrachtMonster[] = ruw.map((m) => {
     let status: KlantStatus;

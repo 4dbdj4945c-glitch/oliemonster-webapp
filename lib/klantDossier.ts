@@ -17,7 +17,7 @@ import { prisma } from './prisma';
 import { actiefFilter } from './verwijderdeMonsters';
 import { monstersVanKlant } from './afscherming';
 import { fotoAdres, metInstallatieFoto } from './fotoAdres';
-import { haalOpdracht, jarenVanKlant, nlDag } from './klantOpdracht';
+import { jarenVanKlant, komendePlannen, nlDag, planOpenMonsters } from './klantOpdracht';
 import { INSPECTIE_SELECT } from './inspecties/server';
 import { inspectieNummer, oordeelVan, sjabloonVan, type SjabloonSleutel } from './inspecties/sjablonen';
 import { uitkomstTekst, volgendeInspectie } from './inspecties/rekenen';
@@ -59,9 +59,19 @@ export interface Moment {
   dagrapport?: { id: number; status: string; getekendDoor: string | null; pdf: string };
 }
 
-export async function haalDossier(klantId: number, jaar: number | null) {
-  const [jaren, objecten] = await Promise.all([
-    jarenVanKlant(klantId),
+/**
+ * Het dossier van één jaar, of van alle jaren (null). Met 'nieuwste' het
+ * jongste jaar met monsters (zonder monsters: alle jaren); dat is wat het
+ * scherm de eerste keer toont, in één verzoek in plaats van twee.
+ */
+export async function haalDossier(klantId: number, gevraagd: number | null | 'nieuwste') {
+  const jarenVerzoek = jarenVanKlant(klantId);
+  const jaar = gevraagd === 'nieuwste' ? (await jarenVerzoek)[0]?.jaar ?? null : gevraagd;
+  const jaarFilter = jaar !== null ? { datum: { gte: new Date(Date.UTC(jaar, 0, 1)), lt: new Date(Date.UTC(jaar + 1, 0, 1)) } } : {};
+
+  // Alles wat niet van elkaar afhangt tegelijk.
+  const [jaren, objecten, monsters, inspecties, dagrapporten, alleInspecties] = await Promise.all([
+    jarenVerzoek,
     prisma.sampleObject.findMany({
       where: { klantId },
       orderBy: { name: 'asc' },
@@ -78,9 +88,7 @@ export async function haalDossier(klantId: number, jaar: number | null) {
         },
       },
     }),
-  ]);
-
-  const monsters = await prisma.oilSample.findMany({
+    prisma.oilSample.findMany({
     where: { ...(jaar !== null ? { analysisYear: jaar } : {}), ...(await actiefFilter()), ...monstersVanKlant(klantId) },
     orderBy: [{ analysisYear: 'desc' }, { oNumber: 'asc' }],
     select: {
@@ -106,15 +114,38 @@ export async function haalDossier(klantId: number, jaar: number | null) {
         select: { id: true, sampleDate: true, isTaken: true, remarks: true, photoUrl: true, partPhotoUrl: true, createdAt: true },
       },
     },
-  });
+    }),
+    // Inspecties van deze klant (ook concepten: dit is het dossier van de beheerder).
+    prisma.inspectie.findMany({
+      where: { klantId, deletedAt: null, ...jaarFilter },
+      orderBy: { datum: 'desc' },
+      select: INSPECTIE_SELECT,
+    }),
+    // Dagrapporten van deze klant (ook concepten: dit is het dossier van de beheerder).
+    prisma.dagrapport.findMany({
+      where: { klantId, deletedAt: null, ...jaarFilter },
+      orderBy: { datum: 'desc' },
+      select: DAGRAPPORT_DOSSIER_SELECT,
+    }),
+    // Jaren met inspecties maar zonder monsters staan er ook in de jaarkeuze.
+    prisma.inspectie.findMany({ where: { klantId, deletedAt: null }, select: { datum: true } }),
+  ]);
 
   // Welke open monsters staan op een komende monsterdag? Zelfde regel als het
-  // klantportaal, per jaar.
+  // klantportaal (planOpenMonsters), per jaar, met de dagen van alle jaren in
+  // één query.
   const geplandOp = new Map<number, string>();
-  for (const j of new Set(monsters.map((m) => m.analysisYear))) {
-    const opdracht = await haalOpdracht(klantId, j);
-    for (const m of opdracht?.monsters ?? []) {
-      if (m.status === 'gepland' && m.datum) geplandOp.set(m.id, nlDag(m.datum));
+  const monsterJaren = [...new Set(monsters.map((m) => m.analysisYear))];
+  if (monsterJaren.length > 0) {
+    const plannen = await komendePlannen(klantId, monsterJaren);
+    const vandaag = nlDag(new Date());
+    for (const j of monsterJaren) {
+      const uitkomst = planOpenMonsters(
+        plannen.filter((p) => p.analysisYear === j),
+        monsters.filter((m) => m.analysisYear === j),
+        vandaag
+      );
+      for (const [id, dag] of uitkomst.geplandOp) geplandOp.set(id, dag);
     }
   }
 
@@ -177,16 +208,6 @@ export async function haalDossier(klantId: number, jaar: number | null) {
       });
     }
   }
-  // Inspecties van deze klant (ook concepten: dit is het dossier van de beheerder).
-  const inspecties = await prisma.inspectie.findMany({
-    where: {
-      klantId,
-      deletedAt: null,
-      ...(jaar !== null ? { datum: { gte: new Date(Date.UTC(jaar, 0, 1)), lt: new Date(Date.UTC(jaar + 1, 0, 1)) } } : {}),
-    },
-    orderBy: { datum: 'desc' },
-    select: INSPECTIE_SELECT,
-  });
   for (const i of inspecties) {
     const sjabloon = i.sjabloon as SjabloonSleutel;
     const s = sjabloonVan(sjabloon);
@@ -222,16 +243,6 @@ export async function haalDossier(klantId: number, jaar: number | null) {
     }
   }
 
-  // Dagrapporten van deze klant (ook concepten: dit is het dossier van de beheerder).
-  const dagrapporten = await prisma.dagrapport.findMany({
-    where: {
-      klantId,
-      deletedAt: null,
-      ...(jaar !== null ? { datum: { gte: new Date(Date.UTC(jaar, 0, 1)), lt: new Date(Date.UTC(jaar + 1, 0, 1)) } } : {}),
-    },
-    orderBy: { datum: 'desc' },
-    select: DAGRAPPORT_DOSSIER_SELECT,
-  });
   for (const r of dagrapporten) {
     const nummer = dagrapportNummer(r.id);
     momenten.push({
@@ -259,10 +270,7 @@ export async function haalDossier(klantId: number, jaar: number | null) {
     return b.datum.localeCompare(a.datum);
   });
 
-  // Jaren met inspecties maar zonder monsters staan er ook in de jaarkeuze.
-  const inspectieJaren = (
-    await prisma.inspectie.findMany({ where: { klantId, deletedAt: null }, select: { datum: true } })
-  ).map((i) => new Date(i.datum).getUTCFullYear());
+  const inspectieJaren = alleInspecties.map((i) => new Date(i.datum).getUTCFullYear());
 
   return {
     jaren,

@@ -11,7 +11,7 @@
 // - Contactpersonen, met Mail opstellen per persoon.
 // - Gegevens: adres, logo, meekijkers, objecten koppelen en verwijderen.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
 import { AppShell, Icon, Laden } from '@/app/components/ui';
@@ -75,13 +75,12 @@ export default function KlantPagina() {
 
   const laad = useCallback(async () => {
     try {
-      const [res, obj] = await Promise.all([fetch(`/api/klanten/${id}`), fetch('/api/sample-objects')]);
+      const res = await fetch(`/api/klanten/${id}`);
       if (!res.ok) {
         setFout(await foutTekst(res, 'De klant kon niet worden opgehaald.'));
         return;
       }
       setKlant(await res.json());
-      if (obj.ok) setAlleObjecten(await obj.json());
       setFout('');
     } catch {
       setFout(GEEN_VERBINDING);
@@ -91,6 +90,21 @@ export default function KlantPagina() {
   useEffect(() => {
     laad();
   }, [laad]);
+
+  // Alle objecten zijn alleen nodig voor Object koppelen op de tab Gegevens:
+  // pas ophalen als die tab open gaat (en na koppelen of loskoppelen).
+  const laadObjecten = useCallback(async () => {
+    try {
+      const obj = await fetch('/api/sample-objects');
+      if (obj.ok) setAlleObjecten(await obj.json());
+    } catch {
+      // Zonder lijst geen koppelkeuze; de rest van het dossier werkt gewoon.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'gegevens') laadObjecten();
+  }, [tab, laadObjecten]);
 
   // Contracttaken van deze klant die verlopen zijn of binnenkort moeten. Mislukt
   // het, dan geen melding (de tab Onderhoud toont de fout zelf).
@@ -104,19 +118,22 @@ export default function KlantPagina() {
   }, [id]);
 
   // Het dossier van één jaar (of alle jaren). De eerste keer het jongste jaar
-  // met monsters; daarna wat Roel kiest.
+  // met monsters (de server kiest het, ?jaar=nieuwste: één verzoek in plaats
+  // van eerst alles en dan dat jaar); daarna wat Roel kiest.
+  const geladenJaar = useRef<string | null>(null);
   const laadDossier = useCallback(async () => {
     try {
-      const res = await fetch(`/api/klanten/${id}/dossier${jaar ? `?jaar=${jaar}` : ''}`);
+      const vraag = !jaarGekozen ? '?jaar=nieuwste' : jaar ? `?jaar=${jaar}` : '';
+      const res = await fetch(`/api/klanten/${id}/dossier${vraag}`);
       if (!res.ok) {
         setDossierFout(await foutTekst(res, 'Het dossier kon niet worden opgehaald.'));
         return;
       }
       const d: Dossier = await res.json();
-      if (!jaarGekozen && jaar === null && d.jaren.length > 0) {
+      geladenJaar.current = String(d.jaar);
+      if (!jaarGekozen) {
         setJaarGekozen(true);
-        setJaar(d.jaren[0].jaar);
-        return;
+        setJaar(d.jaar);
       }
       setDossier(d);
       setDossierFout('');
@@ -126,8 +143,10 @@ export default function KlantPagina() {
   }, [id, jaar, jaarGekozen]);
 
   useEffect(() => {
+    // Net geladen voor dit jaar (de eerste keer zet de server het jaar): niet nog eens.
+    if (jaarGekozen && geladenJaar.current === String(jaar)) return;
     laadDossier();
-  }, [laadDossier]);
+  }, [laadDossier, jaarGekozen, jaar]);
 
   // Zonder keuze: het eerste object.
   const gekozen: DossierKeuze | null =
@@ -208,7 +227,7 @@ export default function KlantPagina() {
       }
       setMelding(tekst);
       setKoppelObject('');
-      await laad();
+      await Promise.all([laad(), laadObjecten()]);
     } catch {
       setFout(GEEN_VERBINDING);
     } finally {
