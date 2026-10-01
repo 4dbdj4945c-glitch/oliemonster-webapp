@@ -111,7 +111,7 @@ export default function ContractPagina() {
         <div className="leeg">
           <Icon name="trash" size={32} />
           <p style={{ margin: '0 0 12px' }}>Dit contract is verwijderd.</p>
-          <Link href="/dashboard/contracten" className="btn btn-sm">
+          <Link prefetch={false} href="/dashboard/contracten" className="btn btn-sm">
             <Icon name="arrow-left" size={16} />
             Naar de contracten
           </Link>
@@ -124,7 +124,7 @@ export default function ContractPagina() {
             <div>
               <h1 className="page-title">{contract.naam}</h1>
               <p className="page-subtitle">
-                <Link href={`/dashboard/klanten/${contract.klant.id}`}>{contract.klant.naam}</Link>, {looptijdTekst(contract, dagKort)}
+                <Link prefetch={false} href={`/dashboard/klanten/${contract.klant.id}`}>{contract.klant.naam}</Link>, {looptijdTekst(contract, dagKort)}
               </p>
               {contract.notities && (
                 <p className="contract-notitie">

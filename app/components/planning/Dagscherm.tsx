@@ -413,7 +413,7 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
 
   const kop = (
     <header className="veld-kop">
-      <Link href={terugHref} className="veld-terug" aria-label="Terug naar de planning">
+      <Link prefetch={false} href={terugHref} className="veld-terug" aria-label="Terug naar de planning">
         <Icon name="arrow-left" size={24} />
       </Link>
       <div className="veld-kop-tekst">
@@ -476,7 +476,7 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
                 <div className="leeg">
                   <Icon name="empty" size={32} />
                   <p style={{ margin: '0 0 12px' }}>Nog geen objecten op deze dag.</p>
-                  <Link href={terugHref} className="btn">
+                  <Link prefetch={false} href={terugHref} className="btn">
                     <Icon name="arrow-left" size={16} />
                     Naar de planning
                   </Link>
@@ -698,7 +698,7 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
                     <ul className="veld-lijst">
                       {dagrapporten.map((r) => (
                         <li key={r.id}>
-                          <Link href={`/dashboard/dagrapporten/${r.id}`} className="veld-lijst-regel">
+                          <Link prefetch={false} href={`/dashboard/dagrapporten/${r.id}`} className="veld-lijst-regel">
                             <span className="veld-lijst-tekst">
                               <strong><Icon name="module-dagrapport" size={16} /> {r.nummer}, {r.klant.naam}</strong>
                               <span>{r.object?.name ?? 'Geen vaste plek'}</span>
@@ -760,7 +760,7 @@ export default function Dagscherm({ dagId }: { dagId: number }) {
         {isAdmin && bezoekStop && !bezoekStop.isDone && (
           <div className="veld-actiebalk">
             {bezoekStop.soort === 'inspectie' && bezoekStop.inspectie ? (
-              <Link href={`/dashboard/inspecties/${bezoekStop.inspectie.id}`} className="btn btn-primary veld-hoofdknop">
+              <Link prefetch={false} href={`/dashboard/inspecties/${bezoekStop.inspectie.id}`} className="btn btn-primary veld-hoofdknop">
                 <Icon name="module-inspecties" size={24} />
                 Inspectie openen
               </Link>

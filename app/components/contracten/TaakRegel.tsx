@@ -25,7 +25,7 @@ export default function TaakRegel({ taak, knoppen, kinderen }: { taak: Taak; kno
       <span className="contract-taak-status">
         <span className="datum">
           {taak.gepland ? (
-            <Link href={`/dashboard/planning/dag/${taak.gepland.planId}`}>Gepland {dagKort(taak.gepland.dag)}</Link>
+            <Link prefetch={false} href={`/dashboard/planning/dag/${taak.gepland.planId}`}>Gepland {dagKort(taak.gepland.dag)}</Link>
           ) : (
             dagKort(taak.volgendeOp)
           )}

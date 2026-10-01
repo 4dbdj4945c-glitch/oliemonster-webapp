@@ -126,7 +126,7 @@ export default function ContractenPagina() {
               <div className="contract-kaart-kop">
                 <div>
                   <h2 id={`contract-${c.id}`}>
-                    <Link href={`/dashboard/contracten/${c.id}`}>{c.naam}</Link>
+                    <Link prefetch={false} href={`/dashboard/contracten/${c.id}`}>{c.naam}</Link>
                   </h2>
                   <p>{c.klant.naam}, {looptijdTekst(c, dagKort)}</p>
                 </div>

@@ -220,7 +220,7 @@ export default function Vandaag() {
                   : `Er staan geen monsterdagen meer in de planning van ${jaar}.`}
               </p>
               {magPlanning && (
-                <Link href="/dashboard/planning" className="btn">
+                <Link prefetch={false} href="/dashboard/planning" className="btn">
                   <Icon name="calendar" size={16} />
                   {user.role === 'admin' ? 'Dag plannen' : 'Naar de planning'}
                 </Link>
@@ -263,7 +263,7 @@ export default function Vandaag() {
                           </a>
                         )}
                         {p.telefoon && user.role === 'admin' && (
-                          <Link className="btn btn-sm" href={`/dashboard/acquisitie?vastleggen=${p.id}`} aria-label={`Gesprek met ${p.bedrijfsnaam} vastleggen`}>
+                          <Link prefetch={false} className="btn btn-sm" href={`/dashboard/acquisitie?vastleggen=${p.id}`} aria-label={`Gesprek met ${p.bedrijfsnaam} vastleggen`}>
                             <Icon name="comment" size={16} />
                             <span className="alleen-desktop">Vastleggen</span>
                           </Link>
@@ -274,7 +274,7 @@ export default function Vandaag() {
                             <span className="alleen-desktop">Mailen</span>
                           </a>
                         )}
-                        <Link className="btn btn-sm" href={`/dashboard/acquisitie?prospect=${p.id}`} aria-label={`${p.bedrijfsnaam} openen`}>
+                        <Link prefetch={false} className="btn btn-sm" href={`/dashboard/acquisitie?prospect=${p.id}`} aria-label={`${p.bedrijfsnaam} openen`}>
                           <Icon name="pencil" size={16} />
                           <span className="alleen-desktop">Openen</span>
                         </Link>
@@ -283,7 +283,7 @@ export default function Vandaag() {
                   ))}
                   {acties.length > MAX_ACTIES && (
                     <li className="rij rij-meer">
-                      <Link href="/dashboard/acquisitie">Alle {acties.length} acties in Acquisitie</Link>
+                      <Link prefetch={false} href="/dashboard/acquisitie">Alle {acties.length} acties in Acquisitie</Link>
                     </li>
                   )}
                 </ul>
@@ -296,7 +296,7 @@ export default function Vandaag() {
             <section className="vandaag-sectie" aria-labelledby="kop-week">
               <div className="sectiekop">
                 <h2 id="kop-week">Deze week</h2>
-                <Link href="/dashboard/planning">Planning</Link>
+                <Link prefetch={false} href="/dashboard/planning">Planning</Link>
               </div>
               {overzicht.dezeWeek.length === 0 ? (
                 <div className="card vandaag-regel-leeg">
@@ -306,7 +306,7 @@ export default function Vandaag() {
               ) : (
                 <div className="card week">
                   {overzicht.dezeWeek.map((d) => (
-                    <Link key={d.id} href={`/dashboard/planning/dag/${d.id}`} className="week-dag">
+                    <Link prefetch={false} key={d.id} href={`/dashboard/planning/dag/${d.id}`} className="week-dag">
                       <span className="week-datum">{korteDatum(d.date)}</span>
                       <strong>{namenVan(d)}</strong>
                       <span>
@@ -326,7 +326,7 @@ export default function Vandaag() {
             <section className="vandaag-sectie" aria-labelledby="kop-onderhoud">
               <div className="sectiekop">
                 <h2 id="kop-onderhoud">Onderhoud</h2>
-                <Link href="/dashboard/contracten">Contracten</Link>
+                <Link prefetch={false} href="/dashboard/contracten">Contracten</Link>
               </div>
               {taken.status === 'fout' ? (
                 <LaadFout melding={taken.melding} onOpnieuw={() => { setTaken({ status: 'laden' }); haalTaken(); }} />
@@ -335,7 +335,7 @@ export default function Vandaag() {
                   {taken.data.slice(0, MAX_TAKEN).map((t) => (
                     <li key={t.id} className="rij">
                       <span className="icoonvak" aria-hidden="true"><Icon name={taakSoortInfo(t.soort).icoon} /></span>
-                      <Link href={`/dashboard/contracten/${t.contractId}`} className="rij-tekst rij-link">
+                      <Link prefetch={false} href={`/dashboard/contracten/${t.contractId}`} className="rij-tekst rij-link">
                         <strong>{t.titel}</strong>
                         <span>
                           {t.klant.naam}, {t.object.name}.{' '}
@@ -347,7 +347,7 @@ export default function Vandaag() {
                   ))}
                   {taken.data.length > MAX_TAKEN && (
                     <li className="rij rij-meer">
-                      <Link href="/dashboard/contracten">Alle {taken.data.length} taken die aandacht vragen</Link>
+                      <Link prefetch={false} href="/dashboard/contracten">Alle {taken.data.length} taken die aandacht vragen</Link>
                     </li>
                   )}
                 </ul>
@@ -360,7 +360,7 @@ export default function Vandaag() {
             <section className="vandaag-sectie" aria-labelledby="kop-dossier">
               <div className="sectiekop">
                 <h2 id="kop-dossier">Eigen dossier</h2>
-                <Link href="/dashboard/eigen-dossier">Openen</Link>
+                <Link prefetch={false} href="/dashboard/eigen-dossier">Openen</Link>
               </div>
               <ul className="card rijen">
                 {documenten.map((d) => (
@@ -382,7 +382,7 @@ export default function Vandaag() {
           <section className="vandaag-sectie" aria-labelledby="kop-open">
             <div className="sectiekop">
               <h2 id="kop-open">Openstaande monsters {jaar}</h2>
-              <Link href={oliemonsterPad(jaar)}>Alle</Link>
+              <Link prefetch={false} href={oliemonsterPad(jaar)}>Alle</Link>
             </div>
             {!overzicht ? (
               <Laden label="Tellingen laden" regels={4} soort="tegels" />
@@ -480,7 +480,7 @@ function MonsterdagKaart({ dag, jaar }: { dag: VandaagDag; jaar: number }) {
         </ol>
       )}
       <div className="monsterdag-knoppen">
-        <Link href={`/dashboard/planning/dag/${dag.id}`} className="btn btn-primary btn-lg">
+        <Link prefetch={false} href={`/dashboard/planning/dag/${dag.id}`} className="btn btn-primary btn-lg">
           <Icon name="gps-live" />
           Start dag
         </Link>

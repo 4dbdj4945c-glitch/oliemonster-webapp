@@ -266,7 +266,7 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
 
   const kop = (
     <header className="veld-kop">
-      <Link href={terugHref} className="veld-terug" aria-label={rapport?.planId ? 'Terug naar de dag' : 'Terug naar de dagrapporten'}>
+      <Link prefetch={false} href={terugHref} className="veld-terug" aria-label={rapport?.planId ? 'Terug naar de dag' : 'Terug naar de dagrapporten'}>
         <Icon name="arrow-left" size={24} />
       </Link>
       <div className="veld-kop-tekst">
@@ -287,7 +287,7 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
           <div className="leeg">
             <Icon name="trash" size={32} />
             <p style={{ margin: '0 0 12px' }}>Dit dagrapport is verwijderd.</p>
-            <Link href="/dashboard/dagrapporten" className="btn btn-sm">
+            <Link prefetch={false} href="/dashboard/dagrapporten" className="btn btn-sm">
               <Icon name="arrow-left" size={16} />
               Naar de dagrapporten
             </Link>

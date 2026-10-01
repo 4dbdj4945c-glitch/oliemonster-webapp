@@ -118,9 +118,14 @@ export default function Schil({
     <div className={`schil${veld ? ' schil-veld' : ''}`}>
       <a href="#inhoud" className="schil-overslaan">Naar de inhoud</a>
 
-      {/* ---------- Zijbalk (desktop) ---------- */}
+      {/* ---------- Zijbalk (desktop) ----------
+          Geen prefetch op de links (hier en in de rest van de portal): elke
+          dashboardpagina wordt op de server per verzoek gemaakt (de layout leest
+          de gebruiker uit de database) en heeft geen loading.tsx, dus vooraf
+          ophalen leverde niets op dat bij het klikken werd hergebruikt, maar
+          kostte per geopende pagina tientallen verzoeken met elk een query. */}
       <nav className="zijbalk" aria-label="Hoofdmenu">
-        <Link href="/dashboard" className="zijbalk-merk" aria-label="Vandaag, It's Done Services portaal">
+        <Link prefetch={false} href="/dashboard" className="zijbalk-merk" aria-label="Vandaag, It's Done Services portaal">
           <img src="/header_logo.png" alt="It's Done Services" />
           <span>Portaal</span>
         </Link>
@@ -163,7 +168,7 @@ export default function Schil({
 
       {/* ---------- Kopbalk (telefoon en tablet) ---------- */}
       <header className="schil-kop">
-        <Link href="/dashboard" className="schil-kop-merk" aria-label="Vandaag">
+        <Link prefetch={false} href="/dashboard" className="schil-kop-merk" aria-label="Vandaag">
           <img src="/header_logo.png" alt="It's Done Services" />
         </Link>
         {title && <span className="schil-kop-titel">{title}</span>}
@@ -206,7 +211,7 @@ export default function Schil({
 
       {/* ---------- Onderbalk (telefoon en tablet) ---------- */}
       <nav className="onderbalk" aria-label="Hoofdmenu">
-        <Link href="/dashboard" className={`onderbalk-tab${tab === 'vandaag' ? ' on' : ''}`} aria-current={tab === 'vandaag' ? 'page' : undefined}>
+        <Link prefetch={false} href="/dashboard" className={`onderbalk-tab${tab === 'vandaag' ? ' on' : ''}`} aria-current={tab === 'vandaag' ? 'page' : undefined}>
           <Icon name="home" size={24} />
           <span>Vandaag</span>
         </Link>
@@ -304,7 +309,7 @@ function NavLink({ item, actief, variant = 'zijbalk' }: { item: NavItem; actief:
     );
   }
   return (
-    <Link href={item.href} className={klasse} aria-current={actief ? 'page' : undefined}>
+    <Link prefetch={false} href={item.href} className={klasse} aria-current={actief ? 'page' : undefined}>
       {inhoud}
     </Link>
   );

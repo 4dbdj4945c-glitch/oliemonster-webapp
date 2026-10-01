@@ -631,7 +631,7 @@ export default function PlanningPaneel({
                     {takenLater > 0 && (
                       <p className="plan-leeg-regel">
                         {takenLater} {takenLater === 1 ? 'taak staat' : 'taken staan'} pas over meer dan drie maanden,{' '}
-                        <Link href="/dashboard/contracten">zie Contracten</Link>.
+                        <Link prefetch={false} href="/dashboard/contracten">zie Contracten</Link>.
                       </p>
                     )}
                   </div>
@@ -691,7 +691,7 @@ export default function PlanningPaneel({
                         )}
                       </div>
                       <div className="knoppenrij plan-dag-knoppen">
-                        <Link href={`/dashboard/planning/dag/${d.id}`} className="btn btn-sm">
+                        <Link prefetch={false} href={`/dashboard/planning/dag/${d.id}`} className="btn btn-sm">
                           <Icon name="gps-live" size={16} />
                           Dag openen
                         </Link>

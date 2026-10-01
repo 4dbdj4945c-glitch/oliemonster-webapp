@@ -164,7 +164,7 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
 
   const kop = (
     <header className="veld-kop">
-      <Link href="/dashboard/inspecties" className="veld-terug" aria-label="Terug naar de inspecties">
+      <Link prefetch={false} href="/dashboard/inspecties" className="veld-terug" aria-label="Terug naar de inspecties">
         <Icon name="arrow-left" />
       </Link>
       <div className="veld-kop-tekst">
