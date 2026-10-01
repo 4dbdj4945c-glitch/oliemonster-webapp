@@ -95,6 +95,11 @@ interface DossierRegel {
   geldigheid: Geldigheid;
 }
 
+/** "DO" voor donderdag. */
+function dagKortHoofd(nu = new Date()): string {
+  return nu.toLocaleDateString('nl-NL', { weekday: 'short' }).replace('.', '').slice(0, 2).toUpperCase();
+}
+
 export default function Vandaag() {
   const user = useGebruiker();
   const jaar = new Date().getFullYear();
@@ -172,24 +177,18 @@ export default function Vandaag() {
   // Alles mislukt (geen verbinding, server plat): één foutblok, geen koppen zonder inhoud.
   const totaleStoring = werkFout !== null && (!magAcquisitie || prospects.status === 'fout');
 
-  const samenvatting = (() => {
-    if (!overzicht) return '';
-    const delen: string[] = [];
-    if (overzicht.dag) delen.push(`Monsterdag langs ${namenVan(overzicht.dag)}`);
-    else delen.push('Vandaag staat er geen monsterdag gepland');
-    if (acties && acties.length > 0) delen.push(`${acties.length} ${acties.length === 1 ? 'actie wacht' : 'acties wachten'} op je`);
-    return `${delen.join(', en ')}.`;
-  })();
-
   return (
     <AppShell user={user} wide>
-      <div className="paginakop">
-        <div>
-          <h1 className="page-title">{datumTitel()}</h1>
-          <p className="page-subtitle">
-            {begroeting()} {user.username}. {samenvatting}
-          </p>
+      {/* Kop: datumtegel (dag afgekort, dagnummer, maand) en de begroeting */}
+      <div className="paginakop vandaag-kop">
+        <div className="datumtegel" aria-label={datumTitel()}>
+          <span className="datumtegel-dag">{dagKortHoofd()}</span>
+          <span className="datumtegel-nummer">{new Date().getDate()}</span>
+          <span className="datumtegel-maand">{new Date().toLocaleDateString('nl-NL', { month: 'short' }).replace('.', '')}</span>
         </div>
+        <h1 className="vandaag-groet">
+          {begroeting()} {user.username}
+        </h1>
       </div>
 
       {totaleStoring ? (

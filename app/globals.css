@@ -5544,3 +5544,29 @@ a.rij-tekst.rij-link:hover strong { text-decoration: underline; }
   .plan-kal-inlijst { display: inline-flex; }
   .plan-kal-keuze-knoppen .btn { flex: 1 1 auto; min-height: 44px; }
 }
+
+/* ---------- Vandaag: datumtegel en begroeting ---------- */
+.vandaag-kop { display: flex; align-items: center; justify-content: flex-start; gap: 18px; }
+.datumtegel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 76px;
+  padding: 8px 0 9px;
+  background: var(--wit);
+  border: 1px solid var(--grijs-200);
+  border-radius: var(--radius);
+  line-height: 1;
+}
+.datumtegel-dag { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: var(--blue); }
+.datumtegel-nummer { margin: 5px 0 4px; font-size: 32px; font-weight: 800; color: var(--navy); }
+.datumtegel-maand { font-size: 12px; font-weight: 600; color: var(--grijs-500); }
+.vandaag-groet { margin: 0; font-size: 34px; font-weight: 800; letter-spacing: -0.02em; color: var(--navy); line-height: 1.15; }
+@media (max-width: 640px) {
+  .vandaag-kop { gap: 14px; }
+  .datumtegel { width: 64px; }
+  .datumtegel-nummer { font-size: 26px; }
+  .vandaag-groet { font-size: 26px; }
+}
