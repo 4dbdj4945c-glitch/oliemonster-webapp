@@ -3,8 +3,7 @@ import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { foutAntwoord } from '@/lib/planningApi';
-import { berekenRouteVoorDag, zetStopVolgorde } from '@/lib/samplePlans';
-import { haalPlanningScherm } from '@/lib/planningScherm';
+import { berekenRouteVoorDag, haalPlanning, zetStopVolgorde } from '@/lib/samplePlans';
 
 /**
  * POST - Volgorde van de objecten op een dag met de hand zetten (alleen admin).
@@ -67,7 +66,7 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
       request,
     });
 
-    return NextResponse.json({ success: true, ...route, planning: await haalPlanningScherm(plan.analysisYear) });
+    return NextResponse.json({ success: true, ...route, planning: await haalPlanning(plan.analysisYear) });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij opslaan van de volgorde');
   }

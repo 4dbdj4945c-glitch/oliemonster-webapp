@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { foutAntwoord } from '@/lib/planningApi';
-import { schrijfSampleIds, leesSampleIds } from '@/lib/samplePlans';
+import { haalPlanning, schrijfSampleIds, leesSampleIds } from '@/lib/samplePlans';
 import { haalPlanningScherm } from '@/lib/planningScherm';
 import { taakTitel } from '@/lib/contracten';
 import { inspectieNummer } from '@/lib/inspecties/sjablonen';
@@ -32,15 +32,32 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
       return NextResponse.json({ error: 'Onbekende dag' }, { status: 400 });
     }
 
+    const body = await request.json().catch(() => ({}));
+    // Het object (bij een oliemonsterstop) alvast opzoeken, tegelijk met de dag.
+    const gevraagdObject = parseInt(String(body.objectId ?? ''));
+    const objectVerzoek =
+      body.taakId === undefined && body.inspectieId === undefined && !Number.isNaN(gevraagdObject)
+        ? prisma.sampleObject.findUnique({ where: { id: gevraagdObject }, select: { id: true, name: true } })
+        : null;
+    objectVerzoek?.catch(() => {});
+
+    // De dag met zijn stops in één query: daaruit volgen hieronder ook de
+    // dubbele stop, het samenvoegen en de plek achteraan.
     const plan = await prisma.samplePlan.findUnique({
       where: { id: planId },
-      select: { id: true, analysisYear: true },
+      select: {
+        id: true,
+        analysisYear: true,
+        stops: {
+          orderBy: { orderIndex: 'asc' },
+          select: { id: true, objectId: true, taakId: true, inspectieId: true, sampleIds: true, isDone: true, startedAt: true, endedAt: true, orderIndex: true },
+        },
+      },
     });
     if (!plan) {
       return NextResponse.json({ error: 'Dag niet gevonden' }, { status: 404 });
     }
 
-    const body = await request.json().catch(() => ({}));
     const minutenInvoer = parseInt(String(body.plannedMinutes ?? ''));
     const eigenMinuten = Number.isNaN(minutenInvoer) || minutenInvoer <= 0 ? null : minutenInvoer;
 
@@ -66,16 +83,9 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
         objectVan = inspectie.objectId;
         naam = inspectieNummer(inspectieId);
       }
-      const dubbel = await prisma.samplePlanStop.findFirst({
-        where: { planId, ...(taakId !== null ? { taakId } : { inspectieId }) },
-        select: { id: true },
-      });
+      const dubbel = plan.stops.some((s) => (taakId !== null ? s.taakId === taakId : s.inspectieId === inspectieId));
       if (dubbel) return NextResponse.json({ error: `${naam} staat al op deze dag` }, { status: 400 });
-      const laatsteStop = await prisma.samplePlanStop.findFirst({
-        where: { planId },
-        orderBy: { orderIndex: 'desc' },
-        select: { orderIndex: true },
-      });
+      const laatsteStop = plan.stops.at(-1);
       const stop = await prisma.samplePlanStop.create({
         data: {
           planId,
@@ -93,6 +103,7 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
         details: { planId, stopId: stop.id, ...(taakId !== null ? { taakId } : { inspectieId }), naam },
         request,
       });
+      // Een taak of inspectie gaat van Nog in te plannen af: met tePlannen.
       return NextResponse.json({ ...stop, planning: await haalPlanningScherm(plan.analysisYear) }, { status: 201 });
     }
 
@@ -101,10 +112,7 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
       return NextResponse.json({ error: 'Kies een object' }, { status: 400 });
     }
 
-    const object = await prisma.sampleObject.findUnique({
-      where: { id: objectId },
-      select: { id: true, name: true },
-    });
+    const object = objectVerzoek ? await objectVerzoek : null;
     if (!object) {
       return NextResponse.json({ error: 'Object niet gevonden' }, { status: 404 });
     }
@@ -113,10 +121,7 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
 
     // Staat dit object al op deze dag, dan voegen we de monsters samen in plaats
     // van een tweede stop te maken: je gaat er één keer heen.
-    const bestaande = await prisma.samplePlanStop.findFirst({
-      where: { planId, objectId, taakId: null, inspectieId: null },
-      select: { id: true, sampleIds: true, isDone: true, startedAt: true, endedAt: true },
-    });
+    const bestaande = plan.stops.find((s) => s.objectId === objectId && s.taakId === null && s.inspectieId === null);
     if (bestaande) {
       // Maar niet in een bezoek dat al gelopen heeft: dan hang je monsters onder
       // een afgeronde meting en lijken ze in het veld al gedaan.
@@ -143,15 +148,11 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
         details: { planId, stopId: bestaande.id, object: object.name, samengevoegd: true },
         request,
       });
-      return NextResponse.json({ ...bijgewerkt, samengevoegd: true, planning: await haalPlanningScherm(plan.analysisYear) });
+      return NextResponse.json({ ...bijgewerkt, samengevoegd: true, planning: await haalPlanning(plan.analysisYear) });
     }
 
     // Achteraan in de volgorde van die dag.
-    const laatste = await prisma.samplePlanStop.findFirst({
-      where: { planId },
-      orderBy: { orderIndex: 'desc' },
-      select: { orderIndex: true },
-    });
+    const laatste = plan.stops.at(-1);
 
     const stop = await prisma.samplePlanStop.create({
       data: {
@@ -172,7 +173,8 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
     });
 
     // De planning zoals hij nu is, zodat het scherm hem niet opnieuw hoeft op te halen.
-    return NextResponse.json({ ...stop, planning: await haalPlanningScherm(plan.analysisYear) }, { status: 201 });
+    // Een oliemonsterstop raakt de taken en inspecties niet: zonder tePlannen.
+    return NextResponse.json({ ...stop, planning: await haalPlanning(plan.analysisYear) }, { status: 201 });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij inplannen van het object');
   }

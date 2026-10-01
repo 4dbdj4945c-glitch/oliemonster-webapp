@@ -3,7 +3,7 @@ import { withAuth } from '@/lib/toegang';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { foutAntwoord } from '@/lib/planningApi';
-import { haalPlanDag, schrijfSampleIds, zetStopVolgorde } from '@/lib/samplePlans';
+import { haalPlanDag, haalPlanning, schrijfSampleIds, zetStopVolgorde } from '@/lib/samplePlans';
 import { haalPlanningScherm } from '@/lib/planningScherm';
 import { maakUitvoeringOngedaan, registreerUitvoering } from '@/lib/contractenServer';
 import { nlDag } from '@/lib/klantOpdracht';
@@ -132,7 +132,7 @@ export const DELETE = withAuth({ rol: 'admin', module: 'planning' }, async (
 
     const bestaand = await prisma.samplePlanStop.findUnique({
       where: { id: sId },
-      select: { id: true, planId: true, isDone: true, taakId: true, object: { select: { name: true } }, plan: { select: { analysisYear: true } } },
+      select: { id: true, planId: true, isDone: true, taakId: true, inspectieId: true, object: { select: { name: true } }, plan: { select: { analysisYear: true } } },
     });
     if (!bestaand || bestaand.planId !== planId) {
       return NextResponse.json({ error: 'Stop niet gevonden' }, { status: 404 });
@@ -158,7 +158,10 @@ export const DELETE = withAuth({ rol: 'admin', module: 'planning' }, async (
       request,
     });
 
-    return NextResponse.json({ success: true, planning: await haalPlanningScherm(bestaand.plan.analysisYear) });
+    // Ging er een taak of inspectie van de dag, dan staat die weer bij Nog in te plannen.
+    const jaar = bestaand.plan.analysisYear;
+    const planning = bestaand.taakId || bestaand.inspectieId ? await haalPlanningScherm(jaar) : await haalPlanning(jaar);
+    return NextResponse.json({ success: true, planning });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij weghalen van de stop');
   }

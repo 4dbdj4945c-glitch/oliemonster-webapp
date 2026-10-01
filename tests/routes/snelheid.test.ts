@@ -46,6 +46,13 @@ async function verseplanning() {
   return json(await planning(verzoek('/api/sample-plans?year=2026'), {}));
 }
 
+/** Een wijziging die de taken en inspecties niet raakt, geeft de planning zonder tePlannen. */
+async function verseplanningZonderTaken() {
+  const { tePlannen: _t, ...rest } = await verseplanning();
+  void _t;
+  return rest;
+}
+
 beforeEach(async () => {
   process.env.BLOB_READ_WRITE_TOKEN = 'test';
   // OSRM nooit echt aanroepen: een vaste route terug.
@@ -129,33 +136,46 @@ describe('een wijziging aan de planning geeft de planning mee', () => {
     const dag = await nieuweDag(verzoek('/api/sample-plans', { body: { date: '2026-12-14', analysisYear: 2026 } }), {});
     expect(dag.status).toBe(201);
     const d = await json(dag);
-    expect(d.planning).toEqual(await verseplanning());
+    expect(d.planning).toEqual(await verseplanningZonderTaken());
 
     const vrij = (await verseplanning()).objecten.find((o: { aantalOngepland: number }) => o.aantalOngepland > 0);
     const ingepland = await inplannen(verzoek(`/api/sample-plans/${d.id}/stops`, { body: { objectId: vrij.id } }), metParams({ id: String(d.id) }));
     expect(ingepland.status).toBe(201);
-    expect((await json(ingepland)).planning).toEqual(await verseplanning());
+    expect((await json(ingepland)).planning).toEqual(await verseplanningZonderTaken());
 
     const stops = await prisma.samplePlanStop.findMany({ where: { planId: ids.dagen.vandaag }, orderBy: { orderIndex: 'asc' } });
     const omgekeerd = stops.map((s) => s.id).reverse();
     const v = await volgorde(verzoek(`/api/sample-plans/${ids.dagen.vandaag}/volgorde`, { body: { stopIds: omgekeerd } }), metParams({ id: String(ids.dagen.vandaag) }));
     expect(v.status).toBe(200);
     const na = await json(v);
-    expect(na.planning).toEqual(await verseplanning());
+    expect(na.planning).toEqual(await verseplanningZonderTaken());
     expect(na.planning.dagen.find((x: { id: number }) => x.id === ids.dagen.vandaag).stops.map((s: { id: number }) => s.id)).toEqual(omgekeerd);
     const plan = await prisma.samplePlan.findUniqueOrThrow({ where: { id: ids.dagen.vandaag } });
     expect(plan.manualOrder).toBe(true);
     expect(plan.routeDuration).toBe(1500);
 
-    const weg = await stopWeg(verzoek(`/api/sample-plans/${ids.dagen.vandaag}/stops/${omgekeerd[0]}`, { method: 'DELETE' }), metParams({ id: String(ids.dagen.vandaag), stopId: String(omgekeerd[0]) }));
+    // Een oliemonsterstop (geen taak) van de dag halen.
+    const monsterStop = stops.find((s) => s.taakId === null && s.inspectieId === null)!.id;
+    const weg = await stopWeg(verzoek(`/api/sample-plans/${ids.dagen.vandaag}/stops/${monsterStop}`, { method: 'DELETE' }), metParams({ id: String(ids.dagen.vandaag), stopId: String(monsterStop) }));
     expect(weg.status).toBe(200);
-    expect((await json(weg)).planning).toEqual(await verseplanning());
+    expect((await json(weg)).planning).toEqual(await verseplanningZonderTaken());
     // Doorgenummerd zonder gaten.
     const over = await prisma.samplePlanStop.findMany({ where: { planId: ids.dagen.vandaag }, orderBy: { orderIndex: 'asc' } });
     expect(over.map((s) => s.orderIndex)).toEqual(over.map((_, i) => i));
 
     const vrijgeven = await wijzigDag(verzoek(`/api/sample-plans/${ids.dagen.vandaag}`, { method: 'PUT', body: { manualOrder: false } }), metParams({ id: String(ids.dagen.vandaag) }));
     expect((await json(vrijgeven)).planning).toEqual(await verseplanning());
+  });
+
+  it('een taak inplannen en weghalen geeft ook tePlannen mee', async () => {
+    const taak = (await verseplanning()).tePlannen.taken[0];
+    expect(taak).toBeTruthy();
+    const res = await inplannen(verzoek(`/api/sample-plans/${ids.dagen.overmorgen}/stops`, { body: { taakId: taak.id } }), metParams({ id: String(ids.dagen.overmorgen) }));
+    expect(res.status).toBe(201);
+    const stop = await json(res);
+    expect(stop.planning).toEqual(await verseplanning());
+    const weg = await stopWeg(verzoek(`/api/sample-plans/${ids.dagen.overmorgen}/stops/${stop.id}`, { method: 'DELETE' }), metParams({ id: String(ids.dagen.overmorgen), stopId: String(stop.id) }));
+    expect((await json(weg)).planning).toEqual(await verseplanning());
   });
 
   it('een stop starten geeft de dag van het dagscherm terug', async () => {

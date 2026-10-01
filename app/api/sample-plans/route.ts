@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { foutAntwoord } from '@/lib/planningApi';
 import { haalPlanningScherm } from '@/lib/planningScherm';
+import { haalPlanning } from '@/lib/samplePlans';
 
 /**
  * De dagen van de planning. Lezen mag iedereen die is ingelogd behalve de
@@ -66,7 +67,8 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (reques
     });
 
     // De planning zoals hij nu is, zodat het scherm hem niet opnieuw hoeft op te halen.
-    return NextResponse.json({ ...plan, planning: await haalPlanningScherm(jaar) }, { status: 201 });
+    // Een nieuwe dag is leeg: de taken en inspecties veranderen niet.
+    return NextResponse.json({ ...plan, planning: await haalPlanning(jaar) }, { status: 201 });
   } catch (error) {
     return foutAntwoord(error, 'Fout bij aanmaken van de dag');
   }

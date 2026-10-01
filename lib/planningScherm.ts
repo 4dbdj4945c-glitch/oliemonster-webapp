@@ -11,3 +11,4 @@ export async function haalPlanningScherm(analysisYear: number) {
   const [planning, tePlannen] = await Promise.all([haalPlanning(analysisYear), haalTePlannen()]);
   return { ...planning, tePlannen };
 }
+
