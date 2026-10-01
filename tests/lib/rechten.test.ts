@@ -45,7 +45,7 @@ describe('toegangsBesluit (API)', () => {
     expect(b?.body.error).toBe('Alleen admins kunnen dit wijzigen');
   });
   it('eigen melding bij een admin-actie', () => {
-    const b = toegangsBesluit(gebruiker, { rol: 'admin', module: 'ultimo', adminMelding: 'Alleen admins kunnen taken toevoegen' });
+    const b = toegangsBesluit(gebruiker, { rol: 'admin', module: 'acquisitie', adminMelding: 'Alleen admins kunnen taken toevoegen' });
     expect(b?.body.error).toBe('Alleen admins kunnen taken toevoegen');
   });
   it('kijker mag alleen lezen in de oliemonstermodule', () => {
@@ -138,7 +138,7 @@ describe('paginaBesluit (dashboard)', () => {
     expect(paginaBesluit(kijkerAlles, '/dashboard/oliemonsters/2026')).toBeNull();
     expect(paginaBesluit(kijkerAlles, '/dashboard/oliemonsters/2027')).toBeNull();
     expect(paginaBesluit(kijkerAlles, '/dashboard/oliemonsters/abc')).toBe('/dashboard');
-    expect(paginaBesluit(kijkerAlles, '/dashboard/ultimo')).toBe('/dashboard');
+    expect(paginaBesluit(kijkerAlles, '/dashboard/planning')).toBe('/dashboard');
   });
   it('kijker met een jaar zonder monsters krijgt gewoon de pagina van dat jaar', () => {
     const k = maak('alleen_lezen', 2027);

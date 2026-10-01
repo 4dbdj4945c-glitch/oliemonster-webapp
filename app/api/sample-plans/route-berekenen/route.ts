@@ -10,7 +10,7 @@ import { berekenPlanning } from '@/lib/samplePlans';
  * Met `herverdeel: true` verdeelt hij de objecten ook opnieuw over de dagen, tot
  * een dag vol is. Dagen die jij met de hand hebt gezet blijven staan; daar wordt
  * alleen de route opnieuw opgehaald. Valt de routedienst uit, dan blijft de
- * planning werken met rechte lijnen (zoals bij de controlerondes).
+ * planning werken met rechte lijnen.
  */
 // De route van elke dag wordt apart bij OSRM opgehaald; met twintig dagen duurt
 // dat langer dan de standaardlimiet van tien seconden op Vercel.

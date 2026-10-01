@@ -61,8 +61,6 @@ export type Module =
   | 'objecten'
   | 'klanten'
   | 'acquisitie'
-  | 'controlerondes'
-  | 'ultimo'
   | 'beheer';
 
 /**

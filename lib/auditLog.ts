@@ -39,7 +39,10 @@ export async function createAuditLog({
   }
 }
 
-// Action types voor consistentie
+// Action types voor consistentie. De modules Controlerondes en
+// Ultimo-opmerkingen zijn opgeheven (oktober 2026); hun regels
+// (CREATE_CONTROL_ROUND, CREATE_ULTIMO_TASK en zo) blijven als historie in het
+// logboek staan.
 export const AuditActions = {
   // Auth
   LOGIN: 'LOGIN',
@@ -105,11 +108,6 @@ export const AuditActions = {
   UPDATE_SETTINGS: 'UPDATE_SETTINGS',
   VIEW_SETTINGS: 'VIEW_SETTINGS',
 
-  // Controlerondes
-  CREATE_CONTROL_ROUND: 'CREATE_CONTROL_ROUND',
-  UPDATE_CONTROL_ROUND: 'UPDATE_CONTROL_ROUND',
-  DELETE_CONTROL_ROUND: 'DELETE_CONTROL_ROUND',
-  RESET_CONTROL_ROUND: 'RESET_CONTROL_ROUND',
 
   // Klanten, contactpersonen en installaties (verwijderen is zacht)
   CREATE_KLANT: 'CREATE_KLANT',
@@ -155,13 +153,6 @@ export const AuditActions = {
   DELETE_EIGEN_DOCUMENT_BESTAND: 'DELETE_EIGEN_DOCUMENT_BESTAND',
   INHUURDOSSIER_DOWNLOAD: 'INHUURDOSSIER_DOWNLOAD',
 
-  // Ultimo-opmerkingen
-  CREATE_ULTIMO_TASK: 'CREATE_ULTIMO_TASK',
-  UPDATE_ULTIMO_TASK: 'UPDATE_ULTIMO_TASK',
-  DELETE_ULTIMO_TASK: 'DELETE_ULTIMO_TASK',
-  CREATE_ULTIMO_COMMENT: 'CREATE_ULTIMO_COMMENT',
-  UPDATE_ULTIMO_COMMENT: 'UPDATE_ULTIMO_COMMENT',
-  DELETE_ULTIMO_COMMENT: 'DELETE_ULTIMO_COMMENT',
 
   // Acquisitie
   CREATE_PROSPECT: 'CREATE_PROSPECT',

@@ -47,7 +47,7 @@ const RouteMap = dynamic(() => import('@/app/components/RouteMap'), {
   loading: () => <div className="laden plan-kaart-laden">Kaart laden...</div>,
 });
 
-// Afstand (meter) waarbinnen GPS je op een object plaatst; zelfde straal als de controlerondes.
+// Afstand (meter) waarbinnen GPS je op een object plaatst.
 const GPS_STRAAL = 70;
 
 function afstandMeter(aLat: number, aLng: number, bLat: number, bLng: number): number {

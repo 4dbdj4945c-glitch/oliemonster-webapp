@@ -29,6 +29,10 @@ const nextConfig: NextConfig = {
     return [
       { source: '/dashboard/oliemonsters', destination: '/dashboard/oliemonsters/2025', permanent: false },
       { source: '/dashboard/oliemonsters2026', destination: '/dashboard/oliemonsters/2026', permanent: false },
+      // De modules Controlerondes en Ultimo-opmerkingen zijn opgeheven: een oude
+      // bladwijzer komt op Vandaag uit.
+      { source: '/dashboard/controlerondes', destination: '/dashboard', permanent: false },
+      { source: '/dashboard/ultimo', destination: '/dashboard', permanent: false },
     ];
   },
 

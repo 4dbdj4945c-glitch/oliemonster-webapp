@@ -105,8 +105,6 @@ function KijkerDashboard() {
           })
       );
     }
-    tel('controlerondes', 'Controlerondes', '/api/control-rounds', (d) => [{ waarde: d.length, label: 'Rondes' }]);
-    tel('ultimo', 'Ultimo-opmerkingen', '/api/ultimo-tasks', (d) => [{ waarde: d.length, label: 'Taken' }]);
     tel('klanten', 'Klanten', '/api/klanten', (d) => [{ waarde: d.length, label: 'Klanten' }]);
     tel('installaties', 'Installaties', '/api/installaties', (d) => [{ waarde: d.length, label: 'Installaties' }]);
     tel('acquisitie', 'Acquisitie', '/api/prospects', (d) => {

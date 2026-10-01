@@ -2187,8 +2187,7 @@ button, a, label, input[type="checkbox"], input[type="radio"], select {
 
 /* ============ Oliemonsters: tikbare status en foutmeldingen ============
    De hoofdhandeling in de monsterlijst is een monster op genomen of niet genomen
-   zetten. Dat is één tik op de statuscel, zoals een straat afvinken bij de
-   controlerondes. Staat hier en niet in de pagina, zodat elk jaar dezelfde
+   zetten. Dat is één tik op de statuscel. Staat hier en niet in de pagina, zodat elk jaar dezelfde
    stijl gebruikt. */
 
 .status-cel {

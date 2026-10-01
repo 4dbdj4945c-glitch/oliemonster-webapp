@@ -67,8 +67,6 @@ describe('moduleregister', () => {
     expect(admin[0].items.map((i) => i.href)).toEqual([
       '/dashboard/oliemonsters/2026',
       '/dashboard/planning',
-      '/dashboard/controlerondes',
-      '/dashboard/ultimo',
     ]);
     expect(admin[3].items.map((i) => i.sleutel)).toEqual(['objecten', 'eigen-dossier', 'kolommen', 'instellingen']);
 
