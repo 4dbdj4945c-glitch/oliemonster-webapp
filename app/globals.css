@@ -5241,6 +5241,7 @@ a.rij-tekst.rij-link:hover strong { text-decoration: underline; }
 .dr-materiaal .veld { margin: 0; }
 .dr-materiaal .label { font-size: 12px; }
 .dr-mat-weg { margin-bottom: 4px; }
+.dr-mat-fout { grid-column: 1 / -1; order: 10; margin: 0; }
 .dr-mat-lijst { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--grijs-200); }
 .dr-mat-lijst li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--grijs-200); font-size: 15px; color: var(--grijs-700); }
 .dr-mat-lijst small { color: var(--grijs-500); }

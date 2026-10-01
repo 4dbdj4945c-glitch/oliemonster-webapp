@@ -27,13 +27,13 @@ const Query = z.object({
   planId: z.coerce.number().int().positive().optional(),
 });
 
-export const GET = apiRoute({ rol: 'user', module: 'dagrapporten', fout: 'Fout bij ophalen van de dagrapporten' }, async (request, _context, sessie) => {
+export const GET = apiRoute({ rol: 'user', module: 'dagrapporten', fout: 'Fout bij ophalen van de werkbonnen' }, async (request, _context, sessie) => {
   const q = leesQuery(request, Query);
   const rijen = await haalDagrapporten(sessie, { ...(q.klantId ? { klantId: q.klantId } : {}), ...(q.planId ? { planId: q.planId } : {}) });
   return NextResponse.json(rijen.map(dagrapportInLijst));
 });
 
-export const POST = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout bij aanmaken van het dagrapport' }, async (request, _context, sessie) => {
+export const POST = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout bij aanmaken van de werkbon' }, async (request, _context, sessie) => {
   const invoer = await leesJson(request, NieuwDagrapportSchema);
   const klant = await prisma.klant.findFirst({ where: { id: invoer.klantId, deletedAt: null }, select: { id: true, werkbonHandtekening: true } });
   if (!klant) throw new ApiFout(400, 'Onbekende klant', { velden: { klantId: 'Onbekende klant' } });

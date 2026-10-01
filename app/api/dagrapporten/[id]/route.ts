@@ -10,16 +10,16 @@ import { DagrapportWijzigingSchema, alleenConcept, wijzigConcept, controleerObje
 /*
   GET    /api/dagrapporten/[id] - het dagrapport met foto's en handtekening (beheerder en gebruiker)
   PUT    /api/dagrapporten/[id] - alle velden van de werkbon (admin, alleen een concept)
-  DELETE /api/dagrapporten/[id] - naar de prullenbak (admin, body { bevestig: "DR-12" })
+  DELETE /api/dagrapporten/[id] - naar de prullenbak (admin, body { bevestig: "WB-12" })
 */
 
-export const GET = apiRoute({ rol: 'user', module: 'dagrapporten', fout: 'Fout bij ophalen van het dagrapport' }, async (_request, context, sessie) => {
-  const id = await leesId(context, 'Onbekend dagrapport');
+export const GET = apiRoute({ rol: 'user', module: 'dagrapporten', fout: 'Fout bij ophalen van de werkbon' }, async (_request, context, sessie) => {
+  const id = await leesId(context, 'Onbekende werkbon');
   return NextResponse.json(dagrapportAlsJson(await haalDagrapport(id, sessie)));
 });
 
-export const PUT = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout bij opslaan van het dagrapport' }, async (request, context, sessie) => {
-  const id = await leesId(context, 'Onbekend dagrapport');
+export const PUT = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout bij opslaan van de werkbon' }, async (request, context, sessie) => {
+  const id = await leesId(context, 'Onbekende werkbon');
   const huidig = await haalDagrapport(id, sessie);
   alleenConcept(huidig);
   const invoer = await leesJson(request, DagrapportWijzigingSchema);
@@ -42,8 +42,8 @@ export const PUT = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout 
 
 const VerwijderSchema = z.object({ bevestig: z.string().optional() });
 
-export const DELETE = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout bij verwijderen van het dagrapport' }, async (request, context, sessie) => {
-  const id = await leesId(context, 'Onbekend dagrapport');
+export const DELETE = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout bij verwijderen van de werkbon' }, async (request, context, sessie) => {
+  const id = await leesId(context, 'Onbekende werkbon');
   await haalDagrapport(id, sessie);
   const { bevestig } = await leesJson(request, VerwijderSchema);
   const nummer = dagrapportNummer(id);

@@ -161,6 +161,15 @@ describe('werkbon: tijd, materialen en afronden zonder handtekening', () => {
     expect((await pdf(verzoek(`/api/dagrapporten/${ids.dagrapporten.tweede}/pdf`), p(ids.dagrapporten.tweede))).status).toBe(200);
   });
 
+  it('een werkbon die een handtekening vraagt, rondt niet af zonder; heropenen van een concept geeft 409', async () => {
+    await admin();
+    const d = await (await nieuw(verzoek('/api/dagrapporten', { body: { klantId: ids.klanten.tweede, datum: '2026-09-29', uitvoerder: 'Roel', werkzaamheden: 'Gedaan' } }), undefined)).json();
+    expect((await rondAf(verzoek(`/api/dagrapporten/${d.id}/afronden`, { body: {} }), p(d.id))).status).toBe(409);
+    expect((await heropen(verzoek(`/api/dagrapporten/${d.id}/afronden`, { method: 'DELETE' }), p(d.id))).status).toBe(409);
+    await wijzig(verzoek(`/api/dagrapporten/${d.id}`, { method: 'PUT', body: { handtekeningVragen: false } }), p(d.id));
+    expect((await rondAf(verzoek(`/api/dagrapporten/${d.id}/afronden`, { body: {} }), p(d.id))).status).toBe(200);
+  });
+
   it('gebruiker rondt niet af', async () => {
     await inloggenAls('gebruiker', 'user123');
     expect((await rondAf(verzoek(`/api/dagrapporten/${ids.dagrapporten.mourik}/afronden`, { body: {} }), p(ids.dagrapporten.mourik))).status).toBe(403);

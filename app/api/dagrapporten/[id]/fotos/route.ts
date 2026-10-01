@@ -10,10 +10,10 @@ import { alleenConcept, dagrapportAlsJson, haalDagrapport } from '@/lib/dagrappo
 const MAX_FOTOS = 20;
 
 export const POST = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout bij opslaan van de foto' }, async (request, context, sessie) => {
-  const id = await leesId(context, 'Onbekend dagrapport');
+  const id = await leesId(context, 'Onbekende werkbon');
   const huidig = await haalDagrapport(id, sessie);
   alleenConcept(huidig);
-  if (huidig.fotos.length >= MAX_FOTOS) throw new ApiFout(400, `Een dagrapport heeft hoogstens ${MAX_FOTOS} foto's`);
+  if (huidig.fotos.length >= MAX_FOTOS) throw new ApiFout(400, `Een werkbon heeft hoogstens ${MAX_FOTOS} foto's`);
   const form = await request.formData();
   const foto = form.get('photo');
   if (!(foto instanceof File) || foto.size === 0) throw new ApiFout(400, 'Kies een foto');

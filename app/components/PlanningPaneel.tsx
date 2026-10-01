@@ -631,7 +631,7 @@ export default function PlanningPaneel({
 
             {/* De dagen */}
             <div className="plan-dagen">
-              <PlanningKalender
+              <PlanningKalender key={analysisYear}
                 dagen={dagen}
                 analysisYear={analysisYear}
                 isAdmin={isAdmin}

@@ -365,6 +365,8 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
   const bewerkbaar = isAdmin && concept;
   const klantObjecten = objecten.filter((o) => o.klantId === rapport?.klant.id);
   const fout1 = (k: string) => veldFouten[k] && <p className="veld-fout">{veldFouten[k]}</p>;
+  /** De server meldt een fout in een materiaalregel als materialen.0.omschrijving. */
+  const materiaalFout = (i: number) => Object.entries(veldFouten).find(([k]) => k.startsWith(`materialen.${i}.`))?.[1];
   const invoerKlasse = (k: string) => `input${veldFouten[k] ? ' input-fout' : ''}`;
   const berekend = velden && velden.tijdsoort === 'tijden' ? minutenUitTijden(velden.beginTijd, velden.eindTijd, velden.pauzeMinuten ? Number(velden.pauzeMinuten) : null) : null;
   const metHandtekening = velden?.handtekeningVragen ?? true;
@@ -478,7 +480,7 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
                     <div className="veldwerk">
                       <div className="keuzeknoppen keuzeknoppen-klein" role="group" aria-label="Hoe leg je de tijd vast">
                         {TIJD_KEUZES.map((k) => (
-                          <button key={k.waarde} type="button" className={`keuzeknop${velden.tijdsoort === k.waarde ? ' on' : ''}`} aria-pressed={velden.tijdsoort === k.waarde} onClick={() => wijzig({ tijdsoort: k.waarde })}>
+                          <button key={k.waarde} type="button" className={`keuzeknop${velden.tijdsoort === k.waarde ? ' on' : ''}`} aria-pressed={velden.tijdsoort === k.waarde} onClick={() => wijzig(k.waarde === 'uren' && berekend !== null ? { tijdsoort: k.waarde, uren: urenVeld(berekend) } : { tijdsoort: k.waarde })}>
                             <Icon name={k.icoon} size={16} />
                             {k.label}
                           </button>
@@ -573,6 +575,7 @@ export default function Dagrapportscherm({ dagrapportId }: { dagrapportId: numbe
                               <label className="label" htmlFor={`dr-mat-art-${m.sleutel}`}>Artikelnr. <span className="label-bij">(mag leeg)</span></label>
                               <input id={`dr-mat-art-${m.sleutel}`} className="input" value={m.artikelnummer} onChange={(e) => zetMateriaal(m.sleutel, { artikelnummer: e.target.value })} />
                             </div>
+                            {materiaalFout(i) && <p className="veld-fout dr-mat-fout">{materiaalFout(i)}</p>}
                             <button
                               type="button"
                               className="icon-btn icon-btn-verwijder dr-mat-weg"

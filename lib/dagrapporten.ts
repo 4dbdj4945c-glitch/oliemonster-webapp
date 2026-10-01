@@ -277,7 +277,7 @@ export const { handtekening: _handtekening, ...DAGRAPPORT_DOSSIER_SELECT } = DAG
 
 export async function haalDagrapport(id: number, wie: Wie): Promise<DagrapportRij> {
   const rij = await prisma.dagrapport.findFirst({ where: { id, ...dagrapportFilter(wie) }, select: DAGRAPPORT_SELECT });
-  if (!rij) throw new ApiFout(404, 'Dagrapport niet gevonden');
+  if (!rij) throw new ApiFout(404, 'Werkbon niet gevonden');
   return rij;
 }
 

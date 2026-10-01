@@ -11,7 +11,7 @@ import { HandtekeningSchema, alleenConcept, dagrapportAlsJson, haalDagrapport, w
 */
 
 export const POST = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout bij opslaan van de handtekening' }, async (request, context, sessie) => {
-  const id = await leesId(context, 'Onbekend dagrapport');
+  const id = await leesId(context, 'Onbekende werkbon');
   const huidig = await haalDagrapport(id, sessie);
   alleenConcept(huidig);
   const invoer = await leesJson(request, HandtekeningSchema);
@@ -24,7 +24,7 @@ export const POST = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout
 });
 
 export const DELETE = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout bij wissen van de handtekening' }, async (request, context, sessie) => {
-  const id = await leesId(context, 'Onbekend dagrapport');
+  const id = await leesId(context, 'Onbekende werkbon');
   const huidig = await haalDagrapport(id, sessie);
   if (huidig.status !== 'getekend') return NextResponse.json(dagrapportAlsJson(huidig));
   await prisma.dagrapport.update({

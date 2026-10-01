@@ -16,8 +16,8 @@ import { pdfAntwoord } from '@/lib/pdfAntwoord';
 
 export const maxDuration = 60;
 
-export const GET = apiRoute({ rol: 'alleen_lezen', module: 'dagrapporten', fout: 'Het dagrapport kon niet worden gemaakt' }, async (request, context, sessie) => {
-  const id = await leesId(context, 'Onbekend dagrapport');
+export const GET = apiRoute({ rol: 'alleen_lezen', module: 'dagrapporten', fout: 'De werkbon kon niet worden gemaakt' }, async (request, context, sessie) => {
+  const id = await leesId(context, 'Onbekende werkbon');
   const rij = await haalDagrapport(id, sessie);
   const pdf = await maakDagrapportPdf(rij, { origin: new URL(request.url).origin });
   await createAuditLog({
