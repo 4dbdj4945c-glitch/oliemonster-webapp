@@ -63,7 +63,15 @@ export const POST = apiRoute(
 
       const sample = await prisma.oilSample.findUnique({
         where: { id: sampleId, ...(await actiefFilter()) },
-        select: { id: true, oNumber: true, analysisYear: true, isDisabled: true, unreachablePhotoUrl: true },
+        select: {
+          id: true,
+          oNumber: true,
+          analysisYear: true,
+          isDisabled: true,
+          unreachablePhotoUrl: true,
+          // De laatste poging meteen mee: een nog openstaande vullen we in.
+          attempts: { orderBy: NIEUWSTE_EERST, take: 1, select: { id: true, isTaken: true, photoUrl: true, partPhotoUrl: true } },
+        },
     });
     if (!sample) throw new ApiFout(404, 'Monster niet gevonden');
     if (sample.isDisabled) throw new ApiFout(400, 'Dit monster is geannuleerd. Draai de annulering eerst terug.');
@@ -77,17 +85,10 @@ export const POST = apiRoute(
       return bewaarFoto(`sample-${sampleId}-${soort}-${Date.now()}.${fotoExtensie(file)}`, file);
     };
 
-    // De twee foto's en het opzoeken van de laatste poging tegelijk. Een nog
-    // openstaande poging vullen we in; anders komt er een poging bij.
-    const [partPhotoUrl, photoUrl, laatste] = await tegelijk([
-      uploaden(fotoOnderdeel, 'onderdeel'),
-      uploaden(fotoPotje, 'potje'),
-      prisma.sampleAttempt.findFirst({
-        where: { oilSampleId: sampleId },
-        orderBy: NIEUWSTE_EERST,
-        select: { id: true, isTaken: true, photoUrl: true, partPhotoUrl: true },
-      }),
-    ]);
+    // De twee foto's tegelijk. Een nog openstaande poging vullen we in; anders
+    // komt er een poging bij.
+    const [partPhotoUrl, photoUrl] = await tegelijk([uploaden(fotoOnderdeel, 'onderdeel'), uploaden(fotoPotje, 'potje')]);
+    const laatste = sample.attempts[0] ?? null;
 
     const pogingData = {
       sampleDate,

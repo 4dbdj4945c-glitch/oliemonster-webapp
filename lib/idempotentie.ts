@@ -13,7 +13,7 @@
 // de regel weer weg, zodat een nieuwe poging gewoon kan. Zonder header werkt de
 // route zoals altijd. Regels ouder dan dertig dagen worden opgeruimd.
 
-import { NextResponse } from 'next/server';
+import { after, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from './prisma';
 import { ApiFout } from './apiRoute';
@@ -38,8 +38,14 @@ export async function eenmalig(
   if (sleutel === null) return werk();
   if (!/^[A-Za-z0-9-]{8,100}$/.test(sleutel)) throw new ApiFout(400, 'Ongeldige idempotentiesleutel');
 
+  // Oude regels opruimen na het antwoord (after), niemand hoeft erop te wachten.
   const drempel = new Date(Date.now() - BEWAAR_DAGEN * 86400000);
-  await prisma.verzending.deleteMany({ where: { createdAt: { lt: drempel } } });
+  const opruimen = () => prisma.verzending.deleteMany({ where: { createdAt: { lt: drempel } } }).then(() => undefined);
+  try {
+    after(() => opruimen().catch((e) => console.error('Opruimen verzendingen mislukt:', e)));
+  } catch {
+    await opruimen(); // buiten een verzoek (tests): meteen
+  }
 
   try {
     await prisma.verzending.create({ data: { sleutel, userId: wie.userId, route } });

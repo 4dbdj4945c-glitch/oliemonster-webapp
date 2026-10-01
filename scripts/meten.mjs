@@ -253,7 +253,7 @@ async function meet(naam, voorbereiden, actie) {
   // of opslaat); de rest zijn de pagina zelf en RSC-verzoeken (ook het
   // vooraf ophalen van links in de navigatie).
   const api = verzoeken.filter((v) => v.split(' ')[1].startsWith('/api/')).length;
-  const rij = { actie: naam, db: queries, roundtrips, http: verzoeken.length, api, osrm: osrmAantal() - osrmVoor, ms: Math.max(0, laatsteAntwoord - t0), verzoeken, sql };
+  const rij = { actie: naam, db: queries, roundtrips, http: verzoeken.length, api, osrm: osrmAantal() - osrmVoor, ms: Math.max(0, laatsteAntwoord - t0), verzoeken: [...verzoeken], sql: [...sql] };
   uitkomsten.push(rij);
   console.log(`${naam.padEnd(34)} query's ${String(rij.db).padStart(4)}  roundtrips ${String(roundtrips).padStart(4)}  http ${String(rij.http).padStart(3)} (api ${String(api).padStart(2)})  osrm ${rij.osrm}  ${String(rij.ms).padStart(6)} ms`);
 }
