@@ -122,8 +122,9 @@ export default function Schil({
           Geen prefetch op de links (hier en in de rest van de portal): elke
           dashboardpagina wordt op de server per verzoek gemaakt (de layout leest
           de gebruiker uit de database) en heeft geen loading.tsx, dus vooraf
-          ophalen leverde niets op dat bij het klikken werd hergebruikt, maar
-          kostte per geopende pagina tientallen verzoeken met elk een query. */}
+          ophalen leverde bij het klikken geen snellere pagina op, maar kostte
+          per geopende pagina zo'n veertig extra verzoeken naar de server
+          (gemeten met scripts/meten.mjs). */}
       <nav className="zijbalk" aria-label="Hoofdmenu">
         <Link prefetch={false} href="/dashboard" className="zijbalk-merk" aria-label="Vandaag, It's Done Services portaal">
           <img src="/header_logo.png" alt="It's Done Services" />
