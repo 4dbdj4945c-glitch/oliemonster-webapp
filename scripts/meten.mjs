@@ -236,8 +236,19 @@ const knopMetTekst = (tekst, binnen = 'document') => `[...${binnen}.querySelecto
 // Een React-veld vullen: via de echte setter, anders ziet React de wijziging niet.
 const vul = (selector, waarde) => js(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); const proto = el.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, ${JSON.stringify(waarde)}); el.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
 
+// De tekst van een deel van het scherm, zonder meldingen (die verschillen
+// tussen net gewijzigd en verversen).
+const schermTekst = (selector) =>
+  js(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return null; const kopie = el.cloneNode(true); kopie.querySelectorAll('.alert, [role="status"], [role="alert"]').forEach((x) => x.remove()); return kopie.innerText; })()`);
+
 const uitkomsten = [];
-async function meet(naam, voorbereiden, actie) {
+const controlesMislukt = [];
+/**
+ * Meet één actie. Met `vergelijk` (een selector) daarna de controle: ziet dat
+ * deel van het scherm er na de wijziging precies zo uit als na verversen? Zo
+ * weet je dat het bijwerken uit het antwoord klopt.
+ */
+async function meet(naam, voorbereiden, actie, vergelijk) {
   if (voorbereiden) await voorbereiden();
   await rustig();
   roundtrips = 0;
@@ -254,8 +265,26 @@ async function meet(naam, voorbereiden, actie) {
   // vooraf ophalen van links in de navigatie).
   const api = verzoeken.filter((v) => v.split(' ')[1].startsWith('/api/')).length;
   const rij = { actie: naam, db: queries, roundtrips, http: verzoeken.length, api, osrm: osrmAantal() - osrmVoor, ms: Math.max(0, laatsteAntwoord - t0), verzoeken: [...verzoeken], sql: [...sql] };
+  if (vergelijk) {
+    const na = await schermTekst(vergelijk);
+    await stuur('Page.reload');
+    await rustig();
+    await wachtOp(vergelijk);
+    await wacht(300);
+    const vers = await schermTekst(vergelijk);
+    if (na === null || na !== vers) {
+      const a = (na ?? '').split('\n');
+      const b = (vers ?? '').split('\n');
+      const i = a.findIndex((regel, k) => regel !== b[k]);
+      rij.controle = `scherm na wijziging wijkt af van verversen, regel ${i}: "${a[i]}" tegen "${b[i]}"`;
+      controlesMislukt.push(`${naam}: ${rij.controle}`);
+    } else {
+      rij.controle = 'gelijk aan verversen';
+    }
+  }
   uitkomsten.push(rij);
-  console.log(`${naam.padEnd(34)} query's ${String(rij.db).padStart(4)}  roundtrips ${String(roundtrips).padStart(4)}  http ${String(rij.http).padStart(3)} (api ${String(api).padStart(2)})  osrm ${rij.osrm}  ${String(rij.ms).padStart(6)} ms`);
+  if (rij.controle && rij.controle !== 'gelijk aan verversen') console.log(`  CONTROLE MISLUKT: ${rij.controle}`);
+  console.log(`${naam.padEnd(34)} query's ${String(rij.db).padStart(4)}  roundtrips ${String(rij.roundtrips).padStart(4)}  http ${String(rij.http).padStart(3)} (api ${String(api).padStart(2)})  osrm ${rij.osrm}  ${String(rij.ms).padStart(6)} ms`);
 }
 
 const jaar = new Date().getFullYear();
@@ -287,9 +316,10 @@ try {
   // Bewerkvenster: eerst openen, dan opslaan met een andere opmerking.
   await wachtOp('.knop-bewerk');
   await meet('Bewerkvenster openen', null, () => klik(`document.querySelector('.knop-bewerk')`));
-  await meet('Monster opslaan (bewerkvenster)', () => vul('#veld-opmerkingen', `Gemeten ${Date.now()}`), () => klik(`document.querySelector('button[form="sample-form"]')`));
+  await meet('Monster opslaan (bewerkvenster)', () => vul('#veld-opmerkingen', `Gemeten ${Date.now()}`), () => klik(`document.querySelector('button[form="sample-form"]')`), 'main');
 
-  await meet('Status aantikken', null, () => klik(`document.querySelector('.status-knop:not([disabled])')`));
+  await wachtOp('.status-knop');
+  await meet('Status aantikken', null, () => klik(`document.querySelector('.status-knop:not([disabled])')`), 'main');
 
   // Monster nemen met twee foto's.
   await meet(
@@ -302,7 +332,8 @@ try {
       for (const nodeId of velden.nodeIds) await stuur('DOM.setFileInputFiles', { nodeId, files: [foto] });
       await wacht(300);
     },
-    () => klik(knopMetTekst('Opslaan als genomen'))
+    () => klik(knopMetTekst('Opslaan als genomen')),
+    'main'
   );
 
   // Planning.
@@ -317,7 +348,8 @@ try {
       const iso = `${dag.getFullYear()}-${String(dag.getMonth() + 1).padStart(2, '0')}-${String(dag.getDate()).padStart(2, '0')}`;
       await vul('#plan-datum', iso);
     },
-    () => klik(knopMetTekst('Toevoegen', `document.querySelector('.plan-nieuwe-dag')`))
+    () => klik(knopMetTekst('Toevoegen', `document.querySelector('.plan-nieuwe-dag')`)),
+    '.plan'
   );
   await meet(
     'Planning: object inplannen',
@@ -325,11 +357,12 @@ try {
       await klik(knopMetTekst('Inplannen', `document.querySelector('.plan-objecten')`));
       await wachtOp('#plan-kies-titel');
     },
-    () => klik(knopMetTekst('Op de dag zetten'))
+    () => klik(knopMetTekst('Op de dag zetten')),
+    '.plan'
   );
-  await meet('Planning: volgorde wijzigen', null, () => klik(`[...document.querySelectorAll('button[aria-label$="naar beneden"]')].find((b) => !b.disabled)`));
-  await meet('Planning: object van dag halen', null, () => klik(`document.querySelector('button[aria-label$="van deze dag halen"]')`));
-  await meet('Planning: route berekenen', null, () => klik(knopMetTekst('Route berekenen')));
+  await meet('Planning: volgorde wijzigen', () => wachtOp('button[aria-label$="naar beneden"]'), () => klik(`[...document.querySelectorAll('button[aria-label$="naar beneden"]')].find((b) => !b.disabled)`), '.plan');
+  await meet('Planning: object van dag halen', () => wachtOp('button[aria-label$="van deze dag halen"]'), () => klik(`document.querySelector('button[aria-label$="van deze dag halen"]')`), '.plan');
+  await meet('Planning: route berekenen', () => wachtOp('.plan-knoppen'), () => klik(knopMetTekst('Route berekenen')), '.plan');
 
   // Dagscherm van vandaag.
   const { dagen } = await api(`/api/sample-plans?year=${jaar}`);
@@ -346,6 +379,12 @@ try {
   await ga('/dashboard');
   await meet('Menu: van Vandaag naar Planning', null, () => klik(`document.querySelector('.zijbalk a[href="/dashboard/planning"]')`));
 
+  if (controlesMislukt.length) {
+    console.log(`\n${controlesMislukt.length} controle(s) mislukt.`);
+    process.exitCode = 1;
+  } else {
+    console.log('\nAlle controles: het scherm na elke wijziging is gelijk aan het scherm na verversen.');
+  }
 } catch (e) {
   console.error(e);
   console.error(log.split('\n').slice(-30).join('\n'));
