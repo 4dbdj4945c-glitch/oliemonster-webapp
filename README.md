@@ -182,6 +182,8 @@ de laatste poging. Ze worden alleen via `wijzigLaatstePoging`
 
 - `GET /api/samples?search={query}` - Alle monsters ophalen (met optionele zoekfilter)
 - `GET /api/samples/jaren` - Jaren met monsters, met aantal en genomen
+- `PUT /api/samples/[id]` geeft het monster in de vorm van de lijst terug; `PATCH .../status` en `POST .../nemen` geven het mee als `monster` (lib/monsterLijst.ts). De lijst en het dagscherm vervangen alleen die regel
+- De oliemonsterpagina krijgt lijst, kolommen, objecten en jaren meteen mee van de server (lib/oliemonsterBegin.ts); op de server en tijdens het hydrateren staat het laadscherm, zodat de server nooit een lijst toont die in de browser anders uitziet
 - `POST /api/samples` - Nieuw monster toevoegen (admin only)
 - `PUT /api/samples/[id]` - Monster bijwerken (admin only)
 - `DELETE /api/samples/[id]` - Monster naar de prullenbak (admin only, body `{ bevestigONummer }`; zacht verwijderen via `deletedAt`)
@@ -190,8 +192,9 @@ de laatste poging. Ze worden alleen via `wijzigLaatstePoging`
 - `POST /api/samples/[id]/afname-ongedaan` - Laatste monstername terug naar niet genomen (admin only)
 
 ### Planning
-- `GET /api/sample-plans?year=` - Alle dagen van een jaar met stops, monsters en tijden, plus de objecten (met klant)
-- `GET /api/sample-plans/[id]` - Eén dag, voor het dagscherm (zelfde getallen, uit `haalPlanning`)
+- `GET /api/sample-plans?year=` - Alle dagen van een jaar met stops, monsters en tijden, plus de objecten (met klant) en `tePlannen`; `&tePlannen=0` zonder (Vandaag). Zonder routetraject: alleen `routeBerekend`
+- `GET /api/sample-plans/[id]` - Eén dag, voor het dagscherm, met `routeGeometry` (`haalPlanDag`: dezelfde berekening als `haalPlanning`, alleen de monsters van die dag)
+- Elke wijziging aan de planning (dag toevoegen of wijzigen, inplannen, van de dag halen, volgorde, Route berekenen) geeft `planning` mee: de dagen en objecten zoals een verse GET ze geeft, en `tePlannen` alleen als er een taak of inspectie verandert. Een stop starten, stoppen of afvinken (PATCH) geeft `dag` mee, zoals `GET /api/sample-plans/[id]`. De schermen gebruiken dat in plaats van opnieuw op te halen (lib/planningScherm.ts)
 
 ### Klanten en installaties (alleen admin)
 - `GET/POST /api/klanten`, `GET/PUT/DELETE /api/klanten/[id]` (DELETE zacht, body `{ bevestigNaam }`), `POST /api/klanten/[id]/herstellen`
@@ -202,7 +205,7 @@ de laatste poging. Ze worden alleen via `wijzigLaatstePoging`
 ### Klantportaal, rapport en dossier (fase 3)
 - `GET /api/portaal?jaar=` - het klantportaal van een kijker (altijd zijn eigen klant; admin en gebruiker met `?klantId=`)
 - `GET /api/rapport?jaar=&klantId=&fotos=0` - rapport als PDF, op de server gemaakt (lib/rapport/rapportPdf.ts: jsPDF, Inter uit lib/rapport/fonts, foto's verkleind met sharp). Een kijker alleen van zijn eigen klant en jaar; elke download staat in het logboek (`RAPPORT_DOWNLOAD`)
-- `GET /api/klanten/[id]/dossier?jaar=` - klantdossier met momenten per object en installatie (admin)
+- `GET /api/klanten/[id]/dossier?jaar=` - klantdossier met momenten per object en installatie (admin); `?jaar=nieuwste` het jongste jaar met monsters (zo opent het scherm, in één verzoek)
 - `POST/DELETE /api/klanten/[id]/logo` - logo van een klant (admin, multipart, in UPLOAD_ROUTES)
 - `GET /api/fotos/monster|poging|installatie|klantlogo/...` - elke foto (zie hieronder)
 - `/privacy` - de privacyverklaring, openbaar, gemarkeerd als concept (tekst in app/privacy/tekst.ts)
@@ -380,6 +383,33 @@ De tests in `tests/db` en `tests/routes` wissen `ids_portal_test` en vullen hem
 met `prisma/nepdata.ts`. Een andere testdatabase kan via `TEST_DATABASE_URL`.
 De GitHub Action (`.github/workflows/ci.yml`) draait bij elke push lint, tsc,
 de migratiecontrole, de tests (met een eigen PostgreSQL) en de build.
+
+## Snelheid
+
+Elke databasequery is een retour naar Supabase; via de pooler (`pgbouncer=true`) zet Prisma er
+bovendien BEGIN, DEALLOCATE ALL en COMMIT omheen. Daarom:
+
+- Na een wijziging geeft de API het bijgewerkte monster of de bijgewerkte planning terug en haalt
+  het scherm niet alles opnieuw op. Volgorde wijzigen en een object van de dag halen staan meteen
+  in beeld en gaan terug met een melding als de server het niet aanneemt (zoals status aantikken).
+- Onafhankelijke queries tegelijk (`Promise.all`, of `tegelijk()` uit lib/apiRoute.ts als de
+  volgorde van de foutmeldingen moet blijven). Relaties in dezelfde query (Prisma `relationJoins`).
+  De volgorde van stops in één query (`zetStopVolgorde`).
+- Het logboek wordt na het antwoord geschreven (`after()` in lib/auditLog.ts).
+- Links in de portal hebben `prefetch={false}`: de dashboardpagina's zijn dynamisch en vooraf
+  ophalen kostte zo'n veertig verzoeken per geopende pagina zonder dat klikken sneller werd.
+
+Meten (lokaal, eigen database `ids_portal_meet`, 20 ms vertraging per databasepakket, echte Chrome;
+eerst `npx next build`):
+
+```bash
+node scripts/meten.mjs                         # deze map
+node scripts/meten.mjs --app ../kopie --uit m.json   # een andere kopie, getallen bewaren
+MEET_PGBOUNCER=0 node scripts/meten.mjs        # zonder pgbouncer=true
+```
+
+Per actie: query's, roundtrips, HTTP-verzoeken, OSRM-aanroepen en de wachttijd. Na elke wijziging
+controleert het script of het scherm gelijk is aan het scherm na verversen.
 
 ## Toegang
 
