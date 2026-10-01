@@ -114,7 +114,7 @@ export default function Vandaag() {
     const monstersVerzoek = haal<VandaagMonster[]>(`/api/samples?year=${jaar}`, 'De monsters konden niet worden opgehaald.');
     try {
       const p = magPlanning
-        ? await haal<{ dagen: VandaagDag[]; objecten: VandaagObject[] }>(`/api/sample-plans?year=${jaar}`, 'De planning kon niet worden opgehaald.')
+        ? await haal<{ dagen: VandaagDag[]; objecten: VandaagObject[] }>(`/api/sample-plans?year=${jaar}&tePlannen=0`, 'De planning kon niet worden opgehaald.')
         : ({ status: 'ok', data: { dagen: [], objecten: [] } } as Stand<{ dagen: VandaagDag[]; objecten: VandaagObject[] }>);
       setPlanning(p);
     } finally {

@@ -14,7 +14,8 @@ import { haalPlanning } from '@/lib/samplePlans';
 
 // GET - Alle dagen van een analysejaar, met stops, monsters en tijden, plus de
 // objecten met wat er nog ingepland moet worden. Sinds fase 5 ook de
-// contracttaken en inspecties die nog op een dag kunnen (tePlannen).
+// contracttaken en inspecties die nog op een dag kunnen (tePlannen); met
+// ?tePlannen=0 zonder (Vandaag gebruikt ze niet).
 export const GET = withAuth({ rol: 'user', module: 'planning' }, async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
@@ -22,6 +23,7 @@ export const GET = withAuth({ rol: 'user', module: 'planning' }, async (request:
     if (Number.isNaN(jaar)) {
       return NextResponse.json({ error: 'Kies een analysejaar' }, { status: 400 });
     }
+    if (searchParams.get('tePlannen') === '0') return NextResponse.json(await haalPlanning(jaar));
     return NextResponse.json(await haalPlanningScherm(jaar));
   } catch (error) {
     return foutAntwoord(error, 'Fout bij ophalen van de planning');
