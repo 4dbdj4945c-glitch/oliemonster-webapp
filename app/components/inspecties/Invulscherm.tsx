@@ -93,7 +93,10 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
     return () => { actief = false; };
   }, [isAdmin, klantId, kiesUitInstallaties]);
 
-  const bewaar = async (body: Record<string, unknown>, gelukt: string): Promise<boolean> => {
+  const [rapportFout, setRapportFout] = useState('');
+
+  /** Opslaan van de inspectie. `toonFout` bepaalt waar een melding komt (standaard bovenaan; bij Afronden bij de knop). */
+  const bewaar = async (body: Record<string, unknown>, gelukt: string, toonFout: (m: string) => void = setFout): Promise<boolean> => {
     try {
       const res = await fetch(`/api/inspecties/${inspectieId}`, {
         method: 'PUT',
@@ -101,26 +104,25 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
         body: JSON.stringify(body),
       });
       if (!res.ok) {
-        setFout(await foutTekst(res, 'De inspectie is niet opgeslagen.'));
+        toonFout(await foutTekst(res, 'De inspectie is niet opgeslagen.'));
         return false;
       }
       setInsp(await res.json());
       setFout('');
+      setRapportFout('');
       setMelding(gelukt);
       return true;
     } catch {
-      setFout(GEEN_VERBINDING);
+      toonFout(GEEN_VERBINDING);
       return false;
     }
   };
 
-  const weghalen = async (item: Bevinding) => {
+  /** Bevinding weghalen vanuit het venster. Een fout komt terug naar het venster, zodat hij in beeld staat. */
+  const weghalen = async (item: Bevinding): Promise<string | null> => {
     try {
       const res = await fetch(`/api/inspectie-items/${item.id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        setFout(await foutTekst(res, 'De bevinding is niet weggehaald.'));
-        return;
-      }
+      if (!res.ok) return foutTekst(res, 'De bevinding is niet weggehaald.');
       setInsp(await res.json());
       setVenster(null);
       setOngedaan({
@@ -133,8 +135,9 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
           return true;
         },
       });
+      return null;
     } catch {
-      setFout(GEEN_VERBINDING);
+      return GEEN_VERBINDING;
     }
   };
 
@@ -292,17 +295,23 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
                   </a>
                   {isAdmin &&
                     (insp.status === 'concept' ? (
-                      <button type="button" className="btn" onClick={() => bewaar({ status: 'afgerond' }, 'De inspectie is afgerond.')}>
+                      <button type="button" className="btn" onClick={async () => { setRapportFout(''); if (await bewaar({ status: 'afgerond' }, 'De inspectie is afgerond.', setRapportFout)) setRapportFout(''); }}>
                         <Icon name="status-taken" size={16} />
                         Afronden
                       </button>
                     ) : (
-                      <button type="button" className="btn btn-ghost" onClick={() => bewaar({ status: 'concept' }, 'De inspectie staat weer op concept.')}>
+                      <button type="button" className="btn btn-ghost" onClick={async () => { setRapportFout(''); await bewaar({ status: 'concept' }, 'De inspectie staat weer op concept.', setRapportFout); }}>
                         <Icon name="reset" size={16} />
                         Terug naar concept
                       </button>
                     ))}
                 </div>
+                {rapportFout && (
+                  <div className="alert alert-danger" role="alert" style={{ marginTop: 12 }}>
+                    <Icon name="alert-danger" size={20} />
+                    <span>{rapportFout}</span>
+                  </div>
+                )}
               </section>
 
               {isAdmin && (
@@ -335,6 +344,7 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
           onOpgeslagen={(nieuw, sluiten) => {
             setInsp(nieuw);
             setMelding('');
+            setRapportFout('');
             if (sluiten) setVenster(null);
           }}
           onWeghalen={weghalen}
@@ -492,10 +502,22 @@ function Regel({ insp, item, onOpen }: { insp: Inspectie; item: Bevinding; onOpe
   );
 }
 
-function Gegevens({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: boolean; onBewaar: (b: Record<string, unknown>, m: string) => Promise<boolean> }) {
+/** Opslaan van de inspectie; de melding bij mislukken gaat naar `toonFout`, zodat hij bij de knop staat. */
+type OpBewaar = (b: Record<string, unknown>, m: string, toonFout?: (m: string) => void) => Promise<boolean>;
+
+/** Melding onder de knop van een kaart: fout (rood) of opgeslagen (groen), zodat je op de telefoon ziet wat er gebeurde. */
+function KaartMelding({ fout, klaar }: { fout: string; klaar: string }) {
+  if (fout) return <div className="alert alert-danger" role="alert"><Icon name="alert-danger" size={20} /><span>{fout}</span></div>;
+  if (klaar) return <p className="hint insp-kaart-klaar" role="status"><Icon name="check" size={16} />{klaar}</p>;
+  return null;
+}
+
+function Gegevens({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: boolean; onBewaar: OpBewaar }) {
   const s = sjabloonVan(insp.sjabloon);
   const [velden, setVelden] = useState({ datum: insp.datum, uitvoerder: insp.uitvoerder, samenvatting: insp.samenvatting ?? '', volgendeOp: insp.volgendeOp ?? '' });
   const [bezig, setBezig] = useState(false);
+  const [kaartFout, setKaartFout] = useState('');
+  const [klaar, setKlaar] = useState('');
   const zet = (k: keyof typeof velden) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setVelden((v) => ({ ...v, [k]: e.target.value }));
 
   if (!isAdmin) {
@@ -520,8 +542,10 @@ function Gegevens({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: boole
         onSubmit={async (e) => {
           e.preventDefault();
           setBezig(true);
+          setKaartFout('');
+          setKlaar('');
           const { volgendeOp, ...rest } = velden;
-          await onBewaar(s.heeftVolgende ? { ...rest, volgendeOp: volgendeOp || null } : rest, 'De gegevens zijn opgeslagen.');
+          if (await onBewaar(s.heeftVolgende ? { ...rest, volgendeOp: volgendeOp || null } : rest, 'De gegevens zijn opgeslagen.', setKaartFout)) setKlaar('Opgeslagen.');
           setBezig(false);
         }}
       >
@@ -552,16 +576,19 @@ function Gegevens({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: boole
             {bezig ? 'Bezig...' : 'Opslaan'}
           </button>
         </div>
+        <KaartMelding fout={kaartFout} klaar={klaar} />
       </form>
     </section>
   );
 }
 
-function Instellingen({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: boolean; onBewaar: (b: Record<string, unknown>, m: string) => Promise<boolean> }) {
+function Instellingen({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: boolean; onBewaar: OpBewaar }) {
   const s = sjabloonVan(insp.sjabloon);
   const begin = Object.fromEntries(s.instellingen.map((v) => [v.sleutel, insp.instellingen[v.sleutel] === null || insp.instellingen[v.sleutel] === undefined ? '' : String(insp.instellingen[v.sleutel]).replace('.', ',')]));
   const [velden, setVelden] = useState<Record<string, string>>(begin);
   const [bezig, setBezig] = useState(false);
+  const [kaartFout, setKaartFout] = useState('');
+  const [klaar, setKlaar] = useState('');
   const lek = insp.totalen.soort === 'persluchtlekken' ? insp.totalen.instellingen : null;
 
   const zichtbaar = (v: InstellingVeld) => {
@@ -582,7 +609,9 @@ function Instellingen({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: b
           e.preventDefault();
           setBezig(true);
           const body = Object.fromEntries(s.instellingen.map((v) => [v.sleutel, velden[v.sleutel] === '' ? null : velden[v.sleutel]]));
-          await onBewaar({ instellingen: body }, insp.sjabloon === 'persluchtlekken' ? 'De uitgangspunten zijn opgeslagen.' : 'De gegevens voor het rapport zijn opgeslagen.');
+          setKaartFout('');
+          setKlaar('');
+          if (await onBewaar({ instellingen: body }, insp.sjabloon === 'persluchtlekken' ? 'De uitgangspunten zijn opgeslagen.' : 'De gegevens voor het rapport zijn opgeslagen.', setKaartFout)) setKlaar('Opgeslagen.');
           setBezig(false);
         }}
       >
@@ -624,6 +653,7 @@ function Instellingen({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: b
             </button>
           </div>
         )}
+        <KaartMelding fout={kaartFout} klaar={klaar} />
       </form>
     </section>
   );

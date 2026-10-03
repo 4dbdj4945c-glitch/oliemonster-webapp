@@ -29,8 +29,9 @@ export function leesPlakLijst(tekst: string): { regels: PlakRegel[]; fouten: Pla
   const isScheiding = (r: string) => /^\|?[\s:|-]+\|?$/.test(r) && r.includes('-');
   alle.forEach((ruw, index) => {
     const nr = index + 1;
-    let regel = ruw.trim();
-    if (!regel) return;
+    // Alleen spaties weghalen, geen tabs: een Excel-rij met een lege eerste cel begint met een tab.
+    let regel = ruw.replace(/^ +| +$/g, '').replace(/\r$/, '');
+    if (!regel.trim()) return;
     // Scheidingsregel van een Markdown-tabel, en de koprij erboven
     if (isScheiding(regel)) return;
     const volgende = alle.slice(index + 1).find((r) => r.trim() !== '');

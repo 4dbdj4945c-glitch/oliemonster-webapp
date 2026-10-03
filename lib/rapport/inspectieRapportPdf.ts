@@ -48,7 +48,7 @@ import {
   zetFonts,
   type RGB,
 } from './rapportPdf';
-import { AMBER_RAND, AMBER_TEKST, AMBER_VLAK, GROEN_TEKST, OORDEEL_TEKST, dagKort, dagTekst, laadInspectieFotos, tekenFotoVak, verklaringGeldtVoor } from './inspectieHulp';
+import { AMBER_RAND, AMBER_TEKST, AMBER_VLAK, GROEN_TEKST, OORDEEL_TEKST, dagKort, dagTekst, ingekort, laadInspectieFotos, tekenFotoVak, verklaringGeldtVoor } from './inspectieHulp';
 import { maakVerzamelrapportPdf, verzamelrapportNaam } from './verzamelrapportPdf';
 
 export { verklaringGeldtVoor };
@@ -377,7 +377,7 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
     const kolommen = 3;
     const fotoB = (breed - (kolommen - 1) * 5) / kolommen;
     const fotoH = fotoB * 0.75;
-    const vakH = fotoH + 10;
+    const vakH = fotoH + 13;
     let k = 0;
     for (const { i, f, n, van } of lijst) {
       if (y + vakH > H - 20) {
@@ -391,13 +391,11 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
       doc.setFont('Inter', 'bold');
       doc.setFontSize(8);
       doc.setTextColor(...NAVY);
-      const naamRegel = (doc.splitTextToSize(naam, fotoB) as string[])[0] ?? '';
-      doc.text(naamRegel, x, y + fotoH + 4);
-      const nrB = doc.getTextWidth(naamRegel);
+      doc.text(ingekort(doc, naam, fotoB), x, y + fotoH + 4);
       doc.setFont('Inter', 'normal');
       doc.setTextColor(...GRIJS_500);
       const onder = f.bijschrift ?? i.locatie;
-      if (onder && fotoB - nrB - 2 > 8) doc.text(doc.splitTextToSize(onder, fotoB - nrB - 2)[0] ?? '', x + nrB + 2, y + fotoH + 4);
+      if (onder) doc.text(ingekort(doc, onder, fotoB), x, y + fotoH + 7.6);
       k += 1;
       if (k === kolommen) {
         k = 0;

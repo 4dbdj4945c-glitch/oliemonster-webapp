@@ -10,7 +10,8 @@ Branch `markering` (niet gepusht, niet gemerged, main ongewijzigd). Gebouwd op 3
 4. `4a1784b` Schermen: foto's per bevinding met bijschrift en voortgang, Lijst plakken, Markering in het invulscherm, verzamelrapport kiezen in het overzicht
 5. `fdccb4e` Tests voor markering, lijst plakken, meerdere foto's, afscherming en het verzamelrapport
 6. `897dc29` dit bestand
-7. Reviewronde: foto's naar de wachtrij bij wegvallend bereik, vragen bij sluiten, foto weghalen zacht met Ongedaan maken, grens van 500 foto's per verzamelrapport, koprij Markdown-tabel, kleine fixes
+7. `79b2d07` Reviewronde: foto's naar de wachtrij bij wegvallend bereik, vragen bij sluiten, foto weghalen zacht met Ongedaan maken, grens van 500 foto's per verzamelrapport, koprij Markdown-tabel, kleine fixes
+8. Testronde: meldingen in beeld bij de knop, bijschriften in de PDF over 2 regels met puntjes, lege eerste cel bij plakken, 44px knoppen, geen Volgende bij markering, objecten uniek tellen
 
 ## Wat Roel nog moet doen
 
@@ -43,11 +44,15 @@ Branch `markering` (niet gepusht, niet gemerged, main ongewijzigd). Gebouwd op 3
 12. **Verzamelrapport voor alle sjablonen**: werkt ook voor lekken en arbeidsmiddelen (één klant, één soort). Bij arbeidsmiddelen komt de verklaring art. 7.4a met de lijst waarvoor hij geldt, net als in het enkele rapport. Het enkele rapport van lekken en arbeidsmiddelen is ongewijzigd, behalve dat de fotobijlage nu alle foto's per bevinding heeft (met "(2/3)" en het bijschrift).
 13. **Bedrijfsgegevens** in `CONTACT` (`lib/rapport/rapportPdf.ts`) aangevuld met werkplaats Hoolstraat 21, 6006 SL Weert, postadres Warande 11, 5591 LN Heeze en de website. De postcode van Weert komt uit Roels eigen bedrijfsgegevens; in `app/privacy/tekst.ts` staat Weert nog zonder postcode.
 14. **Rapporttijd**: hoogstens 500 foto's samen in een verzamelrapport met foto's (daarboven een melding: maak hem zonder foto's of in delen); in de selectiebalk staat ook "Zonder foto's". De knop Verzamelrapport controleert eerst (`&controle=1`), zodat zo'n melding op het scherm komt en niet als kapotte download. `maxDuration` blijft 60 seconden (zoals alle PDF-routes; een hogere waarde kan bij een Hobby-abonnement zonder Fluid compute de deploy laten mislukken). Foto's laden 8 tegelijk, verkleind tot 400 px JPEG (laadFotoKlein). Voorbeeld met 33 foto's: 0,2 seconde lokaal. Grote PDF's (boven 4 MB) gaan zoals altijd via de opslag.
-15. **Algemeen gehouden**: geen klantnamen of "asbest" in code, koppen of navigatie. Teksten in Schil (Nieuw-menu), modulebeschrijving en de overzichtspagina noemen nu lekken, arbeidsmiddelen en markering.
+15. **Meldingen bij de knop** (testronde): Afronden of Terug naar concept die mislukt, toont de melding in de kaart Rapport, direct onder de knop, zonder Opnieuw proberen. Die verdwijnt bij een nieuwe poging, na het opslaan van een bevinding of na een geslaagde wijziging. Zo ook voor de kaarten Gegevens en Gegevens voor het rapport (met "Opgeslagen." bij succes) en voor Bevinding weghalen (melding in het venster). Bovenaan de pagina staat alleen nog een laadfout.
+16. **Bijschriften in de PDF** lopen over hoogstens 2 regels en eindigen dan op "..." (verzamelrapport). In de fotobijlage van het enkele rapport staat de naam op regel 1 en het bijschrift of de locatie op regel 2, elk met puntjes als het niet past.
+17. **Lijst plakken**: alleen spaties worden weggehaald, geen tabs, dus een Excel-rij met een lege eerste cel is een foute regel ("De eerste kolom (titel) is leeg") in plaats van stil op te schuiven.
+18. **Voorblad**: Objecten telt unieke objecten (met "(3 inspecties)" erachter als dat er meer zijn). Totalen voor lekken op het voorblad zijn er niet.
+19. **Algemeen gehouden**: geen klantnamen of "asbest" in code, koppen of navigatie. Teksten in Schil (Nieuw-menu), modulebeschrijving en de overzichtspagina noemen nu lekken, arbeidsmiddelen en markering.
 
 ## Gecontroleerd
 
-- `npm test`: 30 bestanden, **312 tests groen** (was 292). Nieuw: sjabloon markering, verklaring met en zonder opdracht, telling/uitkomst, afronden zonder uitslag geweigerd, lijst plakken (parser met foute regels, Markdown, maximum; route met 400 bij foute regel en te veel regels, 409 bij afgerond, 403 voor gebruiker), meerdere foto's toevoegen/bijschrift/weghalen (ook via het oude adres, 409 bij afgerond, 403 voor gebruiker), idempotente foto-upload, afscherming kijker (404), oud foto-adres, migratie-SQL zet fotoUrl over, verzamelrapport weigert gemengde klant of soort (400), niet voor gebruiker of kijker (403), levert een PDF voor markering en lekken, wachtrij met meerdere foto's, herkomst.
+- `npm test`: 30 bestanden, **313 tests groen** (was 292). Nieuw: sjabloon markering, verklaring met en zonder opdracht, telling/uitkomst, afronden zonder uitslag geweigerd, lijst plakken (parser met foute regels, Markdown, maximum; route met 400 bij foute regel en te veel regels, 409 bij afgerond, 403 voor gebruiker), meerdere foto's toevoegen/bijschrift/weghalen (ook via het oude adres, 409 bij afgerond, 403 voor gebruiker), idempotente foto-upload, afscherming kijker (404), oud foto-adres, migratie-SQL zet fotoUrl over, verzamelrapport weigert gemengde klant of soort (400), niet voor gebruiker of kijker (403), levert een PDF voor markering en lekken, wachtrij met meerdere foto's, herkomst.
 - `npm run lint`: 0 fouten (30 waarschuwingen, allemaal al bestaand).
 - `npm run build`: geslaagd (met lokale DATABASE_URL).
 - `npm run db:controle`: "No difference detected" (eigen shadow-database).

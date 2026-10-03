@@ -5084,6 +5084,8 @@ div.veld-lijst-regel { cursor: default; }
 .insp-foto-toevoegen { position: relative; align-self: flex-start; }
 .insp-foto-toevoegen input[type='file'] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .insp-foto-toevoegen:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+.insp-kaart-klaar { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--groen-tekst); }
+.insp-kaart .alert { margin: 12px 0 0; }
 .insp-fototal { display: inline-flex; align-items: center; gap: 2px; color: var(--grijs-500); }
 .insp-fototal small { font-size: 12px; font-weight: 600; }
 .insp-foto-voortgang { margin: 0; font-size: 14px; font-weight: 600; color: var(--navy); }
@@ -5137,6 +5139,7 @@ div.veld-lijst-regel { cursor: default; }
   .insp-tabel td.insp-kies label { width: auto; height: 44px; margin: 0; gap: 10px; justify-content: flex-start; }
   .insp-selectie { position: sticky; top: 8px; z-index: 5; }
   .insp-selectie .knoppenrij { width: 100%; }
+  .insp-selectie .btn-sm { min-height: 44px; }
   .insp-waarschuwing-klein { justify-content: flex-end; text-align: right; }
 }
 

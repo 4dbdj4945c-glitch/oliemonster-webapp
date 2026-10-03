@@ -38,7 +38,7 @@ import {
   zetFonts,
   type RGB,
 } from './rapportPdf';
-import { AMBER_RAND, AMBER_TEKST, AMBER_VLAK, BLAUW, OORDEEL_TEKST, dagKort, dagTekst, laadInspectieFotos, tekenFotoVak, verklaringGeldtVoor } from './inspectieHulp';
+import { AMBER_RAND, AMBER_TEKST, AMBER_VLAK, BLAUW, OORDEEL_TEKST, dagKort, dagTekst, ingekort, laadInspectieFotos, tekenFotoVak, verklaringGeldtVoor } from './inspectieHulp';
 
 export interface VerzamelrapportOpties {
   origin?: string;
@@ -210,7 +210,8 @@ export async function maakVerzamelrapportPdf(invoer: InspectieRij[], opties: Ver
     gegevens.push(['Object', [rijen[0].object.name, rijen[0].object.address].filter(Boolean).join(', ')]);
     gegevens.push(['Nummer', inspectieNummer(rijen[0].id)]);
   } else {
-    gegevens.push(['Objecten', String(rijen.length)]);
+    const objecten = new Set(rijen.map((r) => r.objectId)).size;
+    gegevens.push(['Objecten', objecten === rijen.length ? String(objecten) : `${objecten} (${rijen.length} inspecties)`]);
   }
   gegevens.push([hoofdletter(s.item.meervoud), String(alleItems.length)]);
   const soort = eersteTekst(instellingen, 'markering');
@@ -478,7 +479,7 @@ export async function maakVerzamelrapportPdf(invoer: InspectieRij[], opties: Ver
       const regelsH = regels.reduce((som, x) => som + x.w.length * 4.2 + 0.8, 0);
       const kopH = 7 + regelsH + 2;
       const fotos = metFotos ? i.fotos : [];
-      const rijHoogte = (vanaf: number) => fotoH + (fotos.slice(vanaf, vanaf + fotoKolommen).some((f) => f.bijschrift) ? 9 : 4);
+      const rijHoogte = (vanaf: number) => fotoH + (fotos.slice(vanaf, vanaf + fotoKolommen).some((f) => f.bijschrift) ? 12 : 4);
       // Kop van de bevinding nooit los onderaan een pagina: met de eerste rij foto's samen.
       if (pastNiet(kopH + (fotos.length ? rijHoogte(0) : 8))) nieuwePagina();
 
@@ -522,7 +523,7 @@ export async function maakVerzamelrapportPdf(invoer: InspectieRij[], opties: Ver
             doc.setFont('Inter', 'normal');
             doc.setFontSize(7.5);
             doc.setTextColor(...GRIJS_700);
-            doc.text((doc.splitTextToSize(f.bijschrift, fotoB) as string[]).slice(0, 1), x, y + fotoH + 4);
+            doc.text(ingekort(doc, f.bijschrift, fotoB, 2), x, y + fotoH + 4);
           }
         });
         y += h;

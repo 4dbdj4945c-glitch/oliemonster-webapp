@@ -64,6 +64,20 @@ export function tekenFotoVak(doc: jsPDF, beeld: Beeld | null, x: number, y: numb
   }
 }
 
+/**
+ * Tekst passend in een breedte, hoogstens `regels` regels. Past het niet, dan
+ * eindigt de laatste regel op "...". Lettertype en grootte moeten al gezet zijn.
+ */
+export function ingekort(doc: jsPDF, tekst: string, breedte: number, regels = 1): string[] {
+  const alle = doc.splitTextToSize(tekst, breedte) as string[];
+  if (alle.length <= regels) return alle;
+  const uit = alle.slice(0, regels);
+  let laatste = uit[regels - 1];
+  while (laatste.length > 1 && doc.getTextWidth(`${laatste}...`) > breedte) laatste = laatste.slice(0, -1);
+  uit[regels - 1] = `${laatste.trimEnd().replace(/[,.;:]$/, '')}...`;
+  return uit;
+}
+
 /** Alle foto's van een lijst bevindingen verkleind laden, acht tegelijk (zoals het oliemonsterrapport). Sleutel: id van de foto. */
 export async function laadInspectieFotos(
   items: { fotos: { id: number; url: string }[] }[],

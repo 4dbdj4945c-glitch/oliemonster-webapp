@@ -321,7 +321,7 @@ export default function InspectiesPagina() {
                             )}
                             </span>
                           </td>
-                          <td data-label="Volgende" className="getal insp-dag">{dagKort(i.volgende)}</td>
+                          <td data-label="Volgende" className={`getal insp-dag${SJABLONEN[i.sjabloon].heeftVolgende ? '' : ' kaart-leeg'}`}>{SJABLONEN[i.sjabloon].heeftVolgende ? dagKort(i.volgende) : ''}</td>
                           <td data-label="Status">
                             <span className={`badge ${INSPECTIE_STATUS_BADGE[i.status]}`}>
                               <Icon name={i.status === 'afgerond' ? 'status-taken' : 'pencil'} size={16} />

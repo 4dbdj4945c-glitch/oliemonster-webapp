@@ -235,6 +235,12 @@ describe('lijst plakken', () => {
     expect(regels.map((r) => [r.titel, r.locatie])).toEqual([['Bron 6', 'Kast'], ['Bron 9', 'NSA-ruimte']]);
   });
 
+  it('een Excel-rij met een lege eerste cel schuift niet op, maar is een foute regel', () => {
+    const { regels, fouten } = leesPlakLijst(['Bron 6\tKast\t13 stuks', '\tKast in NSA-ruimte\t8 m1'].join('\n'));
+    expect(regels.map((r) => r.titel)).toEqual(['Bron 6']);
+    expect(fouten).toMatchObject([{ nr: 2, melding: 'De eerste kolom (titel) is leeg' }]);
+  });
+
   it('meer dan het maximum aan regels is een fout', () => {
     const { fouten } = leesPlakLijst(Array.from({ length: MAX_PLAK_REGELS + 1 }, (_, i) => `Bron ${i}`).join('\n'));
     expect(fouten.at(-1)?.melding).toMatch(/Hoogstens/);

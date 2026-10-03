@@ -104,7 +104,8 @@ export default function BevindingVenster({
   onClose: () => void;
   /** Na opslaan: de inspectie zoals de server hem teruggeeft. */
   onOpgeslagen: (nieuw: Inspectie, sluiten: boolean) => void;
-  onWeghalen?: (item: Bevinding) => void;
+  /** Geeft de foutmelding terug als weghalen mislukt (die komt dan in het venster). */
+  onWeghalen?: (item: Bevinding) => Promise<string | null>;
   /** Zonder bereik in de wachtrij gezet: de melding voor het scherm. */
   onBewaard?: (melding: string, sluiten: boolean) => void;
   /** Een foto is weggehaald (zacht): de pagina toont Ongedaan maken. */
@@ -592,7 +593,7 @@ export default function BevindingVenster({
         {fout && <div className="alert alert-danger" role="alert">{fout}</div>}
 
         {item && onWeghalen && (
-          <button type="button" className="btn btn-sm btn-ghost insp-weghalen" onClick={() => onWeghalen(item)} disabled={bezig}>
+          <button type="button" className="btn btn-sm btn-ghost insp-weghalen" onClick={async () => { setFout(''); const m = await onWeghalen(item); if (m) setFout(m); }} disabled={bezig}>
             <Icon name="trash" size={16} />
             {`${s.item.enkel.charAt(0).toUpperCase()}${s.item.enkel.slice(1)} weghalen`}
           </button>
