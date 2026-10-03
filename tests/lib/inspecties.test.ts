@@ -15,7 +15,8 @@ import {
 } from '@/lib/inspecties/sjablonen';
 import { verklaringGeldtVoor } from '@/lib/rapport/inspectieRapportPdf';
 import { berekenLek, energiePerM3, lekInstellingen, lekTotalen, markeringTelling, uitkomstTekst, volgendeInspectie } from '@/lib/inspecties/rekenen';
-import { verklaringMarkering } from '@/lib/inspecties/sjablonen';
+import { verklaringMarkering, inspectieTitel, rapportTitel } from '@/lib/inspecties/sjablonen';
+import { verzamelrapportNaam } from '@/lib/rapport/verzamelrapportPdf';
 import { leesPlakLijst, MAX_PLAK_REGELS } from '@/lib/inspecties/plakken';
 import { afrondFout } from '@/lib/inspecties/server';
 
@@ -153,6 +154,21 @@ describe('rekenen persluchtlekken', () => {
   });
 });
 
+describe('eigen titel', () => {
+  it('leeg: naam van het sjabloon en standaardtitel van het rapport', () => {
+    expect(inspectieTitel('markering', {})).toBe('Markering');
+    expect(rapportTitel('markering', { titel: '   ' })).toBe('Opleverrapport markering');
+    expect(rapportTitel('persluchtlekken', null)).toBe('Rapport persluchtlekken');
+  });
+  it('ingevuld: overal de eigen titel, ook in de bestandsnaam', () => {
+    const instellingen = { titel: ' Opleverrapport aanbrengen asbestmarkeringen ' };
+    expect(inspectieTitel('markering', instellingen)).toBe('Opleverrapport aanbrengen asbestmarkeringen');
+    expect(rapportTitel('arbeidsmiddelen', instellingen)).toBe('Opleverrapport aanbrengen asbestmarkeringen');
+    const rij = { sjabloon: 'markering', datum: new Date('2026-10-03T12:00:00Z'), klant: { naam: 'Kempen B.V.' }, instellingen } as unknown as Parameters<typeof verzamelrapportNaam>[0][number];
+    expect(verzamelrapportNaam([rij])).toMatch(/^Opleverrapport-aanbrengen-asbestmarkeringen-kempen/);
+  });
+});
+
 describe('sjabloon markering', () => {
   const s = sjabloonVan('markering');
 
@@ -168,8 +184,8 @@ describe('sjabloon markering', () => {
   });
 
   it('instellingen: een lege standaard blijft leeg, de soort markering krijgt zijn standaard', () => {
-    expect(leesInstellingen(s, {})).toEqual({ opdracht: '', markering: 'Waarschuwingssticker', tav: '' });
-    expect(leesInstellingen(s, { opdracht: '  Rapport 2024-17 ', tav: 'J. Jansen' })).toEqual({ opdracht: 'Rapport 2024-17', markering: 'Waarschuwingssticker', tav: 'J. Jansen' });
+    expect(leesInstellingen(s, {})).toEqual({ titel: '', opdracht: '', markering: 'Waarschuwingssticker', tav: '' });
+    expect(leesInstellingen(s, { opdracht: '  Rapport 2024-17 ', tav: 'J. Jansen' })).toEqual({ titel: '', opdracht: 'Rapport 2024-17', markering: 'Waarschuwingssticker', tav: 'J. Jansen' });
   });
 
   it('verklaring met en zonder opdracht, zonder em-dash', () => {

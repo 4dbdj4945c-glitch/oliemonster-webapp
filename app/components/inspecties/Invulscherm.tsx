@@ -23,7 +23,7 @@ import LaadFout from '@/app/components/LaadFout';
 import OngedaanMelding, { type OngedaanInhoud } from '@/app/components/OngedaanMelding';
 import VeiligVerwijderBlok from '@/app/components/VeiligVerwijderBlok';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
-import { INSPECTIE_STATUS_BADGE, INSPECTIE_STATUS_LABELS, oordeelVan, sjabloonVan, type InstellingVeld } from '@/lib/inspecties/sjablonen';
+import { INSPECTIE_STATUS_BADGE, INSPECTIE_STATUS_LABELS, inspectieTitel, oordeelVan, sjabloonVan, type InstellingVeld } from '@/lib/inspecties/sjablonen';
 import { aantalNietGoed, berekenLek, co2Tekst, euro, nl } from '@/lib/inspecties/rekenen';
 import { ROLE_ADMIN } from '@/lib/roles';
 import BevindingVenster from './BevindingVenster';
@@ -175,7 +175,7 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
         <Icon name="arrow-left" />
       </Link>
       <div className="veld-kop-tekst">
-        <h1>{s?.naam ?? 'Inspectie'}</h1>
+        <h1>{insp ? inspectieTitel(insp.sjabloon, insp.instellingen) : 'Inspectie'}</h1>
         <p>{insp ? `${insp.klant.naam}, ${insp.object.name}, ${dagKort(insp.datum)}` : ' '}</p>
       </div>
     </header>
@@ -601,7 +601,7 @@ function Instellingen({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: b
     <section className="card insp-kaart" aria-labelledby="kop-instellingen">
       <h2 id="kop-instellingen" className="insp-kaart-kop">
         <Icon name="gauge" size={16} />
-        {insp.sjabloon === 'persluchtlekken' ? 'Uitgangspunten voor de berekening' : insp.sjabloon === 'markering' ? 'Gegevens voor het rapport' : 'Verklaring in het rapport'}
+        {insp.sjabloon === 'persluchtlekken' ? 'Rapport en uitgangspunten' : 'Gegevens voor het rapport'}
       </h2>
       <form
         className="veldwerk"

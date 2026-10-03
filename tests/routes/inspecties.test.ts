@@ -303,7 +303,7 @@ describe('markering', () => {
     const leeg = await (await een(verzoek(`/api/inspecties/${id}`), p(id))).json();
     expect(leeg.volgendeOp).toBeNull();
     expect(leeg.volgende).toBeNull();
-    expect(leeg.instellingen).toEqual({ opdracht: '', markering: 'Waarschuwingssticker', tav: '' });
+    expect(leeg.instellingen).toEqual({ titel: '', opdracht: '', markering: 'Waarschuwingssticker', tav: '' });
     expect(leeg.totalen).toMatchObject({ soort: 'markering', aantal: 0 });
 
     const r = await plakken(verzoek(`/api/inspecties/${id}/items/bulk`, { body: { regels: regelsUit(WERKLIJST) } }), p(id));

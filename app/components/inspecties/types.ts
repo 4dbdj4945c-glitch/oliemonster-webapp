@@ -7,6 +7,8 @@ export interface InspectieInLijst {
   id: number;
   nummer: string;
   sjabloon: SjabloonSleutel;
+  /** Eigen titel, anders de naam van het sjabloon. */
+  titel: string;
   status: InspectieStatus;
   datum: string;
   uitvoerder: string;

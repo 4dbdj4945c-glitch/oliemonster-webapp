@@ -19,7 +19,7 @@ import { monstersVanKlant } from './afscherming';
 import { fotoAdres, metInstallatieFoto } from './fotoAdres';
 import { jarenVanKlant, komendePlannen, nlDag, planOpenMonsters } from './klantOpdracht';
 import { INSPECTIE_SELECT } from './inspecties/server';
-import { inspectieNummer, oordeelVan, sjabloonVan, type SjabloonSleutel } from './inspecties/sjablonen';
+import { inspectieNummer, inspectieTitel, oordeelVan, sjabloonVan, type SjabloonSleutel } from './inspecties/sjablonen';
 import { uitkomstTekst, volgendeInspectie } from './inspecties/rekenen';
 import { DAGRAPPORT_DOSSIER_SELECT, dagrapportNummer } from './dagrapporten';
 
@@ -219,7 +219,7 @@ export async function haalDossier(klantId: number, gevraagd: number | null | 'ni
       ...basis,
       sleutel: `inspectie-${i.id}`,
       installatieId: i.installatieId,
-      titel: `${s.naam}, ${nummer}`,
+      titel: `${inspectieTitel(sjabloon, i.instellingen)}, ${nummer}`,
       tekst: [uitkomstTekst(sjabloon, i.items, i.instellingen), i.samenvatting].filter(Boolean).join('. '),
       fotos: i.items
         .flatMap((it) => it.fotos.map((f) => ({ url: fotoAdres('inspectiefoto', f.id, null, f.url)!, label: `${s.item.enkel} ${it.titel}` })))
@@ -233,7 +233,7 @@ export async function haalDossier(klantId: number, gevraagd: number | null | 'ni
         ...basis,
         sleutel: `inspectie-${i.id}-${it.id}`,
         installatieId: it.installatieId,
-        titel: `${s.naam}, ${nummer}`,
+        titel: `${inspectieTitel(sjabloon, i.instellingen)}, ${nummer}`,
         tekst: [oordeelVan(s, it.oordeel)?.label, it.notitie].filter(Boolean).join('. ') || null,
         fotos: it.fotos.map((f) => ({ url: fotoAdres('inspectiefoto', f.id, null, f.url)!, label: it.titel })),
         inspectie: { id: i.id, sjabloon, status: i.status, oordeel: it.oordeel, volgende: it.volgendeOp ? nlDag(it.volgendeOp) : volgende, rapport },

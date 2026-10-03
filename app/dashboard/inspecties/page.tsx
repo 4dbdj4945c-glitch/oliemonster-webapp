@@ -299,7 +299,7 @@ export default function InspectiesPagina() {
                               }}
                             >
                               <Icon name={s.icoon} size={16} />
-                              {s.naam}
+                              {i.titel}
                             </a>
                             <span className="badge badge-gray code-badge insp-nummer">{i.nummer}</span>
                           </td>

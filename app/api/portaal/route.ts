@@ -8,7 +8,6 @@ import { haalOpdracht, jarenVanKlant } from '@/lib/klantOpdracht';
 import { teNemen } from '@/lib/klantStatus';
 import { isAlleenLezen, krijgtKlantportaal } from '@/lib/roles';
 import { inspectiesVanKlant, inspectieInLijst } from '@/lib/inspecties/server';
-import { sjabloonVan } from '@/lib/inspecties/sjablonen';
 import { onderhoudVoorKlant } from '@/lib/contractenServer';
 import { dagrapportNummer, haalDagrapporten } from '@/lib/dagrapporten';
 import { nlDag } from '@/lib/klantOpdracht';
@@ -71,7 +70,7 @@ export const GET = apiRoute(
       return {
         id: i.id,
         nummer: i.nummer,
-        naam: sjabloonVan(i.sjabloon).naam,
+        naam: i.titel,
         sjabloon: i.sjabloon,
         datum: i.datum,
         object: i.object.name,

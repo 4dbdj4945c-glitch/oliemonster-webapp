@@ -18,7 +18,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { InspectieRij } from '../inspecties/server';
 import { nlDag } from '../klantOpdracht';
-import { getal, inspectieNummer, leesInstellingen, luchtketelWaarschuwing, oordeelVan, sjabloonVan, type GetalVeld, type Instellingen, type Sjabloon } from '../inspecties/sjablonen';
+import { eigenTitel, getal, inspectieNummer, leesInstellingen, luchtketelWaarschuwing, oordeelVan, sjabloonVan, type GetalVeld, type Instellingen, type Sjabloon } from '../inspecties/sjablonen';
 import { nl } from '../inspecties/rekenen';
 import {
   BAND_TEKST,
@@ -103,7 +103,7 @@ export async function maakVerzamelrapportPdf(invoer: InspectieRij[], opties: Ver
   const dagen = rijen.map((r) => nlDag(r.datum)).sort();
   const periode = dagen[0] === dagen.at(-1) ? dagTekst(dagen[0]) : `${dagTekst(dagen[0])} t/m ${dagTekst(dagen.at(-1)!)}`;
   const uitvoerders = [...new Set(rijen.map((r) => r.uitvoerder.trim()).filter(Boolean))];
-  const titel = s.rapport.titel;
+  const titel = rijen.map((r) => eigenTitel(r.instellingen)).find(Boolean) ?? s.rapport.titel;
   const meet = tabelMeetwaarden(s);
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
@@ -165,9 +165,23 @@ export async function maakVerzamelrapportPdf(invoer: InspectieRij[], opties: Ver
     doc.text(CONTACT.naam, MARGE, 24);
   }
   doc.setFont('Inter', 'extrabold');
-  doc.setFontSize(24);
   doc.setTextColor(255, 255, 255);
-  doc.text(doc.splitTextToSize(titel, breed)[0] ?? titel, MARGE, 52);
+  // Een eigen titel kan lang zijn: kleiner tot hij op één regel past, en
+  // anders over twee regels (met puntjes als ook dat niet past).
+  let kopMaat = 24;
+  doc.setFontSize(kopMaat);
+  while (kopMaat > 17 && doc.getTextWidth(titel) > breed) doc.setFontSize((kopMaat -= 1));
+  const kopRegels: string[] = doc.splitTextToSize(titel, breed);
+  if (kopRegels.length === 1) doc.text(kopRegels[0], MARGE, 52);
+  else {
+    let tweede = kopRegels.slice(1).join(' ');
+    if (kopRegels.length > 2) {
+      while (tweede.length > 1 && doc.getTextWidth(`${tweede}...`) > breed) tweede = tweede.slice(0, -1).trimEnd();
+      tweede += '...';
+    }
+    doc.text(kopRegels[0], MARGE, 45);
+    doc.text(tweede, MARGE, 52.5);
+  }
   doc.setFont('Inter', 'normal');
   doc.setFontSize(11);
   doc.setTextColor(...BAND_TEKST);
@@ -557,9 +571,10 @@ export async function maakVerzamelrapportPdf(invoer: InspectieRij[], opties: Ver
 }
 
 /** Bestandsnaam: Opleverrapport-markering-kempen-metaalbewerking-b-v-2026-10-03.pdf */
-export function verzamelrapportNaam(rijen: Pick<InspectieRij, 'sjabloon' | 'datum' | 'klant'>[]): string {
+export function verzamelrapportNaam(rijen: Pick<InspectieRij, 'sjabloon' | 'datum' | 'klant' | 'instellingen'>[]): string {
   const s = sjabloonVan(rijen[0].sjabloon);
   const laatste = rijen.map((r) => nlDag(r.datum)).sort().at(-1);
-  const titel = s.rapport.titel.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const eigen = rijen.map((r) => eigenTitel(r.instellingen)).find(Boolean);
+  const titel = (eigen ?? s.rapport.titel).replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '');
   return `${titel}-${schoneNaam(rijen[0].klant.naam) || 'klant'}-${laatste}.pdf`;
 }

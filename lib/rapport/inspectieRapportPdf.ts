@@ -28,6 +28,7 @@ import {
   leesInstellingen,
   luchtketelWaarschuwing,
   oordeelVan,
+  rapportTitel,
   sjabloonVan,
   type SjabloonSleutel,
 } from '../inspecties/sjablonen';
@@ -71,7 +72,7 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
   zetFonts(doc, await laadFonts());
   doc.setProperties({
-    title: `${s.rapport.titel} ${rij.klant.naam} ${datum}`,
+    title: `${rapportTitel(sjabloon, rij.instellingen)} ${rij.klant.naam} ${datum}`,
     subject: `${s.naam}, ${nummer}`,
     author: CONTACT.naam,
     creator: 'IDS Portal',
@@ -85,7 +86,7 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
     klantLogo,
     idsLogo,
     klantNaam: rij.klant.naam,
-    titel: s.rapport.titel,
+    titel: rapportTitel(sjabloon, rij.instellingen),
     onder: `${rij.klant.naam}, ${rij.object.name}, ${dagTekst(datum)}${rij.status === 'concept' ? '. Concept' : ''}`,
   });
 
@@ -412,7 +413,7 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
  * Bestandsnaam: persluchtlekken-2026-09-29-kempen-metaalbewerking-b-v.pdf, bij
  * markering Opleverrapport-markering-kempen-metaalbewerking-b-v-2026-09-29.pdf.
  */
-export function inspectieRapportNaam(rij: Pick<InspectieRij, 'sjabloon' | 'datum' | 'klant'>): string {
+export function inspectieRapportNaam(rij: Pick<InspectieRij, 'sjabloon' | 'datum' | 'klant' | 'instellingen'>): string {
   if (rij.sjabloon === 'markering') return verzamelrapportNaam([rij]);
   return `${rij.sjabloon}-${nlDag(rij.datum)}-${schoneNaam(rij.klant.naam) || 'klant'}.pdf`;
 }

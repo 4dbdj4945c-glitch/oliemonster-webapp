@@ -128,6 +128,36 @@ export type Instellingen = Record<string, number | string | null>;
 export type Waarden = { [sleutel: string]: number | null | Record<string, ChecklistAntwoord> | undefined; checklist?: Record<string, ChecklistAntwoord> };
 
 // ------------------------------------------------------------------
+// Eigen titel (alle sjablonen)
+// ------------------------------------------------------------------
+
+/**
+ * Elke inspectie kan een eigen titel krijgen, bijvoorbeeld "Opleverrapport
+ * aanbrengen asbestmarkeringen". Die staat in de instellingen onder `titel` en
+ * komt op het scherm, in het overzicht, in het klantportaal en als kop van het
+ * rapport. Leeg: de naam van het sjabloon en de standaardtitel van het rapport.
+ */
+function titelVeld(standaard: string): TekstVeld {
+  return { soort: 'tekst', sleutel: 'titel', label: 'Titel van het rapport', standaard: '', hint: `Leeg laten: ${standaard}` };
+}
+
+/** De titel die de gebruiker zelf gaf, of null. */
+export function eigenTitel(instellingen: unknown): string | null {
+  const t = instellingen && typeof instellingen === 'object' ? (instellingen as Record<string, unknown>).titel : null;
+  return typeof t === 'string' && t.trim() ? t.trim().slice(0, 200) : null;
+}
+
+/** De naam van een inspectie op het scherm: de eigen titel, anders de naam van het sjabloon. */
+export function inspectieTitel(sjabloon: string, instellingen: unknown): string {
+  return eigenTitel(instellingen) ?? sjabloonVan(sjabloon).naam;
+}
+
+/** De kop van het rapport: de eigen titel, anders de standaardtitel van het sjabloon. */
+export function rapportTitel(sjabloon: string, instellingen: unknown): string {
+  return eigenTitel(instellingen) ?? sjabloonVan(sjabloon).rapport.titel;
+}
+
+// ------------------------------------------------------------------
 // Persluchtlekken
 // ------------------------------------------------------------------
 
@@ -160,6 +190,7 @@ const PERSLUCHTLEKKEN: Sjabloon = {
   ],
   checklist: [],
   instellingen: [
+    titelVeld('Rapport persluchtlekken'),
     { soort: 'getal', sleutel: 'drukBar', label: 'Netdruk', eenheid: 'bar', min: 0.5, max: 40, decimalen: 1, standaard: 7 },
     { soort: 'getal', sleutel: 'draaiuren', label: 'Draaiuren per jaar', eenheid: 'uur', min: 1, max: 8760, decimalen: 0, standaard: 2000, hint: 'Uren per jaar dat het net onder druk staat. 2.000 is één ploeg.' },
     {
@@ -271,6 +302,7 @@ const ARBEIDSMIDDELEN: Sjabloon = {
     { sleutel: 'markering', label: 'Typeplaatje en markeringen leesbaar' },
   ],
   instellingen: [
+    titelVeld('Inspectierapport technische staat'),
     { soort: 'tekst', sleutel: 'norm', label: 'Volgens norm of voorschrift', standaard: STANDAARD_NORM, hint: 'Komt letterlijk in de verklaring in het rapport.' },
   ],
   reparatie: false,
@@ -327,6 +359,7 @@ const MARKERING: Sjabloon = {
   meetwaarden: [{ soort: 'getal', sleutel: 'stickers', label: 'Aantal stickers geplakt', kort: 'Stickers', min: 0, max: 1000, decimalen: 0 }],
   checklist: [],
   instellingen: [
+    titelVeld('Opleverrapport markering'),
     {
       soort: 'tekst',
       sleutel: 'opdracht',
