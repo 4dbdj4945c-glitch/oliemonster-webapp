@@ -203,6 +203,8 @@ const ITEM_SELECT = {
 
 export const INSPECTIE_SELECT = {
   id: true,
+  nummerJaar: true,
+  volgnummer: true,
   sjabloon: true,
   klantId: true,
   objectId: true,
@@ -255,7 +257,7 @@ export function inspectieAlsJson(rij: InspectieRij) {
   }));
   return {
     ...rij,
-    nummer: inspectieNummer(rij.id),
+    nummer: inspectieNummer(rij),
     datum: nlDag(rij.datum),
     volgendeOp: rij.volgendeOp ? nlDag(rij.volgendeOp) : null,
     klant: { id: rij.klant.id, naam: rij.klant.naam, plaats: rij.klant.plaats },
@@ -272,7 +274,7 @@ export function inspectieInLijst(rij: InspectieRij) {
   const sjabloon = rij.sjabloon as SjabloonSleutel;
   return {
     id: rij.id,
-    nummer: inspectieNummer(rij.id),
+    nummer: inspectieNummer(rij),
     sjabloon,
     titel: inspectieTitel(sjabloon, rij.instellingen),
     status: rij.status,

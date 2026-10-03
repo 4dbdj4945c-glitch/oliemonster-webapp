@@ -32,7 +32,7 @@ export interface Invoer {
   soort: InvoerSoort;
   /** Wie de invoer deed: een andere gebruiker op dezelfde telefoon verstuurt hem niet. */
   gebruiker: string;
-  /** Voor op het scherm: "O-2026-008 nemen", "Lek 204, INS-5" */
+  /** Voor op het scherm: "O-2026-008 nemen", "Lek 204, INS-2026-005" */
   titel: string;
   aangemaakt: number;
   /** Monster nemen */

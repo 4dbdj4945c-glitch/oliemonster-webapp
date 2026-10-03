@@ -110,7 +110,7 @@ export async function maakVerzamelrapportPdf(invoer: InspectieRij[], opties: Ver
   zetFonts(doc, await laadFonts());
   doc.setProperties({
     title: `${titel} ${klant.naam} ${dagen.at(-1)}`,
-    subject: enkel ? `${s.naam}, ${inspectieNummer(rijen[0].id)}` : `${s.naam}, ${rijen.length} inspecties`,
+    subject: enkel ? `${s.naam}, ${inspectieNummer(rijen[0])}` : `${s.naam}, ${rijen.length} inspecties`,
     author: CONTACT.naam,
     creator: 'IDS Portal',
   });
@@ -222,7 +222,7 @@ export async function maakVerzamelrapportPdf(invoer: InspectieRij[], opties: Ver
   gegevens.push(['Uitgevoerd door', `${uitvoerders.join(', ')}, ${CONTACT.naam}`]);
   if (enkel) {
     gegevens.push(['Object', [rijen[0].object.name, rijen[0].object.address].filter(Boolean).join(', ')]);
-    gegevens.push(['Nummer', inspectieNummer(rijen[0].id)]);
+    gegevens.push(['Nummer', inspectieNummer(rijen[0])]);
   } else {
     const objecten = new Set(rijen.map((r) => r.objectId)).size;
     gegevens.push(['Objecten', objecten === rijen.length ? String(objecten) : `${objecten} (${rijen.length} inspecties)`]);
@@ -362,7 +362,7 @@ export async function maakVerzamelrapportPdf(invoer: InspectieRij[], opties: Ver
     if (!enkel) {
       body.push([
         {
-          content: `${r.object.name}   ${inspectieNummer(r.id)}${r.status === 'concept' ? ', concept' : ''}`,
+          content: `${r.object.name}   ${inspectieNummer(r)}${r.status === 'concept' ? ', concept' : ''}`,
           colSpan: kolommen.length,
           styles: { fillColor: GRIJS_50, fontStyle: 'bold', textColor: NAVY },
         },
@@ -458,7 +458,7 @@ export async function maakVerzamelrapportPdf(invoer: InspectieRij[], opties: Ver
     doc.setTextColor(...GRIJS_700);
     const onder = [
       r.object.address,
-      `${inspectieNummer(r.id)}, ${dagTekst(nlDag(r.datum))}, uitgevoerd door ${r.uitvoerder}${r.status === 'concept' ? '. Concept, nog niet afgerond' : ''}`,
+      `${inspectieNummer(r)}, ${dagTekst(nlDag(r.datum))}, uitgevoerd door ${r.uitvoerder}${r.status === 'concept' ? '. Concept, nog niet afgerond' : ''}`,
       tellingTekst(s, r.items),
     ].filter(Boolean) as string[];
     onder.forEach((t) => {

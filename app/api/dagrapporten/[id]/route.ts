@@ -10,7 +10,7 @@ import { DagrapportWijzigingSchema, alleenConcept, wijzigConcept, controleerObje
 /*
   GET    /api/dagrapporten/[id] - het dagrapport met foto's en handtekening (beheerder en gebruiker)
   PUT    /api/dagrapporten/[id] - alle velden van de werkbon (admin, alleen een concept)
-  DELETE /api/dagrapporten/[id] - naar de prullenbak (admin, body { bevestig: "WB-12" })
+  DELETE /api/dagrapporten/[id] - naar de prullenbak (admin, body { bevestig: "WB-2026-012" })
 */
 
 export const GET = apiRoute({ rol: 'user', module: 'dagrapporten', fout: 'Fout bij ophalen van de werkbon' }, async (_request, context, sessie) => {
@@ -44,9 +44,9 @@ const VerwijderSchema = z.object({ bevestig: z.string().optional() });
 
 export const DELETE = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout bij verwijderen van de werkbon' }, async (request, context, sessie) => {
   const id = await leesId(context, 'Onbekende werkbon');
-  await haalDagrapport(id, sessie);
+  const rij = await haalDagrapport(id, sessie);
   const { bevestig } = await leesJson(request, VerwijderSchema);
-  const nummer = dagrapportNummer(id);
+  const nummer = dagrapportNummer(rij);
   if ((bevestig ?? '').trim().toUpperCase() !== nummer) throw new ApiFout(400, `Typ ${nummer} over om het verwijderen te bevestigen.`);
   await prisma.dagrapport.update({ where: { id }, data: { deletedAt: new Date(), deletedBy: sessie.username } });
   await createAuditLog({ userId: sessie.userId, username: sessie.username, action: AuditActions.DELETE_DAGRAPPORT, details: { id, nummer, zacht: true }, request });

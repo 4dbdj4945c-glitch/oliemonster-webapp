@@ -7,6 +7,8 @@
 // afgerond zonder handtekening (status afgerond). In beide gevallen ligt hij
 // daarna vast en staat hij in het klantdossier en het klantportaal.
 
+import { documentNummer, type Genummerd } from './nummering';
+
 export type WerkbonStatus = 'concept' | 'afgerond' | 'getekend';
 export const WERKBON_STATUSSEN = ['concept', 'afgerond', 'getekend'] as const;
 /** Statussen die vastliggen en die de klant in het portaal ziet. */
@@ -18,9 +20,9 @@ export const STATUS_LABEL: Record<WerkbonStatus, string> = {
   getekend: 'Getekend',
 };
 
-/** WB-12, voor op het scherm en in de PDF. */
-export function werkbonNummer(id: number): string {
-  return `WB-${id}`;
+/** WB-2026-001, voor op het scherm en in de PDF (lib/nummering.ts). */
+export function werkbonNummer(r: Genummerd): string {
+  return documentNummer('WB', r);
 }
 
 export const SOORTEN_WERK = [

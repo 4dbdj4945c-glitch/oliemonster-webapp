@@ -25,7 +25,7 @@ import { SOORT_WERK_WAARDEN, TIJDSOORTEN, VASTE_STATUSSEN, minutenUitTijden, wer
 
 type Wie = Pick<Gebruiker, 'role' | 'klantId' | 'viewYear'>;
 
-/** WB-12, voor op het scherm en in de PDF. */
+/** WB-2026-012, voor op het scherm en in de PDF. */
 export const dagrapportNummer = werkbonNummer;
 
 /** Een handtekening als PNG in een data-URL, niet groter dan dit (tekst). */
@@ -211,6 +211,8 @@ export async function controleerObject(objectId: number | null | undefined, klan
 
 export const DAGRAPPORT_SELECT = {
   id: true,
+  nummerJaar: true,
+  volgnummer: true,
   klantId: true,
   planId: true,
   objectId: true,
@@ -254,6 +256,8 @@ export type DagrapportRij = Prisma.DagrapportGetPayload<{ select: typeof DAGRAPP
  */
 export const DAGRAPPORT_LIJST_SELECT = {
   id: true,
+  nummerJaar: true,
+  volgnummer: true,
   klantId: true,
   planId: true,
   datum: true,
@@ -299,7 +303,7 @@ export function leesMaterialen(w: Prisma.JsonValue | null): Materiaal[] {
 export function dagrapportAlsJson(rij: DagrapportRij) {
   return {
     id: rij.id,
-    nummer: dagrapportNummer(rij.id),
+    nummer: dagrapportNummer(rij),
     klant: { id: rij.klant.id, naam: rij.klant.naam },
     planId: rij.planId,
     planDag: rij.plan ? nlDag(rij.plan.date) : null,
@@ -337,7 +341,7 @@ export type DagrapportJson = ReturnType<typeof dagrapportAlsJson>;
 export function dagrapportInLijst(rij: DagrapportLijstRij) {
   return {
     id: rij.id,
-    nummer: dagrapportNummer(rij.id),
+    nummer: dagrapportNummer(rij),
     klant: { id: rij.klant.id, naam: rij.klant.naam },
     object: rij.object ? { id: rij.object.id, name: rij.object.name } : null,
     planId: rij.planId,

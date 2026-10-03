@@ -65,7 +65,7 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
   const s = sjabloonVan(sjabloon);
   const instellingen = leesInstellingen(s, rij.instellingen);
   const metFotos = opties.metFotos ?? true;
-  const nummer = inspectieNummer(rij.id);
+  const nummer = inspectieNummer(rij);
   const datum = nlDag(rij.datum);
   const volgende = volgendeInspectie(sjabloon, rij.volgendeOp, rij.items);
 

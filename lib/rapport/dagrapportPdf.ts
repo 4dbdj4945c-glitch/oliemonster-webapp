@@ -64,7 +64,7 @@ async function laadHandtekening(dataUrl: string | null): Promise<Beeld | null> {
 }
 
 export async function maakDagrapportPdf(rij: DagrapportRij, opties: { origin?: string } = {}): Promise<Buffer> {
-  const nummer = dagrapportNummer(rij.id);
+  const nummer = dagrapportNummer(rij);
   const datum = nlDag(rij.datum);
   const materialen = leesMaterialen(rij.materialen);
 
@@ -347,7 +347,7 @@ export async function maakDagrapportPdf(rij: DagrapportRij, opties: { origin?: s
   return Buffer.from(doc.output('arraybuffer'));
 }
 
-/** Bestandsnaam: werkbon-wb-12-2026-09-08-kempen-metaalbewerking-b-v.pdf */
-export function dagrapportNaam(rij: Pick<DagrapportRij, 'id' | 'datum' | 'klant'>): string {
-  return `werkbon-${dagrapportNummer(rij.id).toLowerCase()}-${nlDag(rij.datum)}-${schoneNaam(rij.klant.naam) || 'klant'}.pdf`;
+/** Bestandsnaam: werkbon-wb-2026-012-2026-09-08-kempen-metaalbewerking-b-v.pdf */
+export function dagrapportNaam(rij: Pick<DagrapportRij, 'id' | 'nummerJaar' | 'volgnummer' | 'datum' | 'klant'>): string {
+  return `werkbon-${dagrapportNummer(rij).toLowerCase()}-${nlDag(rij.datum)}-${schoneNaam(rij.klant.naam) || 'klant'}.pdf`;
 }

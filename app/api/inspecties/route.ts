@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { metVolgnummer } from '@/lib/nummeringServer';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
@@ -41,20 +42,23 @@ export const POST = apiRoute({ rol: 'admin', module: 'inspecties', fout: 'Fout b
   await controleerInstallatie(invoer.installatieId, object.klantId);
 
   const s = sjabloonVan(invoer.sjabloon);
-  const inspectie = await prisma.inspectie.create({
+  const datum = dagAlsDatum(invoer.datum);
+  const klantId = object.klantId;
+  const inspectie = await metVolgnummer('inspectie', datum, (nummer) => prisma.inspectie.create({
     data: {
+      ...nummer,
       sjabloon: invoer.sjabloon,
-      klantId: object.klantId,
+      klantId,
       objectId: object.id,
       installatieId: invoer.installatieId ?? null,
-      datum: dagAlsDatum(invoer.datum),
+      datum,
       uitvoerder: invoer.uitvoerder,
       samenvatting: invoer.samenvatting ?? null,
       instellingen: leesInstellingen(s, {}),
       volgendeOp: s.heeftVolgende ? dagAlsDatum(plusMaanden(invoer.datum, s.volgendeNaMaanden)) : null,
     },
     select: { id: true },
-  });
+  }));
   await createAuditLog({
     userId: sessie.userId,
     username: sessie.username,

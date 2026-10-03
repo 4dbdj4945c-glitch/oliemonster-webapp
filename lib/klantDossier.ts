@@ -32,7 +32,7 @@ export interface Moment {
   datum: string | null;
   /** null bij een inspectie */
   monsterId: number | null;
-  /** O-nummer, of bij een inspectie het nummer (INS-12) */
+  /** O-nummer, of bij een inspectie het nummer (INS-2026-012) */
   oNumber: string;
   jaar: number;
   objectId: number | null;
@@ -211,7 +211,7 @@ export async function haalDossier(klantId: number, gevraagd: number | null | 'ni
   for (const i of inspecties) {
     const sjabloon = i.sjabloon as SjabloonSleutel;
     const s = sjabloonVan(sjabloon);
-    const nummer = inspectieNummer(i.id);
+    const nummer = inspectieNummer(i);
     const rapport = `/api/inspecties/${i.id}/rapport`;
     const volgende = volgendeInspectie(sjabloon, i.volgendeOp, i.items);
     const basis = { monsterId: null, oNumber: nummer, jaar: new Date(i.datum).getUTCFullYear(), objectId: i.objectId, soort: 'inspectie' as const, datum: nlDag(i.datum), door: i.uitvoerder };
@@ -243,7 +243,7 @@ export async function haalDossier(klantId: number, gevraagd: number | null | 'ni
   }
 
   for (const r of dagrapporten) {
-    const nummer = dagrapportNummer(r.id);
+    const nummer = dagrapportNummer(r);
     momenten.push({
       sleutel: `dagrapport-${r.id}`,
       soort: 'dagrapport',

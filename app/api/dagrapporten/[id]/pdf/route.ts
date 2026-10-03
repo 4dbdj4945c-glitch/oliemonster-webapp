@@ -24,7 +24,7 @@ export const GET = apiRoute({ rol: 'alleen_lezen', module: 'dagrapporten', fout:
     userId: sessie.userId,
     username: sessie.username,
     action: AuditActions.DAGRAPPORT_DOWNLOAD,
-    details: { id, nummer: dagrapportNummer(id), klantId: rij.klantId, klant: rij.klant.naam },
+    details: { id, nummer: dagrapportNummer(rij), klantId: rij.klantId, klant: rij.klant.naam },
     request,
   });
   return pdfAntwoord(pdf, dagrapportNaam(rij));

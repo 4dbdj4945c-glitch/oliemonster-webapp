@@ -88,7 +88,7 @@ export const GET = apiRoute(
     // concept ziet de klant nooit, ook niet in het voorbeeld van de beheerder.
     const dagrapporten = (await haalDagrapporten(sessie, { klantId, status: { in: VASTE_STATUSSEN } })).map((r) => ({
       id: r.id,
-      nummer: dagrapportNummer(r.id),
+      nummer: dagrapportNummer(r),
       datum: nlDag(r.datum),
       plek: r.object?.name ?? null,
       getekendDoor: r.getekendDoor,

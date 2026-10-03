@@ -56,7 +56,7 @@ describe('dagrapport invullen en tekenen (admin)', () => {
     );
     expect(res.status).toBe(201);
     const d = await res.json();
-    expect(d).toMatchObject({ nummer: `WB-${d.id}`, status: 'concept', minuten: 150, planId: ids.dagen.vandaag, object: { id: ids.werkplaats } });
+    expect(d).toMatchObject({ nummer: 'WB-2026-001', status: 'concept', minuten: 150, planId: ids.dagen.vandaag, object: { id: ids.werkplaats } });
 
     // Object van een andere klant: nee.
     expect((await wijzig(verzoek(`/api/dagrapporten/${d.id}`, { method: 'PUT', body: { objectId: ids.objecten[0] } }), p(d.id))).status).toBe(400);

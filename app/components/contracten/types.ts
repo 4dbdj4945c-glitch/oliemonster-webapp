@@ -37,7 +37,7 @@ export interface Contract {
 
 /** Waar een uitvoering vandaan kwam, in woorden. */
 export function bronTekst(bron: string): string {
-  if (bron.startsWith('inspectie-')) return `afgeronde inspectie INS-${bron.slice(10)}`;
+  if (bron.startsWith('inspectie-')) return 'uit een afgeronde inspectie';
   if (bron.startsWith('stop-')) return 'afgevinkt op de planning';
   return 'met de hand';
 }

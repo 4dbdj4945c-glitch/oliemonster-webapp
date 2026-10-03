@@ -9,6 +9,7 @@
 // Geen server-imports: dit bestand draait ook in de browser.
 
 import type { IconNaam } from '@/app/components/ui';
+import { documentNummer, type Genummerd } from '../nummering';
 
 export type SjabloonSleutel = 'persluchtlekken' | 'arbeidsmiddelen' | 'markering';
 export const SJABLOON_SLEUTELS = ['persluchtlekken', 'arbeidsmiddelen', 'markering'] as const satisfies readonly SjabloonSleutel[];
@@ -548,7 +549,7 @@ export function plusMaanden(dag: string, maanden: number): string {
   return uit.toISOString().slice(0, 10);
 }
 
-/** Het nummer van een inspectie voor op het scherm en in het rapport: INS-12. */
-export function inspectieNummer(id: number): string {
-  return `INS-${id}`;
+/** Het nummer van een inspectie voor op het scherm en in het rapport: INS-2026-001 (lib/nummering.ts). */
+export function inspectieNummer(r: Genummerd): string {
+  return documentNummer('INS', r);
 }

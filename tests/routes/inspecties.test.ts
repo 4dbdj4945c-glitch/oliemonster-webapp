@@ -162,6 +162,26 @@ describe('inspecties invullen (admin)', () => {
     expect((await een(verzoek(`/api/inspecties/${id}`), p(id))).status).toBe(200);
   });
 
+  it('nummer per jaar: INS-2026-001, -002, weggehaald wordt niet hergebruikt, nieuw jaar weer vanaf 001, vast bij een andere datum', async () => {
+    await admin();
+    const maak = async (datum: string) => {
+      const { id } = await (await nieuw(verzoek('/api/inspecties', { body: { sjabloon: 'markering', objectId: ids.werkplaats, datum, uitvoerder: 'Roel' } }), undefined)).json();
+      return (await (await een(verzoek(`/api/inspecties/${id}`), p(id))).json()) as { id: number; nummer: string };
+    };
+    const a = await maak('2026-10-03');
+    const b = await maak('2026-10-04');
+    expect(a.nummer).toBe('INS-2026-001');
+    expect(b.nummer).toBe('INS-2026-002');
+    expect((await weg(verzoek(`/api/inspecties/${b.id}`, { method: 'DELETE', body: { bevestig: 'ins-2026-002' } }), p(b.id))).status).toBe(200);
+    expect((await maak('2026-12-31')).nummer).toBe('INS-2026-003');
+    expect((await maak('2027-01-02')).nummer).toBe('INS-2027-001');
+    const na = await (await wijzig(verzoek(`/api/inspecties/${a.id}`, { method: 'PUT', body: { datum: '2027-02-01' } }), p(a.id))).json();
+    expect(na.nummer).toBe('INS-2026-001');
+    // Twee tegelijk krijgen elk een eigen nummer
+    const [c, d] = await Promise.all([maak('2026-11-01'), maak('2026-11-01')]);
+    expect(new Set([c.nummer, d.nummer])).toEqual(new Set(['INS-2026-004', 'INS-2026-005']));
+  });
+
   it('een gebruiker leest mee maar wijzigt niets', async () => {
     await inloggenAls('gebruiker', 'user123');
     expect((await lijst(verzoek('/api/inspecties'), undefined)).status).toBe(200);

@@ -476,7 +476,11 @@ model Installatie {
 
 model Inspectie {
   id            Int       @id @default(autoincrement())
-  sjabloon      String // persluchtlekken | arbeidsmiddelen (lib/inspecties/sjablonen.ts)
+  // Nummer INS-2026-001: jaar van de datum bij aanmaken en volgnummer in dat
+  // jaar, vast bij aanmaken (lib/nummering.ts). Leeg: oud nummer INS-12.
+  nummerJaar    Int?
+  volgnummer    Int?
+  sjabloon      String // persluchtlekken | arbeidsmiddelen | markering (lib/inspecties/sjablonen.ts)
   klantId       Int
   objectId      Int
   installatieId Int? // optioneel: de installatie waar de hele inspectie over gaat
@@ -501,6 +505,7 @@ model Inspectie {
   items       InspectieItem[]
   stops       SamplePlanStop[]
 
+  @@unique([nummerJaar, volgnummer])
   @@index([klantId])
   @@index([objectId])
   @@index([installatieId])
@@ -678,6 +683,9 @@ model ContractTaakUitvoering {
 model Dagrapport {
   id                 Int       @id @default(autoincrement())
   klantId            Int
+  // Nummer WB-2026-001, zoals bij Inspectie (lib/nummering.ts).
+  nummerJaar         Int?
+  volgnummer         Int?
   planId             Int? // de planningsdag, als het bezoek daarvandaan kwam
   objectId           Int? // de plek van het bezoek (optioneel)
   datum              DateTime // dag van het bezoek (12:00 UTC)
@@ -717,6 +725,7 @@ model Dagrapport {
   object SampleObject?    @relation(fields: [objectId], references: [id], onDelete: SetNull)
   fotos  DagrapportFoto[]
 
+  @@unique([nummerJaar, volgnummer])
   @@index([klantId])
   @@index([planId])
   @@index([datum])

@@ -20,7 +20,7 @@ import { naInspectieStatus } from '@/lib/contractenServer';
   GET    /api/inspecties/[id] - de inspectie met bevindingen en totalen (beheerder en gebruiker)
   PUT    /api/inspecties/[id] - gegevens, instellingen, status (admin). Status afgerond
          zet afgerondOp en afgerondDoor; terug naar concept wist die weer.
-  DELETE /api/inspecties/[id] - naar de prullenbak (admin, body { bevestig: "INS-12" })
+  DELETE /api/inspecties/[id] - naar de prullenbak (admin, body { bevestig: "INS-2026-012" })
 */
 
 export const GET = apiRoute({ rol: 'user', module: 'inspecties', fout: 'Fout bij ophalen van de inspectie' }, async (_request, context, sessie) => {
@@ -84,9 +84,9 @@ const VerwijderSchema = z.object({ bevestig: z.string().optional() });
 
 export const DELETE = apiRoute({ rol: 'admin', module: 'inspecties', fout: 'Fout bij verwijderen van de inspectie' }, async (request, context, sessie) => {
   const id = await leesId(context, 'Onbekende inspectie');
-  await haalInspectie(id, sessie);
+  const rij = await haalInspectie(id, sessie);
   const { bevestig } = await leesJson(request, VerwijderSchema);
-  const nummer = inspectieNummer(id);
+  const nummer = inspectieNummer(rij);
   if ((bevestig ?? '').trim().toUpperCase() !== nummer) {
     throw new ApiFout(400, `Typ ${nummer} over om het verwijderen te bevestigen.`);
   }

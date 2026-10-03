@@ -33,7 +33,7 @@ export const GET = apiRoute(
       userId: sessie.userId,
       username: sessie.username,
       action: AuditActions.INSPECTIE_RAPPORT_DOWNLOAD,
-      details: { id, nummer: inspectieNummer(id), klantId: rij.klantId, klant: rij.klant.naam, sjabloon: rij.sjabloon },
+      details: { id, nummer: inspectieNummer(rij), klantId: rij.klantId, klant: rij.klant.naam, sjabloon: rij.sjabloon },
       request,
     });
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { metVolgnummer } from '@/lib/nummeringServer';
 import type { Prisma } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
@@ -42,12 +43,14 @@ export const POST = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout
     const plan = await prisma.samplePlan.findUnique({ where: { id: invoer.planId }, select: { id: true } });
     if (!plan) throw new ApiFout(400, 'Onbekende planningsdag');
   }
-  const rij = await prisma.dagrapport.create({
+  const datum = dagAlsDatum(invoer.datum);
+  const rij = await metVolgnummer('dagrapport', datum, (nummer) => prisma.dagrapport.create({
     data: {
+      ...nummer,
       klantId: invoer.klantId,
       planId: invoer.planId ?? null,
       objectId: invoer.objectId ?? null,
-      datum: dagAlsDatum(invoer.datum),
+      datum,
       uitvoerder: invoer.uitvoerder,
       werkzaamheden: invoer.werkzaamheden ?? null,
       bevindingen: invoer.bevindingen ?? null,
@@ -63,7 +66,7 @@ export const POST = apiRoute({ rol: 'admin', module: 'dagrapporten', fout: 'Fout
       handtekeningVragen: invoer.handtekeningVragen ?? klant.werkbonHandtekening,
     },
     select: { id: true },
-  });
+  }));
   await createAuditLog({
     userId: sessie.userId,
     username: sessie.username,

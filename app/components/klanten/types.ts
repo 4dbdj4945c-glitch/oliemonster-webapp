@@ -95,7 +95,7 @@ export interface Moment {
   datum: string | null;
   /** null bij een inspectie */
   monsterId: number | null;
-  /** O-nummer, of bij een inspectie het nummer (INS-12) */
+  /** O-nummer, of bij een inspectie het nummer (INS-2026-012) */
   oNumber: string;
   jaar: number;
   objectId: number | null;

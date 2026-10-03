@@ -78,10 +78,10 @@ export const POST = withAuth({ rol: 'admin', module: 'planning' }, async (
         naam = taakTitel(taak);
       } else {
         if (inspectieId === null || Number.isNaN(inspectieId)) return NextResponse.json({ error: 'Onbekende inspectie' }, { status: 400 });
-        const inspectie = await prisma.inspectie.findFirst({ where: { id: inspectieId, deletedAt: null }, select: { objectId: true } });
+        const inspectie = await prisma.inspectie.findFirst({ where: { id: inspectieId, deletedAt: null }, select: { id: true, nummerJaar: true, volgnummer: true, objectId: true } });
         if (!inspectie) return NextResponse.json({ error: 'Inspectie niet gevonden' }, { status: 404 });
         objectVan = inspectie.objectId;
-        naam = inspectieNummer(inspectieId);
+        naam = inspectieNummer(inspectie);
       }
       const dubbel = plan.stops.some((s) => (taakId !== null ? s.taakId === taakId : s.inspectieId === inspectieId));
       if (dubbel) return NextResponse.json({ error: `${naam} staat al op deze dag` }, { status: 400 });

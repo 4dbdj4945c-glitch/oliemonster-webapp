@@ -105,7 +105,7 @@ const PLAN_INCLUDE = {
         },
       },
       inspectie: {
-        select: { id: true, sjabloon: true, status: true, klant: { select: { id: true, naam: true } } },
+        select: { id: true, nummerJaar: true, volgnummer: true, sjabloon: true, status: true, klant: { select: { id: true, naam: true } } },
       },
     },
   },
@@ -240,7 +240,7 @@ function bouwDag(
     const inspectie = stop.inspectie
       ? {
           id: stop.inspectie.id,
-          nummer: inspectieNummer(stop.inspectie.id),
+          nummer: inspectieNummer(stop.inspectie),
           sjabloon: stop.inspectie.sjabloon,
           naam: sjabloonVan(stop.inspectie.sjabloon).naam,
           status: stop.inspectie.status,
