@@ -41,5 +41,9 @@ describe('herkomstFout (CSRF)', () => {
   it('isUploadRoute', () => {
     expect(isUploadRoute('/api/samples/1/photo')).toBe(true);
     expect(isUploadRoute('/api/samples/1')).toBe(false);
+    // Foto's bij een bevinding: het nieuwe adres en het oude (offline wachtrij van een oude versie).
+    expect(isUploadRoute('/api/inspectie-items/7/fotos')).toBe(true);
+    expect(isUploadRoute('/api/inspectie-items/7/foto')).toBe(true);
+    expect(isUploadRoute('/api/inspectie-items/7')).toBe(false);
   });
 });

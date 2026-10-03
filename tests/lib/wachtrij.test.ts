@@ -91,13 +91,38 @@ describe('verstuur', () => {
     const r1 = await verstuur(bevinding, eerst.fn);
     expect(r1.uitkomst.soort).toBe('later');
     expect(r1.invoer.itemId).toBe(77);
-    expect(eerst.oproepen.map((o) => o.url)).toEqual(['/api/inspecties/5/items', '/api/inspectie-items/77/foto']);
+    expect(eerst.oproepen.map((o) => o.url)).toEqual(['/api/inspecties/5/items', '/api/inspectie-items/77/fotos']);
     expect(eerst.oproepen[0].sleutel).toBe('b1');
 
     const daarna = nepFetch([json(200, {})]);
     const r2 = await verstuur(r1.invoer, daarna.fn);
     expect(r2.uitkomst).toEqual({ soort: 'klaar' });
-    expect(daarna.oproepen.map((o) => o.url)).toEqual(['/api/inspectie-items/77/foto']);
+    expect(daarna.oproepen.map((o) => o.url)).toEqual(['/api/inspectie-items/77/fotos']);
+  });
+
+  it("meerdere foto's: één voor één met een eigen sleutel; na een onderbreking alleen de rest", async () => {
+    const blob = () => new Blob([new Uint8Array([1])], { type: 'image/jpeg' });
+    const bevinding: Invoer = {
+      sleutel: 'b2',
+      soort: 'inspectie-item',
+      gebruiker: 'admin',
+      titel: 'Bron 6, INS-5',
+      aangemaakt: 1,
+      inspectieId: 5,
+      json: { titel: 'Bron 6' },
+      fotos: [1, 2, 3].map((n) => ({ veld: 'photo', naam: `f${n}.jpg`, blob: blob() })),
+      status: 'wacht',
+      pogingen: 0,
+    };
+    const eerst = nepFetch([json(201, { itemId: 9 }), json(200, {}), new TypeError('Failed to fetch')]);
+    const r1 = await verstuur(bevinding, eerst.fn);
+    expect(r1.uitkomst.soort).toBe('later');
+    expect(r1.invoer.fotosKlaar).toBe(1);
+    expect(eerst.oproepen.map((o) => o.sleutel)).toEqual(['b2', 'b2-f0', 'b2-f1']);
+    const daarna = nepFetch([json(200, {}), json(200, {})]);
+    const r2 = await verstuur(r1.invoer, daarna.fn);
+    expect(r2.uitkomst).toEqual({ soort: 'klaar' });
+    expect(daarna.oproepen.map((o) => o.sleutel)).toEqual(['b2-f1', 'b2-f2']);
   });
 });
 

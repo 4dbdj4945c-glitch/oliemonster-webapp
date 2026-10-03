@@ -7,7 +7,7 @@
 // - niet-bereikbaar: de plek was niet te bereiken (reden, omschrijving, foto)
 // - geannuleerd: het monster hoeft niet meer (reden)
 // - open: moet nog, met de monsterdag als het gepland is
-// - inspectie: een inspectie (persluchtlekken, arbeidsmiddelen), op het object
+// - inspectie: een inspectie (persluchtlekken, arbeidsmiddelen, markering), op het object
 //   en, bij arbeidsmiddelen, ook per arbeidsmiddel dat een installatie is (dat
 //   moment heeft `onderdeel`, zodat het bij het object niet dubbel staat)
 // - dagrapport: een dagrapport van een bezoek (fase 5), bij het object als dat
@@ -222,9 +222,8 @@ export async function haalDossier(klantId: number, gevraagd: number | null | 'ni
       titel: `${s.naam}, ${nummer}`,
       tekst: [uitkomstTekst(sjabloon, i.items, i.instellingen), i.samenvatting].filter(Boolean).join('. '),
       fotos: i.items
-        .filter((it) => it.fotoUrl)
-        .slice(0, 4)
-        .map((it) => ({ url: fotoAdres('inspectie', it.id, null, it.fotoUrl)!, label: `${s.item.enkel} ${it.titel}` })),
+        .flatMap((it) => it.fotos.map((f) => ({ url: fotoAdres('inspectiefoto', f.id, null, f.url)!, label: `${s.item.enkel} ${it.titel}` })))
+        .slice(0, 4),
       inspectie: { id: i.id, sjabloon, status: i.status, oordeel: null, volgende, rapport },
     });
     if (!s.volgendePerItem) continue;
@@ -236,7 +235,7 @@ export async function haalDossier(klantId: number, gevraagd: number | null | 'ni
         installatieId: it.installatieId,
         titel: `${s.naam}, ${nummer}`,
         tekst: [oordeelVan(s, it.oordeel)?.label, it.notitie].filter(Boolean).join('. ') || null,
-        fotos: it.fotoUrl ? [{ url: fotoAdres('inspectie', it.id, null, it.fotoUrl)!, label: it.titel }] : [],
+        fotos: it.fotos.map((f) => ({ url: fotoAdres('inspectiefoto', f.id, null, f.url)!, label: it.titel })),
         inspectie: { id: i.id, sjabloon, status: i.status, oordeel: it.oordeel, volgende: it.volgendeOp ? nlDag(it.volgendeOp) : volgende, rapport },
         onderdeel: true,
       });

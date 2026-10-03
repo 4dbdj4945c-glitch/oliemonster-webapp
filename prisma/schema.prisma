@@ -519,7 +519,7 @@ model InspectieItem {
   oordeel       String? // per sjabloon: prioriteit (lek) of uitslag (arbeidsmiddel)
   notitie       String?
   waarden       Json? // meetwaarden en checklist, per sjabloon
-  fotoUrl       String?
+  fotoUrl       String? // vervallen: foto's staan in InspectieFoto (kolom blijft als terugval)
   gerepareerd   Boolean   @default(false)
   gerepareerdOp DateTime?
   volgendeOp    DateTime? // arbeidsmiddelen: datum van de volgende inspectie
@@ -528,12 +528,27 @@ model InspectieItem {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  inspectie   Inspectie    @relation(fields: [inspectieId], references: [id], onDelete: Cascade)
-  installatie Installatie? @relation(fields: [installatieId], references: [id], onDelete: SetNull)
+  inspectie   Inspectie       @relation(fields: [inspectieId], references: [id], onDelete: Cascade)
+  installatie Installatie?    @relation(fields: [installatieId], references: [id], onDelete: SetNull)
+  fotos       InspectieFoto[]
 
   @@index([inspectieId])
   @@index([installatieId])
   @@index([deletedAt])
+}
+
+// Foto's bij een bevinding, meerdere per bevinding (zoals DagrapportFoto).
+model InspectieFoto {
+  id         Int      @id @default(autoincrement())
+  itemId     Int
+  url        String
+  bijschrift String?
+  volgorde   Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  item InspectieItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@index([itemId])
 }
 
 // ============================================

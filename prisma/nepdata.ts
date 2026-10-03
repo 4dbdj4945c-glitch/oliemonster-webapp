@@ -78,6 +78,7 @@ export async function vulMetNepdata(prisma: PrismaClient) {
   await prisma.contractTaakUitvoering.deleteMany();
   await prisma.contractTaak.deleteMany();
   await prisma.contract.deleteMany();
+  await prisma.inspectieFoto.deleteMany();
   await prisma.inspectieItem.deleteMany();
   await prisma.inspectie.deleteMany();
   await prisma.eigenDocument.deleteMany();
@@ -339,9 +340,9 @@ export async function vulMetNepdata(prisma: PrismaClient) {
       volgendeOp: inspectieDag(344),
       items: {
         create: [
-          { volgorde: 1, titel: '101', locatie: 'Hal 1, snelkoppeling werkbank 3', oordeel: 'hoog', waarden: { db: 48, verliesLpm: 95 }, fotoUrl: '/nepdata/lek-1.jpg', gerepareerd: true, gerepareerdOp: inspectieDag(-14) },
-          { volgorde: 2, titel: '102', locatie: 'Hal 1, slang boven kantpers', oordeel: 'hoog', waarden: { db: 45, verliesLpm: 70 }, fotoUrl: '/nepdata/lek-2.jpg' },
-          { volgorde: 3, titel: '103', locatie: 'Hal 2, ventiel verdeelblok', oordeel: 'middel', waarden: { db: 38, verliesLpm: 32 }, fotoUrl: '/nepdata/lek-3.jpg', gerepareerd: true, gerepareerdOp: inspectieDag(-14) },
+          { volgorde: 1, titel: '101', locatie: 'Hal 1, snelkoppeling werkbank 3', oordeel: 'hoog', waarden: { db: 48, verliesLpm: 95 }, fotos: { create: [{ url: '/nepdata/lek-1.jpg' }] }, gerepareerd: true, gerepareerdOp: inspectieDag(-14) },
+          { volgorde: 2, titel: '102', locatie: 'Hal 1, slang boven kantpers', oordeel: 'hoog', waarden: { db: 45, verliesLpm: 70 }, fotos: { create: [{ url: '/nepdata/lek-2.jpg' }] } },
+          { volgorde: 3, titel: '103', locatie: 'Hal 2, ventiel verdeelblok', oordeel: 'middel', waarden: { db: 38, verliesLpm: 32 }, fotos: { create: [{ url: '/nepdata/lek-3.jpg' }] }, gerepareerd: true, gerepareerdOp: inspectieDag(-14) },
           { volgorde: 4, titel: '104', locatie: 'Hal 2, filter-regelaar', oordeel: 'middel', waarden: { db: 34, verliesLpm: 18 } },
           { volgorde: 5, titel: '105', locatie: 'Technische ruimte, condensaatafvoer', oordeel: 'laag', waarden: { db: 29, verliesLpm: 9 }, notitie: 'Afvoer staat half open, bij de volgende onderhoudsbeurt afstellen.' },
           { volgorde: 6, titel: '106', locatie: 'Hal 2, koppeling spuitcabine', oordeel: 'laag', waarden: { db: 27, verliesLpm: 6 } },
@@ -366,7 +367,7 @@ export async function vulMetNepdata(prisma: PrismaClient) {
       items: {
         create: [
           {
-            volgorde: 1, titel: 'Kantpers 1', installatieId: kantpersInst.id, locatie: 'Hal 1', oordeel: 'in-orde', fotoUrl: '/nepdata/arbeidsmiddel-1.jpg',
+            volgorde: 1, titel: 'Kantpers 1', installatieId: kantpersInst.id, locatie: 'Hal 1', oordeel: 'in-orde', fotos: { create: [{ url: '/nepdata/arbeidsmiddel-1.jpg' }, { url: '/nepdata/onderdeel-1.jpg', bijschrift: 'Hydrauliekaggregaat', volgorde: 1 }] },
             waarden: { werkdrukBar: 210, checklist: { slangen: 'goed', lekkage: 'goed', leidingen: 'goed', beveiliging: 'goed', manometer: 'goed', bediening: 'goed', afscherming: 'goed', olie: 'goed', filters: 'goed', markering: 'goed' } },
             volgendeOp: inspectieDag(355),
           },
@@ -382,7 +383,7 @@ export async function vulMetNepdata(prisma: PrismaClient) {
             volgendeOp: inspectieDag(355),
           },
           {
-            volgorde: 4, titel: 'Luchtketel hal 3', locatie: 'Hal 3, buitenwand', oordeel: 'actie-nodig', fotoUrl: '/nepdata/arbeidsmiddel-2.jpg',
+            volgorde: 4, titel: 'Luchtketel hal 3', locatie: 'Hal 3, buitenwand', oordeel: 'actie-nodig', fotos: { create: [{ url: '/nepdata/arbeidsmiddel-2.jpg' }] },
             notitie: 'Ketel valt onder de keuringsplicht van een aangewezen instelling. Alleen visueel bekeken.',
             waarden: { ketelLiter: 3000, ketelBar: 11, checklist: { lekkage: 'goed', manometer: 'goed', markering: 'goed' } },
             volgendeOp: inspectieDag(355),

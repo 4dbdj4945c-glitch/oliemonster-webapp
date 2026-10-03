@@ -7,7 +7,8 @@
 //   /api/fotos/poging/5/potje?v=...          foto's van een poging (ook onderdeel)
 //   /api/fotos/installatie/3?v=...           foto van een installatie
 //   /api/fotos/klantlogo/2?v=...             logo van een klant
-//   /api/fotos/inspectie/7?v=...             foto bij een bevinding van een inspectie (id van de bevinding)
+//   /api/fotos/inspectiefoto/9?v=...         foto bij een bevinding van een inspectie (id van de foto)
+//   /api/fotos/inspectie/7?v=...             oud adres: de eerste foto van bevinding 7 (blijft werken)
 //   /api/fotos/dagrapport/4?v=...            foto bij een dagrapport (id van de foto)
 //
 // De route (app/api/fotos/[...pad]/route.ts) controleert of de gebruiker het
@@ -17,7 +18,7 @@
 //
 // Geen server-imports: dit bestand draait ook in de browser (tests, typen).
 
-export type FotoBron = 'monster' | 'poging' | 'installatie' | 'klantlogo' | 'inspectie' | 'dagrapport';
+export type FotoBron = 'monster' | 'poging' | 'installatie' | 'klantlogo' | 'inspectie' | 'inspectiefoto' | 'dagrapport';
 
 /** Monsterfoto's per veld op OilSample. */
 export const MONSTER_FOTO_VELDEN = {
@@ -81,8 +82,14 @@ export function klantLogoAdres(klant: { id: number; logoUrl?: string | null }): 
   return fotoAdres('klantlogo', klant.id, null, klant.logoUrl);
 }
 
-/** De foto bij een bevinding van een inspectie via de eigen route. */
-export function metInspectieFoto<T extends { id: number; fotoUrl?: string | null }>(item: T): T {
-  if (!('fotoUrl' in item)) return item;
-  return { ...item, fotoUrl: fotoAdres('inspectie', item.id, null, item.fotoUrl) };
+export interface InspectieFotoJson {
+  id: number;
+  /** Via /api/fotos/inspectiefoto/... */
+  url: string;
+  bijschrift: string | null;
+}
+
+/** De foto's bij een bevinding van een inspectie via de eigen route. */
+export function inspectieFotosAlsJson(fotos: { id: number; url: string; bijschrift: string | null }[]): InspectieFotoJson[] {
+  return fotos.map((f) => ({ id: f.id, url: fotoAdres('inspectiefoto', f.id, null, f.url)!, bijschrift: f.bijschrift }));
 }

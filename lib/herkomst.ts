@@ -34,7 +34,7 @@ const UPLOAD_ROUTES = [
   /^\/api\/samples\/\d+\/attempts\/\d+\/photo$/,
   /^\/api\/installaties\/\d+\/foto$/,
   /^\/api\/klanten\/\d+\/logo$/,
-  /^\/api\/inspectie-items\/\d+\/foto$/,
+  /^\/api\/inspectie-items\/\d+\/fotos?$/,
   /^\/api\/eigen-dossier\/\d+\/bestand$/,
   /^\/api\/dagrapporten\/\d+\/fotos$/,
 ];

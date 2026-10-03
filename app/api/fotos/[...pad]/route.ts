@@ -27,6 +27,7 @@ const Pad = z.union([
   z.tuple([z.literal('installatie'), z.string().regex(/^\d+$/)]),
   z.tuple([z.literal('klantlogo'), z.string().regex(/^\d+$/)]),
   z.tuple([z.literal('inspectie'), z.string().regex(/^\d+$/)]),
+  z.tuple([z.literal('inspectiefoto'), z.string().regex(/^\d+$/)]),
   z.tuple([z.literal('dagrapport'), z.string().regex(/^\d+$/)]),
 ]);
 
@@ -65,16 +66,26 @@ export const GET = apiRoute(
       // Een kijker zonder klant heeft geen installaties; met een klant alleen die van hem.
       const mag = installatie && (!isAlleenLezen(sessie.role) || (sessie.klantId && magKlant(sessie, installatie.object.klantId)));
       url = mag ? installatie.fotoUrl : null;
-    } else if (bron === 'inspectie') {
+    } else if (bron === 'inspectie' || bron === 'inspectiefoto') {
       // Foto bij een bevinding: alleen voor beheerder en gebruiker. Een kijker
       // krijgt de inspectie als rapport (PDF, op de server gemaakt) en heeft
       // deze route dus niet nodig; ook met het klantportaal niet.
+      // inspectiefoto/[id] is één foto; het oude adres inspectie/[id] (id van de
+      // bevinding, van voor meerdere foto's) geeft de eerste foto.
       if (!isAlleenLezen(sessie.role)) {
-        const item = await prisma.inspectieItem.findFirst({
-          where: { id, deletedAt: null, inspectie: { deletedAt: null } },
-          select: { fotoUrl: true },
-        });
-        url = item?.fotoUrl;
+        if (bron === 'inspectiefoto') {
+          const foto = await prisma.inspectieFoto.findFirst({
+            where: { id, item: { deletedAt: null, inspectie: { deletedAt: null } } },
+            select: { url: true },
+          });
+          url = foto?.url;
+        } else {
+          const item = await prisma.inspectieItem.findFirst({
+            where: { id, deletedAt: null, inspectie: { deletedAt: null } },
+            select: { fotoUrl: true, fotos: { orderBy: [{ volgorde: 'asc' }, { id: 'asc' }], take: 1, select: { url: true } } },
+          });
+          url = item?.fotos[0]?.url ?? item?.fotoUrl;
+        }
       }
     } else if (bron === 'dagrapport') {
       // Foto bij een dagrapport: net als bij een inspectie alleen voor beheerder

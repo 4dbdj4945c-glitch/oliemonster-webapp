@@ -10,7 +10,7 @@
 //   controleert (fase 3).
 // - ruimFotoOpAls: na het vervangen of verwijderen van een foto. Een adres wordt
 //   alleen gewist (`del`) als geen enkel monster, geen poging, geen installatie,
-//   geen bevinding van een inspectie, geen foto van een dagrapport en geen document uit het eigen dossier
+//   geen bevinding of foto van een inspectie, geen foto van een dagrapport en geen document uit het eigen dossier
 //   er nog naar wijst, ook niet in de prullenbak. De cachevelden op OilSample
 //   bevatten dezelfde adressen als de pogingen; daarom deze controle, en niet
 //   blind wissen.
@@ -55,7 +55,7 @@ export function isBlobAdres(url: string): boolean {
 
 /** Hoe vaak wordt dit adres nog gebruikt, over alle tabellen met foto's. */
 export async function aantalVerwijzingen(url: string): Promise<number> {
-  const [monsters, pogingen, installaties, klanten, bevindingen, documenten, dagrapportFotos] = await Promise.all([
+  const [monsters, pogingen, installaties, klanten, bevindingen, inspectieFotos, documenten, dagrapportFotos] = await Promise.all([
     prisma.oilSample.count({
       where: { OR: [{ photoUrl: url }, { partPhotoUrl: url }, { unreachablePhotoUrl: url }] },
     }),
@@ -63,10 +63,11 @@ export async function aantalVerwijzingen(url: string): Promise<number> {
     prisma.installatie.count({ where: { fotoUrl: url } }),
     prisma.klant.count({ where: { logoUrl: url } }),
     prisma.inspectieItem.count({ where: { fotoUrl: url } }),
+    prisma.inspectieFoto.count({ where: { url } }),
     prisma.eigenDocument.count({ where: { bestandUrl: url } }),
     prisma.dagrapportFoto.count({ where: { url } }),
   ]);
-  return monsters + pogingen + installaties + klanten + bevindingen + documenten + dagrapportFotos;
+  return monsters + pogingen + installaties + klanten + bevindingen + inspectieFotos + documenten + dagrapportFotos;
 }
 
 /**

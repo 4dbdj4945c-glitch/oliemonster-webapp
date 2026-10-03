@@ -21,6 +21,8 @@ export interface Bestand {
   veld: string;
   naam: string;
   blob: Blob;
+  /** Alleen bij een foto van een bevinding: het bijschrift. */
+  bijschrift?: string;
 }
 
 export interface Invoer {
@@ -35,10 +37,14 @@ export interface Invoer {
   monsterId?: number;
   velden?: Record<string, string>;
   bestanden?: Bestand[];
-  /** Nieuwe bevinding in een inspectie: eerst de gegevens, dan de foto */
+  /** Nieuwe bevinding in een inspectie: eerst de gegevens, dan de foto's één voor één */
   inspectieId?: number;
   json?: unknown;
+  /** Oude vorm (één foto), van voor meerdere foto's per bevinding. */
   foto?: Bestand | null;
+  fotos?: Bestand[];
+  /** Zoveel foto's staan al op de server. */
+  fotosKlaar?: number;
   /** De bevinding staat al op de server (alleen de foto moest nog). */
   itemId?: number | null;
   status: 'wacht' | 'mislukt';
@@ -138,10 +144,17 @@ export async function verstuur(invoer: Invoer, doeFetch: Fetch = (u, i) => fetch
       nu = { ...nu, itemId: typeof data?.itemId === 'number' ? data.itemId : null };
       if (!nu.itemId) return { uitkomst: { soort: 'mislukt', melding: 'De server gaf geen bevinding terug.' }, invoer: nu };
     }
-    if (nu.foto) {
-      const res = await doeFetch(`/api/inspectie-items/${nu.itemId}/foto`, { method: 'POST', body: formulier({}, [{ ...nu.foto, veld: 'photo' }]) });
-      const fout = await beoordeel(res, 'De foto is niet opgeslagen.', nu.pogingen);
+    // Elke foto met een eigen sleutel, zodat een herhaling hem niet dubbel toevoegt.
+    const fotos = nu.fotos ?? (nu.foto ? [nu.foto] : []);
+    for (let n = nu.fotosKlaar ?? 0; n < fotos.length; n++) {
+      const res = await doeFetch(`/api/inspectie-items/${nu.itemId}/fotos`, {
+        method: 'POST',
+        headers: { [IDEMPOTENTIE_HEADER]: `${invoer.sleutel}-f${n}` },
+        body: formulier(fotos[n].bijschrift ? { bijschrift: fotos[n].bijschrift! } : {}, [{ ...fotos[n], veld: 'photo' }]),
+      });
+      const fout = await beoordeel(res, fotos.length > 1 ? `Foto ${n + 1} van ${fotos.length} is niet opgeslagen.` : 'De foto is niet opgeslagen.', nu.pogingen);
       if (fout) return { uitkomst: fout, invoer: nu };
+      nu = { ...nu, fotosKlaar: n + 1 };
     }
     return { uitkomst: { soort: 'klaar' }, invoer: nu };
   } catch (e) {
