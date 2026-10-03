@@ -153,6 +153,9 @@ export function afrondFout(rij: Pick<InspectieRij, 'sjabloon' | 'items'>): strin
 /** Veiligheidsgrens: zoveel foto's per bevinding kan altijd (in de praktijk onbeperkt). */
 export const MAX_FOTOS_PER_BEVINDING = 200;
 
+/** Zoveel foto's samen kan een verzamelrapport aan binnen de tijd van één verzoek op Vercel. */
+export const MAX_FOTOS_IN_RAPPORT = 500;
+
 export const AFGEROND_MELDING =
   'Deze inspectie is afgerond; bevindingen toevoegen of wijzigen kan niet meer. Zet de inspectie eerst terug naar concept als er nog iets bij moet.';
 
@@ -190,7 +193,7 @@ const ITEM_SELECT = {
   oordeel: true,
   notitie: true,
   waarden: true,
-  fotos: { orderBy: [{ volgorde: 'asc' }, { id: 'asc' }], select: { id: true, url: true, bijschrift: true } },
+  fotos: { where: { deletedAt: null }, orderBy: [{ volgorde: 'asc' }, { id: 'asc' }], select: { id: true, url: true, bijschrift: true } },
   gerepareerd: true,
   gerepareerdOp: true,
   volgendeOp: true,

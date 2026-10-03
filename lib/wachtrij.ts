@@ -23,6 +23,8 @@ export interface Bestand {
   blob: Blob;
   /** Alleen bij een foto van een bevinding: het bijschrift. */
   bijschrift?: string;
+  /** Alleen bij een foto van een bevinding: de sleutel die het scherm al gebruikte, zodat hij nooit dubbel komt. */
+  sleutel?: string;
 }
 
 export interface Invoer {
@@ -149,7 +151,7 @@ export async function verstuur(invoer: Invoer, doeFetch: Fetch = (u, i) => fetch
     for (let n = nu.fotosKlaar ?? 0; n < fotos.length; n++) {
       const res = await doeFetch(`/api/inspectie-items/${nu.itemId}/fotos`, {
         method: 'POST',
-        headers: { [IDEMPOTENTIE_HEADER]: `${invoer.sleutel}-f${n}` },
+        headers: { [IDEMPOTENTIE_HEADER]: fotos[n].sleutel ?? `${invoer.sleutel}-f${n}` },
         body: formulier(fotos[n].bijschrift ? { bijschrift: fotos[n].bijschrift! } : {}, [{ ...fotos[n], veld: 'photo' }]),
       });
       const fout = await beoordeel(res, fotos.length > 1 ? `Foto ${n + 1} van ${fotos.length} is niet opgeslagen.` : 'De foto is niet opgeslagen.', nu.pogingen);

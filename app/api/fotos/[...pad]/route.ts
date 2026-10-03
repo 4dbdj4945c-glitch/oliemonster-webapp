@@ -75,14 +75,14 @@ export const GET = apiRoute(
       if (!isAlleenLezen(sessie.role)) {
         if (bron === 'inspectiefoto') {
           const foto = await prisma.inspectieFoto.findFirst({
-            where: { id, item: { deletedAt: null, inspectie: { deletedAt: null } } },
+            where: { id, deletedAt: null, item: { deletedAt: null, inspectie: { deletedAt: null } } },
             select: { url: true },
           });
           url = foto?.url;
         } else {
           const item = await prisma.inspectieItem.findFirst({
             where: { id, deletedAt: null, inspectie: { deletedAt: null } },
-            select: { fotoUrl: true, fotos: { orderBy: [{ volgorde: 'asc' }, { id: 'asc' }], take: 1, select: { url: true } } },
+            select: { fotoUrl: true, fotos: { where: { deletedAt: null }, orderBy: [{ volgorde: 'asc' }, { id: 'asc' }], take: 1, select: { url: true } } },
           });
           url = item?.fotos[0]?.url ?? item?.fotoUrl;
         }

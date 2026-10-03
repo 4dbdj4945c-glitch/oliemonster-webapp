@@ -124,6 +124,19 @@ describe('verstuur', () => {
     expect(r2.uitkomst).toEqual({ soort: 'klaar' });
     expect(daarna.oproepen.map((o) => o.sleutel)).toEqual(['b2-f1', 'b2-f2']);
   });
+
+  it("foto's bij een bevinding die al op de server staat: alleen de foto's, met de sleutel van het scherm", async () => {
+    const blob = new Blob([new Uint8Array([1])], { type: 'image/jpeg' });
+    const alleenFotos: Invoer = {
+      sleutel: 'b3', soort: 'inspectie-item', gebruiker: 'admin', titel: "2 foto's", aangemaakt: 1, inspectieId: 5, itemId: 12,
+      fotos: [{ veld: 'photo', naam: 'a.jpg', blob, sleutel: 'scherm-sleutel-a' }, { veld: 'photo', naam: 'b.jpg', blob, sleutel: 'scherm-sleutel-b', bijschrift: 'Flens 3' }],
+      status: 'wacht', pogingen: 0,
+    };
+    const f = nepFetch([json(200, {}), json(200, {})]);
+    expect((await verstuur(alleenFotos, f.fn)).uitkomst).toEqual({ soort: 'klaar' });
+    expect(f.oproepen.map((o) => [o.url, o.sleutel])).toEqual([['/api/inspectie-items/12/fotos', 'scherm-sleutel-a'], ['/api/inspectie-items/12/fotos', 'scherm-sleutel-b']]);
+    expect((f.oproepen[1].body as FormData).get('bijschrift')).toBe('Flens 3');
+  });
 });
 
 describe('verwerk', () => {

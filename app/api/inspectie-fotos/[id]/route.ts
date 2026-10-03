@@ -3,20 +3,19 @@ import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog, AuditActions } from '@/lib/auditLog';
 import { apiRoute, ApiFout, leesId, leesJson, optioneleTekst } from '@/lib/apiRoute';
-import { ruimFotoOpAls } from '@/lib/fotoOpslag';
 import { alleenBijConcept, haalInspectie, inspectieAlsJson } from '@/lib/inspecties/server';
 
 /*
   PUT    /api/inspectie-fotos/[id] - bijschrift wijzigen (admin, { bijschrift })
-  DELETE /api/inspectie-fotos/[id] - foto weghalen (admin). Het scherm vraagt
-         eerst om bevestiging. Het bestand verdwijnt uit de opslag als niets
-         anders er nog naar wijst (lib/fotoOpslag.ts).
+  DELETE /api/inspectie-fotos/[id] - foto weghalen (admin, zacht: het scherm
+         toont Ongedaan maken, zie .../herstellen). Het bestand blijft in de
+         opslag zolang de rij bestaat (lib/fotoOpslag.ts telt ook weggehaalde foto's).
   Alleen bij een concept. Beide geven de hele inspectie terug.
 */
 
 async function actieveFoto(id: number) {
   const foto = await prisma.inspectieFoto.findFirst({
-    where: { id, item: { deletedAt: null, inspectie: { deletedAt: null } } },
+    where: { id, deletedAt: null, item: { deletedAt: null, inspectie: { deletedAt: null } } },
     select: { id: true, url: true, itemId: true, item: { select: { inspectieId: true, fotoUrl: true } } },
   });
   if (!foto) throw new ApiFout(404, 'Foto niet gevonden');
@@ -45,17 +44,16 @@ export const DELETE = apiRoute({ rol: 'admin', module: 'inspecties', fout: 'Fout
   const id = await leesId(context, 'Onbekende foto');
   const foto = await actieveFoto(id);
   await prisma.$transaction([
-    prisma.inspectieFoto.delete({ where: { id } }),
+    prisma.inspectieFoto.update({ where: { id }, data: { deletedAt: new Date(), deletedBy: sessie.username }, select: { id: true } }),
     // De oude kolom (terugval van voor meerdere foto's) wijst misschien nog naar
-    // dezelfde foto: die mag dan ook weg, anders komt de foto via een oud adres terug.
+    // dezelfde foto: die mag dan ook leeg, anders komt de foto via een oud adres terug.
     prisma.inspectieItem.updateMany({ where: { id: foto.itemId, fotoUrl: foto.url }, data: { fotoUrl: null } }),
   ]);
-  await ruimFotoOpAls(foto.url);
   await createAuditLog({
     userId: sessie.userId,
     username: sessie.username,
     action: AuditActions.DELETE_INSPECTIE_FOTO,
-    details: { fotoId: id, itemId: foto.itemId, inspectieId: foto.item.inspectieId, url: foto.url },
+    details: { fotoId: id, itemId: foto.itemId, inspectieId: foto.item.inspectieId, zacht: true },
     request,
   });
   return NextResponse.json(inspectieAlsJson(await haalInspectie(foto.item.inspectieId, sessie)));

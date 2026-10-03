@@ -17,6 +17,7 @@ import { POST as herstelItem } from '@/app/api/inspectie-items/[id]/herstellen/r
 import { POST as nieuweFoto } from '@/app/api/inspectie-items/[id]/fotos/route';
 import { POST as nieuweFotoOud } from '@/app/api/inspectie-items/[id]/foto/route';
 import { PUT as wijzigFoto, DELETE as wegFoto } from '@/app/api/inspectie-fotos/[id]/route';
+import { POST as herstelFoto } from '@/app/api/inspectie-fotos/[id]/herstellen/route';
 import { POST as plakken } from '@/app/api/inspecties/[id]/items/bulk/route';
 import { GET as verzamelrapport } from '@/app/api/inspecties/rapport/route';
 import { GET as rapport } from '@/app/api/inspecties/[id]/rapport/route';
@@ -398,12 +399,18 @@ describe("meerdere foto's per bevinding", () => {
       const w = await (await wijzigFoto(verzoek(`/api/inspectie-fotos/${tweede}`, { method: 'PUT', body: { bijschrift: 'Sticker op flens 3' } }), p(tweede))).json();
       expect(w.items.find((i: { id: number }) => i.id === itemId).fotos[1].bijschrift).toBe('Sticker op flens 3');
 
-      // Weghalen: weg uit de lijst en uit de opslag (niemand verwijst er meer naar).
+      // Weghalen is zacht: weg uit de lijst en de fotoroute, het bestand blijft; Ongedaan maken zet hem terug op zijn plek.
       blob.del.mockClear();
       const weg1 = await (await wegFoto(verzoek(`/api/inspectie-fotos/${tweede}`, { method: 'DELETE' }), p(tweede))).json();
-      item = weg1.items.find((i: { id: number }) => i.id === itemId);
+      expect(weg1.items.find((i: { id: number }) => i.id === itemId).fotos).toHaveLength(2);
+      expect(blob.del).not.toHaveBeenCalled();
+      expect((await foto(verzoek(`/api/fotos/inspectiefoto/${tweede}`), { params: Promise.resolve({ pad: ['inspectiefoto', String(tweede)] }) })).status).toBe(404);
+      const terug = await (await herstelFoto(verzoek(`/api/inspectie-fotos/${tweede}/herstellen`, { method: 'POST' }), p(tweede))).json();
+      expect(terug.items.find((i: { id: number }) => i.id === itemId).fotos.map((f: { id: number }) => f.id)[1]).toBe(tweede);
+      expect((await herstelFoto(verzoek(`/api/inspectie-fotos/${tweede}/herstellen`, { method: 'POST' }), p(tweede))).status).toBe(404);
+      const weg2 = await (await wegFoto(verzoek(`/api/inspectie-fotos/${tweede}`, { method: 'DELETE' }), p(tweede))).json();
+      item = weg2.items.find((i: { id: number }) => i.id === itemId);
       expect(item.fotos).toHaveLength(2);
-      expect(blob.del).toHaveBeenCalledTimes(1);
 
       // Een gebruiker mag niets toevoegen of weghalen.
       await inloggenAls('gebruiker', 'user123');
@@ -471,6 +478,7 @@ describe('verzamelrapport', () => {
     expect(klant.status).toBe(400);
     expect((await klant.json()).error).toMatch(/één klant/);
     expect((await verzamelrapport(verzoek('/api/inspecties/rapport?ids=abc'), undefined)).status).toBe(400);
+    expect((await verzamelrapport(verzoek('/api/inspecties/rapport?ids=99999999999999999999'), undefined)).status).toBe(400);
     expect((await vraag([999999])).status).toBe(404);
     await inloggenAls('gebruiker', 'user123');
     expect((await vraag([ids.inspecties.lekken])).status).toBe(403);
@@ -504,6 +512,21 @@ describe('verzamelrapport', () => {
     expect((await PDFDocument.load(buf)).getPageCount()).toBeGreaterThanOrEqual(4);
     const log = await prisma.auditLog.findFirst({ where: { action: 'INSPECTIE_VERZAMELRAPPORT_DOWNLOAD' } });
     expect(log).not.toBeNull();
+  });
+
+  it("te veel foto's samen: een 400 met uitleg, zonder foto's kan wel; controle=1 geeft alleen JSON", async () => {
+    await admin();
+    const item = await prisma.inspectieItem.findFirstOrThrow({ where: { inspectieId: ids.inspecties.lekken } });
+    await prisma.inspectieFoto.createMany({ data: Array.from({ length: 501 }, (_, n) => ({ itemId: item.id, url: '/nepdata/lek-1.jpg', volgorde: 10 + n })) });
+    const r = await vraag([ids.inspecties.lekken]);
+    expect(r.status).toBe(400);
+    expect((await r.json()).error).toMatch(/zonder foto's/);
+    const zonder = await verzamelrapport(verzoek(`/api/inspecties/rapport?ids=${ids.inspecties.lekken}&fotos=0`), undefined);
+    expect(zonder.status).toBe(200);
+    expect(zonder.headers.get('content-type')).toBe('application/pdf');
+    expect((await verzamelrapport(verzoek(`/api/inspecties/rapport?ids=${ids.inspecties.lekken}&controle=1`), undefined)).status).toBe(400);
+    const ok = await verzamelrapport(verzoek(`/api/inspecties/rapport?ids=${ids.inspecties.arbeidsmiddelen}&controle=1`), undefined);
+    expect(await ok.json()).toEqual({ ok: true, fotos: 3 });
   });
 
   it('werkt ook voor lekken (twee inspecties van dezelfde klant)', async () => {

@@ -539,12 +539,14 @@ model InspectieItem {
 
 // Foto's bij een bevinding, meerdere per bevinding (zoals DagrapportFoto).
 model InspectieFoto {
-  id         Int      @id @default(autoincrement())
+  id         Int       @id @default(autoincrement())
   itemId     Int
   url        String
   bijschrift String?
-  volgorde   Int      @default(0)
-  createdAt  DateTime @default(now())
+  volgorde   Int       @default(0)
+  deletedAt  DateTime? // weggehaald (zacht, Ongedaan maken kan)
+  deletedBy  String?
+  createdAt  DateTime  @default(now())
 
   item InspectieItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
 

@@ -24,11 +24,12 @@ export const POST = apiRoute({ rol: 'admin', module: 'inspecties', fout: 'Fout b
   return eenmalig(request, sessie, `inspectie-foto-${id}`, async () => {
     const item = await prisma.inspectieItem.findFirst({
       where: { id, deletedAt: null, inspectie: { deletedAt: null } },
-      select: { id: true, inspectieId: true, fotos: { orderBy: [{ volgorde: 'asc' }, { id: 'asc' }], select: { volgorde: true } } },
+      // Ook weggehaalde foto's tellen mee voor de volgorde, zodat Ongedaan maken hem op zijn plek terugzet.
+      select: { id: true, inspectieId: true, fotos: { select: { volgorde: true, deletedAt: true } } },
     });
     if (!item) throw new ApiFout(404, 'Bevinding niet gevonden');
     await alleenBijConcept(item.inspectieId);
-    if (item.fotos.length >= MAX_FOTOS_PER_BEVINDING) {
+    if (item.fotos.filter((f) => !f.deletedAt).length >= MAX_FOTOS_PER_BEVINDING) {
       throw new ApiFout(400, `Een bevinding heeft hoogstens ${MAX_FOTOS_PER_BEVINDING} foto's. Haal er eerst een weg.`);
     }
     if (!process.env.BLOB_READ_WRITE_TOKEN) {

@@ -61,7 +61,10 @@ export default function WachtrijOverzicht({ lijst, gebruiker, kop = true }: { li
               <span>
                 {new Date(i.aangemaakt).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}
                 {i.bestanden?.length ? `, ${i.bestanden.length} ${i.bestanden.length === 1 ? 'foto' : "foto's"}` : ''}
-                {i.foto ? ", 1 foto" : ''}
+                {(() => {
+                  const n = i.fotos?.length ?? (i.foto ? 1 : 0);
+                  return n ? `, ${n} ${n === 1 ? 'foto' : "foto's"}` : '';
+                })()}
                 {i.laatsteFout ? `. ${i.laatsteFout}` : ''}
               </span>
             </span>

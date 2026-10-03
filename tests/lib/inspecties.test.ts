@@ -222,11 +222,17 @@ describe('lijst plakken', () => {
   });
 
   it('een Markdown-tabel en opsommingstekens mogen; foute regels komen met hun nummer terug', () => {
-    const { regels, fouten } = leesPlakLijst(['| Bron 1 | Kast |', '|---|---|', '- Bron 2 | Hal', '| | Kast zonder titel |', 'a | b | c | d'].join('\n'));
+    const { regels, fouten } = leesPlakLijst(['| Titel | Locatie |', '|---|---|', '| Bron 1 | Kast |', '- Bron 2 | Hal', '| | Kast zonder titel |', 'a | b | c | d'].join('\n'));
     expect(regels.map((r) => r.titel)).toEqual(['Bron 1', 'Bron 2']);
-    expect(fouten.map((f) => f.nr)).toEqual([4, 5]);
+    expect(fouten.map((f) => f.nr)).toEqual([5, 6]);
     expect(fouten[0].melding).toMatch(/titel/);
     expect(fouten[1].melding).toMatch(/Te veel kolommen/);
+  });
+
+  it('de koprij van een Markdown-tabel valt weg', () => {
+    const { regels, fouten } = leesPlakLijst(['| Bron | Locatie | Opmerking |', '| --- | --- | --- |', '| Bron 6 | Kast | 13 stuks |', '', '| Bron 9 | NSA-ruimte | |'].join('\n'));
+    expect(fouten).toEqual([]);
+    expect(regels.map((r) => [r.titel, r.locatie])).toEqual([['Bron 6', 'Kast'], ['Bron 9', 'NSA-ruimte']]);
   });
 
   it('meer dan het maximum aan regels is een fout', () => {

@@ -36,6 +36,8 @@ export default function InspectiesPagina() {
   const [objecten, setObjecten] = useState<ObjectKeuze[]>([]);
   const [installaties, setInstallaties] = useState<InstallatieKeuze[]>([]);
   const [gekozen, setGekozen] = useState<Set<number>>(new Set());
+  const [bezigRapport, setBezigRapport] = useState(false);
+  const [rapportFout, setRapportFout] = useState('');
 
   const laad = useCallback(async () => {
     try {
@@ -104,6 +106,29 @@ export default function InspectiesPagina() {
           ? 'Kies hoogstens 50 inspecties voor één verzamelrapport.'
           : '';
   const concepten = keuze.filter((i) => i.status === 'concept').length;
+  // Eerst controleren, zodat een melding van de server (te veel foto's) op het scherm komt in plaats van een kapotte download.
+  const verzamelrapport = async () => {
+    setBezigRapport(true);
+    setRapportFout('');
+    try {
+      const adres = `/api/inspecties/rapport?ids=${keuze.map((i) => i.id).join(',')}`;
+      const res = await fetch(`${adres}&controle=1`);
+      if (!res.ok) {
+        setRapportFout(await foutTekst(res, 'Het verzamelrapport kon niet worden gemaakt.'));
+        return;
+      }
+      const a = document.createElement('a');
+      a.href = adres;
+      a.download = '';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch {
+      setRapportFout(GEEN_VERBINDING);
+    } finally {
+      setBezigRapport(false);
+    }
+  };
   const alleZichtbaarGekozen = zichtbaar.length > 0 && zichtbaar.every((i) => gekozen.has(i.id));
 
   return (
@@ -184,12 +209,23 @@ export default function InspectiesPagina() {
                     Verzamelrapport
                   </button>
                 ) : (
-                  <a className="btn" href={`/api/inspecties/rapport?ids=${keuze.map((i) => i.id).join(',')}`} download>
-                    <Icon name="file-bundle" size={16} />
-                    Verzamelrapport
-                  </a>
+                  <>
+                    <a className="btn btn-sm btn-ghost" href={`/api/inspecties/rapport?ids=${keuze.map((i) => i.id).join(',')}&fotos=0`} download>
+                      <Icon name="file-pdf" size={16} />
+                      Zonder foto&apos;s
+                    </a>
+                    <button type="button" className="btn" onClick={verzamelrapport} disabled={bezigRapport}>
+                      <Icon name="file-bundle" size={16} />
+                      {bezigRapport ? 'Bezig...' : 'Verzamelrapport'}
+                    </button>
+                  </>
                 )}
               </div>
+              {rapportFout && !keuzeFout && (
+                <div className="alert alert-danger" role="alert">
+                  <span>{rapportFout}</span>
+                </div>
+              )}
               {keuzeFout && (
                 <div className="alert alert-warning" role="alert">
                   <Icon name="alert-warning" size={20} />

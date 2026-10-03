@@ -9,6 +9,8 @@ CREATE TABLE "InspectieFoto" (
     "url" TEXT NOT NULL,
     "bijschrift" TEXT,
     "volgorde" INTEGER NOT NULL DEFAULT 0,
+    "deletedAt" TIMESTAMP(3),
+    "deletedBy" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "InspectieFoto_pkey" PRIMARY KEY ("id")

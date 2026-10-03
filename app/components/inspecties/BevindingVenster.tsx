@@ -11,7 +11,9 @@
   camera of de fotobibliotheek, elk met een bijschrift. Bij Opslaan gaan ze
   verkleind één voor één naar de server, met voortgang. Lukt er een niet, dan
   blijft die in het venster staan (de rest is opgeslagen) en probeert Opslaan
-  het opnieuw, zonder iets dubbel te maken (eigen sleutel per foto).
+  het opnieuw, zonder iets dubbel te maken (eigen sleutel per foto). Valt de
+  verbinding weg tijdens de foto's, dan gaan de rest naar de offline wachtrij.
+  Sluiten met nieuwe foto's die nog niet verstuurd zijn, vraagt eerst.
 
   Bij een nieuwe bevinding kan Opslaan en nog een: het venster blijft open en
   het labelnummer telt door.
@@ -92,6 +94,7 @@ export default function BevindingVenster({
   onOpgeslagen,
   onWeghalen,
   onBewaard,
+  onFotoWeg,
 }: {
   inspectie: Inspectie;
   /** null = nieuwe bevinding */
@@ -104,6 +107,8 @@ export default function BevindingVenster({
   onWeghalen?: (item: Bevinding) => void;
   /** Zonder bereik in de wachtrij gezet: de melding voor het scherm. */
   onBewaard?: (melding: string, sluiten: boolean) => void;
+  /** Een foto is weggehaald (zacht): de pagina toont Ongedaan maken. */
+  onFotoWeg?: (foto: InspectieFoto, nr: number) => void;
 }) {
   const gebruiker = useGebruiker();
   const sleutel = useRef(nieuweSleutel());
@@ -124,8 +129,11 @@ export default function BevindingVenster({
   const actueel = huidigId ? inspectie.items.find((i) => i.id === huidigId) ?? item : null;
   const bestaandeFotos: InspectieFoto[] = actueel?.fotos ?? [];
 
-  /** Foto's één voor één verkleinen en versturen. Geeft de laatste inspectie terug en wat mislukte. */
-  const stuurFotos = async (itemId: number): Promise<{ laatste: Inspectie | null; mislukt: NieuweFoto[] }> => {
+  /**
+   * Foto's één voor één verkleinen en versturen. Geeft de laatste inspectie terug,
+   * wat mislukte, en wat nog niet verstuurd is omdat de verbinding wegviel.
+   */
+  const stuurFotos = async (itemId: number): Promise<{ laatste: Inspectie | null; mislukt: NieuweFoto[]; geenBereik: NieuweFoto[] }> => {
     let laatste: Inspectie | null = null;
     const mislukt: NieuweFoto[] = [];
     const lijst = nieuweFotos;
@@ -138,12 +146,40 @@ export default function BevindingVenster({
         const res = await fetch(`/api/inspectie-items/${itemId}/fotos`, { method: 'POST', headers: { [IDEMPOTENTIE_HEADER]: f.sleutel }, body: form });
         if (res.ok) laatste = await res.json();
         else mislukt.push({ ...f, fout: await foutTekst(res, 'Niet opgeslagen.') });
-      } catch {
+      } catch (e) {
+        if (isNetwerkFout(e)) {
+          setVoortgang('');
+          return { laatste, mislukt, geenBereik: lijst.slice(n) };
+        }
         mislukt.push({ ...f, fout: GEEN_VERBINDING });
       }
     }
     setVoortgang('');
-    return { laatste, mislukt };
+    return { laatste, mislukt, geenBereik: [] };
+  };
+
+  /** Foto's voor een bevinding die al op de server staat, op de telefoon bewaren tot er bereik is. */
+  const fotosInWachtrij = async (itemId: number, fotos: NieuweFoto[]) => {
+    const bestanden = [];
+    for (const f of fotos) {
+      const klein = await verkleinFoto(f.bestand);
+      bestanden.push({ veld: 'photo', naam: klein.name, blob: klein, sleutel: f.sleutel, ...(f.bijschrift.trim() ? { bijschrift: f.bijschrift.trim() } : {}) });
+    }
+    await inWachtrij({
+      sleutel: nieuweSleutel(),
+      soort: 'inspectie-item',
+      gebruiker: gebruiker.username,
+      titel: `${bestanden.length} ${bestanden.length === 1 ? 'foto' : "foto's"} bij ${velden.titel || s.item.enkel}, ${inspectie.nummer}`,
+      inspectieId: inspectie.id,
+      itemId,
+      fotos: bestanden,
+    });
+  };
+
+  /** Sluiten met nieuwe foto's die nog niet verstuurd zijn: eerst vragen. */
+  const sluit = () => {
+    if (nieuweFotos.length > 0 && !window.confirm(`${nieuweFotos.length === 1 ? 'Er staat 1 nieuwe foto' : `Er staan ${nieuweFotos.length} nieuwe foto's`} die nog niet is opgeslagen. Toch sluiten? Dan ${nieuweFotos.length === 1 ? 'gaat hij' : 'gaan ze'} verloren.`)) return;
+    onClose();
   };
 
   /** Gewijzigde bijschriften van foto's die er al staan. */
@@ -163,8 +199,8 @@ export default function BevindingVenster({
     return { laatste, fout: '' };
   };
 
+  // Zacht weghalen, zonder vraag: de pagina toont meteen Ongedaan maken.
   const fotoWeghalen = async (foto: InspectieFoto, nr: number) => {
-    if (!window.confirm(`Foto ${nr}${foto.bijschrift ? ` (${foto.bijschrift})` : ''} van ${velden.titel || 'deze bevinding'} weghalen? Dit kan niet ongedaan worden gemaakt.`)) return;
     setFout('');
     try {
       const res = await fetch(`/api/inspectie-fotos/${foto.id}`, { method: 'DELETE' });
@@ -173,6 +209,7 @@ export default function BevindingVenster({
         return;
       }
       onOpgeslagen(await res.json(), false);
+      onFotoWeg?.(foto, nr);
     } catch {
       setFout(GEEN_VERBINDING);
     }
@@ -265,8 +302,29 @@ export default function BevindingVenster({
       setBijschriften({});
       if (nieuweFotos.length > 0) {
         const totaal = nieuweFotos.length;
-        const { laatste, mislukt } = await stuurFotos(itemId);
+        const { laatste, mislukt, geenBereik } = await stuurFotos(itemId);
         if (laatste) nieuw = laatste;
+        if (geenBereik.length > 0) {
+          // Verbinding weg tijdens de foto's: de rest gaat naar de wachtrij en komt vanzelf mee.
+          try {
+            await fotosInWachtrij(itemId, [...mislukt, ...geenBereik]);
+          } catch {
+            if (!item) setAangemaaktId(itemId);
+            setNieuweFotos([...mislukt, ...geenBereik]);
+            onOpgeslagen(nieuw, false);
+            setFout(`${GEEN_VERBINDING} De foto's staan hieronder nog; tik op Opslaan zodra er bereik is.`);
+            return;
+          }
+          const n = mislukt.length + geenBereik.length;
+          setNieuweFotos([]);
+          onOpgeslagen(nieuw, false);
+          onBewaard?.(`${velden.titel || 'De bevinding'} is opgeslagen. ${n === 1 ? '1 foto staat' : `${n} foto's staan`} op deze telefoon en ${n === 1 ? 'gaat' : 'gaan'} vanzelf mee zodra er bereik is.`, sluiten);
+          if (!sluiten) {
+            setVelden(beginVelden(nieuw, null));
+            setAangemaaktId(null);
+          }
+          return;
+        }
         if (mislukt.length > 0) {
           // De bevinding staat er, net als de foto's die wel lukten. Het venster blijft open.
           if (!item) setAangemaaktId(itemId);
@@ -360,12 +418,12 @@ export default function BevindingVenster({
   return (
     <Modal
       open
-      onClose={onClose}
+      onClose={sluit}
       size="md"
       title={titel}
       footer={
         <>
-          <button type="button" className={`btn veldwerk-knop${item ? '' : ' insp-annuleer'}`} onClick={onClose}>Annuleren</button>
+          <button type="button" className={`btn veldwerk-knop${item ? '' : ' insp-annuleer'}`} onClick={sluit}>Annuleren</button>
           {!huidigId && (
             <button type="button" className="btn veldwerk-knop" onClick={() => opslaan(false)} disabled={bezig}>
               <Icon name="plus" size={16} />

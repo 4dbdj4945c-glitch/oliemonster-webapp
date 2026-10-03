@@ -6,8 +6,8 @@
   (camera of fotobibliotheek, meerdere tegelijk). Nieuw gekozen foto's staan er
   met een gestippelde rand bij tot Opslaan; daarna gaan ze één voor één naar de
   server (BevindingVenster). De volgorde is die van toevoegen: de eerste is de
-  overzichtsfoto. Weghalen van een foto die er al staat, vraagt eerst om
-  bevestiging en staat niet als rode prullenbak in het raster.
+  overzichtsfoto. Weghalen van een foto die er al staat is zacht: daarna staat
+  onderin Ongedaan maken (Invulscherm). Geen rode prullenbak in het raster.
   Opmaak in globals.css (.insp-fotos-*), geen styled-jsx.
 */
 

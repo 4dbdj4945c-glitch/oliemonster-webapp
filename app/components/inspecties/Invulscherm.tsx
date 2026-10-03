@@ -338,6 +338,18 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
             if (sluiten) setVenster(null);
           }}
           onWeghalen={weghalen}
+          onFotoWeg={(foto, nr) =>
+            setOngedaan({
+              sleutel: `foto-${foto.id}`,
+              tekst: `Foto ${nr} weggehaald`,
+              onOngedaan: async () => {
+                const terug = await fetch(`/api/inspectie-fotos/${foto.id}/herstellen`, { method: 'POST' });
+                if (!terug.ok) return false;
+                setInsp(await terug.json());
+                return true;
+              },
+            })
+          }
           onBewaard={(tekst, sluiten) => {
             setMelding(tekst);
             if (sluiten) setVenster(null);
