@@ -4,6 +4,10 @@
 // uitkomst en volgende inspectie, te filteren op soort, status en klant.
 // Nieuwe inspectie en invullen alleen voor de beheerder. Een tik op een regel
 // opent het invulscherm (/dashboard/inspecties/[id]).
+//
+// Verzamelrapport (beheerder): inspecties aanvinken en er één PDF van maken
+// (GET /api/inspecties/rapport?ids=...). Alleen van één klant en één soort;
+// anders staat er boven de lijst waarom het niet kan.
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -31,6 +35,7 @@ export default function InspectiesPagina() {
   const [nieuw, setNieuw] = useState(false);
   const [objecten, setObjecten] = useState<ObjectKeuze[]>([]);
   const [installaties, setInstallaties] = useState<InstallatieKeuze[]>([]);
+  const [gekozen, setGekozen] = useState<Set<number>>(new Set());
 
   const laad = useCallback(async () => {
     try {
@@ -81,12 +86,32 @@ export default function InspectiesPagina() {
   );
   const open = (i: InspectieInLijst) => router.push(`/dashboard/inspecties/${i.id}`);
 
+  // Verzamelrapport: wat is gekozen (en nog in de lijst), en mag dat samen?
+  const keuze = (lijst ?? []).filter((i) => gekozen.has(i.id));
+  const wissel = (id: number) =>
+    setGekozen((g) => {
+      const n = new Set(g);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const keuzeFout =
+    new Set(keuze.map((i) => i.klant.id)).size > 1
+      ? 'Een verzamelrapport is voor één klant. Je hebt inspecties van verschillende klanten gekozen.'
+      : new Set(keuze.map((i) => i.sjabloon)).size > 1
+        ? 'Een verzamelrapport is voor één soort inspectie. Je hebt verschillende soorten gekozen.'
+        : keuze.length > 50
+          ? 'Kies hoogstens 50 inspecties voor één verzamelrapport.'
+          : '';
+  const concepten = keuze.filter((i) => i.status === 'concept').length;
+  const alleZichtbaarGekozen = zichtbaar.length > 0 && zichtbaar.every((i) => gekozen.has(i.id));
+
   return (
     <AppShell title="Inspecties" wide user={user}>
       <div className="beheer-kop">
         <div>
           <h1 className="page-title">Inspecties</h1>
-          <p className="page-subtitle">Persluchtlekken en arbeidsmiddelen, met een rapport voor de klant.</p>
+          <p className="page-subtitle">Lekken, arbeidsmiddelen en markeringen, met een rapport voor de klant.</p>
         </div>
         {isAdmin && (
           <div className="knoppenrij beheer-knoppen">
@@ -136,11 +161,49 @@ export default function InspectiesPagina() {
             </div>
           </div>
 
+          {isAdmin && keuze.length > 0 && (
+            <div className="card insp-selectie" role="region" aria-label="Verzamelrapport">
+              <span className="insp-selectie-tekst">
+                <b>{keuze.length}</b> {keuze.length === 1 ? 'inspectie' : 'inspecties'} gekozen
+                {concepten > 0 && !keuzeFout ? `, waarvan ${concepten} concept (komt als CONCEPT in het rapport)` : ''}
+              </span>
+              <div className="knoppenrij">
+                {!alleZichtbaarGekozen && (
+                  <button type="button" className="btn btn-sm" onClick={() => setGekozen(new Set([...gekozen, ...zichtbaar.map((i) => i.id)]))}>
+                    <Icon name="select-all" size={16} />
+                    Alle zichtbare
+                  </button>
+                )}
+                <button type="button" className="btn btn-sm btn-ghost" onClick={() => setGekozen(new Set())}>
+                  <Icon name="clear-selection" size={16} />
+                  Niets kiezen
+                </button>
+                {keuzeFout ? (
+                  <button type="button" className="btn" disabled>
+                    <Icon name="file-bundle" size={16} />
+                    Verzamelrapport
+                  </button>
+                ) : (
+                  <a className="btn" href={`/api/inspecties/rapport?ids=${keuze.map((i) => i.id).join(',')}`} download>
+                    <Icon name="file-bundle" size={16} />
+                    Verzamelrapport
+                  </a>
+                )}
+              </div>
+              {keuzeFout && (
+                <div className="alert alert-warning" role="alert">
+                  <Icon name="alert-warning" size={20} />
+                  <span>{keuzeFout}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {zichtbaar.length === 0 ? (
             <div className="leeg">
               <Icon name="module-inspecties" size={32} />
               <p style={{ margin: '0 0 12px' }}>
-                {lijst.length === 0 ? 'Nog geen inspecties. Begin met een lekkeninspectie of een inspectie van arbeidsmiddelen.' : 'Geen inspecties die aan dit filter voldoen.'}
+                {lijst.length === 0 ? 'Nog geen inspecties. Begin met Nieuwe inspectie.' : 'Geen inspecties die aan dit filter voldoen.'}
               </p>
               {isAdmin && lijst.length === 0 && (
                 <button type="button" className="btn btn-sm" onClick={openNieuw}>
@@ -155,6 +218,20 @@ export default function InspectiesPagina() {
                 <table className="table table-kaarten beheer-tabel insp-tabel">
                   <thead>
                     <tr>
+                      {isAdmin && (
+                        <th className="insp-kies">
+                          <label title="Alle zichtbare kiezen voor een verzamelrapport">
+                            <input
+                              type="checkbox"
+                              checked={alleZichtbaarGekozen}
+                              aria-label="Alle zichtbare inspecties kiezen"
+                              onChange={() =>
+                                setGekozen(alleZichtbaarGekozen ? new Set([...gekozen].filter((id) => !zichtbaar.some((i) => i.id === id))) : new Set([...gekozen, ...zichtbaar.map((i) => i.id)]))
+                              }
+                            />
+                          </label>
+                        </th>
+                      )}
                       <th>Inspectie</th>
                       <th>Klant en object</th>
                       <th>Datum</th>
@@ -168,6 +245,14 @@ export default function InspectiesPagina() {
                       const s = SJABLONEN[i.sjabloon];
                       return (
                         <tr key={i.id} className="rij-link" onClick={() => open(i)}>
+                          {isAdmin && (
+                            <td data-label="Kiezen" className="insp-kies" onClick={(e) => e.stopPropagation()}>
+                              <label>
+                                <input type="checkbox" checked={gekozen.has(i.id)} onChange={() => wissel(i.id)} aria-label={`${i.nummer} kiezen voor een verzamelrapport`} />
+                                <span className="alleen-mobiel">Kiezen voor verzamelrapport</span>
+                              </label>
+                            </td>
+                          )}
                           <td data-label="Inspectie" className="kaart-kop">
                             <a
                               href={`/dashboard/inspecties/${i.id}`}

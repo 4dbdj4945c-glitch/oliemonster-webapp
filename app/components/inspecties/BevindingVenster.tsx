@@ -1,24 +1,30 @@
 'use client';
 
 /*
-  Een bevinding toevoegen of bewerken: een lek of een arbeidsmiddel. Gemaakt
-  voor de telefoon met één hand en handschoenen aan (.veldwerk: velden en
-  knoppen van 56px), met de foto als groot tikvlak (FotoKiezer). Keuzes zoals
-  prioriteit, uitslag en de checklist zijn grote knoppen naast elkaar, geen
-  keuzelijst. Wat er per sjabloon in staat, komt uit lib/inspecties/sjablonen.ts.
+  Een bevinding toevoegen of bewerken: een lek, een arbeidsmiddel of een
+  locatie. Gemaakt voor de telefoon met één hand en handschoenen aan
+  (.veldwerk: velden en knoppen van 56px). Keuzes zoals prioriteit, uitslag en
+  de checklist zijn grote knoppen naast elkaar, geen keuzelijst. Wat er per
+  sjabloon in staat, komt uit lib/inspecties/sjablonen.ts.
+
+  Foto's (BevindingFotos): zoveel als nodig, meerdere tegelijk te kiezen uit de
+  camera of de fotobibliotheek, elk met een bijschrift. Bij Opslaan gaan ze
+  verkleind één voor één naar de server, met voortgang. Lukt er een niet, dan
+  blijft die in het venster staan (de rest is opgeslagen) en probeert Opslaan
+  het opnieuw, zonder iets dubbel te maken (eigen sleutel per foto).
 
   Bij een nieuwe bevinding kan Opslaan en nog een: het venster blijft open en
   het labelnummer telt door.
 
   Een NIEUWE bevinding zonder verbinding (of als de verbinding wegvalt tijdens
-  het versturen) gaat met de verkleinde foto in de offline wachtrij
+  het versturen) gaat met de verkleinde foto's in de offline wachtrij
   (lib/wachtrij.ts). Per bevinding een eigen sleutel, zodat de server hem maar
   één keer aanmaakt. Een bestaande bevinding wijzigen kan alleen met bereik.
 */
 
 import { useRef, useState } from 'react';
 import { Icon, Modal } from '@/app/components/ui';
-import FotoKiezer from '@/app/components/FotoKiezer';
+import BevindingFotos, { type NieuweFoto } from './BevindingFotos';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { verkleinFoto } from '@/lib/fotoVerkleinen';
 import { IDEMPOTENTIE_HEADER, inWachtrij, isNetwerkFout, nieuweSleutel } from '@/lib/wachtrij';
@@ -34,7 +40,7 @@ import {
   type ChecklistAntwoord,
 } from '@/lib/inspecties/sjablonen';
 import { berekenLek, co2Tekst, euro } from '@/lib/inspecties/rekenen';
-import type { Bevinding, Inspectie, InstallatieKort } from './types';
+import type { Bevinding, Inspectie, InspectieFoto, InstallatieKort } from './types';
 import { vandaagInvoer } from './types';
 
 type Velden = {
@@ -56,6 +62,7 @@ export function volgendLabel(items: Bevinding[]): string {
   return nummers.length ? String(Math.max(...nummers) + 1) : '1';
 }
 
+/** Labelnummers tellen alleen door bij lekken; anders begint het veld leeg. */
 function beginVelden(inspectie: Inspectie, item: Bevinding | null): Velden {
   const s = sjabloonVan(inspectie.sjabloon);
   const meet: Record<string, string> = {};
@@ -64,7 +71,7 @@ function beginVelden(inspectie: Inspectie, item: Bevinding | null): Velden {
     meet[v.sleutel] = n === null ? '' : String(n).replace('.', ',');
   }
   return {
-    titel: item?.titel ?? (s.item.kiesInstallatie ? '' : volgendLabel(inspectie.items)),
+    titel: item?.titel ?? (inspectie.sjabloon === 'persluchtlekken' ? volgendLabel(inspectie.items) : ''),
     locatie: item?.locatie ?? '',
     oordeel: item?.oordeel ?? s.oordeel.standaard ?? '',
     notitie: item?.notitie ?? '',
@@ -102,12 +109,74 @@ export default function BevindingVenster({
   const sleutel = useRef(nieuweSleutel());
   const s = sjabloonVan(inspectie.sjabloon);
   const [velden, setVelden] = useState<Velden>(() => beginVelden(inspectie, item));
-  const [foto, setFoto] = useState<File | null>(null);
+  const [nieuweFotos, setNieuweFotos] = useState<NieuweFoto[]>([]);
+  const [bijschriften, setBijschriften] = useState<Record<number, string>>({});
+  const [voortgang, setVoortgang] = useState('');
+  // Een nieuwe bevinding die al is aangemaakt terwijl een foto mislukte: opnieuw opslaan werkt hem bij.
+  const [aangemaaktId, setAangemaaktId] = useState<number | null>(null);
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState('');
   const [veldFouten, setVeldFouten] = useState<Record<string, string>>({});
   const zet = <K extends keyof Velden>(k: K, w: Velden[K]) => setVelden((v) => ({ ...v, [k]: w }));
   const lekken = inspectie.sjabloon === 'persluchtlekken';
+  const huidigId = item?.id ?? aangemaaktId;
+  // De bevinding zoals hij nu op de server staat (na een foto erbij of eraf).
+  const actueel = huidigId ? inspectie.items.find((i) => i.id === huidigId) ?? item : null;
+  const bestaandeFotos: InspectieFoto[] = actueel?.fotos ?? [];
+
+  /** Foto's één voor één verkleinen en versturen. Geeft de laatste inspectie terug en wat mislukte. */
+  const stuurFotos = async (itemId: number): Promise<{ laatste: Inspectie | null; mislukt: NieuweFoto[] }> => {
+    let laatste: Inspectie | null = null;
+    const mislukt: NieuweFoto[] = [];
+    const lijst = nieuweFotos;
+    for (const [n, f] of lijst.entries()) {
+      setVoortgang(lijst.length > 1 ? `Foto ${n + 1} van ${lijst.length} versturen...` : 'Foto versturen...');
+      try {
+        const form = new FormData();
+        form.append('photo', await verkleinFoto(f.bestand));
+        if (f.bijschrift.trim()) form.append('bijschrift', f.bijschrift.trim());
+        const res = await fetch(`/api/inspectie-items/${itemId}/fotos`, { method: 'POST', headers: { [IDEMPOTENTIE_HEADER]: f.sleutel }, body: form });
+        if (res.ok) laatste = await res.json();
+        else mislukt.push({ ...f, fout: await foutTekst(res, 'Niet opgeslagen.') });
+      } catch {
+        mislukt.push({ ...f, fout: GEEN_VERBINDING });
+      }
+    }
+    setVoortgang('');
+    return { laatste, mislukt };
+  };
+
+  /** Gewijzigde bijschriften van foto's die er al staan. */
+  const stuurBijschriften = async (): Promise<{ laatste: Inspectie | null; fout: string }> => {
+    let laatste: Inspectie | null = null;
+    for (const f of bestaandeFotos) {
+      const nieuw = bijschriften[f.id];
+      if (nieuw === undefined || nieuw.trim() === (f.bijschrift ?? '')) continue;
+      const res = await fetch(`/api/inspectie-fotos/${f.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bijschrift: nieuw }),
+      });
+      if (!res.ok) return { laatste, fout: await foutTekst(res, 'Een bijschrift is niet opgeslagen.') };
+      laatste = await res.json();
+    }
+    return { laatste, fout: '' };
+  };
+
+  const fotoWeghalen = async (foto: InspectieFoto, nr: number) => {
+    if (!window.confirm(`Foto ${nr}${foto.bijschrift ? ` (${foto.bijschrift})` : ''} van ${velden.titel || 'deze bevinding'} weghalen? Dit kan niet ongedaan worden gemaakt.`)) return;
+    setFout('');
+    try {
+      const res = await fetch(`/api/inspectie-fotos/${foto.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        setFout(await foutTekst(res, 'De foto is niet weggehaald.'));
+        return;
+      }
+      onOpgeslagen(await res.json(), false);
+    } catch {
+      setFout(GEEN_VERBINDING);
+    }
+  };
 
   // Live: wat kost dit lek, en is dit een ketel voor een aangewezen instelling?
   const lpm = leesGetal(velden.meet.verliesLpm ?? '');
@@ -137,9 +206,13 @@ export default function BevindingVenster({
       ...(s.volgendePerItem ? { volgendeOp: velden.volgendeOp || null } : {}),
       ...(s.item.kiesInstallatie ? { installatieId: velden.installatieId || null } : {}),
     };
-    // Een nieuwe bevinding zonder bereik: bewaren op de telefoon.
+    // Een nieuwe bevinding zonder bereik: bewaren op de telefoon, met de verkleinde foto's.
     const bewaar = async () => {
-      const f = foto ? await verkleinFoto(foto) : null;
+      const fotos = [];
+      for (const f of nieuweFotos) {
+        const klein = await verkleinFoto(f.bestand);
+        fotos.push({ veld: 'photo', naam: klein.name, blob: klein, ...(f.bijschrift.trim() ? { bijschrift: f.bijschrift.trim() } : {}) });
+      }
       await inWachtrij({
         sleutel: sleutel.current,
         soort: 'inspectie-item',
@@ -147,16 +220,16 @@ export default function BevindingVenster({
         titel: `${s.item.enkel.charAt(0).toUpperCase()}${s.item.enkel.slice(1)} ${velden.titel || 'zonder nummer'}, ${inspectie.nummer}`,
         inspectieId: inspectie.id,
         json: body,
-        foto: f ? { veld: 'photo', naam: f.name, blob: f } : null,
+        fotos,
       });
       sleutel.current = nieuweSleutel();
       onBewaard?.(`${velden.titel || 'De bevinding'} is op deze telefoon bewaard en gaat vanzelf mee zodra er bereik is.`, sluiten);
       if (!sluiten) {
         setVelden(beginVelden(inspectie, null));
-        setFoto(null);
+        setNieuweFotos([]);
       }
     };
-    if (!item && typeof navigator !== 'undefined' && !navigator.onLine) {
+    if (!huidigId && typeof navigator !== 'undefined' && !navigator.onLine) {
       try {
         await bewaar();
       } catch {
@@ -167,9 +240,9 @@ export default function BevindingVenster({
       return;
     }
     try {
-      const res = await fetch(item ? `/api/inspectie-items/${item.id}` : `/api/inspecties/${inspectie.id}/items`, {
-        method: item ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json', ...(item ? {} : { [IDEMPOTENTIE_HEADER]: sleutel.current }) },
+      const res = await fetch(huidigId ? `/api/inspectie-items/${huidigId}` : `/api/inspecties/${inspectie.id}/items`, {
+        method: huidigId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', ...(huidigId ? {} : { [IDEMPOTENTIE_HEADER]: sleutel.current }) },
         body: JSON.stringify(body),
       });
       if (!res.ok) {
@@ -179,31 +252,45 @@ export default function BevindingVenster({
         return;
       }
       const data = await res.json();
-      let nieuw: Inspectie = item ? data : data.inspectie;
-      const itemId: number = item ? item.id : data.itemId;
-      if (!item) sleutel.current = nieuweSleutel();
-      if (foto) {
-        const form = new FormData();
-        form.append('photo', await verkleinFoto(foto));
-        const f = await fetch(`/api/inspectie-items/${itemId}/foto`, { method: 'POST', body: form });
-        if (f.ok) {
-          nieuw = await f.json();
-        } else {
-          // De bevinding staat er; alleen de foto niet. Het venster blijft open.
+      let nieuw: Inspectie = huidigId ? data : data.inspectie;
+      const itemId: number = huidigId ?? data.itemId;
+      if (!huidigId) sleutel.current = nieuweSleutel();
+      const b = await stuurBijschriften();
+      if (b.laatste) nieuw = b.laatste;
+      if (b.fout) {
+        onOpgeslagen(nieuw, false);
+        setFout(`${b.fout} De rest is wel opgeslagen.`);
+        return;
+      }
+      setBijschriften({});
+      if (nieuweFotos.length > 0) {
+        const totaal = nieuweFotos.length;
+        const { laatste, mislukt } = await stuurFotos(itemId);
+        if (laatste) nieuw = laatste;
+        if (mislukt.length > 0) {
+          // De bevinding staat er, net als de foto's die wel lukten. Het venster blijft open.
+          if (!item) setAangemaaktId(itemId);
+          setNieuweFotos(mislukt);
           onOpgeslagen(nieuw, false);
-          setFout(`${await foutTekst(f, 'De foto is niet opgeslagen.')} De rest is wel opgeslagen.`);
+          setFout(
+            `${mislukt.length === totaal ? (totaal === 1 ? 'De foto is' : "De foto's zijn") : `${mislukt.length} van ${totaal} foto's zijn`} niet opgeslagen: ${[...new Set(mislukt.map((f) => f.fout))].join(' ')} ` +
+              `${mislukt.length === 1 ? 'Hij staat' : 'Ze staan'} hieronder nog; tik op Opslaan om het opnieuw te proberen. De rest is wel opgeslagen.`
+          );
           return;
         }
       }
       onOpgeslagen(nieuw, sluiten);
       if (!sluiten) {
         setVelden(beginVelden(nieuw, null));
-        setFoto(null);
+        setNieuweFotos([]);
+        setAangemaaktId(null);
+      } else {
+        setNieuweFotos([]);
       }
     } catch (e) {
       // Verbinding weg tijdens het versturen van een nieuwe bevinding: met dezelfde
       // sleutel in de wachtrij. Kwam hij toch aan, dan maakt de server hem niet twee keer.
-      if (!item && isNetwerkFout(e)) {
+      if (!huidigId && isNetwerkFout(e)) {
         try {
           await bewaar();
         } catch {
@@ -224,7 +311,16 @@ export default function BevindingVenster({
 
   const metingen = (
     <>
-        <FotoKiezer label="Foto" bestand={foto} onKies={setFoto} bestaandeUrl={item?.fotoUrl ?? null} uitgeschakeld={bezig} />
+        <BevindingFotos
+          bestaande={bestaandeFotos}
+          bijschriften={bijschriften}
+          onBijschrift={(id, tekst) => setBijschriften((b) => ({ ...b, [id]: tekst }))}
+          onWeghalen={fotoWeghalen}
+          nieuwe={nieuweFotos}
+          onNieuwe={setNieuweFotos}
+          voortgang={voortgang}
+          uitgeschakeld={bezig}
+        />
 
         <div className="insp-meetwaarden">
           {s.meetwaarden.map((v) => (
@@ -259,7 +355,7 @@ export default function BevindingVenster({
     </>
   );
 
-  const titel = item ? `${s.item.enkel === 'lek' ? `Lek ${item.titel}` : item.titel}` : s.item.nieuw;
+  const titel = item ? `${lekken ? `Lek ${item.titel}` : item.titel}` : aangemaaktId ? velden.titel || s.item.nieuw : s.item.nieuw;
 
   return (
     <Modal
@@ -270,7 +366,7 @@ export default function BevindingVenster({
       footer={
         <>
           <button type="button" className={`btn veldwerk-knop${item ? '' : ' insp-annuleer'}`} onClick={onClose}>Annuleren</button>
-          {!item && (
+          {!huidigId && (
             <button type="button" className="btn veldwerk-knop" onClick={() => opslaan(false)} disabled={bezig}>
               <Icon name="plus" size={16} />
               Opslaan en nog een
@@ -319,7 +415,13 @@ export default function BevindingVenster({
           </div>
           <div className="veld">
             <label className="label" htmlFor="bv-locatie">Locatie</label>
-            <input id="bv-locatie" className="input" value={velden.locatie} onChange={(e) => zet('locatie', e.target.value)} placeholder={lekken ? 'Bijv. Hal 1, werkbank 3' : 'Bijv. Hal 2'} />
+            <input
+              id="bv-locatie"
+              className="input"
+              value={velden.locatie}
+              onChange={(e) => zet('locatie', e.target.value)}
+              placeholder={lekken ? 'Bijv. Hal 1, werkbank 3' : inspectie.sjabloon === 'markering' ? 'Bijv. Kast in technische ruimte' : 'Bijv. Hal 2'}
+            />
           </div>
         </div>
 
@@ -362,7 +464,7 @@ export default function BevindingVenster({
 
         <fieldset className="insp-keuze">
           <legend className="label">{s.oordeel.label}</legend>
-          <div className={`keuzeknoppen${s.oordeel.keuzes.length > 3 ? ' keuzeknoppen-vier' : ''}`}>
+          <div className={`keuzeknoppen${s.oordeel.keuzes.length > 3 ? ' keuzeknoppen-vier' : s.oordeel.keuzes.some((k) => k.label.length > 12) ? ' keuzeknoppen-lang' : ''}`}>
             {s.oordeel.keuzes.map((k) => (
               <button
                 key={k.waarde}
@@ -379,7 +481,14 @@ export default function BevindingVenster({
           {veldFouten.oordeel ? (
             <p className="veld-fout">{veldFouten.oordeel}</p>
           ) : (
-            s.oordeel.standaard === null && !velden.oordeel && <p className="hint">Nog geen uitslag. In orde kan als alle controlepunten zijn beantwoord; sla je dit arbeidsmiddel over, kies dan Niet gecontroleerd.</p>
+            s.oordeel.standaard === null &&
+            !velden.oordeel && (
+              <p className="hint">
+                {s.checklist.length > 0
+                  ? 'Nog geen uitslag. In orde kan als alle controlepunten zijn beantwoord; sla je dit arbeidsmiddel over, kies dan Niet gecontroleerd.'
+                  : `Nog geen ${s.oordeel.label.toLowerCase()}. Afronden kan pas als elke ${s.item.enkel} er een heeft.`}
+              </p>
+            )
           )}
         </fieldset>
 
@@ -427,7 +536,7 @@ export default function BevindingVenster({
         {item && onWeghalen && (
           <button type="button" className="btn btn-sm btn-ghost insp-weghalen" onClick={() => onWeghalen(item)} disabled={bezig}>
             <Icon name="trash" size={16} />
-            {s.item.enkel === 'lek' ? 'Lek weghalen' : 'Arbeidsmiddel weghalen'}
+            {`${s.item.enkel.charAt(0).toUpperCase()}${s.item.enkel.slice(1)} weghalen`}
           </button>
         )}
       </form>

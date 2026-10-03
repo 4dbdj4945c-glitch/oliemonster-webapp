@@ -1,6 +1,6 @@
 'use client';
 
-// Nieuwe inspectie: eerst het sjabloon (twee grote vlakken), dan het object
+// Nieuwe inspectie: eerst het sjabloon (grote vlakken naast elkaar), dan het object
 // (per klant gegroepeerd, alleen objecten met een klant), optioneel de
 // installatie, de datum en wie hem uitvoert. Daarna meteen naar het invulscherm.
 

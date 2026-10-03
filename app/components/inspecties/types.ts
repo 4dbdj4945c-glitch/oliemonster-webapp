@@ -39,12 +39,18 @@ export interface Bevinding {
   oordeel: string | null;
   notitie: string | null;
   waarden: { [sleutel: string]: number | null | Record<string, ChecklistAntwoord> | undefined; checklist?: Record<string, ChecklistAntwoord> } | null;
-  /** Via /api/fotos/inspectie/..., of null */
-  fotoUrl: string | null;
+  /** Alle foto's, in volgorde van toevoegen (de eerste is de overzichtsfoto). Adressen via /api/fotos/inspectiefoto/... */
+  fotos: InspectieFoto[];
   gerepareerd: boolean;
   gerepareerdOp: string | null;
   volgendeOp: string | null;
   waarschuwing: string | null;
+}
+
+export interface InspectieFoto {
+  id: number;
+  url: string;
+  bijschrift: string | null;
 }
 
 export interface LekTotalenJson {
@@ -72,6 +78,16 @@ export interface ArbeidsmiddelTotalenJson {
   zonderUitslag: number;
 }
 
+export interface MarkeringTotalenJson {
+  soort: 'markering';
+  aantal: number;
+  gemarkeerd: number;
+  'niet-bereikbaar': number;
+  'niet-aangetroffen': number;
+  zonderUitslag: number;
+  stickers: number;
+}
+
 export interface Inspectie {
   id: number;
   nummer: string;
@@ -93,7 +109,7 @@ export interface Inspectie {
   items: Bevinding[];
   volgende: string | null;
   uitkomst: string;
-  totalen: LekTotalenJson | ArbeidsmiddelTotalenJson;
+  totalen: LekTotalenJson | ArbeidsmiddelTotalenJson | MarkeringTotalenJson;
 }
 
 /** Een dag (jjjj-mm-dd) leesbaar: "8 sep 2026". */

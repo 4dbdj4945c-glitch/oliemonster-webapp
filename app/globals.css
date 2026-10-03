@@ -4928,7 +4928,7 @@ h2.sectiekop {
 }
 
 /* ---------- Nieuwe inspectie: twee grote vlakken ---------- */
-.insp-sjabloonkeuze { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.insp-sjabloonkeuze { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .insp-sjabloon {
   display: flex;
   flex-direction: column;
@@ -4968,6 +4968,7 @@ h2.sectiekop {
   background: var(--groen-light);
 }
 .insp-besparing .icon { flex: none; margin-top: 2px; }
+.insp-besparing.insp-neutraal { color: var(--grijs-700); background: var(--grijs-50); }
 .veld-kolom > .alert-warning { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
 .veld-kolom > .alert-warning .icon { flex: none; margin-top: 1px; }
 
@@ -5052,6 +5053,8 @@ div.veld-lijst-regel { cursor: default; }
 .keuzeknop.on-actie-nodig, .keuzeknop.on-niet-goed, .keuzeknop.on-hoog { border-color: var(--geel-tekst); background: var(--oranje-light); color: var(--geel-tekst); }
 .keuzeknop.on-buiten-gebruik { border-color: var(--rood-tekst); background: var(--rood-light); color: var(--rood-tekst); }
 .keuzeknop.on-middel { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }
+.keuzeknop.on-gemarkeerd { border-color: var(--groen-diep); background: var(--groen-light); color: var(--groen-tekst); }
+.keuzeknop.on-niet-bereikbaar { border-color: var(--geel-tekst); background: var(--oranje-light); color: var(--geel-tekst); }
 .keuzeknoppen-klein .keuzeknop { min-height: 44px; font-size: 14px; }
 /* Vier keuzes (uitslag arbeidsmiddel): twee bij twee, zodat de woorden passen */
 .keuzeknoppen-vier { grid-auto-flow: row; grid-template-columns: 1fr 1fr; }
@@ -5063,6 +5066,44 @@ div.veld-lijst-regel { cursor: default; }
 .insp-checklist > li + li { border-top: 1px solid var(--grijs-200); }
 .insp-checklist-punt { font-size: 14px; color: var(--navy); line-height: 1.35; }
 .insp-weghalen { align-self: flex-start; }
+
+/* Foto's bij een bevinding (meerdere, in volgorde; de eerste is de overzichtsfoto) */
+.insp-fotos-blok { display: flex; flex-direction: column; gap: 8px; }
+.insp-fotos-kop { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.insp-fotos-kop .label { margin: 0; }
+.insp-fotos-kop small { font-size: 12px; color: var(--grijs-500); }
+.insp-fotos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.insp-fotos > li { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.insp-foto { position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; padding: 0; border: 1px solid var(--grijs-200); border-radius: var(--radius-md); overflow: hidden; background: var(--grijs-50); cursor: pointer; }
+.insp-foto img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.insp-foto-nr { position: absolute; left: 6px; top: 6px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--navy); color: var(--wit); font-size: 12px; font-weight: 700; line-height: 22px; text-align: center; }
+.insp-foto-nieuw .insp-foto { border: 2px dashed var(--grijs-400); }
+.insp-foto-fout .insp-foto { border: 2px solid var(--rood-tekst); }
+.veldwerk .insp-fotos .input { min-height: 44px; height: 44px; font-size: 14px; }
+.insp-foto-weg { align-self: flex-start; min-height: 44px; }
+.insp-foto-toevoegen { position: relative; align-self: flex-start; }
+.insp-foto-toevoegen input[type='file'] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.insp-foto-toevoegen:focus-within { outline: 2px solid var(--blue); outline-offset: 2px; }
+.insp-fototal { display: inline-flex; align-items: center; gap: 2px; color: var(--grijs-500); }
+.insp-fototal small { font-size: 12px; font-weight: 600; }
+.insp-foto-voortgang { margin: 0; font-size: 14px; font-weight: 600; color: var(--navy); }
+
+/* Lijst plakken */
+.insp-plak-tekst { font-family: inherit; min-height: 180px; }
+.insp-plak-voorbeeld { margin: 0; padding: 0; list-style: none; border: 1px solid var(--grijs-200); border-radius: var(--radius-md); max-height: 240px; overflow-y: auto; }
+.insp-plak-voorbeeld > li { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 2px 8px; padding: 8px 10px; font-size: 13px; }
+.insp-plak-voorbeeld > li + li { border-top: 1px solid var(--grijs-200); }
+.insp-plak-voorbeeld .getal { color: var(--grijs-500); grid-row: span 2; }
+.insp-plak-voorbeeld b { color: var(--navy); font-weight: 600; overflow-wrap: anywhere; }
+.insp-plak-voorbeeld span { color: var(--grijs-700); overflow-wrap: anywhere; }
+
+/* Verzamelrapport: selecteren in het overzicht */
+.insp-kies { width: 44px; text-align: center; }
+.insp-kies label { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: -10px 0; cursor: pointer; }
+.insp-kies input { width: 20px; height: 20px; accent-color: var(--navy); cursor: pointer; }
+.insp-selectie { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 12px; padding: 12px 16px; }
+.insp-selectie-tekst { font-size: 14px; color: var(--navy); }
+.insp-selectie .alert { flex-basis: 100%; margin: 0; }
 
 @media (max-width: 900px) {
   .insp-filters { flex-direction: column; align-items: stretch; }
@@ -5083,10 +5124,19 @@ div.veld-lijst-regel { cursor: default; }
   .insp-checklist > li { grid-template-columns: 1fr; }
   .keuzeknop { min-height: 56px; font-size: 16px; }
   .keuzeknoppen-klein .keuzeknop { min-height: 48px; font-size: 15px; }
+  /* Lange woorden (Niet aangetroffen): op de telefoon onder elkaar, zodat niets over de rand loopt */
+  .keuzeknoppen-lang { grid-auto-flow: row; grid-template-columns: 1fr; }
+  .keuzeknoppen-lang .keuzeknop { justify-content: flex-start; }
   .insp-filter-velden { flex-direction: column; }
   .insp-uitkomst-cel { align-items: flex-end; }
   /* Drie knoppen passen niet naast elkaar: Annuleren kan ook met het kruisje. */
   .modal-footer .insp-annuleer { display: none; }
+  .insp-tabel td.insp-kies { width: auto; text-align: left; justify-content: flex-start; padding: 0 0 4px; }
+  .insp-tabel td.insp-kies::before { display: none; }
+  .insp-tabel td.insp-kies span { font-size: 14px; color: var(--grijs-700); }
+  .insp-tabel td.insp-kies label { width: auto; height: 44px; margin: 0; gap: 10px; justify-content: flex-start; }
+  .insp-selectie { position: sticky; top: 8px; z-index: 5; }
+  .insp-selectie .knoppenrij { width: 100%; }
   .insp-waarschuwing-klein { justify-content: flex-end; text-align: right; }
 }
 

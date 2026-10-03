@@ -3,8 +3,10 @@
 /*
   Een inspectie invullen (/dashboard/inspecties/[id]), in de vorm van het
   veldscherm (STIJL.md, Veldscherm): op de telefoon een eigen navy kop, grote
-  regels van 64px en onderaan in duimbereik de enige oranje knop, Lek toevoegen
-  of Arbeidsmiddel toevoegen. Een tik op een regel opent de bevinding.
+  regels van 64px en onderaan in duimbereik de enige oranje knop, Lek toevoegen,
+  Arbeidsmiddel toevoegen of Locatie toevoegen. Een tik op een regel opent de
+  bevinding. Met Lijst plakken komt een hele werklijst er in één keer in
+  (PlakVenster).
 
   Links (op de telefoon bovenaan): uitkomst in kengetallen, doorverwijzingen en
   de bevindingen. Rechts (op de telefoon eronder): gegevens, rekeninstellingen,
@@ -25,6 +27,7 @@ import { INSPECTIE_STATUS_BADGE, INSPECTIE_STATUS_LABELS, oordeelVan, sjabloonVa
 import { aantalNietGoed, berekenLek, co2Tekst, euro, nl } from '@/lib/inspecties/rekenen';
 import { ROLE_ADMIN } from '@/lib/roles';
 import BevindingVenster from './BevindingVenster';
+import PlakVenster from './PlakVenster';
 import WachtrijOverzicht from '@/app/components/wachtrij/WachtrijOverzicht';
 import { useWachtrij } from '@/app/components/wachtrij/useWachtrij';
 import VeldOffline from '@/app/components/wachtrij/VeldOffline';
@@ -39,6 +42,7 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
   const [fout, setFout] = useState('');
   const [melding, setMelding] = useState('');
   const [venster, setVenster] = useState<{ item: Bevinding | null } | null>(null);
+  const [plakken, setPlakken] = useState(false);
   const [installaties, setInstallaties] = useState<InstallatieKort[]>([]);
   const [ongedaan, setOngedaan] = useState<OngedaanInhoud | null>(null);
   const [verwijderd, setVerwijderd] = useState(false);
@@ -252,6 +256,15 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
               </section>
 
               {isAdmin && insp.status !== 'afgerond' && (
+                <div className="knoppenrij">
+                  <button type="button" className="btn" onClick={() => setPlakken(true)}>
+                    <Icon name="copy" size={16} />
+                    Lijst plakken
+                  </button>
+                </div>
+              )}
+
+              {isAdmin && insp.status !== 'afgerond' && (
                 <div className="veld-actiebalk">
                   <button type="button" className="btn btn-primary veld-hoofdknop" onClick={() => setVenster({ item: null })}>
                     <Icon name="plus" />
@@ -331,6 +344,17 @@ export default function Invulscherm({ inspectieId }: { inspectieId: number }) {
           }}
         />
       )}
+      {plakken && insp && (
+        <PlakVenster
+          inspectie={insp}
+          onClose={() => setPlakken(false)}
+          onOpgeslagen={(nieuw, aantal) => {
+            setInsp(nieuw);
+            setPlakken(false);
+            setMelding(`${aantal} ${aantal === 1 ? sjabloonVan(nieuw.sjabloon).item.enkel : sjabloonVan(nieuw.sjabloon).item.meervoud} toegevoegd.`);
+          }}
+        />
+      )}
       <OngedaanMelding melding={ongedaan} onSluit={() => setOngedaan(null)} />
     </AppShell>
   );
@@ -355,6 +379,24 @@ function Uitkomst({ insp }: { insp: Inspectie }) {
               ? `Alles gerepareerd scheelt ${euro(t.kostenPerJaar)} en ${co2Tekst(t.co2KgPerJaar)} per jaar.`
               : 'Nog geen lekken ingevuld.'}
         </p>
+      </section>
+    );
+  }
+  if (t.soort === 'markering') {
+    return (
+      <section className="card insp-uitkomst" aria-label="Uitkomst">
+        <div className="kengetallen insp-kengetallen">
+          <Kengetal waarde={nl(t.aantal)} label={t.aantal === 1 ? 'locatie' : 'locaties'} />
+          <Kengetal waarde={nl(t.gemarkeerd)} label="gemarkeerd" />
+          <Kengetal waarde={nl(t['niet-bereikbaar'] + t['niet-aangetroffen'])} label="niet bereikbaar of aangetroffen" />
+          <Kengetal waarde={nl(t.stickers)} label={t.stickers === 1 ? 'sticker' : 'stickers'} />
+        </div>
+        {t.zonderUitslag > 0 && (
+          <p className="insp-besparing insp-neutraal">
+            <Icon name="status-round-open" size={16} />
+            Nog {t.zonderUitslag} {t.zonderUitslag === 1 ? 'locatie' : 'locaties'} zonder uitslag. Afronden kan pas als elke locatie er een heeft.
+          </p>
+        )}
       </section>
     );
   }
@@ -389,7 +431,10 @@ function Regel({ insp, item, onOpen }: { insp: Inspectie; item: Bevinding; onOpe
   const s = sjabloonVan(insp.sjabloon);
   const oordeel = oordeelVan(s, item.oordeel);
   let onder: string;
-  if (insp.totalen.soort === 'persluchtlekken') {
+  if (insp.totalen.soort === 'markering') {
+    const stickers = typeof item.waarden?.stickers === 'number' ? item.waarden.stickers : null;
+    onder = [item.locatie, stickers !== null ? `${nl(stickers)} ${stickers === 1 ? 'sticker' : 'stickers'}` : null].filter(Boolean).join(', ');
+  } else if (insp.totalen.soort === 'persluchtlekken') {
     const lpm = typeof item.waarden?.verliesLpm === 'number' ? item.waarden.verliesLpm : null;
     const b = berekenLek(lpm, insp.totalen.instellingen);
     onder = [lpm !== null ? `${nl(lpm, 1)} l/min` : 'verlies onbekend', `${euro(b.kostenPerJaar)} per jaar`].join(', ');
@@ -405,13 +450,18 @@ function Regel({ insp, item, onOpen }: { insp: Inspectie; item: Bevinding; onOpe
       {lek ? (
         <span className={`insp-label getal${item.gerepareerd ? ' insp-label-klaar' : ''}`}>{item.titel}</span>
       ) : (
-        <span className="icoonvak" aria-hidden="true"><Icon name={item.waarschuwing ? 'alert-warning' : 'hydraulic-cylinder'} size={20} /></span>
+        <span className="icoonvak" aria-hidden="true"><Icon name={item.waarschuwing ? 'alert-warning' : s.icoon} size={20} /></span>
       )}
       <span className="veld-lijst-tekst">
         <strong>{lek ? item.locatie || 'Zonder locatie' : item.titel}</strong>
         <span>{onder || 'Nog niets ingevuld'}</span>
       </span>
-      {item.fotoUrl && <Icon name="camera" size={16} />}
+      {item.fotos.length > 0 && (
+        <span className="insp-fototal" title={`${item.fotos.length} foto's`} aria-label={`${item.fotos.length} ${item.fotos.length === 1 ? 'foto' : "foto's"}`}>
+          <Icon name="camera" size={16} />
+          {item.fotos.length > 1 && <small className="getal">{item.fotos.length}</small>}
+        </span>
+      )}
       {lek && item.gerepareerd ? (
         <span className="badge badge-success"><Icon name="check" size={16} />Gerepareerd</span>
       ) : oordeel ? (
@@ -443,7 +493,7 @@ function Gegevens({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: boole
         <dl className="gegevens-lijst">
           <dt>Datum</dt><dd>{dagKort(insp.datum)}</dd>
           <dt>Uitgevoerd door</dt><dd>{insp.uitvoerder}</dd>
-          <dt>Volgende inspectie</dt><dd>{dagKort(insp.volgende)}</dd>
+          {s.heeftVolgende && (<><dt>Volgende inspectie</dt><dd>{dagKort(insp.volgende)}</dd></>)}
           {insp.samenvatting && (<><dt>Samenvatting</dt><dd className="gegevens-notitie">{insp.samenvatting}</dd></>)}
         </dl>
       </section>
@@ -458,7 +508,8 @@ function Gegevens({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: boole
         onSubmit={async (e) => {
           e.preventDefault();
           setBezig(true);
-          await onBewaar({ ...velden, volgendeOp: velden.volgendeOp || null }, 'De gegevens zijn opgeslagen.');
+          const { volgendeOp, ...rest } = velden;
+          await onBewaar(s.heeftVolgende ? { ...rest, volgendeOp: volgendeOp || null } : rest, 'De gegevens zijn opgeslagen.');
           setBezig(false);
         }}
       >
@@ -467,10 +518,12 @@ function Gegevens({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: boole
             <label className="label" htmlFor="ig-datum">Datum</label>
             <input id="ig-datum" type="date" className="input" value={velden.datum} onChange={zet('datum')} required />
           </div>
-          <div className="veld">
-            <label className="label" htmlFor="ig-volgende">{s.volgendePerItem ? 'Volgende inspectie (geheel)' : 'Volgende inspectie'}</label>
-            <input id="ig-volgende" type="date" className="input" value={velden.volgendeOp} onChange={zet('volgendeOp')} />
-          </div>
+          {s.heeftVolgende && (
+            <div className="veld">
+              <label className="label" htmlFor="ig-volgende">{s.volgendePerItem ? 'Volgende inspectie (geheel)' : 'Volgende inspectie'}</label>
+              <input id="ig-volgende" type="date" className="input" value={velden.volgendeOp} onChange={zet('volgendeOp')} />
+            </div>
+          )}
         </div>
         <div className="veld">
           <label className="label" htmlFor="ig-uitvoerder">Uitgevoerd door</label>
@@ -509,7 +562,7 @@ function Instellingen({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: b
     <section className="card insp-kaart" aria-labelledby="kop-instellingen">
       <h2 id="kop-instellingen" className="insp-kaart-kop">
         <Icon name="gauge" size={16} />
-        {insp.sjabloon === 'persluchtlekken' ? 'Uitgangspunten voor de berekening' : 'Verklaring in het rapport'}
+        {insp.sjabloon === 'persluchtlekken' ? 'Uitgangspunten voor de berekening' : insp.sjabloon === 'markering' ? 'Gegevens voor het rapport' : 'Verklaring in het rapport'}
       </h2>
       <form
         className="veldwerk"
@@ -517,7 +570,7 @@ function Instellingen({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: b
           e.preventDefault();
           setBezig(true);
           const body = Object.fromEntries(s.instellingen.map((v) => [v.sleutel, velden[v.sleutel] === '' ? null : velden[v.sleutel]]));
-          await onBewaar({ instellingen: body }, 'De uitgangspunten zijn opgeslagen.');
+          await onBewaar({ instellingen: body }, insp.sjabloon === 'persluchtlekken' ? 'De uitgangspunten zijn opgeslagen.' : 'De gegevens voor het rapport zijn opgeslagen.');
           setBezig(false);
         }}
       >
@@ -555,7 +608,7 @@ function Instellingen({ insp, isAdmin, onBewaar }: { insp: Inspectie; isAdmin: b
           <div className="knoppenrij">
             <button type="submit" className="btn" disabled={bezig}>
               <Icon name="check" size={16} />
-              {bezig ? 'Bezig...' : 'Opslaan en opnieuw rekenen'}
+              {bezig ? 'Bezig...' : insp.sjabloon === 'persluchtlekken' ? 'Opslaan en opnieuw rekenen' : 'Opslaan'}
             </button>
           </div>
         )}
