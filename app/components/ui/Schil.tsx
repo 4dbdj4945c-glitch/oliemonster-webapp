@@ -317,7 +317,7 @@ export default function Schil({
               </button>
               <Link prefetch={false} href="/dashboard/inspecties?nieuw=1" className="nieuw-keuze" onClick={() => setNieuwOpen(false)}>
                 <Icon name="module-inspecties" size={24} />
-                <span><strong>Inspectie</strong><small>Persluchtlekken of arbeidsmiddelen</small></span>
+                <span><strong>Inspectie</strong><small>Lekken, arbeidsmiddelen of markering</small></span>
               </Link>
               <Link prefetch={false} href="/dashboard/klanten?nieuw=1" className="nieuw-keuze" onClick={() => setNieuwOpen(false)}>
                 <Icon name="company" size={24} />

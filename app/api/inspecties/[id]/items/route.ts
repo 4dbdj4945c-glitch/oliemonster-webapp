@@ -30,7 +30,7 @@ export const POST = apiRoute({ rol: 'admin', module: 'inspecties', fout: 'Fout b
     const volgorde = invoer.volgorde ?? (inspectie.items.at(-1)?.volgorde ?? 0) + 1;
     const volgendeOp = invoer.volgendeOp
       ? alsDag(invoer.volgendeOp)
-      : s.volgendePerItem
+      : s.volgendePerItem && s.heeftVolgende
         ? dagAlsDatum(plusMaanden(nlDag(inspectie.datum), s.volgendeNaMaanden))
         : null;
     const item = await prisma.inspectieItem.create({

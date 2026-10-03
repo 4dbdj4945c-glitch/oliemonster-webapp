@@ -121,7 +121,7 @@ export const MODULES: ModuleInfo[] = [
   {
     sleutel: 'inspecties',
     naam: 'Inspecties',
-    beschrijving: 'Persluchtlekken en arbeidsmiddelen inspecteren, met rapport voor de klant',
+    beschrijving: 'Persluchtlekken, arbeidsmiddelen en markeringen vastleggen, met rapport voor de klant',
     icoon: 'module-inspecties',
     route: '/dashboard/inspecties',
     sectie: 'Rapportage',

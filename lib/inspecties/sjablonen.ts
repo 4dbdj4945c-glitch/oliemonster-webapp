@@ -10,8 +10,8 @@
 
 import type { IconNaam } from '@/app/components/ui';
 
-export type SjabloonSleutel = 'persluchtlekken' | 'arbeidsmiddelen';
-export const SJABLOON_SLEUTELS = ['persluchtlekken', 'arbeidsmiddelen'] as const satisfies readonly SjabloonSleutel[];
+export type SjabloonSleutel = 'persluchtlekken' | 'arbeidsmiddelen' | 'markering';
+export const SJABLOON_SLEUTELS = ['persluchtlekken', 'arbeidsmiddelen', 'markering'] as const satisfies readonly SjabloonSleutel[];
 
 export type InspectieStatus = 'concept' | 'afgerond';
 export const INSPECTIE_STATUSSEN = ['concept', 'afgerond'] as const;
@@ -30,6 +30,8 @@ export interface GetalVeld {
   soort: 'getal';
   sleutel: string;
   label: string;
+  /** Korte naam voor een tabelkop in het rapport. */
+  kort?: string;
   eenheid?: string;
   min: number;
   max: number;
@@ -91,7 +93,15 @@ export interface Sjabloon {
    * `standaard` is het oordeel van een nieuwe bevinding. null = geen: je moet
    * zelf kiezen (arbeidsmiddelen, zodat er nooit vanzelf In orde in een rapport staat).
    */
-  oordeel: { label: string; keuzes: Keuze[]; standaard: string | null };
+  oordeel: {
+    label: string;
+    keuzes: Keuze[];
+    standaard: string | null;
+    /** De keuze voor iets dat bewust is overgeslagen, voor de melding bij afronden (Niet gecontroleerd). */
+    overslaan?: string;
+  };
+  /** Afronden kan pas als elke bevinding een oordeel heeft. */
+  oordeelVerplicht: boolean;
   /** Getallen per bevinding, in `waarden`. */
   meetwaarden: GetalVeld[];
   checklist: ChecklistPunt[];
@@ -100,7 +110,12 @@ export interface Sjabloon {
   reparatie: boolean;
   /** Elke bevinding heeft een eigen datum voor de volgende inspectie. */
   volgendePerItem: boolean;
-  /** Voorstel voor de volgende inspectie, in maanden na de inspectiedatum. */
+  /**
+   * Heeft dit sjabloon een volgende inspectie? Nee bij eenmalig werk zoals
+   * markeren: dan geen datum op de schermen, in het rapport en in het klantportaal.
+   */
+  heeftVolgende: boolean;
+  /** Voorstel voor de volgende inspectie, in maanden na de inspectiedatum (alleen met heeftVolgende). */
   volgendeNaMaanden: number;
   rapport: {
     titel: string;
@@ -138,6 +153,7 @@ const PERSLUCHTLEKKEN: Sjabloon = {
       { waarde: 'laag', label: 'Laag', badge: 'badge-gray', icoon: 'status-round-open' },
     ],
   },
+  oordeelVerplicht: false,
   meetwaarden: [
     { soort: 'getal', sleutel: 'db', label: 'Geluid', eenheid: 'dB', min: 0, max: 150, decimalen: 0, hint: 'Van de ultrasone lekdetector' },
     { soort: 'getal', sleutel: 'verliesLpm', label: 'Geschat verlies', eenheid: 'l/min', min: 0, max: 10000, decimalen: 1, hint: 'Vrije lucht per minuut' },
@@ -183,6 +199,7 @@ const PERSLUCHTLEKKEN: Sjabloon = {
   ],
   reparatie: true,
   volgendePerItem: false,
+  heeftVolgende: true,
   volgendeNaMaanden: 12,
   rapport: { titel: 'Rapport persluchtlekken' },
 };
@@ -233,7 +250,9 @@ const ARBEIDSMIDDELEN: Sjabloon = {
       // rapport apart, buiten de verklaring van art. 7.4a.
       { waarde: 'niet-gecontroleerd', label: 'Niet gecontroleerd', badge: 'badge-gray', icoon: 'status-round-open' },
     ],
+    overslaan: 'niet-gecontroleerd',
   },
+  oordeelVerplicht: true,
   meetwaarden: [
     { soort: 'getal', sleutel: 'werkdrukBar', label: 'Werkdruk', eenheid: 'bar', min: 0, max: 1000, decimalen: 1 },
     { soort: 'getal', sleutel: 'ketelLiter', label: 'Luchtketel, inhoud', eenheid: 'liter', min: 0, max: 100000, decimalen: 0, hint: 'Alleen bij een luchtketel' },
@@ -256,6 +275,7 @@ const ARBEIDSMIDDELEN: Sjabloon = {
   ],
   reparatie: false,
   volgendePerItem: true,
+  heeftVolgende: true,
   volgendeNaMaanden: 12,
   rapport: {
     titel: 'Inspectierapport technische staat',
@@ -263,9 +283,71 @@ const ARBEIDSMIDDELEN: Sjabloon = {
   },
 };
 
+// ------------------------------------------------------------------
+// Markering (locaties of bronnen markeren met stickers of borden)
+// ------------------------------------------------------------------
+
+/**
+ * De vaste tekst in het opleverrapport. Zonder opdracht valt dat deel weg,
+ * zonder soort markering staat er "markering".
+ */
+export function verklaringMarkering(i: Instellingen): string {
+  const soort = String(i.markering ?? '').trim() || 'markering';
+  const opdracht = String(i.opdracht ?? '').trim();
+  return (
+    `Op de locaties in dit rapport is een ${soort.charAt(0).toLowerCase()}${soort.slice(1)} aangebracht${opdracht ? ` zoals gevraagd in ${opdracht}` : ''}. ` +
+    "Per locatie staan de uitslag en de foto's die ter plekke zijn gemaakt."
+  );
+}
+
+const MARKERING: Sjabloon = {
+  sleutel: 'markering',
+  naam: 'Markering',
+  beschrijving: "Locaties of bronnen markeren met stickers of borden en dat met foto's vastleggen",
+  icoon: 'tag',
+  item: {
+    enkel: 'locatie',
+    meervoud: 'locaties',
+    nieuw: 'Locatie toevoegen',
+    titel: 'Bron of omschrijving',
+    titelHint: 'Bijvoorbeeld Bron 6: pakkingen',
+    kiesInstallatie: false,
+  },
+  oordeel: {
+    label: 'Uitslag',
+    standaard: null,
+    keuzes: [
+      { waarde: 'gemarkeerd', label: 'Gemarkeerd', badge: 'badge-success', icoon: 'status-taken' },
+      { waarde: 'niet-bereikbaar', label: 'Niet bereikbaar', badge: 'badge-warning', icoon: 'alert-warning' },
+      { waarde: 'niet-aangetroffen', label: 'Niet aangetroffen', badge: 'badge-gray', icoon: 'search' },
+    ],
+    overslaan: 'niet-bereikbaar',
+  },
+  oordeelVerplicht: true,
+  meetwaarden: [{ soort: 'getal', sleutel: 'stickers', label: 'Aantal stickers geplakt', kort: 'Stickers', min: 0, max: 1000, decimalen: 0 }],
+  checklist: [],
+  instellingen: [
+    {
+      soort: 'tekst',
+      sleutel: 'opdracht',
+      label: 'Opdracht of referentie',
+      standaard: '',
+      hint: 'Bijvoorbeeld het rapport of de werkorder van de klant waar deze markering uit volgt',
+    },
+    { soort: 'tekst', sleutel: 'markering', label: 'Soort markering', standaard: 'Waarschuwingssticker' },
+    { soort: 'tekst', sleutel: 'tav', label: 'Ter attentie van', standaard: '' },
+  ],
+  reparatie: false,
+  volgendePerItem: false,
+  heeftVolgende: false,
+  volgendeNaMaanden: 0,
+  rapport: { titel: 'Opleverrapport markering', verklaring: verklaringMarkering },
+};
+
 export const SJABLONEN: Record<SjabloonSleutel, Sjabloon> = {
   persluchtlekken: PERSLUCHTLEKKEN,
   arbeidsmiddelen: ARBEIDSMIDDELEN,
+  markering: MARKERING,
 };
 
 export function sjabloonVan(sleutel: string): Sjabloon {

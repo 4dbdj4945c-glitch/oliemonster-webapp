@@ -13,7 +13,7 @@ import { prisma } from '../prisma';
 import { ApiFout, optioneelId, optioneleDatum, optioneleTekst, tekst } from '../apiRoute';
 import { isAlleenLezen } from '../roles';
 import type { Gebruiker } from '../toegang';
-import { metInspectieFoto } from '../fotoAdres';
+import { inspectieFotosAlsJson } from '../fotoAdres';
 import { nlDag } from '../klantOpdracht';
 import {
   INSPECTIE_STATUSSEN,
@@ -27,7 +27,7 @@ import {
   sjabloonVan,
   type SjabloonSleutel,
 } from './sjablonen';
-import { lekInstellingen, lekTotalen, arbeidsmiddelTelling, uitkomstTekst, volgendeInspectie } from './rekenen';
+import { lekInstellingen, lekTotalen, arbeidsmiddelTelling, markeringTelling, uitkomstTekst, volgendeInspectie } from './rekenen';
 
 type Wie = Pick<Gebruiker, 'role' | 'klantId' | 'viewYear'>;
 
@@ -132,19 +132,26 @@ export function controleerItem(
 }
 
 /**
- * Kan deze inspectie afgerond worden? Bij een sjabloon met een checklist moet
- * elke bevinding een uitslag hebben die past bij de checklist; anders zou het
- * rapport iets zeggen wat niet gecontroleerd is. null = ja, anders de melding.
+ * Kan deze inspectie afgerond worden? Bij een sjabloon met oordeelVerplicht
+ * (arbeidsmiddelen, markering) moet elke bevinding een uitslag hebben, en bij
+ * een checklist een uitslag die daarbij past; anders zou het rapport iets
+ * zeggen wat niet gecontroleerd is. null = ja, anders de melding.
  */
 export function afrondFout(rij: Pick<InspectieRij, 'sjabloon' | 'items'>): string | null {
   const s = sjabloonVan(rij.sjabloon);
-  if (s.checklist.length === 0) return null;
+  if (!s.oordeelVerplicht && s.checklist.length === 0) return null;
   const zonder = rij.items.filter((i) => !i.oordeel).map((i) => i.titel);
-  if (zonder.length > 0) return `Kies eerst een uitslag voor ${zonder.join(', ')} (of Niet gecontroleerd).`;
+  if (s.oordeelVerplicht && zonder.length > 0) {
+    const overslaan = s.oordeel.keuzes.find((k) => k.waarde === s.oordeel.overslaan);
+    return `Kies eerst een ${s.oordeel.label.toLowerCase()} voor ${zonder.join(', ')}${overslaan ? ` (of ${overslaan.label})` : ''}.`;
+  }
   const fout = rij.items.find((i) => oordeelFout(s, i.oordeel, i.waarden));
   if (fout) return `${fout.titel}: ${oordeelFout(s, fout.oordeel, fout.waarden)}`;
   return null;
 }
+
+/** Veiligheidsgrens: zoveel foto's per bevinding kan altijd (in de praktijk onbeperkt). */
+export const MAX_FOTOS_PER_BEVINDING = 200;
 
 export const AFGEROND_MELDING =
   'Deze inspectie is afgerond; bevindingen toevoegen of wijzigen kan niet meer. Zet de inspectie eerst terug naar concept als er nog iets bij moet.';
@@ -183,7 +190,7 @@ const ITEM_SELECT = {
   oordeel: true,
   notitie: true,
   waarden: true,
-  fotoUrl: true,
+  fotos: { orderBy: [{ volgorde: 'asc' }, { id: 'asc' }], select: { id: true, url: true, bijschrift: true } },
   gerepareerd: true,
   gerepareerdOp: true,
   volgendeOp: true,
@@ -227,6 +234,7 @@ export function totalenVan(rij: Pick<InspectieRij, 'sjabloon' | 'instellingen' |
     const inst = lekInstellingen(rij.instellingen);
     return { soort: 'persluchtlekken' as const, instellingen: inst, ...lekTotalen(rij.items, inst) };
   }
+  if (rij.sjabloon === 'markering') return { soort: 'markering' as const, ...markeringTelling(rij.items) };
   return { soort: 'arbeidsmiddelen' as const, ...arbeidsmiddelTelling(rij.items) };
 }
 
@@ -234,14 +242,13 @@ export function totalenVan(rij: Pick<InspectieRij, 'sjabloon' | 'instellingen' |
 export function inspectieAlsJson(rij: InspectieRij) {
   const sjabloon = rij.sjabloon as SjabloonSleutel;
   const s = sjabloonVan(sjabloon);
-  const items = rij.items.map((i) =>
-    metInspectieFoto({
-      ...i,
-      gerepareerdOp: i.gerepareerdOp ? nlDag(i.gerepareerdOp) : null,
-      volgendeOp: i.volgendeOp ? nlDag(i.volgendeOp) : null,
-      waarschuwing: sjabloon === 'arbeidsmiddelen' ? luchtketelWaarschuwing(i.waarden) : null,
-    })
-  );
+  const items = rij.items.map((i) => ({
+    ...i,
+    fotos: inspectieFotosAlsJson(i.fotos),
+    gerepareerdOp: i.gerepareerdOp ? nlDag(i.gerepareerdOp) : null,
+    volgendeOp: i.volgendeOp ? nlDag(i.volgendeOp) : null,
+    waarschuwing: sjabloon === 'arbeidsmiddelen' ? luchtketelWaarschuwing(i.waarden) : null,
+  }));
   return {
     ...rij,
     nummer: inspectieNummer(rij.id),

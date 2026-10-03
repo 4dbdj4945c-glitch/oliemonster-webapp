@@ -139,6 +139,30 @@ export function aantalNietGoed(waarden: unknown): number {
 }
 
 // ------------------------------------------------------------------
+// Markering
+// ------------------------------------------------------------------
+
+export interface MarkeringTelling {
+  aantal: number;
+  gemarkeerd: number;
+  'niet-bereikbaar': number;
+  'niet-aangetroffen': number;
+  zonderUitslag: number;
+  /** Aantal stickers samen. */
+  stickers: number;
+}
+
+export function markeringTelling(items: { oordeel: string | null; waarden: unknown }[]): MarkeringTelling {
+  const t: MarkeringTelling = { aantal: items.length, gemarkeerd: 0, 'niet-bereikbaar': 0, 'niet-aangetroffen': 0, zonderUitslag: 0, stickers: 0 };
+  for (const i of items) {
+    if (i.oordeel === 'gemarkeerd' || i.oordeel === 'niet-bereikbaar' || i.oordeel === 'niet-aangetroffen') t[i.oordeel] += 1;
+    else t.zonderUitslag += 1;
+    t.stickers += getal(i.waarden, 'stickers') ?? 0;
+  }
+  return t;
+}
+
+// ------------------------------------------------------------------
 // Voor alle sjablonen
 // ------------------------------------------------------------------
 
@@ -173,6 +197,16 @@ export function uitkomstTekst(sjabloon: SjabloonSleutel, items: SamenvatItem[], 
     if (t.gerepareerd > 0) delen.push(`${t.gerepareerd} gerepareerd`);
     return delen.join(', ');
   }
+  if (sjabloon === 'markering') {
+    const m = markeringTelling(items);
+    if (m.aantal === 0) return 'Nog geen locaties';
+    const delen = [`${m.aantal} ${m.aantal === 1 ? 'locatie' : 'locaties'}`];
+    if (m.gemarkeerd) delen.push(`${m.gemarkeerd} gemarkeerd`);
+    if (m['niet-bereikbaar']) delen.push(`${m['niet-bereikbaar']} niet bereikbaar`);
+    if (m['niet-aangetroffen']) delen.push(`${m['niet-aangetroffen']} niet aangetroffen`);
+    if (m.zonderUitslag) delen.push(`${m.zonderUitslag} zonder uitslag`);
+    return delen.join(', ');
+  }
   const t = arbeidsmiddelTelling(items);
   if (t.aantal === 0) return 'Nog geen arbeidsmiddelen';
   const delen = [`${t.aantal} ${t.aantal === 1 ? 'arbeidsmiddel' : 'arbeidsmiddelen'}`];
@@ -192,14 +226,17 @@ function alsDag(d: string | Date | null | undefined): string | null {
 
 /**
  * De volgende inspectie (jjjj-mm-dd): bij arbeidsmiddelen de vroegste datum van
- * de arbeidsmiddelen, anders de datum van de inspectie zelf.
+ * de arbeidsmiddelen, anders de datum van de inspectie zelf. Een sjabloon zonder
+ * volgende inspectie (markering) geeft altijd null.
  */
 export function volgendeInspectie(
   sjabloon: SjabloonSleutel,
   volgendeOp: string | Date | null | undefined,
   items: { volgendeOp?: string | Date | null }[]
 ): string | null {
-  if (sjabloonVan(sjabloon).volgendePerItem) {
+  const s = sjabloonVan(sjabloon);
+  if (!s.heeftVolgende) return null;
+  if (s.volgendePerItem) {
     const dagen = items.map((i) => alsDag(i.volgendeOp)).filter((d): d is string => !!d).sort();
     if (dagen.length > 0) return dagen[0];
   }

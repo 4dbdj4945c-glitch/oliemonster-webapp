@@ -51,7 +51,7 @@ export const POST = apiRoute({ rol: 'admin', module: 'inspecties', fout: 'Fout b
       uitvoerder: invoer.uitvoerder,
       samenvatting: invoer.samenvatting ?? null,
       instellingen: leesInstellingen(s, {}),
-      volgendeOp: dagAlsDatum(plusMaanden(invoer.datum, s.volgendeNaMaanden)),
+      volgendeOp: s.heeftVolgende ? dagAlsDatum(plusMaanden(invoer.datum, s.volgendeNaMaanden)) : null,
     },
     select: { id: true },
   });
