@@ -230,6 +230,35 @@ describe('planning met een contracttaak', () => {
     expect(data.tePlannen.taken.map((t: { id: number }) => t.id)).toContain(ids.taken.olie);
     expect(data.tePlannen.inspecties.map((i: { id: number }) => i.id)).toContain(ids.inspecties.conceptTweede);
   });
+
+  it('met terugwerkende kracht gepland (dag voorbij) is ook gepland: niet meer bij Nog in te plannen', async () => {
+    await admin();
+    const jaar = new Date().getFullYear();
+    const [insp, taak] = await Promise.all([
+      prisma.inspectie.findUniqueOrThrow({ where: { id: ids.inspecties.conceptTweede }, select: { objectId: true } }),
+      prisma.contractTaak.findUniqueOrThrow({ where: { id: ids.taken.olie }, select: { objectId: true } }),
+    ]);
+    const dag = plusDagen(vandaagNl(), -3);
+    const plan = await prisma.samplePlan.create({ data: { date: new Date(`${dag}T12:00:00Z`), analysisYear: jaar } });
+    await prisma.samplePlanStop.createMany({
+      data: [
+        { planId: plan.id, objectId: insp.objectId, inspectieId: ids.inspecties.conceptTweede, orderIndex: 0 },
+        { planId: plan.id, objectId: taak.objectId, taakId: ids.taken.olie, orderIndex: 1 },
+      ],
+    });
+    const data = await (await planning(verzoek(`/api/sample-plans?year=${jaar}`), undefined)).json();
+    expect(data.tePlannen.inspecties.map((i: { id: number }) => i.id)).not.toContain(ids.inspecties.conceptTweede);
+    expect(data.tePlannen.taken.map((t: { id: number }) => t.id)).not.toContain(ids.taken.olie);
+    // De status zegt geen Gepland bij een dag die voorbij is.
+    const lijst = await (await taken(verzoek('/api/contract-taken'), undefined)).json();
+    const olie = (Array.isArray(lijst) ? lijst : lijst.taken).find((t: { id: number }) => t.id === ids.taken.olie);
+    expect(olie.gepland).toMatchObject({ dag });
+    expect(olie.status).not.toBe('gepland');
+    // Afgevinkt: de taak is uitgevoerd en komt terug voor de volgende keer.
+    await prisma.samplePlanStop.updateMany({ where: { planId: plan.id, taakId: ids.taken.olie }, data: { isDone: true } });
+    const na = await (await planning(verzoek(`/api/sample-plans?year=${jaar}`), undefined)).json();
+    expect(na.tePlannen.taken.map((t: { id: number }) => t.id)).toContain(ids.taken.olie);
+  });
 });
 
 describe('afscherming', () => {

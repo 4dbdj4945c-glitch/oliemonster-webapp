@@ -134,19 +134,29 @@ export type TaakRij = Prisma.ContractTaakGetPayload<{ select: typeof TAAK_SELECT
 /** Een actieve taak: niet weggehaald, contract niet weggehaald. */
 export const ACTIEVE_TAAK: Prisma.ContractTaakWhereInput = { deletedAt: null, contract: { deletedAt: null } };
 
-/** Per taak de eerstvolgende planningsdag vanaf vandaag waarop hij staat (en het id van de dag). */
+/**
+ * Per taak de planningsdag waarop hij staat en nog niet is afgevinkt (en het id
+ * van de dag): de eerstvolgende vanaf vandaag, en anders de laatste die al
+ * voorbij is. Ook een dag in het verleden telt: wie met terugwerkende kracht
+ * plant, heeft de taak gepland, en hij hoort dan niet meer bij Nog in te
+ * plannen. De status (taakStatus) zegt alleen Gepland bij een dag vanaf vandaag.
+ */
 export async function geplandeDagen(taakIds: number[], vandaag = vandaagNl()): Promise<Map<number, { dag: string; planId: number; stopId: number }>> {
   const uit = new Map<number, { dag: string; planId: number; stopId: number }>();
   if (taakIds.length === 0) return uit;
   const stops = await prisma.samplePlanStop.findMany({
-    where: { taakId: { in: taakIds } },
-    select: { id: true, taakId: true, isDone: true, plan: { select: { id: true, date: true } } },
+    where: { taakId: { in: taakIds }, isDone: false },
+    select: { id: true, taakId: true, plan: { select: { id: true, date: true } } },
   });
-  for (const s of stops.sort((a, b) => a.plan.date.getTime() - b.plan.date.getTime())) {
-    if (s.taakId === null || s.isDone) continue;
-    const d = nlDag(s.plan.date);
-    if (d < vandaag || uit.has(s.taakId)) continue;
-    uit.set(s.taakId, { dag: d, planId: s.plan.id, stopId: s.id });
+  const opDag = stops
+    .filter((s): s is typeof s & { taakId: number } => s.taakId !== null)
+    .map((s) => ({ taakId: s.taakId, dag: nlDag(s.plan.date), planId: s.plan.id, stopId: s.id }))
+    .sort((a, b) => a.dag.localeCompare(b.dag));
+  // Oplopend op dag: een voorbije dag wordt steeds vervangen door de volgende,
+  // tot de eerste dag vanaf vandaag; die blijft staan.
+  for (const s of opDag) {
+    const nu = uit.get(s.taakId);
+    if (!nu || nu.dag < vandaag) uit.set(s.taakId, { dag: s.dag, planId: s.planId, stopId: s.stopId });
   }
   return uit;
 }
@@ -413,13 +423,16 @@ export async function haalTePlannen() {
         datum: true,
         klant: { select: { id: true, naam: true } },
         object: { select: { id: true, name: true } },
-        stops: { select: { isDone: true, plan: { select: { date: true } } } },
+        stops: { select: { id: true } },
       },
     }),
   ]);
   const taken = alleTaken.filter((t) => t.gepland === null);
+  // Een inspectie die op een dag staat, ook een dag die al voorbij is (met
+  // terugwerkende kracht gepland, of al bezocht maar nog niet afgerond), is
+  // gepland en hoort niet meer bij Nog in te plannen.
   const inspecties = concepten
-    .filter((i) => !i.stops.some((s) => !s.isDone && nlDag(s.plan.date) >= vandaag))
+    .filter((i) => i.stops.length === 0)
     .map((i) => ({ id: i.id, sjabloon: i.sjabloon, datum: nlDag(i.datum), klant: i.klant, object: i.object }));
   return { taken, inspecties };
 }
