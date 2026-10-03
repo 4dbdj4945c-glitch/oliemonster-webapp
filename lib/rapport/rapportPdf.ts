@@ -51,6 +51,9 @@ export const CONTACT = {
   naam: "It's Done Services",
   telefoon: '085 060 4300',
   email: 'info@itsdoneservices.nl',
+  website: 'itsdoneservices.nl',
+  werkplaats: 'Hoolstraat 21, 6006 SL Weert',
+  postadres: 'Warande 11, 5591 LN Heeze',
 };
 
 // ------------------------------------------------------------------

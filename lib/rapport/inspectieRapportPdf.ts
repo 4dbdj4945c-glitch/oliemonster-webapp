@@ -11,7 +11,10 @@
 //    Arbeidsmiddelen: de verklaring uit het juridisch onderzoek (letterlijk),
 //    uitslag per arbeidsmiddel, doorverwijzing bij een grote luchtketel, en
 //    per arbeidsmiddel de checklist.
-// 4. Fotobijlage: per bevinding de foto.
+// 4. Fotobijlage: per bevinding alle foto's.
+//
+// Markering heeft de opbouw van het verzamelrapport, met één object
+// (lib/rapport/verzamelrapportPdf.ts).
 
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -19,7 +22,6 @@ import type { InspectieRij } from '../inspecties/server';
 import { nlDag } from '../klantOpdracht';
 import {
   CHECKLIST_ANTWOORDEN,
-  checklistVolledig,
   checklistVan,
   getal,
   inspectieNummer,
@@ -39,56 +41,25 @@ import {
   MARGE,
   NAVY,
   laadFonts,
-  laadFotoKlein,
   laadLogo,
-  perStuk,
   schoneNaam,
-  tekenBeeld,
   tekenKop,
   tekenVoet,
   zetFonts,
   type RGB,
 } from './rapportPdf';
+import { AMBER_RAND, AMBER_TEKST, AMBER_VLAK, GROEN_TEKST, OORDEEL_TEKST, dagKort, dagTekst, laadInspectieFotos, tekenFotoVak, verklaringGeldtVoor } from './inspectieHulp';
+import { maakVerzamelrapportPdf, verzamelrapportNaam } from './verzamelrapportPdf';
 
-const AMBER_TEKST: RGB = [180, 83, 9];
-const AMBER_VLAK: RGB = [255, 247, 237];
-const GROEN_TEKST: RGB = [21, 128, 61];
-const ROOD_TEKST: RGB = [185, 28, 28];
-
-/** Tekstkleur per oordeel in de tabel (haalt 4,5:1 op wit). */
-const OORDEEL_TEKST: Record<string, RGB> = {
-  'in-orde': GROEN_TEKST,
-  'actie-nodig': AMBER_TEKST,
-  'buiten-gebruik': ROOD_TEKST,
-  'niet-gecontroleerd': GRIJS_500,
-  hoog: AMBER_TEKST,
-  middel: [29, 78, 216],
-  laag: GRIJS_500,
-};
-
-const NL = { timeZone: 'Europe/Amsterdam' } as const;
-function dagTekst(dag: string | null): string {
-  if (!dag) return '-';
-  return new Date(`${dag}T12:00:00Z`).toLocaleDateString('nl-NL', { ...NL, day: 'numeric', month: 'long', year: 'numeric' });
-}
-function dagKort(d: Date | string | null): string {
-  if (!d) return '-';
-  const dag = typeof d === 'string' ? d : nlDag(d);
-  return new Date(`${dag}T12:00:00Z`).toLocaleDateString('nl-NL', { ...NL, day: 'numeric', month: 'numeric', year: 'numeric' });
-}
+export { verklaringGeldtVoor };
 
 export interface InspectieRapportOpties {
   origin?: string;
   metFotos?: boolean;
 }
 
-/** Voor welke arbeidsmiddelen geldt de verklaring (art. 7.4a)? Alleen met een uitslag en een volledige checklist. */
-export function verklaringGeldtVoor<T extends { oordeel: string | null; waarden: unknown }>(rij: { sjabloon: string; items: T[] }): T[] {
-  const s = sjabloonVan(rij.sjabloon);
-  return rij.items.filter((i) => !!i.oordeel && i.oordeel !== 'niet-gecontroleerd' && checklistVolledig(s, i.waarden));
-}
-
 export async function maakInspectieRapportPdf(rij: InspectieRij, opties: InspectieRapportOpties = {}): Promise<Buffer> {
+  if (rij.sjabloon === 'markering') return maakVerzamelrapportPdf([rij], opties);
   const sjabloon = rij.sjabloon as SjabloonSleutel;
   const s = sjabloonVan(sjabloon);
   const instellingen = leesInstellingen(s, rij.instellingen);
@@ -309,13 +280,13 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
           nietGecontroleerd.length === 1 ? 'Dit arbeidsmiddel is' : 'Deze arbeidsmiddelen zijn'
         } bij deze inspectie niet of niet op alle controlepunten geïnspecteerd; de verklaring ${gecontroleerd.length > 0 ? 'hierboven ' : 'van art. 7.4a Arbobesluit '}geldt er niet voor.`,
         AMBER_VLAK,
-        [253, 186, 116],
+        AMBER_RAND,
         AMBER_TEKST
       );
     }
     for (const i of rij.items) {
       const w = luchtketelWaarschuwing(i.waarden);
-      if (w) kader(`${i.titel}: ${w}`, AMBER_VLAK, [253, 186, 116], AMBER_TEKST);
+      if (w) kader(`${i.titel}: ${w}`, AMBER_VLAK, AMBER_RAND, AMBER_TEKST);
     }
     if (rij.samenvatting) {
       kop('Samenvatting');
@@ -385,9 +356,12 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
   }
 
   // ---------- Fotobijlage ----------
-  const metFoto = metFotos ? rij.items.filter((i) => i.fotoUrl) : [];
+  // Alle foto's per bevinding, drie naast elkaar. Onder elke foto de titel van
+  // de bevinding en het bijschrift of de locatie.
+  const metFoto = metFotos ? rij.items.filter((i) => i.fotos.length > 0) : [];
   if (metFoto.length > 0) {
-    const beelden = await perStuk(metFoto, 5, async (i) => ({ i, beeld: await laadFotoKlein(i.fotoUrl, opties.origin) }));
+    const beelden = await laadInspectieFotos(metFoto, opties.origin);
+    const lijst = metFoto.flatMap((i) => i.fotos.map((f, n) => ({ i, f, n, van: i.fotos.length })));
     doc.addPage();
     y = 20;
     doc.setFont('Inter', 'extrabold');
@@ -398,32 +372,32 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
     doc.setFont('Inter', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(...GRIJS_500);
-    doc.text(`Per ${s.item.enkel} de foto die ter plekke is gemaakt. De foto's zijn verkleind.`, MARGE, y);
+    doc.text(`Per ${s.item.enkel} de foto's die ter plekke zijn gemaakt. De foto's zijn verkleind.`, MARGE, y);
     y += 8;
     const kolommen = 3;
     const fotoB = (breed - (kolommen - 1) * 5) / kolommen;
     const fotoH = fotoB * 0.75;
     const vakH = fotoH + 10;
     let k = 0;
-    for (const { i, beeld } of beelden) {
+    for (const { i, f, n, van } of lijst) {
       if (y + vakH > H - 20) {
         doc.addPage();
         y = 20;
         k = 0;
       }
       const x = MARGE + k * (fotoB + 5);
-      doc.setFillColor(...GRIJS_50);
-      doc.setDrawColor(...GRIJS_200);
-      doc.roundedRect(x, y, fotoB, fotoH, 1.2, 1.2, 'FD');
-      if (beeld) tekenBeeld(doc, beeld, x + 0.6, y + 0.6, fotoB - 1.2, fotoH - 1.2);
+      tekenFotoVak(doc, beelden.get(f.id) ?? null, x, y, fotoB, fotoH);
+      const naam = van > 1 ? `${i.titel} (${n + 1}/${van})` : i.titel;
       doc.setFont('Inter', 'bold');
       doc.setFontSize(8);
       doc.setTextColor(...NAVY);
-      doc.text(i.titel, x, y + fotoH + 4);
-      const nrB = doc.getTextWidth(i.titel);
+      const naamRegel = (doc.splitTextToSize(naam, fotoB) as string[])[0] ?? '';
+      doc.text(naamRegel, x, y + fotoH + 4);
+      const nrB = doc.getTextWidth(naamRegel);
       doc.setFont('Inter', 'normal');
       doc.setTextColor(...GRIJS_500);
-      if (i.locatie) doc.text(doc.splitTextToSize(i.locatie, fotoB - nrB - 2)[0] ?? '', x + nrB + 2, y + fotoH + 4);
+      const onder = f.bijschrift ?? i.locatie;
+      if (onder && fotoB - nrB - 2 > 8) doc.text(doc.splitTextToSize(onder, fotoB - nrB - 2)[0] ?? '', x + nrB + 2, y + fotoH + 4);
       k += 1;
       if (k === kolommen) {
         k = 0;
@@ -436,7 +410,11 @@ export async function maakInspectieRapportPdf(rij: InspectieRij, opties: Inspect
   return Buffer.from(doc.output('arraybuffer'));
 }
 
-/** Bestandsnaam: persluchtlekken-2026-09-29-kempen-metaalbewerking-b-v.pdf */
+/**
+ * Bestandsnaam: persluchtlekken-2026-09-29-kempen-metaalbewerking-b-v.pdf, bij
+ * markering Opleverrapport-markering-kempen-metaalbewerking-b-v-2026-09-29.pdf.
+ */
 export function inspectieRapportNaam(rij: Pick<InspectieRij, 'sjabloon' | 'datum' | 'klant'>): string {
+  if (rij.sjabloon === 'markering') return verzamelrapportNaam([rij]);
   return `${rij.sjabloon}-${nlDag(rij.datum)}-${schoneNaam(rij.klant.naam) || 'klant'}.pdf`;
 }
