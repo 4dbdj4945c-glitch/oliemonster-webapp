@@ -440,7 +440,7 @@ const SLEUTEL = "itds-email-editor-v2";
 
 /* Versie van de opgeslagen opzet. Verhoog dit als een nieuwe standaard ook
    moet gelden voor wat al in de browser bewaard is; zie migreer(). */
-const VERSIE = 5;
+const VERSIE = 6;
 
 /* ============================================================
    1. Blokdefinities
@@ -691,6 +691,25 @@ const SJABLONEN = {
       { type: "paneel", kop: "Vervolg", stijl: "donker", tekst: "Offerte voor de directe punten stuur ik morgen. Laat weten wanneer ik de rest kan inplannen.", highlight: "Volgende ronde: {{volgende}}" },
       Object.assign({}, HANDTEKENING, { groet: "Houdoe," })
     ]
+  },
+  adviesrapport: {
+    naam: "Adviesrapport", omschrijving: "Rapport als bijlage, advies in het kort",
+    onderwerp: "Adviesrapport {{rapport}}",
+    preheader: "Het adviesrapport over {{rapport}} zit als pdf bij deze mail.",
+    invul: ["naam", "rapport", "aanleiding", "advies", "datum"],
+    blokken: [
+      { type: "titel", eyebrow: "Adviesrapport", titel: "Advies over {{rapport}}" },
+      { type: "tekst", aanhef: "Beste {{naam}},", tekst: "Hierbij het adviesrapport over {{rapport}}. De aanleiding was {{aanleiding}}. Hieronder staat het advies in het kort. Het volledige rapport met de onderbouwing zit als pdf bij deze mail." },
+      { type: "gegevens", kop: "Advies in het kort", stijl: "accent", rijen: [
+        { label: "Onderwerp", waarde: "{{rapport}}" },
+        { label: "Advies", waarde: "{{advies}}" },
+        { label: "Datum rapport", waarde: "{{datum}}" }
+      ] },
+      { type: "lijst", kop: "Wat staat in het rapport", teken: "check", items: ["De huidige situatie en de uitgangspunten", "De onderzochte opties en hoe ze zijn beoordeeld", "Het advies met de onderbouwing"] },
+      { type: "paneel", kop: "Vragen over het advies?", stijl: "donker", tekst: "Lees het rapport rustig door. Is er iets onduidelijk of wil je een punt toegelicht hebben? Bel of mail me gerust.", highlight: "Rapport als pdf bij deze mail" },
+      { type: "bijlagen", kop: "Bijlage", items: [{ naam: "Adviesrapport {{rapport}}.pdf", grootte: "" }] },
+      HANDTEKENING
+    ]
   }
 };
 
@@ -755,10 +774,10 @@ const STANDAARD = {
   logoBreedte: 220,
 
   toonFooter: true,
-  footer1: "It's Done Services · Heeze · KvK 12345678",
+  footer1: "It's Done Services · Weert · KvK 87390620",
   website: "itsdoneservices.nl",
   footerTel: "085 060 4300",
-  toonAfmeld: true,
+  toonAfmeld: false,
   afmeldlink: "#",
   versie: VERSIE
 };
@@ -1747,6 +1766,12 @@ function migreer(st, van, opgeslagen) {
       st.logoBron = "nieuwWit";
       if (!opgeslagen || !opgeslagen.logoBreedte || opgeslagen.logoBreedte === 180) st.logoBreedte = 220;
     }
+  }
+  if (van < 6) {
+    // v6: de voettekst had nog een voorbeeld-KvK-nummer en een afmeldlink naar "#".
+    // Alleen wie die standaardwaarden nog had, gaat mee; eigen tekst blijft staan.
+    if (!st.footer1 || st.footer1.includes("12345678")) st.footer1 = STANDAARD.footer1;
+    if (!st.afmeldlink || st.afmeldlink.trim() === "#") st.toonAfmeld = false;
   }
   st.versie = VERSIE;
   return st;
