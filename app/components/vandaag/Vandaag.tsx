@@ -20,6 +20,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useGebruiker } from '@/app/components/GebruikerProvider';
 import LaadFout from '@/app/components/LaadFout';
+import ChatbotKaart from '@/app/components/chatbot/ChatbotKaart';
 import { AppShell, Icon, Laden } from '@/app/components/ui';
 import { foutTekst, GEEN_VERBINDING } from '@/lib/foutmelding';
 import { magModule, moduleVan, oliemonsterPad } from '@/lib/modules';
@@ -340,6 +341,7 @@ export default function Vandaag() {
           </div>
         </div>
       )}
+      {user.role === 'admin' && <ChatbotKaart />}
     </AppShell>
   );
 }

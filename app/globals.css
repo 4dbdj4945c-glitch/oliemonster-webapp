@@ -5766,3 +5766,57 @@ a.vd-week-cel:hover .vd-week-vak { outline: 2px solid var(--grijs-200); }
 .nieuw-keuze:active { background: var(--grijs-50); }
 /* Tikvlak van de tekstlinks in Aandacht nodig: 44px zonder de regel hoger te maken */
 .vd-link { display: inline-block; padding: 12px 8px; margin: -12px -8px; }
+
+/* Chatbot: na de algemene mobiele regels, alles beperkt tot deze module. */
+.chatbot { min-width: 0; }
+.chat-tabinhoud { padding-top: 24px; }
+.chatbot .tabs button, .chatbot .btn, .chatbot .filterchip,
+.chat-form .btn, .chat-verwijderen .btn { min-height: 44px; }
+.chat-gereedschap { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.chat-gereedschap .veld { flex: 1; max-width: 520px; margin: 0; }
+.chatbot .table td { overflow-wrap: anywhere; white-space: normal; }
+.chat-vraag { max-width: 360px; }
+.chat-contact { display: flex; flex-direction: column; gap: 4px; overflow-wrap: anywhere; }
+.chat-contact a { color: var(--blue); }
+.chat-paginering { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 20px; }
+.chat-form { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.chat-form fieldset { border: 0; padding: 0; margin: 0; }
+.chat-form legend { margin-bottom: 16px; }
+.chat-form .veld { margin: 0; }
+.chat-form .input, .chat-form .select, .chat-form .textarea { width: 100%; }
+.chat-instellingen { padding: 24px; max-width: 820px; }
+.chat-formrij { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.chat-formvoet { display: flex; justify-content: flex-end; }
+.chat-schakelaar { display: flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; }
+.chat-schakelaar input { appearance: none; width: 44px; height: 26px; background: var(--grijs-500); border-radius: 20px; position: relative; flex-shrink: 0; cursor: pointer; }
+.chat-schakelaar input::before { content: ''; position: absolute; width: 20px; height: 20px; border-radius: 50%; top: 3px; left: 3px; background: var(--wit); }
+.chat-schakelaar input:checked { background: var(--oranje); }
+.chat-schakelaar input:checked::before { transform: translateX(18px); background: var(--navy); }
+.chat-schakelaar input:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+.chat-verwijderen { margin-top: 28px; overflow-wrap: anywhere; }
+.chat-verwijderen .input { width: 100%; margin-bottom: 12px; }
+.chat-gesprekkop { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.chat-berichten { display: flex; flex-direction: column; list-style: none; gap: 16px; padding: 0; margin: 0 0 24px; }
+.chat-bericht { max-width: 85%; padding: 14px 16px; border-radius: var(--radius); align-self: flex-start; background: var(--grijs-100); color: var(--navy); overflow-wrap: anywhere; }
+.chat-bericht-bezoeker { align-self: flex-end; background: var(--navy); color: var(--wit); }
+.chat-bericht-roel { background: var(--blue-light); border-left: 3px solid var(--navy); }
+.chat-bericht-systeem { align-self: center; background: var(--grijs-50); }
+.chat-bericht-kop { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; font-size: 12px; }
+.chat-bericht p { margin: 8px 0 0; white-space: pre-wrap; line-height: 1.6; }
+.chat-dashboard { margin-top: 28px; }
+.chat-dashboard-kaart { display: flex; align-items: center; gap: 16px; padding: 20px; color: var(--navy); text-decoration: none; min-height: 80px; }
+.chat-dashboard-kaart > span:nth-child(2) { display: flex; flex-direction: column; gap: 4px; }
+.chat-dashboard-kaart > span:nth-child(2) > span { color: var(--grijs-500); font-size: 13px; }
+.chat-dashboard-aantal { margin-left: auto; font-weight: 600; }
+.chat-dashboard-kaart:hover { border-color: var(--grijs-400); }
+@media (max-width: 640px) {
+  .chat-gereedschap { flex-wrap: wrap; align-items: stretch; }
+  .chat-gereedschap .veld { flex-basis: 100%; max-width: none; }
+  .chatbot .table-scroll { overflow-x: visible; }
+  .chat-vraag { max-width: none; }
+  .chat-formrij { grid-template-columns: 1fr; }
+  .chat-instellingen { padding: 16px; }
+  .chat-bericht { max-width: 92%; padding: 12px; }
+  .chat-dashboard-kaart { flex-wrap: wrap; }
+  .chat-dashboard-aantal { width: 100%; margin-left: 0; }
+}

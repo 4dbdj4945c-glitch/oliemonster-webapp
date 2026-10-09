@@ -62,6 +62,7 @@ export type Module =
   | 'objecten'
   | 'klanten'
   | 'acquisitie'
+  | 'chatbot'
   | 'beheer';
 
 /**

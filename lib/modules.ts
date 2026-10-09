@@ -46,6 +46,12 @@ const ADMIN: ModuleRol[] = ['admin'];
 
 export const MODULES: ModuleInfo[] = [
   {
+    sleutel: 'chatbot', naam: 'Chatbot',
+    beschrijving: 'Gesprekken, kennisbank en instellingen van de websitechat',
+    icoon: 'comment', route: '/dashboard/chatbot', sectie: 'Beheer',
+    rollen: ADMIN, tegel: true,
+  },
+  {
     sleutel: 'oliemonsters',
     naam: 'Oliemonsters',
     beschrijving: 'Overzicht en beheer van oliemonsteranalyses, per analysejaar',
