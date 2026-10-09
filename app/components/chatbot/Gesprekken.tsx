@@ -10,12 +10,12 @@ function Contact({ gesprek }: { gesprek: ChatGesprek }) {
   return <span className="chat-contact">{gesprek.naam && <span>{gesprek.naam}</span>}{gesprek.telefoon && <a href={`tel:${gesprek.telefoon.replace(/[^\d+]/g, '')}`}>{gesprek.telefoon}</a>}{gesprek.email && <a href={`mailto:${gesprek.email}`}>{gesprek.email}</a>}{!gesprek.naam && !gesprek.telefoon && !gesprek.email && <span>Niet opgegeven</span>}</span>;
 }
 export default function Gesprekken() {
-  const [filter, setFilter] = useState<'onbeantwoord' | 'alles'>('onbeantwoord');
+  const [filter, setFilter] = useState<'onbeantwoord' | 'alles'>('alles');
   const [offset, setOffset] = useState(0);
   const [gekozen, setGekozen] = useState<string | null>(null);
   const { data, laden, fout, opnieuw } = useChatData<GesprekRegel[]>(`gesprekken?filter=${filter}&offset=${offset}`);
   return <>
-    <div className="chat-gereedschap"><div className="filterchips" aria-label="Gesprekkenfilter">{(['onbeantwoord', 'alles'] as const).map(f => <button key={f} className={`filterchip${filter === f ? ' on' : ''}`} aria-pressed={filter === f} onClick={() => { setFilter(f); setOffset(0); }}>{f === 'onbeantwoord' ? 'Onbeantwoord' : 'Alles'}</button>)}</div><button className="btn" onClick={opnieuw} disabled={laden}><Icon name="reset" />Verversen</button></div>
+    <div className="chat-gereedschap"><div className="filterchips" aria-label="Gesprekkenfilter">{(['alles', 'onbeantwoord'] as const).map(f => <button key={f} className={`filterchip${filter === f ? ' on' : ''}`} aria-pressed={filter === f} onClick={() => { setFilter(f); setOffset(0); }}>{f === 'onbeantwoord' ? 'Onbeantwoord' : 'Alles'}</button>)}</div><button className="btn" onClick={opnieuw} disabled={laden}><Icon name="reset" />Verversen</button></div>
     {laden && <Laden soort="lijst" />}
     {fout && <LaadFout melding={fout} onOpnieuw={opnieuw} />}
     {data && <>
