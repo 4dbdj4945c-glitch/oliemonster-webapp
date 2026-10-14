@@ -47,6 +47,15 @@ async function moetEerstWachtwoord(request: NextRequest): Promise<boolean> {
 export async function proxy(request: NextRequest) {
   const pad = request.nextUrl.pathname;
 
+  // Het portaal draait sinds 14 okt 2026 op Hetzner. Het oude Vercel-adres stuurt
+  // elk pad door, ook diepe links (vercel.json komt pas na deze proxy).
+  if (request.nextUrl.hostname.endsWith('.vercel.app')) {
+    return NextResponse.redirect(
+      `https://portaal.itsdoneservices.nl${pad}${request.nextUrl.search}`,
+      307,
+    );
+  }
+
   if (pad.startsWith('/api/')) {
     // CSRF: niet-GET-verzoeken moeten van de portal zelf komen en JSON zijn.
     const fout = herkomstFout({
