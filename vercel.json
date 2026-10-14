@@ -1,3 +1,6 @@
 {
-  "regions": ["fra1"]
+  "regions": ["fra1"],
+  "redirects": [
+    { "source": "/:pad*", "destination": "https://portaal.itsdoneservices.nl/:pad*", "permanent": false }
+  ]
 }
